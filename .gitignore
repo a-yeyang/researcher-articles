@@ -21,3 +21,18 @@
 # 运行日志
 curl_err.log
 build.log
+
+# === RL×Agent 导读项目：版权与体积排除 ===
+# 原始论文 PDF（受版权保护，仅本地使用，不纳入仓库）
+/DigiRL.pdf
+/ArCHer.pdf
+/ETO - Trial and Error.pdf
+/AGILE.pdf
+/StepCoder.pdf
+/Search-R1.pdf
+/UI-TARS.pdf
+/ReTool.pdf
+/ToolRL.pdf
+/RAGEN.pdf
+# 整页论文渲染图（等于把整篇论文以图片复刻，不纳入仓库）
+assets/*/_pages/
