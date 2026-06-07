@@ -1,0 +1,350 @@
+\documentclass[11pt,UTF8,fontset=fandol]{ctexart}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx,float,caption,subcaption}
+\usepackage{booktabs,array,multirow,makecell}
+\usepackage{geometry,enumitem,xcolor}
+\usepackage[hidelinks]{hyperref}
+\usepackage{url}
+\geometry{margin=2.3cm}
+\graphicspath{{/Users/yye/project/论文/assets/gretriever/}}
+\captionsetup{font=small,labelfont=bf}
+\setlength{\parskip}{0.4em}
+\hypersetup{pdftitle={G-Retriever 中文精读导读},pdfauthor={He et al.}}
+
+% 小白知识卡片：上下加线 + 粗体标签，稳健不挑内容
+\newenvironment{tip}[1]{%
+  \par\smallskip\noindent\rule{\linewidth}{0.4pt}\par\nobreak
+  \noindent\textbf{【小白补丁】#1}\par\nobreak\noindent\ignorespaces
+}{%
+  \par\noindent\rule{\linewidth}{0.4pt}\par\smallskip
+}
+
+\title{G-Retriever 中文精读导读：让大语言模型“与你的图对话”}
+\author{原文：He, Tian, Sun, Chawla, Laurent, LeCun, Bresson, Hooi（NeurIPS 2024）}
+\date{}
+
+\begin{document}
+\maketitle
+\begin{center}\small\textit{本导读为面向初学者的中文学习笔记：含要点翻译、公式精讲与图表解读。}\end{center}
+
+\section*{论文卡片}
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{标题} & G-Retriever: Retrieval-Augmented Generation for Textual Graph \\
+            & Understanding and Question Answering \\
+\textbf{作者} & Xiaoxin He, Yijun Tian, Yifei Sun, Nitesh V. Chawla, Thomas Laurent, \\
+            & Yann LeCun, Xavier Bresson, Bryan Hooi \\
+\textbf{机构} & 新加坡国立大学、圣母大学、Loyola Marymount、纽约大学、Meta AI \\
+\textbf{会议} & NeurIPS 2024（神经信息处理系统大会） \\
+\textbf{arXiv} & 2402.07630 \\
+\textbf{代码} & \url{https://github.com/XiaoxinHe/G-Retriever} \\
+\textbf{方向} & 图（Graph）$\times$ 大模型 $\times$ 后训练（轻量微调 / 软提示） \\
+\textbf{一句话} & 第一个面向“通用文本图”的图检索增强生成（GraphRAG）框架，\\
+              & 让大模型既能看懂图、又少胡说，还能处理超大图。 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{一、这篇论文在解决什么问题}
+
+现实世界里很多数据天生是“图”：网页、电商、推荐系统、知识图谱、场景图……
+它们由\textbf{节点}（实体）和\textbf{边}（关系）组成，而且节点和边上常常带着\textbf{文字}
+（比如知识图谱里“本杰明·富兰克林”这个节点、“发明了”这条边）。这种“带文字的图”就叫
+\textbf{文本图（textual graph）}。
+
+大语言模型（LLM，如 GPT、Llama）天生只会处理“一串文字”，不会天然理解图这种结构。
+于是人们想把图和 LLM 结合起来。但作者指出，已有工作有三个痛点：
+
+\begin{enumerate}[leftmargin=2em]
+  \item \textbf{任务太简单}：大多只做“节点分类、判断两点是否相连、求最短路”这类基础题，
+        或者只在很小的、人工合成的图上做简单问答；缺一个面向真实复杂图的统一问答能力。
+  \item \textbf{爱胡说（幻觉）}：让 LLM 直接“看”一张被压缩成单个向量的图，它会编造出图里根本
+        不存在的节点和边（作者用实验证实了这一点）。
+  \item \textbf{装不下大图}：把一张几千节点的图“摊平”成文字喂给 LLM，token 数会爆炸，
+        超过 LLM 的输入窗口；硬截断又会丢信息。
+\end{enumerate}
+
+\textbf{本文的目标}：做一个灵活的“图问答”框架，让用户能用对话的方式
+\textbf{“和自己的图聊天”（chat with your graph）}——问它问题，它不仅用自然语言回答，
+还能高亮出图中支撑答案的部分。为此作者做了两件事：
+（1）建立一个综合的 \textbf{GraphQA 基准}；（2）提出 \textbf{G-Retriever} 方法。
+
+\section{二、摘要中译}
+
+\begin{quote}
+给定一张带文本属性的图，我们让用户能够“与自己的图对话”：即通过对话式界面就图提出问题。
+针对用户的提问，我们的方法给出文本回复，并高亮图中相关的部分。已有工作以各种方式整合
+大语言模型（LLM）与图神经网络（GNN），但大多聚焦于传统图任务（如节点、边、图分类），
+或在小型／合成图上回答简单的图查询。与之不同，我们面向真实世界的文本图开发了一个灵活的
+问答框架，可用于场景图理解、常识推理、知识图谱推理等多种应用。为此，我们首先构建了一个
+图问答（GraphQA）基准，数据来自不同任务；随后提出 G-Retriever 方法，这是首个面向通用文本图的
+检索增强生成（RAG）方法，并可通过软提示（soft prompting）微调以增强图理解能力。为抵抗幻觉、
+并支持远超 LLM 上下文窗口的大图，G-Retriever 把图上的 RAG 表述为一个\textbf{奖励收集斯坦纳树
+（Prize-Collecting Steiner Tree, PCST）}优化问题。实证评估表明，我们的方法在多个领域的文本图
+任务上超过基线，能很好地扩展到更大的图，并能缓解幻觉。
+\end{quote}
+
+\section{三、四大核心贡献}
+\begin{enumerate}[leftmargin=2em]
+  \item \textbf{开创“图上的 RAG”}：首次为通用文本图任务设计检索方法，大幅提升可扩展性与效率。
+  \item \textbf{实现“与图对话”}：用统一的对话界面处理复杂、真实的文本图。
+  \item \textbf{提出 GraphQA 新基准}：面向真实图问答，填补该方向缺乏综合评测的空白。
+  \item \textbf{重要实证发现}：在多领域验证有效性与效率，并揭示“图 LLM 也会严重幻觉”这一问题。
+\end{enumerate}
+
+\section{四、预备知识（小白先看这里）}
+
+\begin{tip}{什么是 RAG（检索增强生成）}
+RAG = Retrieval-Augmented Generation。思路是：回答前先去一个“资料库”里\textbf{检索}出与问题
+相关的材料，再把材料连同问题一起交给 LLM \textbf{生成}答案。好处是答案有据可查、少胡编、
+还能处理超出模型记忆的新知识。本文的创新点就是把 RAG 从“在文本库里检索”搬到“在图里检索”。
+\end{tip}
+
+\begin{tip}{什么是软提示 / 提示微调（soft prompt / prompt tuning）}
+传统微调要改动 LLM 的全部参数，又慢又贵。提示微调则\textbf{冻结 LLM 本体不动}，只在输入前面
+接上一小段\textbf{可训练的“虚拟 token”（即软提示）}，训练时只更新这一小段。本文更进一步：
+把“一张图”编码成一个软提示向量喂给冻结的 LLM。
+\end{tip}
+
+形式化记号（看不懂可跳过，用到时再回看）：文本图记作
+$G=(V,E,\{x_n\}_{n\in V},\{x_e\}_{e\in E})$，其中 $V,E$ 是节点集与边集，
+$x_n,x_e$ 是节点／边上的文字。用一个语言模型（LM，如 SentenceBERT）把节点文字编码成向量：
+\begin{equation*}
+  z_n = \mathrm{LM}(x_n)\in\mathbb{R}^{d}. \tag{1}
+\end{equation*}
+这里 $d$ 是向量维度。边也同样处理。这一步把“文字”变成“可以算相似度的数字向量”，是后面检索的基础。
+
+\section{五、GraphQA 基准：先有“考卷”才能比高下}
+
+作者把三个现成数据集整理成统一格式，组成 GraphQA。每条样本 = 一张文本图 + 一个问题 + 一个或多个答案。
+图会被“文本化”成类似 CSV 的两张表：节点表 \texttt{(node\_id, node\_attr)} 和
+边表 \texttt{(src, edge\_attr, dst)}。三个数据集见下表（数据来自原文表 2）：
+
+\begin{table}[H]\centering
+\caption{GraphQA 用到的三个数据集（数据源自原文 Table 2）。}
+\begin{tabular}{lccc}
+\toprule
+ & \textbf{ExplaGraphs} & \textbf{SceneGraphs} & \textbf{WebQSP} \\
+\midrule
+图的数量 & 2{,}766 & 100{,}000 & 4{,}737 \\
+平均节点数 & 5.17 & 19.13 & 1370.89 \\
+平均边数 & 4.25 & 68.44 & 4252.37 \\
+节点含义 & 常识概念 & 物体属性(颜色/形状) & Freebase 实体 \\
+边含义 & 常识关系 & 关系(动作/空间) & Freebase 关系 \\
+任务 & 常识推理 & 场景图问答 & 知识库问答 \\
+评测指标 & 准确率 Accuracy & 准确率 Accuracy & Hit@1 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{itemize}[leftmargin=2em]
+  \item \textbf{ExplaGraphs}（常识推理）：判断两个论点是“支持”还是“反驳”，图很小（平均 5 个节点）。
+  \item \textbf{SceneGraphs}（场景图问答）：描述一张图片里有哪些物体、属性和空间关系，回答开放式问题。
+  \item \textbf{WebQSP}（知识库问答）：基于 Freebase 子图的多跳问答，图\textbf{极大}（平均 1371 个节点）。
+        指标 Hit@1 表示“排第一的答案是否命中正确答案”。
+\end{itemize}
+
+\begin{tip}{为什么 WebQSP 能凸显本文价值}
+WebQSP 平均一张图就有 1371 个节点、4252 条边。如果硬把它摊平成文字，token 会爆炸。
+这正是 G-Retriever 的“图上检索”要解决的场景——只挑出与问题相关的一小块子图。
+\end{tip}
+
+\section{六、G-Retriever 方法逐节精讲}
+
+G-Retriever 把 GNN、LLM、RAG 三者的优点合到一起。整体是一条\textbf{四步流水线}：
+① 索引 → ② 检索 → ③ 子图构建 → ④ 生成（见图~\ref{fig:arch}）。
+一个关键设计：\textbf{LLM 全程冻结}，只在 GNN 输出上做“软提示”，这样既能高效微调、
+又不破坏 LLM 原有的语言能力。
+
+\begin{figure}[H]\centering
+  \includegraphics[width=0.96\linewidth]{cand_p06_k00.pdf}
+  \caption{G-Retriever 总体架构（原文 Figure 3，图内英文为原文保留）：
+  1) Indexing 索引——为图建立可快速查询的向量索引；
+  2) Retrieval 检索——按问题取出语义最相关的节点与边；
+  3) Subgraph Construction 子图构建——抽出一个尽量覆盖相关元素、又不太大的\emph{连通}子图；
+  4) Generation 生成——用“图提示 + 文本化的图 + 问题”让冻结的 LLM 生成答案。}
+  \label{fig:arch}
+\end{figure}
+
+\subsection{第 1 步：索引（Indexing）}
+用预训练 LM（如 SentenceBERT）把每个节点、每条边的文字都编码成向量 $z_n$（见公式 (1)），
+存进一个最近邻检索结构里，方便后面按相似度快速查找。
+
+\subsection{第 2 步：检索（Retrieval）}
+来了一个问题 $x_q$，用同一个 LM 编码成 $z_q=\mathrm{LM}(x_q)\in\mathbb{R}^{d}$。
+再用 $k$ 近邻、按\textbf{余弦相似度}取出与问题最相关的前 $k$ 个节点和边：
+\begin{equation*}
+  V_k = \operatorname*{arg\,topk}_{n\in V}\cos(z_q,z_n),\qquad
+  E_k = \operatorname*{arg\,topk}_{e\in E}\cos(z_q,z_e). \tag{2}
+\end{equation*}
+\begin{tip}{余弦相似度 $\cos(\cdot,\cdot)$ 是什么}
+两个向量夹角的余弦值，范围 $[-1,1]$，越接近 1 表示方向越一致、语义越相似。
+它是衡量“两段文字意思像不像”的常用快捷尺子（CLIP 等模型也用它）。
+\end{tip}
+
+\subsection{第 3 步：子图构建——本文的技术核心（PCST）}
+只取“最相关的 $k$ 个节点和边”还不够，因为它们可能是\textbf{零散、不连通}的。作者希望取出一个
+\textbf{连通的子图}：既尽量多地包含相关节点/边，又不要太大。这被建模成一个经典优化问题——
+\textbf{奖励收集斯坦纳树（Prize-Collecting Steiner Tree, PCST）}。
+
+\begin{tip}{什么是 PCST（奖励收集斯坦纳树）}
+想象图里每个节点头上有“奖金 prize”，每走一条边要付“过路费 cost”。目标是找一棵\textbf{连通}的子树，
+让“拿到的奖金总和 $-$ 付出的过路费总和”最大。相关的节点奖金高、值得纳入；
+不相关的奖金为 0、纳入它只会白付过路费。于是优化结果自然就是“一块相关且连通的子图”。
+\end{tip}
+
+具体地，给前 $k$ 个相关节点按名次赋予\textbf{递减的奖金}（第 $i$ 名给 $k-i$ 分，其余给 0 分）：
+\begin{equation*}
+  \mathrm{prize}(n)=
+  \begin{cases}
+    k-i, & \text{若 } n\in V_k \text{ 且为第 } i \text{ 相关的节点},\\
+    0, & \text{其他}.
+  \end{cases}\tag{3}
+\end{equation*}
+边的奖金同理。然后求解使“总奖金 $-$ 子图代价”最大的连通子图 $S^\ast=(V^\ast,E^\ast)$：
+\begin{equation*}
+  S^\ast=\operatorname*{arg\,max}_{\substack{S\subseteq G,\ S\text{ 连通}}}
+  \ \sum_{n\in V_S}\mathrm{prize}(n)+\sum_{e\in E_S}\mathrm{prize}(e)-\mathrm{cost}(S),
+  \quad \mathrm{cost}(S)=|E_S|\times C_e. \tag{4}
+\end{equation*}
+其中 $C_e$ 是每条边的代价，是个可调旋钮——调大它，子图就更小更精；调小它，子图更大更全。
+
+\begin{tip}{一个巧妙的工程技巧：虚拟节点}
+原始 PCST 算法只允许“节点有奖金”，不允许“边有奖金”（否则会出现负代价，算法不支持）。
+作者的解法：当某条边的奖金 $P_e$ 大于其代价 $C_e$ 时，就把这条边\textbf{替换成一个“虚拟节点”}，
+让它连接原边两端，把奖金 $P_e-C_e$ 记在这个虚拟节点上、两条新边代价记 0。
+这样“边的奖金”问题就被等价转化成了“节点的奖金”问题，可以直接套用近线性时间的高效算法求解。
+\end{tip}
+
+\subsection{第 4 步：答案生成（Generation）}
+拿到子图 $S^\ast$ 后，作者把它\textbf{同时用两种形式}喂给 LLM——一种“图向量”，一种“图文字”：
+
+\textbf{(a) 图编码器（GNN）}：用一个图注意力网络（Graph Attention Network, GAT）对子图做编码，
+再做平均池化，得到一个“图向量” $h_g$：
+\begin{equation*}
+  h_g=\mathrm{POOL}\big(\mathrm{GNN}_{\phi_1}(S^\ast)\big)\in\mathbb{R}^{d_g}.\tag{5}
+\end{equation*}
+\textbf{(b) 投影层（MLP）}：把图向量投影到 LLM 的词向量空间，对齐维度，得到“图 token” $\hat h_g$：
+\begin{equation*}
+  \hat h_g=\mathrm{MLP}_{\phi_2}(h_g)\in\mathbb{R}^{d_l}.\tag{6}
+\end{equation*}
+\textbf{(c) 文本嵌入}：把子图“文本化”（摊成节点表+边表的文字）后与问题拼接，过 LLM 的词嵌入层：
+\begin{equation*}
+  h_t=\mathrm{TextEmbedder}\big([\,\mathrm{textualize}(S^\ast);\,x_q\,]\big)\in\mathbb{R}^{L\times d_l}.\tag{7}
+\end{equation*}
+\textbf{(d) 带图提示的生成}：把“图 token $\hat h_g$（当软提示）”和“文本嵌入 $h_t$”拼起来，
+送进\textbf{冻结的} LLM 自注意力层逐词生成答案 $Y$：
+\begin{equation*}
+  p_{\theta,\phi_1,\phi_2}(Y\mid S^\ast,x_q)=\prod_{i=1}^{r}
+  p_{\theta,\phi_1,\phi_2}\big(y_i\mid y_{<i},[\hat h_g;h_t]\big).\tag{8}
+\end{equation*}
+
+\begin{tip}{关键：哪些参数在训练？（这就是“后训练”的体现）}
+LLM 本体参数 $\theta$ \textbf{始终冻结不动}；梯度只回传去更新\textbf{图编码器 $\phi_1$ 和投影层 $\phi_2$}
+（在“Tuned LLM”设定下再额外加 LoRA）。这是一种轻量的参数高效微调（PEFT）——
+用很小的训练代价，把“图的结构信息”对齐进 LLM。
+\end{tip}
+
+\section{七、实验怎么做、结果怎么读}
+
+\textbf{实验设置}：编码器用 SentenceBERT；LLM 用开源 Llama2-7b；图编码器用 Graph Transformer。
+对比三种配置：
+\begin{enumerate}[leftmargin=2em]
+  \item \textbf{Inference-only}：冻结 LLM 直接答（含 Zero-shot、Zero-CoT、CoT-BAG、KAPING 等提示法）。
+  \item \textbf{Frozen LLM + 提示微调(PT)}：冻结 LLM，只调提示（含普通软提示、GraphToken、G-Retriever）。
+  \item \textbf{Tuned LLM}：用 LoRA 微调 LLM（含纯 LoRA、G-Retriever w/ LoRA）。
+\end{enumerate}
+
+\textbf{主结果（源自原文 Table 3，节选关键行）}：
+
+\begin{table}[H]\centering
+\caption{三数据集主结果对比（数值源自原文 Table 3；越高越好，加粗为最优）。}
+\begin{tabular}{llccc}
+\toprule
+设定 & 方法 & ExplaGraphs & SceneGraphs & WebQSP \\
+\midrule
+Inference-only & Zero-shot & 0.5650 & 0.3974 & 41.06 \\
+\midrule
+\multirow{2}{*}{冻结+提示微调}
+ & GraphToken & 0.8508 & 0.4903 & 57.05 \\
+ & \textbf{G-Retriever} & \textbf{0.8516} & \textbf{0.8131} & \textbf{70.49} \\
+\midrule
+\multirow{2}{*}{LoRA 微调}
+ & LoRA & 0.8538 & 0.7862 & 66.03 \\
+ & \textbf{G-Retriever w/ LoRA} & \textbf{0.8705} & \textbf{0.8683} & \textbf{73.79} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{怎么读这张表}：在“冻结+提示微调”里，G-Retriever 全面超过普通软提示和 GraphToken
+（平均分别高出约 40.6\% 和 30.8\%），在 SceneGraphs 上更是从 0.49 飙到 0.81。
+再叠加 LoRA 微调后，G-Retriever w/ LoRA 取得全场最佳。说明“图上检索 + 软提示”这套组合确实有效。
+
+\textbf{效率（源自原文 Table 4）}：在 WebQSP 上，检索让描述图所需的 token \textbf{减少 99\%}、
+节点数减少 99\%、每轮训练时间从 18.7 分钟降到 6.2 分钟（降 67\%）。这正是“先检索一小块子图”
+带来的可扩展性。
+
+\textbf{缓解幻觉（源自原文 Table 5）}：让模型回答时\textbf{列出图中支撑答案的节点/边}，再人工核对这些
+节点/边是否真的存在于图中：
+
+\begin{table}[H]\centering
+\caption{幻觉对比（SceneGraphs，数值源自原文 Table 5；越高越忠实）。}
+\begin{tabular}{lcc}
+\toprule
+ & 基线(LLM+图提示微调) & G-Retriever \\
+\midrule
+有效节点占比 & 31\% & \textbf{77\%} \\
+有效边占比 & 12\% & \textbf{76\%} \\
+整组节点边全部有效 & 8\% & \textbf{62\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+基线引用的边里\textbf{只有 12\% 真实存在}（大量编造），而 G-Retriever 因为答案直接来自检索到的真实子图，
+忠实度大幅提升。
+
+\textbf{消融实验（源自原文 Table 6，WebQSP）}：逐个去掉关键组件看掉多少分——
+去掉图编码器 $\downarrow 22.51\%$、去掉文本化的图 $\downarrow 19.19\%$、去掉检索 $\downarrow 9.43\%$、
+去掉投影层 $\downarrow 1.11\%$。结论：\textbf{“图向量”和“图文字”两条路互补缺一不可}，检索也很重要。
+
+\section{八、附录里值得一看的补充}
+\begin{itemize}[leftmargin=2em]
+  \item \textbf{换图编码器}（附录 B.4）：GCN/GAT/Graph Transformer 三者表现接近，方法对编码器选择稳健。
+  \item \textbf{换更大 LLM}（附录 B.5）：Llama2-7b $\to$ 13b，WebQSP 的 Hit@1 从 70.49 升到 75.58，
+        说明方法能吃到“更大模型”的红利。
+  \item \textbf{检索粒度 $k$ 的影响}（附录 D.2）：$k$ 太小漏信息、太大引噪声，Hit@1 随 $k$ 先升后降，
+        需用验证集挑最优 $k$。
+  \item \textbf{检索质量}（附录 D.4）：PCST 子图检索成功率 70.49\%，优于 KAPING 的三元组检索 60.81\%，
+        因为它考虑了图结构、能把“桥梁”节点也带上。
+  \item \textbf{Demo}（附录 G）：展示了“写议论文、写广告文案、设计知识图导览”等创造性对话能力。
+\end{itemize}
+
+\section{九、小白知识点卡片（速查）}
+\begin{itemize}[leftmargin=2em]
+  \item \textbf{文本图 / TAG}：节点和边都带文字的图（知识图谱、场景图等）。
+  \item \textbf{GraphRAG}：在“图”里做检索增强生成——本文首创面向\emph{通用}文本图的版本。
+  \item \textbf{PCST（奖励收集斯坦纳树）}：在“奖金 $-$ 过路费”最大化下找连通子图的经典优化问题。
+  \item \textbf{斯坦纳树（Steiner Tree）}：连接若干指定点、可借助额外“中转点”的最小连接树。
+  \item \textbf{软提示 / 提示微调}：冻结 LLM，只训练一小段可学习的“虚拟 token”。
+  \item \textbf{GAT（图注意力网络）}：用注意力机制聚合邻居信息的图神经网络。
+  \item \textbf{PEFT / LoRA}：参数高效微调；LoRA 只训练低秩增量矩阵，省显存。
+  \item \textbf{Hit@1}：排第一的答案是否命中正确答案（衡量精度）。
+  \item \textbf{幻觉（hallucination）}：模型一本正经地编造不存在的内容。
+\end{itemize}
+
+\section{十、一句话总结与定位}
+
+\textbf{一句话}：G-Retriever 把“RAG”从文本搬到了图上——先用 PCST 抠出一小块“相关又连通”的子图，
+再把这块子图\emph{既当向量、又当文字}喂给\emph{冻结的} LLM，只轻量训练 GNN+投影层（可选叠加 LoRA），
+从而又准、又省、又少胡说地实现“和你的图对话”。
+
+\textbf{在“图 $\times$ 后训练”谱系里的位置}：它是\textbf{“检索 + 轻量后训练（软提示/PEFT）”}路线的代表作，
+也是后续大量 GraphRAG 与图问答工作的基石（这也是它引用量在该方向 2024 年居首的原因）。
+与之相对，本系列里的 LLaGA 走“投影器对齐”、InstructGraph/GraphWiz 走“指令微调+DPO”、
+G1 走“强化学习”——你可以对照着看它们\emph{各自把“图的信息”塞进 LLM 的方式有何不同}。
+
+\textbf{动手复现}：官方代码 \url{https://github.com/XiaoxinHe/G-Retriever}（含 GraphQA 数据处理脚本、
+SentenceBERT 索引、PCST 检索与 Llama2 训练流程），是入门 GraphRAG 很好的练手项目。
+
+\end{document}

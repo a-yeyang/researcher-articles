@@ -1,0 +1,640 @@
+{
+ "pdf": "SKILLRL.pdf",
+ "slug": "skillrl",
+ "page_count": 18,
+ "page_size": [
+  612.0,
+  792.0
+ ],
+ "pages": [
+  {
+   "page": 1,
+   "candidates": [
+    {
+     "id": "cand_p01_k00",
+     "kind": "image",
+     "bbox": [
+      317.4,
+      246.5,
+      529.5,
+      340.8
+     ],
+     "pdf": "cand_p01_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      306.9,
+      355.9,
+      542.9,
+      365.1
+     ],
+     "text": "Figure 1. (a) Overview of the SKILLRL pipeline. Unlike previ-",
+     "label": "Figure 1"
+    }
+   ],
+   "overlay": "assets/skillrl/_pages/p01.png"
+  },
+  {
+   "page": 2,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/skillrl/_pages/p02.png"
+  },
+  {
+   "page": 3,
+   "candidates": [
+    {
+     "id": "cand_p03_k00",
+     "kind": "image",
+     "bbox": [
+      50.2,
+      42.4,
+      526.0,
+      260.4
+     ],
+     "pdf": "cand_p03_k00.pdf"
+    },
+    {
+     "id": "cand_p03_k01",
+     "kind": "image",
+     "bbox": [
+      66.3,
+      158.7,
+      139.7,
+      232.2
+     ],
+     "pdf": "cand_p03_k01.pdf"
+    },
+    {
+     "id": "cand_p03_k02",
+     "kind": "image",
+     "bbox": [
+      457.2,
+      44.0,
+      554.7,
+      141.5
+     ],
+     "pdf": "cand_p03_k02.pdf"
+    },
+    {
+     "id": "cand_p03_k03",
+     "kind": "image",
+     "bbox": [
+      227.4,
+      148.5,
+      328.5,
+      249.6
+     ],
+     "pdf": "cand_p03_k03.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      54.9,
+      270.4,
+      542.6,
+      279.5
+     ],
+     "text": "Figure 2. Overview of the SKILLRL framework. We collect trajectories using a base model, distill them into a hierarchical skill library,",
+     "label": "Figure 2"
+    }
+   ],
+   "overlay": "assets/skillrl/_pages/p03.png"
+  },
+  {
+   "page": 4,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      55.1,
+      69.1,
+      280.2,
+      79.1
+     ],
+     "text": "Algorithm 1 SKILLRL: Recursive Skill-Augmented RL",
+     "label": "Algorithm 1"
+    }
+   ],
+   "overlay": "assets/skillrl/_pages/p04.png"
+  },
+  {
+   "page": 5,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/skillrl/_pages/p05.png"
+  },
+  {
+   "page": 6,
+   "candidates": [
+    {
+     "id": "cand_p06_k00",
+     "kind": "table",
+     "bbox": [
+      103.8,
+      122.4,
+      493.1,
+      398.2
+     ],
+     "pdf": "cand_p06_k00.pdf"
+    },
+    {
+     "id": "cand_p06_k01",
+     "kind": "table",
+     "bbox": [
+      103.8,
+      158.3,
+      493.1,
+      396.1
+     ],
+     "pdf": "cand_p06_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      54.9,
+      67.0,
+      541.4,
+      76.2
+     ],
+     "text": "Table 1. Performance on ALFWorld and WebShop. For ALFWorld, we report the average success rate (%) for each subtask as well as",
+     "label": "Table 1"
+    },
+    {
+     "bbox": [
+      307.1,
+      420.6,
+      541.4,
+      430.5
+     ],
+     "text": "Table 2, SKILLRL achieves a state-of-the-art average score",
+     "label": "Table 2"
+    }
+   ],
+   "overlay": "assets/skillrl/_pages/p06.png"
+  },
+  {
+   "page": 7,
+   "candidates": [
+    {
+     "id": "cand_p07_k00",
+     "kind": "table",
+     "bbox": [
+      65.0,
+      142.1,
+      533.8,
+      409.0
+     ],
+     "pdf": "cand_p07_k00.pdf"
+    },
+    {
+     "id": "cand_p07_k01",
+     "kind": "table",
+     "bbox": [
+      335.2,
+      273.4,
+      532.7,
+      393.4
+     ],
+     "pdf": "cand_p07_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      54.9,
+      64.3,
+      541.4,
+      77.2
+     ],
+     "text": "Table 2. Performance on search-augmented QA tasks. SKILLRL is trained on NQ and HotpotQA. † and ⋆indicate in-domain and",
+     "label": "Table 2"
+    },
+    {
+     "bbox": [
+      54.9,
+      257.4,
+      290.0,
+      266.5
+     ],
+     "text": "Table 3. Ablation study results. We report average success rate (%)",
+     "label": "Table 3"
+    },
+    {
+     "bbox": [
+      306.9,
+      416.1,
+      542.9,
+      425.3
+     ],
+     "text": "Figure 3. Evolution of skill library size during RL training. Dy-",
+     "label": "Figure 3"
+    },
+    {
+     "bbox": [
+      307.4,
+      575.9,
+      541.8,
+      586.0
+     ],
+     "text": "Figure 4. The results reveal that while the raw memory",
+     "label": "Figure 4"
+    }
+   ],
+   "overlay": "assets/skillrl/_pages/p07.png"
+  },
+  {
+   "page": 8,
+   "candidates": [
+    {
+     "id": "cand_p08_k00",
+     "kind": "image",
+     "bbox": [
+      55.4,
+      67.1,
+      293.6,
+      186.1
+     ],
+     "pdf": "cand_p08_k00.pdf"
+    },
+    {
+     "id": "cand_p08_k01",
+     "kind": "image",
+     "bbox": [
+      300.8,
+      71.2,
+      539.0,
+      177.0
+     ],
+     "pdf": "cand_p08_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      54.9,
+      190.4,
+      295.1,
+      199.5
+     ],
+     "text": "Figure 4. Comparison of prompt length (tokens) between raw mem-",
+     "label": "Figure 4"
+    },
+    {
+     "bbox": [
+      300.3,
+      186.2,
+      539.0,
+      195.4
+     ],
+     "text": "Figure 5. Success rate on ALFWorld validation set. The recursive",
+     "label": "Figure 5"
+    }
+   ],
+   "overlay": "assets/skillrl/_pages/p08.png"
+  },
+  {
+   "page": 9,
+   "candidates": [
+    {
+     "id": "cand_p09_k00",
+     "kind": "vector",
+     "bbox": [
+      54.5,
+      14.7,
+      572.9,
+      306.3
+     ],
+     "pdf": "cand_p09_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      54.9,
+      217.3,
+      541.4,
+      226.3
+     ],
+     "text": "Figure 6. Case studies of SKILLRL on WebShop and ALFWorld. The examples illustrate how the agent adaptively retrieves and integrates",
+     "label": "Figure 6"
+    }
+   ],
+   "overlay": "assets/skillrl/_pages/p09.png"
+  },
+  {
+   "page": 10,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/skillrl/_pages/p10.png"
+  },
+  {
+   "page": 11,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/skillrl/_pages/p11.png"
+  },
+  {
+   "page": 12,
+   "candidates": [
+    {
+     "id": "cand_p12_k00",
+     "kind": "vector",
+     "bbox": [
+      55.4,
+      236.4,
+      541.4,
+      397.0
+     ],
+     "pdf": "cand_p12_k00.pdf"
+    },
+    {
+     "id": "cand_p12_k01",
+     "kind": "vector",
+     "bbox": [
+      55.4,
+      455.3,
+      541.4,
+      625.9
+     ],
+     "pdf": "cand_p12_k01.pdf"
+    }
+   ],
+   "captions": [],
+   "overlay": "assets/skillrl/_pages/p12.png"
+  },
+  {
+   "page": 13,
+   "candidates": [
+    {
+     "id": "cand_p13_k00",
+     "kind": "vector",
+     "bbox": [
+      55.4,
+      67.1,
+      541.4,
+      177.8
+     ],
+     "pdf": "cand_p13_k00.pdf"
+    },
+    {
+     "id": "cand_p13_k01",
+     "kind": "vector",
+     "bbox": [
+      55.4,
+      208.6,
+      541.4,
+      319.4
+     ],
+     "pdf": "cand_p13_k01.pdf"
+    },
+    {
+     "id": "cand_p13_k02",
+     "kind": "vector",
+     "bbox": [
+      55.4,
+      350.2,
+      541.4,
+      461.0
+     ],
+     "pdf": "cand_p13_k02.pdf"
+    },
+    {
+     "id": "cand_p13_k03",
+     "kind": "vector",
+     "bbox": [
+      55.4,
+      554.5,
+      541.4,
+      715.1
+     ],
+     "pdf": "cand_p13_k03.pdf"
+    }
+   ],
+   "captions": [],
+   "overlay": "assets/skillrl/_pages/p13.png"
+  },
+  {
+   "page": 14,
+   "candidates": [
+    {
+     "id": "cand_p14_k00",
+     "kind": "vector",
+     "bbox": [
+      55.4,
+      67.1,
+      541.4,
+      227.7
+     ],
+     "pdf": "cand_p14_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      225.1,
+      293.8,
+      371.3,
+      302.9
+     ],
+     "text": "Table 4. Hyperparameters for SKILLRL.",
+     "label": "Table 4"
+    }
+   ],
+   "overlay": "assets/skillrl/_pages/p14.png"
+  },
+  {
+   "page": 15,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      54.9,
+      67.1,
+      541.4,
+      76.2
+     ],
+     "text": "Table 5. Example distilled skills from SKILLBANK for ALFWorld (Shridhar et al.). This table summarizes general patterns and application",
+     "label": "Table 5"
+    },
+    {
+     "bbox": [
+      163.7,
+      413.0,
+      432.6,
+      422.1
+     ],
+     "text": "Table 6. Common Agent Failures and Mitigation Strategies for ALFWorld.",
+     "label": "Table 6"
+    }
+   ],
+   "overlay": "assets/skillrl/_pages/p15.png"
+  },
+  {
+   "page": 16,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      54.9,
+      67.0,
+      541.4,
+      76.2
+     ],
+     "text": "Table 7. Example distilled skills for WebShop Navigation (Yao et al., 2022a). These skills represent the strategic patterns used by the",
+     "label": "Table 7"
+    },
+    {
+     "bbox": [
+      194.1,
+      436.9,
+      402.2,
+      446.0
+     ],
+     "text": "Table 8. Common Failures in Web-based Shopping Tasks.",
+     "label": "Table 8"
+    }
+   ],
+   "overlay": "assets/skillrl/_pages/p16.png"
+  },
+  {
+   "page": 17,
+   "candidates": [
+    {
+     "id": "cand_p17_k00",
+     "kind": "vector",
+     "bbox": [
+      55.4,
+      85.7,
+      541.4,
+      349.7
+     ],
+     "pdf": "cand_p17_k00.pdf"
+    },
+    {
+     "id": "cand_p17_k01",
+     "kind": "vector",
+     "bbox": [
+      55.4,
+      361.9,
+      541.4,
+      715.1
+     ],
+     "pdf": "cand_p17_k01.pdf"
+    }
+   ],
+   "captions": [],
+   "overlay": "assets/skillrl/_pages/p17.png"
+  },
+  {
+   "page": 18,
+   "candidates": [
+    {
+     "id": "cand_p18_k00",
+     "kind": "table",
+     "bbox": [
+      55.4,
+      67.1,
+      541.4,
+      233.1
+     ],
+     "pdf": "cand_p18_k00.pdf"
+    },
+    {
+     "id": "cand_p18_k01",
+     "kind": "table",
+     "bbox": [
+      64.1,
+      165.6,
+      532.8,
+      175.5
+     ],
+     "pdf": "cand_p18_k01.pdf"
+    },
+    {
+     "id": "cand_p18_k02",
+     "kind": "table",
+     "bbox": [
+      64.1,
+      190.5,
+      532.8,
+      200.5
+     ],
+     "pdf": "cand_p18_k02.pdf"
+    },
+    {
+     "id": "cand_p18_k03",
+     "kind": "table",
+     "bbox": [
+      55.4,
+      243.1,
+      541.4,
+      399.3
+     ],
+     "pdf": "cand_p18_k03.pdf"
+    },
+    {
+     "id": "cand_p18_k04",
+     "kind": "table",
+     "bbox": [
+      64.1,
+      331.7,
+      532.8,
+      341.7
+     ],
+     "pdf": "cand_p18_k04.pdf"
+    },
+    {
+     "id": "cand_p18_k05",
+     "kind": "table",
+     "bbox": [
+      64.1,
+      356.6,
+      532.8,
+      366.6
+     ],
+     "pdf": "cand_p18_k05.pdf"
+    },
+    {
+     "id": "cand_p18_k06",
+     "kind": "table",
+     "bbox": [
+      55.4,
+      409.2,
+      541.4,
+      687.6
+     ],
+     "pdf": "cand_p18_k06.pdf"
+    },
+    {
+     "id": "cand_p18_k07",
+     "kind": "table",
+     "bbox": [
+      64.1,
+      565.8,
+      532.8,
+      575.8
+     ],
+     "pdf": "cand_p18_k07.pdf"
+    },
+    {
+     "id": "cand_p18_k08",
+     "kind": "table",
+     "bbox": [
+      64.1,
+      610.7,
+      532.8,
+      620.7
+     ],
+     "pdf": "cand_p18_k08.pdf"
+    }
+   ],
+   "captions": [],
+   "overlay": "assets/skillrl/_pages/p18.png"
+  }
+ ]
+}

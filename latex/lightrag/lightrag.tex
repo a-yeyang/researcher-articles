@@ -1,0 +1,427 @@
+\documentclass[11pt,UTF8,fontset=fandol]{ctexart}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx,float,caption,subcaption}
+\usepackage{booktabs,array,multirow,makecell}
+\usepackage{geometry,enumitem,xcolor}
+\usepackage[hidelinks]{hyperref}
+\usepackage{url}
+\geometry{margin=2.3cm}
+\graphicspath{{/Users/yye/project/论文/assets/lightrag/}}
+\captionsetup{font=small,labelfont=bf}
+\setlength{\parskip}{0.4em}
+
+\title{\textbf{LightRAG：简单而快速的检索增强生成}}
+
+\author{Zirui Guo$^{1,2}$,~Lianghao Xia$^{2}$,~Yanhua Yu$^{1,*}$,~Tu Ao$^{1}$,~Chao Huang$^{2*}$\\[0.4em]
+北京邮电大学（Beijing University of Posts and Telecommunications）$^{1}$\\
+香港大学（University of Hong Kong）$^{2}$\\[0.3em]
+\texttt{zrguo101@hku.hk\quad aka\_xia@foxmail.com\quad chaohuang75@gmail.com}}
+
+\date{}
+\begin{document}
+\maketitle
+
+\renewcommand{\thefootnote}{\arabic{footnote}}
+\footnotetext[1]{Chao Huang 与 Yanhua Yu 均为通讯作者。}
+
+\begin{abstract}
+检索增强生成（Retrieval-Augmented Generation, RAG）系统通过整合外部知识源来增强大语言模型（large language models, LLMs），使其能够生成更准确、更贴合上下文且契合用户需求的回答。然而，现有的 RAG 系统存在明显的局限性，包括依赖扁平化的数据表示（flat data representation）以及上下文感知（contextual awareness）能力不足，这可能导致回答支离破碎，难以捕捉复杂的相互依赖关系。为应对这些挑战，我们提出 LightRAG，将图结构（graph structure）引入文本索引（text indexing）与检索过程。这一创新框架采用双层检索（dual-level retrieval）系统，从低层（low-level）和高层（high-level）知识发现两个层面增强全面的信息检索能力。此外，图结构与向量表示（vector representation）的结合有助于高效检索相关实体及其关系，在保持上下文相关性的同时显著缩短了响应时间。借助一种增量更新（incremental update）算法，这一能力得到进一步增强，该算法确保新数据能够被及时整合，使系统在快速变化的数据环境中保持有效性与响应能力。大量实验验证表明，与现有方法相比，LightRAG 在检索准确性和效率上均有显著提升。我们已将 LightRAG 开源，地址为：\url{https://github.com/HKUDS/LightRAG}。
+\end{abstract}
+
+\section{引言}
+
+为了通过整合外部知识源来增强大语言模型（LLMs），研究者们开发了检索增强生成（RAG）系统 Sudhi 等人（2024）；Es 等人（2024）；Salemi \& Zamani（2024）。这种创新性的整合使大语言模型能够生成更准确、更贴合上下文的回答，从而显著提升其在现实应用中的实用价值。通过适配特定的领域知识 Tu 等人（2024），RAG 系统不仅能确保所提供的信息切题，而且能够契合用户的需求。此外，它们还能获取最新信息 Zhao 等人（2024），这在快速演变的领域中至关重要。分块（chunking）在促进检索增强生成过程中发挥着关键作用 Lyu 等人（2024）。通过将大型外部文本语料库分解为更小、更易处理的片段，分块显著提升了信息检索的准确性。这种方法支持更有针对性的相似度搜索，确保检索到的内容与用户查询直接相关。
+
+然而，现有的 RAG 系统存在若干制约其性能的关键局限。第一，许多方法依赖扁平化的数据表示，限制了它们基于实体之间错综复杂的关系来理解和检索信息的能力。第二，这些系统往往缺乏在不同实体及其相互关系之间维持连贯性所需的上下文感知能力，导致其回答可能无法充分解答用户的查询。例如，假设有用户提问：“电动汽车的兴起如何影响城市空气质量和公共交通基础设施？”现有的 RAG 方法可能会分别检索关于电动汽车、空气污染和公共交通挑战的不同文档，却难以将这些信息综合为一个连贯的回答。它们可能无法解释电动汽车的普及如何改善空气质量，而空气质量的改善又会进一步影响公共交通规划。其结果是，用户可能得到一个支离破碎的回答，无法充分捕捉这些主题之间复杂的相互依赖关系。
+
+为了解决这些局限，我们提出将图结构引入文本索引与相关信息检索。图在表示不同实体之间的相互依赖关系方面尤为有效 Rampášek 等人（2022），这使得对关系的理解更加细致入微。基于图的知识结构的整合，有助于将来自多个来源的信息综合为连贯且上下文丰富的回答。尽管具有这些优势，开发一个能够高效处理不同查询量、快速且可扩展的图赋能（graph-empowered）RAG 系统仍然至关重要。在本项工作中，我们通过解决以下三个关键挑战来实现一个有效且高效的 RAG 系统：i) \textbf{全面的信息检索}。确保全面的信息检索能够捕捉所有文档中相互依赖实体的完整上下文；ii) \textbf{提升检索效率}。在基于图的知识结构上提升检索效率，从而显著缩短响应时间；iii) \textbf{快速适应新数据}。支持对新数据更新的快速适应，确保系统在动态环境中保持时效性。
+
+针对上述挑战，我们提出 LightRAG，该模型将基于图的文本索引范式与双层检索框架无缝结合。这一创新方法增强了系统捕捉实体之间复杂相互依赖关系的能力，从而生成更连贯、上下文更丰富的回答。LightRAG 采用高效的双层检索策略：低层检索（low-level retrieval）专注于关于特定实体及其关系的精确信息，高层检索（high-level retrieval）则涵盖更广泛的主题与议题。通过将细节检索与概念检索相结合，LightRAG 能够有效应对多种多样的查询，确保用户收到契合其特定需求的相关且全面的回答。此外，通过将图结构与向量表示相结合，我们的框架在高效检索相关实体与关系的同时，借助所构建知识图谱中的相关结构信息提升了结果的全面性。
+
+总而言之，本项工作的主要贡献如下：
+
+\begin{itemize}[leftmargin=1.5em]
+\item \textbf{总体层面。} 我们强调开发图赋能 RAG 系统以克服现有方法局限的重要性。通过将图结构引入文本索引，我们能够有效表示实体之间复杂的相互依赖关系，促进对关系的细致理解，并实现连贯、上下文丰富的回答。
+\item \textbf{方法论。} 为构建一个高效且自适应的 RAG 系统，我们提出 LightRAG，它将双层检索范式与图增强的文本索引相结合。该方法同时捕捉低层与高层信息，以实现全面且经济高效的检索。通过免去重建整个索引的需要，LightRAG 降低了计算成本并加速了适应过程；与此同时，其增量更新算法确保新数据能够被及时整合，从而在动态环境中保持有效性。
+\item \textbf{实验发现。} 我们开展了大量实验，将 LightRAG 与现有 RAG 模型进行对比，以评估其有效性。这些评估聚焦于若干关键维度，包括检索准确性、模型消融、响应效率以及对新信息的适应能力。结果表明，LightRAG 相较于各基线方法有显著提升。
+\end{itemize}
+
+\section{检索增强生成}
+
+检索增强生成（RAG）将用户查询与一组从外部知识数据库获取的相关文档相结合，包含两个核心要素：\textbf{检索组件}（Retrieval Component）和\textbf{生成组件}（Generation Component）。1) 检索组件负责从外部知识数据库中获取相关文档或信息。它根据输入查询识别并检索最切题的数据。2) 在检索过程之后，生成组件接收检索到的信息，并生成连贯、贴合上下文的回答。它利用语言模型的能力来产出有意义的输出。形式化地，这一 RAG 框架记作 $\mathcal{M}$，可定义如下：
+\begin{equation}
+\mathcal{M} = \left(\mathcal{G},\ \mathcal{R} = (\varphi, \psi)\right),\quad
+\mathcal{M}(q; \mathcal{D}) = \mathcal{G}\!\left(q,\ \psi(q; \hat{\mathcal{D}})\right),\quad
+\hat{\mathcal{D}} = \varphi(\mathcal{D})
+\end{equation}
+在该框架中，$\mathcal{G}$ 和 $\mathcal{R}$ 分别表示生成模块和检索模块，$q$ 表示输入查询，$\mathcal{D}$ 表示外部数据库。检索模块 $\mathcal{R}$ 包含两个关键功能：i) \textbf{数据索引器} $\varphi(\cdot)$：负责基于外部数据库 $\mathcal{D}$ 构建特定的数据结构 $\hat{\mathcal{D}}$。ii) \textbf{数据检索器} $\psi(\cdot)$：通过将查询与已索引的数据进行比对来获取相关文档，这些文档也被称为“相关文档”。通过利用经由 $\psi(\cdot)$ 检索到的信息以及初始查询 $q$，生成式模型 $\mathcal{G}(\cdot)$ 能够高效产出高质量、贴合上下文的回答。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{fig1.pdf}
+\caption{所提出的 LightRAG 框架的整体架构。}
+\label{fig:1}
+\end{figure}
+
+在本项工作中，我们瞄准了构建一个高效且有效的检索增强生成（RAG）系统所必需的若干关键要点，详述如下：
+\begin{itemize}[leftmargin=1.5em]
+\item \textbf{全面的信息检索：}索引函数 $\varphi(\cdot)$ 必须擅长提取全局信息，因为这对增强模型有效回答查询的能力至关重要。
+\item \textbf{高效且低成本的检索：}已索引的数据结构 $\hat{\mathcal{D}}$ 必须支持快速且经济的检索，以有效应对大量查询。
+\item \textbf{快速适应数据变化：}能够迅速且高效地调整数据结构，以纳入来自外部知识库的新信息，这对于确保系统在不断变化的信息环境中保持时效性和相关性至关重要。
+\end{itemize}
+
+\section{LightRAG 架构}
+\subsection{基于图的文本索引}
+
+\textbf{图增强的实体与关系抽取。} 我们的 LightRAG 通过将文档切分为更小、更易处理的片段来增强检索系统。这一策略支持在无需分析整篇文档的情况下，快速识别并访问相关信息。接下来，我们利用大语言模型来识别并抽取各类实体（例如姓名、日期、地点和事件）以及它们之间的关系。通过这一过程收集到的信息将用于构建一个全面的知识图谱，以凸显整个文档集合中的连接与洞见。我们将这一图生成模块形式化表示如下：
+\begin{equation}
+\hat{\mathcal{D}} = (\hat{\mathcal{V}}, \hat{\mathcal{E}}) = \mathrm{Dedupe} \circ \mathrm{Prof}(\mathcal{V}, \mathcal{E}),\quad
+\mathcal{V}, \mathcal{E} = \cup_{\mathcal{D}_i \in \mathcal{D}}\, \mathrm{Recog}(\mathcal{D}_i)
+\end{equation}
+其中 $\hat{\mathcal{D}}$ 表示最终得到的知识图谱。为生成该数据，我们对原始文本文档 $\mathcal{D}_i$ 应用三个主要的处理步骤。这些步骤利用大语言模型进行文本分析与处理。关于这一部分所用提示模板（prompt template）和具体设置的细节，可参见附录~7.3.2。我们基于图的文本索引范式中所使用的函数描述如下：
+
+\begin{itemize}[leftmargin=1.5em]
+\item \textbf{抽取实体与关系。} $R(\cdot)$：该函数提示大语言模型识别文本数据中的实体（节点）及其关系（边）。例如，它可以从文本“心脏病专家通过评估症状来识别潜在的心脏问题。”中抽取出诸如“心脏病专家”（Cardiologists）和“心脏病”（Heart Disease）这样的实体，以及诸如“心脏病专家诊断心脏病”（Cardiologists diagnose Heart Disease）这样的关系。为提升效率，原始文本 $\mathcal{D}$ 被切分为多个文本块 $\mathcal{D}_i$。
+\item \textbf{用于键值对生成的 LLM 画像。} $P(\cdot)$：我们采用一个由大语言模型赋能的画像函数 $P(\cdot)$，为 $\mathcal{V}$ 中的每个实体节点以及 $\mathcal{E}$ 中的每条关系边生成一个文本键值对 $(K, V)$。每个索引键（index key）是一个词或短语，用于支持高效检索；与之对应的值则是一段文本，概括来自外部数据的相关片段，以辅助文本生成。实体以其名称作为唯一的索引键，而关系可能拥有多个索引键，这些索引键源自大语言模型的增强处理，包含来自所连接实体的全局性主题。
+\item \textbf{用于优化图操作的去重。} $D(\cdot)$：最后，我们实现了一个去重函数 $D(\cdot)$，用于识别并合并来自原始文本 $\mathcal{D}_i$ 不同片段中的相同实体和关系。通过最小化图的规模，这一过程有效降低了在 $\hat{\mathcal{D}}$ 上进行图操作所带来的开销，从而实现更高效的数据处理。
+\end{itemize}
+
+我们的 LightRAG 通过其基于图的文本索引范式带来两方面的优势。第一，\textbf{全面的信息理解}。所构建的图结构支持从多跳子图（multi-hop subgraph）中提取全局信息，极大增强了 LightRAG 处理跨越多个文档块的复杂查询的能力。第二，\textbf{提升的检索性能}。从图中导出的键值数据结构针对快速、精确的检索进行了优化。这相较于现有方法中常用的、准确性较低的嵌入匹配方法（Gao 等人，2023）以及低效的文本块遍历技术（Edge 等人，2024）提供了更优的替代方案。
+
+\textbf{快速适应增量知识库。} 为在确保回答准确且相关的同时高效适应不断演变的数据变化，我们的 LightRAG 以增量方式更新知识库，而无需对整个外部数据库进行完全重新处理。对于一篇新文档 $\mathcal{D}'$，增量更新算法采用与此前相同的基于图的索引步骤 $\varphi$ 来处理它，得到 $\hat{\mathcal{D}}' = (\hat{\mathcal{V}}', \hat{\mathcal{E}}')$。随后，LightRAG 通过对节点集 $\hat{\mathcal{V}}$ 与 $\hat{\mathcal{V}}'$、以及边集 $\hat{\mathcal{E}}$ 与 $\hat{\mathcal{E}}'$ 取并集，将新的图数据与原有图数据相结合。
+
+两个关键目标指导着我们针对增量知识库的快速适应方法：\textbf{新数据的无缝整合}。通过对新信息采用一致的方法论，增量更新模块使 LightRAG 能够在不破坏现有图结构的情况下整合新的外部数据库。这一方法保持了既有连接的完整性，确保历史数据保持可访问，同时在不产生冲突或冗余的情况下丰富图谱。\textbf{降低计算开销}。通过免去重建整个索引图的需要，该方法降低了计算开销，并促进了新数据的快速吸收。因此，LightRAG 在维持系统准确性、提供最新信息的同时节约了资源，确保用户获得及时的更新，并增强了整体的 RAG 有效性。
+
+\subsection{双层检索范式}
+
+为了从特定的文档块及其复杂的相互依赖关系两个方面检索相关信息，我们的 LightRAG 提出在细节层和抽象层两个层面生成查询键（query key）。
+\begin{itemize}[leftmargin=1.5em]
+\item \textbf{具体查询。} 这类查询以细节为导向，通常引用图中的特定实体，需要精确检索与特定节点或边相关联的信息。例如，一个具体查询可能是：“是谁创作了《傲慢与偏见》？”
+\item \textbf{抽象查询。} 相比之下，抽象查询更偏概念性，涵盖更广泛的主题、摘要或总体性议题，与特定实体没有直接关联。抽象查询的一个例子是：“人工智能如何影响现代教育？”
+\end{itemize}
+
+为了适应多样化的查询类型，LightRAG 在双层检索范式中采用两种不同的检索策略。这确保了具体询问和抽象询问都能得到有效处理，使系统能够提供契合用户需求的相关回答。
+\begin{itemize}[leftmargin=1.5em]
+\item \textbf{低层检索。} 这一层主要专注于检索特定实体及其相关属性或关系。该层的查询以细节为导向，旨在抽取关于图中特定节点或边的精确信息。
+\item \textbf{高层检索。} 这一层处理更广泛的主题和总体性议题。该层的查询跨越多个相关实体与关系来聚合信息，提供对更高层概念和摘要的洞见，而非具体细节。
+\end{itemize}
+
+\textbf{整合图与向量以实现高效检索。} 通过将图结构与向量表示相结合，模型对实体之间的相互关系获得了更深入的洞察。这种协同作用使检索算法能够有效利用局部关键词和全局关键词，简化搜索过程并提升结果的相关性。
+\begin{itemize}[leftmargin=1.5em]
+\item \textbf{(i) 查询关键词抽取。} 对于给定查询 $q$，LightRAG 的检索算法首先抽取局部查询关键词 $k^{(l)}$ 和全局查询关键词 $k^{(g)}$。
+\item \textbf{(ii) 关键词匹配。} 该算法使用一个高效的向量数据库，将局部查询关键词与候选实体进行匹配，并将全局查询关键词与链接到全局键的关系进行匹配。
+\item \textbf{(iii) 纳入高阶相关性。} 为了用更高阶的相关性来增强查询，LightRAG 进一步收集所检索图元素的局部子图中的邻接节点。这一过程涉及集合 $\{v_i \mid v_i \in \mathcal{V} \wedge (v_i \in \mathcal{N}_v \vee v_i \in \mathcal{N}_e)\}$，其中 $\mathcal{N}_v$ 和 $\mathcal{N}_e$ 分别表示所检索节点 $v$ 和边 $e$ 的一跳（one-hop）邻接节点。
+\end{itemize}
+
+这一双层检索范式不仅通过关键词匹配促进了相关实体与关系的高效检索，还通过整合所构建知识图谱中的相关结构信息，提升了结果的全面性。
+
+\subsection{检索增强的答案生成}
+
+\textbf{对检索信息的利用。} 利用检索到的信息 $\psi(q; \hat{\mathcal{D}})$，我们的 LightRAG 采用一个通用大语言模型，基于所收集的数据生成答案。这些数据由来自相关实体和关系的、经画像函数 $P(\cdot)$ 产出的拼接值 $V$ 构成。它包含实体和关系的名称、描述，以及原始文本的摘录片段。
+
+\textbf{上下文整合与答案生成。} 通过将查询与这种多源文本相统一，大语言模型生成契合用户需求的、信息丰富的答案，确保与查询意图保持一致。如详细示例（附录~7.2）所示，这一方法通过将上下文和查询同时整合进大语言模型，简化了答案生成过程。
+
+\subsection{LightRAG 框架的复杂度分析}
+
+在本节中，我们分析所提出的 LightRAG 框架的复杂度，其可划分为两个主要部分。第一部分是基于图的索引阶段。在此阶段，我们使用大语言模型（LLM）从每个文本块中抽取实体和关系。因此，大语言模型总共需要被调用 $\frac{\text{总词元数}}{\text{文本块大小}}$ 次。重要的是，这一过程不涉及任何额外开销，使我们的方法在管理对新文本的更新方面高度高效。
+
+第二部分涉及基于图的检索阶段。对于每个查询，我们首先利用大语言模型（LLM）生成相关关键词。与当前的检索增强生成（RAG）系统 Gao 等人（2023；2022）；Chan 等人（2024）类似，我们的检索机制依赖于基于向量的搜索。然而，不同于传统 RAG 检索文本块的做法，我们专注于检索实体和关系。相较于 GraphRAG 所使用的基于社区（community-based）的遍历方法，这一方法显著降低了检索开销。
+
+\section{评估}
+
+我们在基准数据上开展实证评估，通过回答以下研究问题来考察所提出的 LightRAG 框架的有效性：$\bullet$（RQ1）在生成性能方面，LightRAG 与现有的 RAG 基线方法相比表现如何？$\bullet$（RQ2）双层检索和基于图的索引如何提升 LightRAG 的生成质量？$\bullet$（RQ3）LightRAG 在各种场景下通过案例展现出哪些具体优势？$\bullet$（RQ4）LightRAG 的成本如何，以及它对数据变化的适应能力如何？
+
+\subsection{实验设置}
+
+\textbf{评估数据集。} 为了对 LightRAG 进行全面分析，我们从 UltraDomain 基准（Qian 等人，2024）中选取了四个数据集。UltraDomain 数据来源于 428 本大学教科书，涵盖 18 个不同领域，包括农业、社会科学和人文学科。从中我们选择了 Agriculture（农业）、CS（计算机科学）、Legal（法律）和 Mix（混合）数据集。每个数据集包含 60 万到 500 万个词元（token），详细信息见表~4。下面对我们实验中使用的四个领域作具体介绍：
+
+\begin{itemize}[leftmargin=1.5em]
+\item \textbf{Agriculture（农业）：}该领域聚焦于农业实践，涵盖养蜂、蜂巢管理、作物生产和病害防治等一系列主题。
+\item \textbf{CS（计算机科学）：}该领域聚焦于计算机科学，涵盖数据科学与软件工程的关键领域。它特别突出机器学习和大数据处理，包含关于推荐系统、分类算法以及使用 Spark 进行实时分析的内容。
+\item \textbf{Legal（法律）：}该领域以企业法律实务为核心，涉及企业重组、法律协议、合规与治理，重点关注法律与金融部门。
+\item \textbf{Mixed（混合）：}该领域呈现了丰富多样的文学、传记和哲学文本，跨越广泛的学科范围，包括文化、历史和哲学研究。
+\end{itemize}
+
+\textbf{问题生成。} 为了评估 RAG 系统在高层语义理解（sensemaking）任务上的有效性，我们将每个数据集的所有文本内容整合为上下文，并采用 Edge 等人（2024）所概述的生成方法。具体而言，我们指示大语言模型生成五个 RAG 用户，并为每个用户生成五项任务。每个生成的用户都附有一段文字描述，详述其专业知识和促使其提出问题的特质。每项用户任务也都有相应描述，强调用户在与 RAG 系统交互时的某项潜在意图。对于每个“用户-任务”组合，大语言模型生成五个需要理解整个语料库的问题。总计而言，这一过程为每个数据集生成 125 个问题。
+
+\textbf{基线方法。} 在所有数据集上，LightRAG 与以下最先进的方法进行比较：
+\begin{itemize}[leftmargin=1.5em]
+\item \textbf{Naive RAG}（Gao 等人，2023）：该模型是现有 RAG 系统中的标准基线。它将原始文本切分为文本块，并使用文本嵌入将其存储在向量数据库中。对于查询，Naive RAG 生成向量化表示，根据表示之间的最高相似度直接检索文本块，从而确保高效且直接的匹配。
+\item \textbf{RQ-RAG}（Chan 等人，2024）：该方法利用大语言模型将输入查询分解为多个子查询。这些子查询旨在通过重写、分解和消歧等显式技术来提升搜索准确性。
+\item \textbf{HyDE}（Gao 等人，2022）：该方法利用大语言模型基于输入查询生成一篇假设性文档。随后，这篇生成的文档被用于检索相关的文本块，进而用于构建最终答案。
+\item \textbf{GraphRAG}（Edge 等人，2024）：这是一个图增强的 RAG 系统，它利用大语言模型从文本中抽取实体和关系，并将它们表示为节点和边。它为这些元素生成相应的描述，将节点聚合为社区（community），并产出社区报告（community report）以捕捉全局信息。在处理高层查询时，GraphRAG 通过遍历这些社区来检索更全面的信息。
+\end{itemize}
+
+\textbf{实现与评估细节。} 在实验中，我们使用 nano 向量数据库进行向量数据的管理与访问。对于 LightRAG 中所有基于大语言模型的操作，我们默认使用 GPT-4o-mini。为确保一致性，所有数据集的文本块大小（chunk size）均设为 1200。此外，对于 GraphRAG 和 LightRAG，提取（gleaning）参数均固定为 1。
+
+为许多 RAG 查询（尤其是那些涉及复杂高层语义的查询）定义标准答案（ground truth）存在显著挑战。为应对这一问题，我们在已有工作（Edge 等人，2024）的基础上，采用一种基于大语言模型的多维度比较方法。我们采用一个强大的大语言模型，具体为 GPT-4o-mini，对每个基线相对于我们的 LightRAG 进行排序。所使用的评估提示详见附录~7.3.4。总计而言，我们使用四个评估维度，包括：i) \textbf{全面性}（Comprehensiveness）：答案对问题各方面和细节的阐述有多透彻？ii) \textbf{多样性}（Diversity）：答案在提供与问题相关的不同视角和洞见方面有多丰富多样？iii) \textbf{赋能性}（Empowerment）：答案在使读者理解主题并作出明智判断方面有多有效？iv) \textbf{综合}（Overall）：这一维度评估前三项标准的累积表现，以确定综合而言最佳的答案。大语言模型针对每个维度直接比较两个答案，并为每项标准选出更优的回答。在为前三个维度确定获胜答案后，大语言模型综合这些结果以判定综合更优的答案。为确保评估公平并减轻答案在提示中呈现顺序可能带来的潜在偏差，我们交替放置每个答案的位置。我们据此计算胜率（win rate），最终得出结论。
+
+\subsection{LightRAG 与现有 RAG 方法的比较（RQ1）}
+
+我们在各个评估维度和数据集上将 LightRAG 与每个基线进行比较。结果见表~1。基于这些发现，我们得出以下结论：
+
+\begin{table}[H]\centering
+\caption{在四个数据集和四个评估维度上各基线方法相对于 LightRAG 的胜率（\%）。}
+\label{tab:1}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lcccccccc}
+\toprule
+& \multicolumn{2}{c}{Agriculture} & \multicolumn{2}{c}{CS} & \multicolumn{2}{c}{Legal} & \multicolumn{2}{c}{Mix} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}\cmidrule(lr){8-9}
+& NaiveRAG & LightRAG & NaiveRAG & LightRAG & NaiveRAG & LightRAG & NaiveRAG & LightRAG \\
+\midrule
+全面性 & 32.4\% & 67.6\% & 38.4\% & 61.6\% & 16.4\% & 83.6\% & 38.8\% & 61.2\% \\
+多样性 & 23.6\% & 76.4\% & 38.0\% & 62.0\% & 13.6\% & 86.4\% & 32.4\% & 67.6\% \\
+赋能性 & 32.4\% & 67.6\% & 38.8\% & 61.2\% & 16.4\% & 83.6\% & 42.8\% & 57.2\% \\
+综合 & 32.4\% & 67.6\% & 38.8\% & 61.2\% & 15.2\% & 84.8\% & 40.0\% & 60.0\% \\
+\midrule
+& RQ-RAG & LightRAG & RQ-RAG & LightRAG & RQ-RAG & LightRAG & RQ-RAG & LightRAG \\
+\midrule
+全面性 & 31.6\% & 68.4\% & 38.8\% & 61.2\% & 15.2\% & 84.8\% & 39.2\% & 60.8\% \\
+多样性 & 29.2\% & 70.8\% & 39.2\% & 60.8\% & 11.6\% & 88.4\% & 30.8\% & 69.2\% \\
+赋能性 & 31.6\% & 68.4\% & 36.4\% & 63.6\% & 15.2\% & 84.8\% & 42.4\% & 57.6\% \\
+综合 & 32.4\% & 67.6\% & 38.0\% & 62.0\% & 14.4\% & 85.6\% & 40.0\% & 60.0\% \\
+\midrule
+& HyDE & LightRAG & HyDE & LightRAG & HyDE & LightRAG & HyDE & LightRAG \\
+\midrule
+全面性 & 26.0\% & 74.0\% & 41.6\% & 58.4\% & 26.8\% & 73.2\% & 40.4\% & 59.6\% \\
+多样性 & 24.0\% & 76.0\% & 38.8\% & 61.2\% & 20.0\% & 80.0\% & 32.4\% & 67.6\% \\
+赋能性 & 25.2\% & 74.8\% & 40.8\% & 59.2\% & 26.0\% & 74.0\% & 46.0\% & 54.0\% \\
+综合 & 24.8\% & 75.2\% & 41.6\% & 58.4\% & 26.4\% & 73.6\% & 42.4\% & 57.6\% \\
+\midrule
+& GraphRAG & LightRAG & GraphRAG & LightRAG & GraphRAG & LightRAG & GraphRAG & LightRAG \\
+\midrule
+全面性 & 45.6\% & 54.4\% & 48.4\% & 51.6\% & 48.4\% & 51.6\% & 50.4\% & 49.6\% \\
+多样性 & 22.8\% & 77.2\% & 40.8\% & 59.2\% & 26.4\% & 73.6\% & 36.0\% & 64.0\% \\
+赋能性 & 41.2\% & 58.8\% & 45.2\% & 54.8\% & 43.6\% & 56.4\% & 50.8\% & 49.2\% \\
+综合 & 45.2\% & 54.8\% & 48.0\% & 52.0\% & 47.2\% & 52.8\% & 50.4\% & 49.6\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{图增强 RAG 系统在大规模语料库上的优越性} 当处理大量词元以及需要透彻理解数据集上下文的复杂查询时，诸如 LightRAG 和 GraphRAG 这样基于图的 RAG 系统，始终优于诸如 NaiveRAG、HyDE 和 RQ-RAG 这样纯粹基于文本块的检索方法。随着数据集规模的增大，这一性能差距变得尤为明显。例如，在规模最大的数据集（Legal）上，差距显著拉大，基线方法仅取得约 20\% 的胜率，而 LightRAG 占据主导地位。这一趋势凸显了图增强 RAG 系统在捕捉大规模语料库内复杂语义依赖关系方面的优势，促进了对知识更全面的理解，并带来更好的泛化性能。
+
+\textbf{LightRAG 增强响应多样性：}与各种基线相比，LightRAG 在多样性指标上展现出显著优势，尤其是在规模更大的 Legal 数据集上。它在该方面持续领先，凸显了 LightRAG 在生成更广泛回答方面的有效性，特别是在多样化内容至关重要的场景中。我们将这一优势归因于 LightRAG 的双层检索范式，它促进了从低层和高层两个维度进行全面的信息检索。这一方法有效利用基于图的文本索引，在回答查询时始终能够捕捉完整的上下文。
+
+\textbf{LightRAG 相对于 GraphRAG 的优越性：}尽管 LightRAG 和 GraphRAG 都使用基于图的检索机制，但 LightRAG 始终优于 GraphRAG，尤其是在具有复杂语言上下文的更大数据集上。在 Agriculture、CS 和 Legal 数据集中（每个均包含数百万词元），LightRAG 展现出明显优势，显著超越 GraphRAG，凸显了其在多样化环境中进行全面信息理解的能力。\textbf{增强的响应多样性：}通过将针对特定实体的低层检索与针对更广泛主题的高层检索相结合，LightRAG 提升了响应多样性。这一双层机制有效应对了细节查询和抽象查询，确保对信息的透彻把握。\textbf{复杂查询处理：}这一方法在需要多元视角的场景中尤为有价值。通过同时获取具体细节和总体性议题，LightRAG 能够灵活应对涉及相互关联主题的复杂查询，提供贴合上下文的答案。
+
+\subsection{消融研究（RQ2）}
+
+我们还开展消融研究，以评估双层检索范式的影响以及 LightRAG 中基于图的文本索引的有效性。结果见表~2。
+
+\textbf{双层检索范式的有效性。} 我们首先分析低层和高层检索范式的效果。我们将两个消融模型（各自省略一个模块）与 LightRAG 在四个数据集上进行比较。以下是我们对不同变体的关键观察：
+
+\begin{table}[H]\centering
+\caption{LightRAG 各消融版本的性能，以 NaiveRAG 作为参照。}
+\label{tab:2}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lcccccccc}
+\toprule
+& \multicolumn{2}{c}{Agriculture} & \multicolumn{2}{c}{CS} & \multicolumn{2}{c}{Legal} & \multicolumn{2}{c}{Mix} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}\cmidrule(lr){8-9}
+& NaiveRAG & LightRAG & NaiveRAG & LightRAG & NaiveRAG & LightRAG & NaiveRAG & LightRAG \\
+\midrule
+全面性 & 32.4\% & 67.6\% & 38.4\% & 61.6\% & 16.4\% & 83.6\% & 38.8\% & 61.2\% \\
+多样性 & 23.6\% & 76.4\% & 38.0\% & 62.0\% & 13.6\% & 86.4\% & 32.4\% & 67.6\% \\
+赋能性 & 32.4\% & 67.6\% & 38.8\% & 61.2\% & 16.4\% & 83.6\% & 42.8\% & 57.2\% \\
+综合 & 32.4\% & 67.6\% & 38.8\% & 61.2\% & 15.2\% & 84.8\% & 40.0\% & 60.0\% \\
+\midrule
+& NaiveRAG & -High & NaiveRAG & -High & NaiveRAG & -High & NaiveRAG & -High \\
+\midrule
+全面性 & 34.8\% & 65.2\% & 42.8\% & 57.2\% & 23.6\% & 76.4\% & 40.4\% & 59.6\% \\
+多样性 & 27.2\% & 72.8\% & 36.8\% & 63.2\% & 16.8\% & 83.2\% & 36.0\% & 64.0\% \\
+赋能性 & 36.0\% & 64.0\% & 42.4\% & 57.6\% & 22.8\% & 77.2\% & 47.6\% & 52.4\% \\
+综合 & 35.2\% & 64.8\% & 44.0\% & 56.0\% & 22.0\% & 78.0\% & 42.4\% & 57.6\% \\
+\midrule
+& NaiveRAG & -Low & NaiveRAG & -Low & NaiveRAG & -Low & NaiveRAG & -Low \\
+\midrule
+全面性 & 36.0\% & 64.0\% & 43.2\% & 56.8\% & 19.2\% & 80.8\% & 36.0\% & 64.0\% \\
+多样性 & 28.0\% & 72.0\% & 39.6\% & 60.4\% & 13.6\% & 86.4\% & 33.2\% & 66.8\% \\
+赋能性 & 34.8\% & 65.2\% & 42.8\% & 57.2\% & 16.4\% & 83.6\% & 35.2\% & 64.8\% \\
+综合 & 34.8\% & 65.2\% & 43.6\% & 56.4\% & 18.8\% & 81.2\% & 35.2\% & 64.8\% \\
+\midrule
+& NaiveRAG & -Origin & NaiveRAG & -Origin & NaiveRAG & -Origin & NaiveRAG & -Origin \\
+\midrule
+全面性 & 24.8\% & 75.2\% & 39.2\% & 60.8\% & 16.4\% & 83.6\% & 44.4\% & 55.6\% \\
+多样性 & 26.4\% & 73.6\% & 44.8\% & 55.2\% & 14.4\% & 85.6\% & 25.6\% & 74.4\% \\
+赋能性 & 32.0\% & 68.0\% & 43.2\% & 56.8\% & 17.2\% & 82.8\% & 45.2\% & 54.8\% \\
+综合 & 25.6\% & 74.4\% & 39.2\% & 60.8\% & 15.6\% & 84.4\% & 44.4\% & 55.6\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{itemize}[leftmargin=1.5em]
+\item \textbf{仅低层检索：}\,-High 变体移除了高阶检索，导致在几乎所有数据集和指标上出现显著的性能下降。这种下降主要是由于它对具体信息的侧重，过度聚焦于实体及其直接邻居。尽管这一方法能够更深入地探索直接相关的实体，但它在为需要全面洞见的复杂查询收集信息时表现欠佳。
+\item \textbf{仅高层检索：}\,-Low 变体优先利用实体间的关系来捕捉更广泛的内容，而非聚焦于特定实体。这一方法在全面性上具有显著优势，使其能够收集更广泛、更多样的信息。然而，其代价是对特定实体的考察深度有所降低，这会限制其提供高度详细洞见的能力。因此，这种仅高层检索的方法在需要精确、详细答案的任务上可能表现欠佳。
+\item \textbf{混合模式：}混合模式，即 LightRAG 的完整版本，结合了低层和高层检索方法的优势。它在检索更广泛关系集合的同时，对特定实体进行深入探索。这一双层方法既确保了检索过程的广度，又确保了分析的深度，从而提供对数据的全面视图。因此，LightRAG 在多个维度上实现了均衡的性能。
+\end{itemize}
+
+\textbf{语义图在 RAG 中表现出色。} 我们在检索过程中取消了对原始文本的使用。出人意料的是，由此得到的变体 \,-Origin 在所有四个数据集上并未表现出显著的性能下降。在某些情况下，该变体甚至有所提升（例如在 Agriculture 和 Mix 上）。我们将这一现象归因于基于图的索引过程中对关键信息的有效抽取，它为回答查询提供了充分的上下文。此外，原始文本往往包含无关信息，可能为回答引入噪声。
+
+\subsection{案例研究（RQ3）}
+
+为了在基线方法与我们的 LightRAG 之间进行清晰的比较，我们在表~3 中给出具体案例，其中包含来自有竞争力的基线 GraphRAG 和我们的 LightRAG 框架对一个机器学习问题的回答。在该实例中，LightRAG 在大语言模型评判员所评估的所有评估维度上均表现更优，包括全面性、多样性、赋能性和综合质量。我们的关键观察如下：
+
+i) \textbf{全面性。} 值得注意的是，LightRAG 涵盖了更广泛的机器学习指标，展现出其全面性以及有效发现相关信息的能力。这凸显了我们基于图的索引范式的优势，它在精确的实体和关系抽取以及大语言模型画像方面表现出色。ii) \textbf{多样性与赋能性兼具。} 此外，LightRAG 不仅提供了更多样的信息，还交付了更具赋能性的内容。这一成功得益于 LightRAG 的层次化检索范式，它通过低层检索对相关实体进行深入探索以增强赋能性，再通过高层检索进行更广泛的探索以提升答案的多样性。这些方法共同捕捉了知识领域的全面全局视角，有助于实现更好的 RAG 性能。
+
+\begin{table}[H]\centering
+\caption{案例研究：LightRAG 与基线方法 GraphRAG 的比较。}
+\label{tab:3}
+\includegraphics[width=\linewidth]{cand_p09_k00.pdf}
+\end{table}
+
+\subsection{模型成本与适应性分析（RQ4）}
+
+我们从两个关键视角，将我们的 LightRAG 与性能最佳的基线 GraphRAG 进行成本比较。第一，我们考察在索引和检索过程中的词元数量和 API 调用次数。第二，我们结合在动态环境中处理数据变化的情况来分析这些指标。本次评估在 Legal 数据集上的结果呈现于图~2 中。在此语境下，$T_{\text{extract}}$ 表示实体和关系抽取的词元开销，$C_{\text{max}}$ 表示每次 API 调用所允许的最大词元数，$C_{\text{extract}}$ 表示抽取所需的 API 调用次数。
+
+\begin{figure}[H]\centering
+\small
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{c|cc|cc}
+\toprule
+阶段 & \multicolumn{2}{c|}{检索阶段} & \multicolumn{2}{c}{增量文本更新} \\
+模型 & GraphRAG & 我们的方法 & GraphRAG & 我们的方法 \\
+\midrule
+词元数 & $610 \times 1{,}000$ & $< 100$ & $1{,}399 \times 2 \times 5{,}000 + T_{\text{extract}}$ & $T_{\text{extract}}$ \\
+API 调用次数 & $\dfrac{610 \times 1{,}000}{C_{\text{max}}}$ & $1$ & $1{,}399 \times 2 + C_{\text{extract}}$ & $C_{\text{extract}}$ \\
+\bottomrule
+\end{tabular}
+\caption{在 Legal 数据集上，GraphRAG 与 LightRAG 在词元数量和 API 调用次数方面的成本比较。}
+\label{fig:2}
+\end{figure}
+
+在检索阶段，GraphRAG 生成了 1{,}399 个社区，本实验中实际用于检索的是 610 个二级（level-2）社区。每份社区报告平均约 1{,}000 个词元，导致总词元消耗达到 610{,}000 个词元（610 个社区 $\times$ 每个社区 1{,}000 个词元）。此外，GraphRAG 需要逐个遍历每个社区，这导致数百次 API 调用，显著增加了检索开销。相比之下，LightRAG 通过使用少于 100 个词元进行关键词生成和检索来优化这一过程，整个过程仅需一次 API 调用。这一效率的实现得益于我们的检索机制，它将图结构与向量化表示无缝整合用于信息检索，从而免去了预先处理大量信息的需要。
+
+在旨在应对动态现实场景中数据变化的增量数据更新阶段，两个模型在实体和关系抽取上的开销相近。然而，GraphRAG 在管理新增数据方面表现出显著的低效。当引入一个与 Legal 数据集规模相同的新数据集时，GraphRAG 必须拆解其现有的社区结构以纳入新的实体和关系，随后进行完全重新生成。这一过程产生了高昂的词元成本，每份社区报告约 5{,}000 个词元。鉴于有 1{,}399 个社区，GraphRAG 将需要约 $1{,}399 \times 2 \times 5{,}000$ 个词元来重建原有和新的社区报告——这是一笔高得离谱的开销，凸显了其低效性。相比之下，LightRAG 将新抽取的实体和关系无缝整合进现有图谱，而无需完全重建。这一方法在增量更新期间带来显著更低的开销，展现出其卓越的效率和成本效益。
+
+\section{相关工作}
+\subsection{基于大语言模型的检索增强生成}
+
+检索增强生成（RAG）系统通过从外部来源检索相关信息来增强大语言模型的输入，将回答建立在事实性的、领域特定的知识之上 Ram 等人（2023）；Fan 等人（2024）。当前的 RAG 方法 Gao 等人（2022；2023）；Chan 等人（2024）；Yu 等人（2024）通常将查询嵌入到向量空间中，以寻找最近邻的上下文向量。然而，这些方法中有许多依赖于碎片化的文本块，且仅检索前 $k$ 个上下文，限制了它们捕捉有效回答所需的全面全局信息的能力。
+
+尽管近期的研究 Edge 等人（2024）已探索使用图结构进行知识表示，但仍存在两个关键局限。第一，这些方法往往缺乏对知识图谱进行动态更新和扩展的能力，使其难以有效纳入新信息。相比之下，我们提出的模型 LightRAG 通过使 RAG 系统能够快速适应新信息，确保模型的时效性和准确性，从而应对这些挑战。此外，现有方法往往依赖对每个生成社区进行暴力搜索（brute-force search），这对于大规模查询而言效率低下。我们的 LightRAG 框架通过我们提出的双层检索范式，促进了从图中快速检索相关信息，从而克服了这一局限，显著提升了检索效率和响应速度。
+
+\subsection{面向图的大语言模型}
+
+图是表示复杂关系的强大框架，在众多领域得到应用。随着大语言模型（LLMs）的持续演进，研究者们越来越关注增强其解读图结构数据的能力。这一系列工作可划分为三个主要类别：i) \textbf{GNN 作为前缀}（GNNs as Prefix），其中图神经网络（Graph Neural Networks, GNNs）被用作图数据的初始处理层，生成结构感知的词元（structure-aware token），供大语言模型在推理时使用。著名的例子包括 GraphGPT Tang 等人（2024）和 LLaGA Chen 等人（2024）。ii) \textbf{LLM 作为前缀}（LLMs as Prefix），即由大语言模型处理富含文本信息的图数据，以产出节点嵌入或标签，最终优化 GNN 的训练过程，如 GALM Xie 等人（2023）和 OFA Liu 等人（2024）等系统所展示的那样。iii) \textbf{LLM 与图的整合}（LLMs-Graphs Integration），专注于实现大语言模型与图数据之间的无缝交互，采用诸如融合训练（fusion training）和 GNN 对齐（GNN alignment）等技术，并开发能够直接与图信息交互的、基于大语言模型的智能体（agent）Li 等人（2023）；Brannon 等人（2023）。
+
+\section{结论}
+
+本项工作通过整合一种基于图的索引方法，引入了检索增强生成（RAG）的一项进展，该方法在信息检索中同时增强了效率和理解能力。LightRAG 利用一个全面的知识图谱来促进快速且相关的文档检索，从而实现对复杂查询的更深入理解。其双层检索范式支持抽取具体信息和抽象信息，以满足多样化的用户需求。此外，LightRAG 无缝的增量更新能力确保系统对新信息保持时效性和响应性，从而长期维持其有效性。总体而言，LightRAG 在效率和有效性上均表现出色，在降低大语言模型推理成本的同时，显著提升了信息检索与生成的速度和质量。
+
+\section*{参考文献}
+\begin{enumerate}[leftmargin=2em]
+\item William Brannon, Suyash Fulay, Hang Jiang, Wonjune Kang, Brandon Roy, Jad Kabbara, and Deb Roy. Congrat: Self-supervised contrastive pretraining for joint graph and text embeddings. arXiv preprint arXiv:2305.14321, 2023.
+\item Chi-Min Chan, Chunpu Xu, Ruibin Yuan, Hongyin Luo, Wei Xue, Yike Guo, and Jie Fu. Rq-rag: Learning to refine queries for retrieval augmented generation. arXiv preprint arXiv:2404.00610, 2024.
+\item Runjin Chen, Tong Zhao, AJAY KUMAR JAISWAL, Neil Shah, and Zhangyang Wang. Llaga: Large language and graph assistant. In International Conference on Machine Learning (ICML), 2024.
+\item Darren Edge, Ha Trinh, Newman Cheng, Joshua Bradley, Alex Chao, Apurva Mody, Steven Truitt, and Jonathan Larson. From local to global: A graph rag approach to query-focused summarization. arXiv preprint arXiv:2404.16130, 2024.
+\item Shahul Es, Jithin James, Luis Espinosa Anke, and Steven Schockaert. Ragas: Automated evaluation of retrieval augmented generation. In International Conference of the European Chapter of the Association for Computational Linguistics (EACL), pp. 150--158, 2024.
+\item Wenqi Fan, Yujuan Ding, Liangbo Ning, Shijie Wang, Hengyun Li, Dawei Yin, Tat-Seng Chua, and Qing Li. A survey on rag meeting llms: Towards retrieval-augmented large language models. In International Conference on Knowledge Discovery and Data Mining (KDD), pp. 6491--6501, 2024.
+\item Luyu Gao, Xueguang Ma, Jimmy Lin, and Jamie Callan. Precise zero-shot dense retrieval without relevance labels. arXiv preprint arXiv:2212.10496, 2022.
+\item Yunfan Gao, Yun Xiong, Xinyu Gao, Kangxiang Jia, Jinliu Pan, Yuxi Bi, Yi Dai, Jiawei Sun, and Haofen Wang. Retrieval-augmented generation for large language models: A survey. arXiv preprint arXiv:2312.10997, 2023.
+\item Yichuan Li, Kaize Ding, and Kyumin Lee. Grenade: Graph-centric language model for self-supervised representation learning on text-attributed graphs. In International Conference on Empirical Methods in Natural Language Processing (EMNLP), pp. 2745--2757, 2023.
+\item Hao Liu, Jiarui Feng, Lecheng Kong, Ningyue Liang, Dacheng Tao, Yixin Chen, and Muhan Zhang. One for all: Towards training one graph model for all classification tasks. In International Conference on Learning Representations (ICLR), 2024.
+\item Yuanjie Lyu, Zhiyu Li, Simin Niu, Feiyu Xiong, Bo Tang, Wenjin Wang, Hao Wu, Huanyong Liu, Tong Xu, and Enhong Chen. Crud-rag: A comprehensive chinese benchmark for retrieval-augmented generation of large language models. arXiv preprint arXiv:2401.17043, 2024.
+\item Hongjin Qian, Peitian Zhang, Zheng Liu, Kelong Mao, and Zhicheng Dou. Memorag: Moving towards next-gen rag via memory-inspired knowledge discovery, 2024. URL \url{https://arxiv.org/abs/2409.05591}.
+\item Ori Ram, Yoav Levine, Itay Dalmedigos, Dor Muhlgay, Amnon Shashua, Kevin Leyton-Brown, and Yoav Shoham. In-context retrieval-augmented language models. Transactions of the Association for Computational Linguistics (TACL), 11:1316--1331, 2023.
+\item Ladislav Rampášek, Michael Galkin, Vijay Prakash Dwivedi, Anh Tuan Luu, Guy Wolf, and Dominique Beaini. Recipe for a general, powerful, scalable graph transformer. International Conference on Neural Information Processing Systems (NeurIPS), 35:14501--14515, 2022.
+\item Alireza Salemi and Hamed Zamani. Evaluating retrieval quality in retrieval-augmented generation. In ACM International Conference on Research and Development in Information Retrieval (SIGIR), pp. 2395--2400, 2024.
+\item Viju Sudhi, Sinchana Ramakanth Bhat, Max Rudat, and Roman Teucher. Rag-ex: A generic framework for explaining retrieval augmented generation. In ACM International Conference on Research and Development in Information Retrieval (SIGIR), pp. 2776--2780, 2024.
+\item Jiabin Tang, Yuhao Yang, Wei Wei, Lei Shi, Lixin Su, Suqi Cheng, Dawei Yin, and Chao Huang. Graphgpt: Graph instruction tuning for large language models. In ACM International Conference on Research and Development in Information Retrieval (SIGIR), pp. 491--500, 2024.
+\item Shangqing Tu, Yuanchun Wang, Jifan Yu, Yuyang Xie, Yaran Shi, Xiaozhi Wang, Jing Zhang, Lei Hou, and Juanzi Li. R-eval: A unified toolkit for evaluating domain knowledge of retrieval augmented large language models. In International Conference on Knowledge Discovery and Data Mining (KDD), pp. 5813--5824, 2024.
+\item Han Xie, Da Zheng, Jun Ma, Houyu Zhang, Vassilis N Ioannidis, Xiang Song, Qing Ping, Sheng Wang, Carl Yang, Yi Xu, et al. Graph-aware language model pre-training on a large graph corpus can help multiple graph applications. In International Conference on Knowledge Discovery and Data Mining (KDD), pp. 5270--5281, 2023.
+\item Yue Yu, Wei Ping, Zihan Liu, Boxin Wang, Jiaxuan You, Chao Zhang, Mohammad Shoeybi, and Bryan Catanzaro. Rankrag: Unifying context ranking with retrieval-augmented generation in llms. arXiv preprint arXiv:2407.02485, 2024.
+\item Penghao Zhao, Hailin Zhang, Qinhan Yu, Zhengren Wang, Yunteng Geng, Fangcheng Fu, Ling Yang, Wentao Zhang, and Bin Cui. Retrieval-augmented generation for ai-generated content: A survey. arXiv preprint arXiv:2402.19473, 2024.
+\end{enumerate}
+
+\section{附录}
+
+在本节中，我们详述 LightRAG 框架中所使用的方法论和实验设置。它描述了从文档中抽取实体和关系的具体步骤，详细说明大语言模型（LLMs）如何被用于这一目的。本节还指定了大语言模型操作中所使用的提示模板和配置，以确保实验设置的清晰性。此外，它概述了从多个维度评估 LightRAG 相对于各基线性能时所使用的评估标准和维度。
+
+\subsection{实验数据细节}
+
+\begin{table}[H]\centering
+\caption{各数据集的统计信息。}
+\label{tab:4}
+\begin{tabular}{lcccc}
+\toprule
+统计量 & Agriculture & CS & Legal & Mix \\
+\midrule
+文档总数 & 12 & 10 & 94 & 61 \\
+词元总数 & 2{,}017{,}886 & 2{,}306{,}535 & 5{,}081{,}069 & 619{,}009 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+表~4 给出了四个数据集的统计信息：Agriculture、CS、Legal 和 Mix。Agriculture 数据集包含 12 篇文档，共计 2{,}017{,}886 个词元；CS 数据集包含 10 篇文档，共 2{,}306{,}535 个词元。Legal 数据集规模最大，包含 94 篇文档和 5{,}081{,}069 个词元。最后，Mix 数据集包含 61 篇文档，共计 619{,}009 个词元。
+
+\subsection{LightRAG 中检索增强生成的案例示例}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{cand_p13_k00.pdf}
+\caption{一个检索与生成的示例。}
+\label{fig:3}
+\end{figure}
+
+在图~3 中，我们展示了检索与生成的过程。当面对查询“哪些指标对评估电影推荐系统最具信息量？”时，大语言模型首先抽取低层和高层关键词。这些关键词在所生成的知识图谱上引导双层检索过程，瞄准相关的实体和关系。检索到的信息被组织为三个组成部分：实体、关系以及对应的文本块。随后，这一结构化数据被馈入大语言模型，使其能够为该查询生成全面的答案。
+
+\subsection{LightRAG 中所用提示概览}
+
+\subsubsection{用于图生成的提示}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{cand_p14_k00.pdf}
+\caption{用于图生成的提示。}
+\label{fig:4}
+\end{figure}
+
+图~4 中所概述的图构建提示，旨在基于指定的实体类型从文本文档中抽取并结构化实体-关系信息。该过程首先识别实体，并将它们归类为组织、人物、地点和事件等类型。接着，它对这些实体的属性和活动给出详细描述。然后，该提示识别这些实体之间的关系，提供解释、分配强度分数，并使用高层关键词概括这些关系。
+
+\subsubsection{用于查询生成的提示}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{cand_p14_k01.pdf}
+\caption{用于查询生成的提示。}
+\label{fig:5}
+\end{figure}
+
+在图~5 中，查询生成提示概述了一个框架，用于基于指定的数据集描述，识别潜在的用户角色（例如数据科学家、金融分析师和产品经理）及其生成查询的目标。该提示解释了如何定义五个会从与数据集交互中获益的不同用户。对于每个用户，它指定了他们在使用该数据集时会执行的五项关键任务。此外，对于每个“用户-任务”组合，提出五个高层问题，以确保对数据集的透彻理解。
+
+\subsubsection{用于关键词抽取的提示}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{cand_p15_k00.pdf}
+\caption{用于关键词抽取的提示。}
+\label{fig:6}
+\end{figure}
+
+在图~6 中，该提示描述了一种从用户查询中抽取关键词的方法，区分高层关键词和低层关键词。高层关键词表示宽泛的概念或主题，而低层关键词聚焦于特定的实体和细节。抽取出的关键词以 JSON 格式返回，组织为两个字段：“high\_level\_keywords”表示总体性的理念，“low\_level\_keywords”表示具体细节。
+
+\subsubsection{用于 RAG 评估的提示}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{cand_p15_k01.pdf}
+\caption{用于 RAG 评估的提示。}
+\label{fig:7}
+\end{figure}
+
+评估提示如图~7 所示。它引入了一个全面的评估框架，用于基于三项关键标准——全面性、多样性和赋能性——对同一问题的两个答案进行比较。其目的是引导大语言模型完成为每项标准选出更优答案的过程，随后进行综合评判。对于这三项标准中的每一项，大语言模型必须判定哪个答案表现更好，并为其选择提供理由。最终，基于三个维度上的整体表现确定综合获胜者，并附以一份详细总结来论证该决定。评估以 JSON 格式进行组织，确保清晰性和一致性，并便于在两个答案之间进行系统化比较。
+
+\subsection{案例研究：LightRAG 与基线 NaiveRAG 的比较}
+
+为了进一步从全面性、赋能性和多样性的角度展示 LightRAG 相对于基线模型的优越性，我们在表~5 中给出一项比较 LightRAG 和 NaiveRAG 的案例研究。该研究处理一个关于企业并购语境下原住民视角的问题。值得注意的是，LightRAG 对与原住民视角相关的关键主题（如文化意义、协作和法律框架）进行了更深入的探索，并辅以具体且具说明性的示例。相比之下，尽管 NaiveRAG 提供了信息丰富的回答，但它缺乏透彻考察原住民所有权和协作各个维度所需的深度。LightRAG 所采用的双层检索过程支持对特定实体及其相互关系进行更全面的考察，促成了能够有效捕捉该主题内总体性议题和复杂性的广泛搜索。
+
+\begin{table}[H]\centering
+\caption{案例研究：LightRAG 与基线 NaiveRAG 的比较。}
+\label{tab:5}
+\includegraphics[width=\linewidth]{cand_p16_k00.pdf}
+\end{table}
+
+\end{document}

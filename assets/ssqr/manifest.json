@@ -1,0 +1,647 @@
+{
+ "pdf": "ssqr.pdf",
+ "slug": "ssqr",
+ "page_count": 16,
+ "page_size": [
+  595.3,
+  841.9
+ ],
+ "pages": [
+  {
+   "page": 1,
+   "candidates": [
+    {
+     "id": "cand_p01_k00",
+     "kind": "image",
+     "bbox": [
+      306.1,
+      212.6,
+      524.4,
+      300.3
+     ],
+     "pdf": "cand_p01_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      306.1,
+      309.0,
+      524.4,
+      319.0
+     ],
+     "text": "Figure 1: Illustration of different strategies to integrate",
+     "label": "Figure 1"
+    }
+   ],
+   "overlay": "assets/ssqr/_pages/p01.png"
+  },
+  {
+   "page": 2,
+   "candidates": [
+    {
+     "id": "cand_p02_k00",
+     "kind": "image",
+     "bbox": [
+      70.9,
+      70.9,
+      289.1,
+      195.6
+     ],
+     "pdf": "cand_p02_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      70.9,
+      195.9,
+      289.1,
+      205.7
+     ],
+     "text": "Figure 2: The statistics of 2-hop sampled neighbors and",
+     "label": "Figure 2"
+    },
+    {
+     "bbox": [
+      70.9,
+      749.3,
+      291.0,
+      760.1
+     ],
+     "text": "Figure 1 (b) align the format of language sentences.",
+     "label": "Figure 1"
+    }
+   ],
+   "overlay": "assets/ssqr/_pages/p02.png"
+  },
+  {
+   "page": 3,
+   "candidates": [
+    {
+     "id": "cand_p03_k00",
+     "kind": "image",
+     "bbox": [
+      92.2,
+      70.9,
+      500.4,
+      213.2
+     ],
+     "pdf": "cand_p03_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      70.9,
+      224.0,
+      525.7,
+      234.0
+     ],
+     "text": "Figure 3: The overall architecture of our study. (a) is for SSQR learning. (b) is for instruction tuning for KG tasks,",
+     "label": "Figure 3"
+    }
+   ],
+   "overlay": "assets/ssqr/_pages/p03.png"
+  },
+  {
+   "page": 4,
+   "candidates": [
+    {
+     "id": "cand_p04_k00",
+     "kind": "vector",
+     "bbox": [
+      316.1,
+      70.9,
+      514.5,
+      231.1
+     ],
+     "pdf": "cand_p04_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      305.8,
+      245.8,
+      524.4,
+      255.9
+     ],
+     "text": "Table 1: Instruction format for link prediction, where",
+     "label": "Table 1"
+    }
+   ],
+   "overlay": "assets/ssqr/_pages/p04.png"
+  },
+  {
+   "page": 5,
+   "candidates": [
+    {
+     "id": "cand_p05_k00",
+     "kind": "table",
+     "bbox": [
+      69.4,
+      80.8,
+      521.5,
+      173.2
+     ],
+     "pdf": "cand_p05_k00.pdf"
+    },
+    {
+     "id": "cand_p05_k01",
+     "kind": "table",
+     "bbox": [
+      135.0,
+      362.3,
+      286.4,
+      373.6
+     ],
+     "pdf": "cand_p05_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      86.9,
+      190.8,
+      508.4,
+      200.7
+     ],
+     "text": "Figure 4: The cosine similarity of quantized representations on the WN18RR dataset (sampled 8 entities).",
+     "label": "Figure 4"
+    },
+    {
+     "bbox": [
+      70.6,
+      214.2,
+      290.9,
+      224.1
+     ],
+     "text": "Table 2: The results of baselines are from Li et al. (2023).",
+     "label": "Table 2"
+    }
+   ],
+   "overlay": "assets/ssqr/_pages/p05.png"
+  },
+  {
+   "page": 6,
+   "candidates": [
+    {
+     "id": "cand_p06_k00",
+     "kind": "table",
+     "bbox": [
+      299.2,
+      80.8,
+      524.0,
+      158.7
+     ],
+     "pdf": "cand_p06_k00.pdf"
+    },
+    {
+     "id": "cand_p06_k01",
+     "kind": "image",
+     "bbox": [
+      68.7,
+      80.8,
+      288.3,
+      164.3
+     ],
+     "pdf": "cand_p06_k01.pdf"
+    },
+    {
+     "id": "cand_p06_k02",
+     "kind": "image",
+     "bbox": [
+      176.9,
+      80.8,
+      288.3,
+      164.3
+     ],
+     "pdf": "cand_p06_k02.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      70.9,
+      181.3,
+      290.8,
+      191.5
+     ],
+     "text": "Figure 5: The effects of codebook length (M) and se-",
+     "label": "Figure 5"
+    },
+    {
+     "bbox": [
+      306.1,
+      177.3,
+      524.4,
+      187.2
+     ],
+     "text": "Figure 6: The mean Jaccard distance between codes of",
+     "label": "Figure 6"
+    }
+   ],
+   "overlay": "assets/ssqr/_pages/p06.png"
+  },
+  {
+   "page": 7,
+   "candidates": [
+    {
+     "id": "cand_p07_k00",
+     "kind": "table",
+     "bbox": [
+      72.9,
+      360.9,
+      291.1,
+      533.7
+     ],
+     "pdf": "cand_p07_k00.pdf"
+    },
+    {
+     "id": "cand_p07_k01",
+     "kind": "table",
+     "bbox": [
+      308.6,
+      387.5,
+      522.0,
+      410.9
+     ],
+     "pdf": "cand_p07_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      73.0,
+      71.7,
+      522.0,
+      81.6
+     ],
+     "text": "Table 3: The experiment results of general embedding methods and LLM-based methods for KG link prediction.",
+     "label": "Table 3"
+    },
+    {
+     "bbox": [
+      70.6,
+      322.6,
+      290.8,
+      332.7
+     ],
+     "text": "Table 4: The experiment results of the triple classifica-",
+     "label": "Table 4"
+    },
+    {
+     "bbox": [
+      305.8,
+      322.8,
+      524.4,
+      332.6
+     ],
+     "text": "Table 5: The ablation results for the link prediction task.",
+     "label": "Table 5"
+    }
+   ],
+   "overlay": "assets/ssqr/_pages/p07.png"
+  },
+  {
+   "page": 8,
+   "candidates": [
+    {
+     "id": "cand_p08_k00",
+     "kind": "image",
+     "bbox": [
+      79.1,
+      70.9,
+      275.5,
+      193.6
+     ],
+     "pdf": "cand_p08_k00.pdf"
+    },
+    {
+     "id": "cand_p08_k01",
+     "kind": "vector",
+     "bbox": [
+      314.3,
+      70.9,
+      510.8,
+      193.6
+     ],
+     "pdf": "cand_p08_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      70.9,
+      197.2,
+      289.3,
+      207.3
+     ],
+     "text": "Figure 7: The impacts of quantized representation for",
+     "label": "Figure 7"
+    },
+    {
+     "bbox": [
+      306.1,
+      185.9,
+      524.4,
+      195.9
+     ],
+     "text": "Figure 8: Token embedding virtualization in LLMs",
+     "label": "Figure 8"
+    }
+   ],
+   "overlay": "assets/ssqr/_pages/p08.png"
+  },
+  {
+   "page": 9,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/ssqr/_pages/p09.png"
+  },
+  {
+   "page": 10,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/ssqr/_pages/p10.png"
+  },
+  {
+   "page": 11,
+   "candidates": [
+    {
+     "id": "cand_p11_k00",
+     "kind": "image",
+     "bbox": [
+      306.1,
+      70.9,
+      524.4,
+      195.6
+     ],
+     "pdf": "cand_p11_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      306.1,
+      206.4,
+      524.4,
+      216.3
+     ],
+     "text": "Figure 9: The statistics of 2-hop sampled neighbors and",
+     "label": "Figure 9"
+    }
+   ],
+   "overlay": "assets/ssqr/_pages/p11.png"
+  },
+  {
+   "page": 12,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      305.8,
+      268.3,
+      524.4,
+      278.4
+     ],
+     "text": "Table 6: The statistics of WN18RR, FB15k-237, and",
+     "label": "Table 6"
+    },
+    {
+     "bbox": [
+      305.8,
+      417.2,
+      526.2,
+      428.0
+     ],
+     "text": "Table 6. For the SSQR learning, the default embed-",
+     "label": "Table 6"
+    }
+   ],
+   "overlay": "assets/ssqr/_pages/p12.png"
+  },
+  {
+   "page": 13,
+   "candidates": [
+    {
+     "id": "cand_p13_k00",
+     "kind": "image",
+     "bbox": [
+      306.1,
+      70.9,
+      524.4,
+      195.6
+     ],
+     "pdf": "cand_p13_k00.pdf"
+    },
+    {
+     "id": "cand_p13_k01",
+     "kind": "image",
+     "bbox": [
+      317.1,
+      600.3,
+      513.5,
+      723.1
+     ],
+     "pdf": "cand_p13_k01.pdf"
+    },
+    {
+     "id": "cand_p13_k02",
+     "kind": "vector",
+     "bbox": [
+      80.8,
+      70.9,
+      279.2,
+      171.5
+     ],
+     "pdf": "cand_p13_k02.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      78.8,
+      186.3,
+      280.9,
+      196.3
+     ],
+     "text": "Table 7: Instruction format for triple classification.",
+     "label": "Table 7"
+    },
+    {
+     "bbox": [
+      306.1,
+      206.3,
+      524.4,
+      216.4
+     ],
+     "text": "Figure 10: The training process of SSQR, where the",
+     "label": "Figure 10"
+    },
+    {
+     "bbox": [
+      306.1,
+      318.7,
+      526.3,
+      329.6
+     ],
+     "text": "Figure 12, which has the same setting as Figure 4.",
+     "label": "Figure 12"
+    },
+    {
+     "bbox": [
+      306.1,
+      733.8,
+      524.6,
+      743.8
+     ],
+     "text": "Figure 11: The impacts of quantized representation for",
+     "label": "Figure 11"
+    }
+   ],
+   "overlay": "assets/ssqr/_pages/p13.png"
+  },
+  {
+   "page": 14,
+   "candidates": [
+    {
+     "id": "cand_p14_k00",
+     "kind": "table",
+     "bbox": [
+      92.0,
+      80.8,
+      506.0,
+      239.2
+     ],
+     "pdf": "cand_p14_k00.pdf"
+    },
+    {
+     "id": "cand_p14_k01",
+     "kind": "table",
+     "bbox": [
+      92.0,
+      264.1,
+      506.0,
+      422.4
+     ],
+     "pdf": "cand_p14_k01.pdf"
+    },
+    {
+     "id": "cand_p14_k02",
+     "kind": "vector",
+     "bbox": [
+      306.1,
+      533.5,
+      524.4,
+      669.9
+     ],
+     "pdf": "cand_p14_k02.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      79.2,
+      447.1,
+      516.1,
+      457.1
+     ],
+     "text": "Figure 12: The cosine similarity of quantized representations on the FB15k-237 dataset (sampled 10 entities).",
+     "label": "Figure 12"
+    },
+    {
+     "bbox": [
+      306.1,
+      680.6,
+      524.4,
+      690.7
+     ],
+     "text": "Figure 13: Token embedding virtualization in LLMs",
+     "label": "Figure 13"
+    }
+   ],
+   "overlay": "assets/ssqr/_pages/p14.png"
+  },
+  {
+   "page": 15,
+   "candidates": [
+    {
+     "id": "cand_p15_k00",
+     "kind": "vector",
+     "bbox": [
+      76.8,
+      247.2,
+      530.4,
+      556.7
+     ],
+     "pdf": "cand_p15_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      70.6,
+      571.4,
+      524.4,
+      581.5
+     ],
+     "text": "Table 8: Case study on WN18RR for link prediction using LLaMA2. The code of ground truth therapy is ranked to",
+     "label": "Table 8"
+    }
+   ],
+   "overlay": "assets/ssqr/_pages/p15.png"
+  },
+  {
+   "page": 16,
+   "candidates": [
+    {
+     "id": "cand_p16_k00",
+     "kind": "vector",
+     "bbox": [
+      76.8,
+      91.0,
+      530.4,
+      420.4
+     ],
+     "pdf": "cand_p16_k00.pdf"
+    },
+    {
+     "id": "cand_p16_k01",
+     "kind": "vector",
+     "bbox": [
+      76.8,
+      506.5,
+      530.4,
+      724.9
+     ],
+     "pdf": "cand_p16_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      70.6,
+      435.0,
+      524.4,
+      445.2
+     ],
+     "text": "Table 9: Case study on FB15k-237 for link prediction using LLaMA2. The code of ground truth Indiana is ranked",
+     "label": "Table 9"
+    },
+    {
+     "bbox": [
+      128.7,
+      739.8,
+      466.3,
+      749.7
+     ],
+     "text": "Table 10: Two cases on FB15k-237N dataset for triple classification using LLaMA2.",
+     "label": "Table 10"
+    }
+   ],
+   "overlay": "assets/ssqr/_pages/p16.png"
+  }
+ ]
+}

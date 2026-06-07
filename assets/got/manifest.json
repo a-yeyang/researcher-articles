@@ -1,0 +1,1265 @@
+{
+ "pdf": "Graph of Thoughts.pdf",
+ "slug": "got",
+ "page_count": 63,
+ "page_size": [
+  612.0,
+  792.0
+ ],
+ "pages": [
+  {
+   "page": 1,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/got/_pages/p01.png"
+  },
+  {
+   "page": 2,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      54.0,
+      467.8,
+      292.5,
+      477.8
+     ],
+     "text": "Table 1: Comparison of prompting schemes, with re-",
+     "label": "Table 1"
+    }
+   ],
+   "overlay": "assets/got/_pages/p02.png"
+  },
+  {
+   "page": 3,
+   "candidates": [
+    {
+     "id": "cand_p03_k00",
+     "kind": "vector",
+     "bbox": [
+      54.0,
+      54.0,
+      558.0,
+      232.4
+     ],
+     "pdf": "cand_p03_k00.pdf"
+    },
+    {
+     "id": "cand_p03_k01",
+     "kind": "vector",
+     "bbox": [
+      327.2,
+      281.0,
+      558.0,
+      424.1
+     ],
+     "pdf": "cand_p03_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      144.2,
+      243.4,
+      467.8,
+      253.4
+     ],
+     "text": "Figure 1: Comparison of Graph of Thoughts (GoT) to other prompting strategies.",
+     "label": "Figure 1"
+    },
+    {
+     "bbox": [
+      319.5,
+      440.1,
+      558.0,
+      450.1
+     ],
+     "text": "Figure 2: Examples of aggregation and generation thought",
+     "label": "Figure 2"
+    }
+   ],
+   "overlay": "assets/got/_pages/p03.png"
+  },
+  {
+   "page": 4,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/got/_pages/p04.png"
+  },
+  {
+   "page": 5,
+   "candidates": [
+    {
+     "id": "cand_p05_k00",
+     "kind": "vector",
+     "bbox": [
+      54.0,
+      54.0,
+      558.0,
+      639.4
+     ],
+     "pdf": "cand_p05_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      54.0,
+      660.4,
+      558.0,
+      670.4
+     ],
+     "text": "Figure 3: The system architecture of GoT, and the APIs of respective modules. The user can straightforwardly extend the design",
+     "label": "Figure 3"
+    }
+   ],
+   "overlay": "assets/got/_pages/p05.png"
+  },
+  {
+   "page": 6,
+   "candidates": [
+    {
+     "id": "cand_p06_k00",
+     "kind": "table",
+     "bbox": [
+      319.8,
+      261.8,
+      557.7,
+      650.6
+     ],
+     "pdf": "cand_p06_k00.pdf"
+    },
+    {
+     "id": "cand_p06_k01",
+     "kind": "vector",
+     "bbox": [
+      319.7,
+      69.0,
+      557.8,
+      248.2
+     ],
+     "pdf": "cand_p06_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      319.5,
+      662.0,
+      558.0,
+      672.0
+     ],
+     "text": "Figure 4: An example graph decomposition of the sorting",
+     "label": "Figure 4"
+    }
+   ],
+   "overlay": "assets/got/_pages/p06.png"
+  },
+  {
+   "page": 7,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      319.5,
+      354.2,
+      558.0,
+      364.2
+     ],
+     "text": "Table 2: Comparison of prompting schemes, with respect",
+     "label": "Table 2"
+    }
+   ],
+   "overlay": "assets/got/_pages/p07.png"
+  },
+  {
+   "page": 8,
+   "candidates": [
+    {
+     "id": "cand_p08_k00",
+     "kind": "table",
+     "bbox": [
+      260.5,
+      62.7,
+      344.3,
+      220.2
+     ],
+     "pdf": "cand_p08_k00.pdf"
+    },
+    {
+     "id": "cand_p08_k01",
+     "kind": "table",
+     "bbox": [
+      378.0,
+      62.1,
+      461.9,
+      220.2
+     ],
+     "pdf": "cand_p08_k01.pdf"
+    },
+    {
+     "id": "cand_p08_k02",
+     "kind": "vector",
+     "bbox": [
+      146.9,
+      62.7,
+      230.8,
+      220.2
+     ],
+     "pdf": "cand_p08_k02.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      439.3,
+      67.0,
+      457.6,
+      72.3
+     ],
+     "text": "Figure 4",
+     "label": "Figure 4"
+    },
+    {
+     "bbox": [
+      54.0,
+      237.4,
+      558.0,
+      247.6
+     ],
+     "text": "Figure 5: Number of errors and cost in sorting tasks with ChatGPT-3.5. L and k indicate the structure of ToT (see Sections 3.2",
+     "label": "Figure 5"
+    }
+   ],
+   "overlay": "assets/got/_pages/p08.png"
+  },
+  {
+   "page": 9,
+   "candidates": [
+    {
+     "id": "cand_p09_k00",
+     "kind": "table",
+     "bbox": [
+      261.6,
+      51.7,
+      347.3,
+      223.9
+     ],
+     "pdf": "cand_p09_k00.pdf"
+    },
+    {
+     "id": "cand_p09_k01",
+     "kind": "table",
+     "bbox": [
+      148.5,
+      62.8,
+      234.2,
+      223.9
+     ],
+     "pdf": "cand_p09_k01.pdf"
+    },
+    {
+     "id": "cand_p09_k02",
+     "kind": "table",
+     "bbox": [
+      355.3,
+      283.2,
+      522.4,
+      460.6
+     ],
+     "pdf": "cand_p09_k02.pdf"
+    },
+    {
+     "id": "cand_p09_k03",
+     "kind": "vector",
+     "bbox": [
+      375.7,
+      54.5,
+      461.4,
+      223.9
+     ],
+     "pdf": "cand_p09_k03.pdf"
+    },
+    {
+     "id": "cand_p09_k04",
+     "kind": "vector",
+     "bbox": [
+      110.7,
+      288.7,
+      242.4,
+      459.0
+     ],
+     "pdf": "cand_p09_k04.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      54.0,
+      241.3,
+      558.0,
+      251.5
+     ],
+     "text": "Figure 6: Number of errors and cost in set intersection tasks with ChatGPT-3.5. L and k indicate the structure of ToT (see",
+     "label": "Figure 6"
+    },
+    {
+     "bbox": [
+      54.0,
+      475.9,
+      292.5,
+      485.9
+     ],
+     "text": "Figure 7: Number of errors and cost in keyword counting",
+     "label": "Figure 7"
+    },
+    {
+     "bbox": [
+      54.0,
+      562.9,
+      292.5,
+      572.9
+     ],
+     "text": "Table 1. There are numerous other works related to prompt-",
+     "label": "Table 1"
+    },
+    {
+     "bbox": [
+      319.5,
+      470.7,
+      558.0,
+      480.6
+     ],
+     "text": "Figure 8: Score and cost in document merging with",
+     "label": "Figure 8"
+    }
+   ],
+   "overlay": "assets/got/_pages/p09.png"
+  },
+  {
+   "page": 10,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/got/_pages/p10.png"
+  },
+  {
+   "page": 11,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/got/_pages/p11.png"
+  },
+  {
+   "page": 12,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/got/_pages/p12.png"
+  },
+  {
+   "page": 13,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/got/_pages/p13.png"
+  },
+  {
+   "page": 14,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/got/_pages/p14.png"
+  },
+  {
+   "page": 15,
+   "candidates": [
+    {
+     "id": "cand_p15_k00",
+     "kind": "vector",
+     "bbox": [
+      70.0,
+      119.3,
+      125.2,
+      223.1
+     ],
+     "pdf": "cand_p15_k00.pdf"
+    },
+    {
+     "id": "cand_p15_k01",
+     "kind": "vector",
+     "bbox": [
+      144.1,
+      119.3,
+      199.3,
+      231.9
+     ],
+     "pdf": "cand_p15_k01.pdf"
+    },
+    {
+     "id": "cand_p15_k02",
+     "kind": "vector",
+     "bbox": [
+      221.5,
+      119.3,
+      276.8,
+      231.9
+     ],
+     "pdf": "cand_p15_k02.pdf"
+    },
+    {
+     "id": "cand_p15_k03",
+     "kind": "vector",
+     "bbox": [
+      144.2,
+      301.4,
+      199.5,
+      405.4
+     ],
+     "pdf": "cand_p15_k03.pdf"
+    },
+    {
+     "id": "cand_p15_k04",
+     "kind": "vector",
+     "bbox": [
+      220.0,
+      301.4,
+      275.4,
+      405.4
+     ],
+     "pdf": "cand_p15_k04.pdf"
+    },
+    {
+     "id": "cand_p15_k05",
+     "kind": "vector",
+     "bbox": [
+      70.0,
+      301.4,
+      125.3,
+      409.1
+     ],
+     "pdf": "cand_p15_k05.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      54.0,
+      238.0,
+      292.5,
+      248.0
+     ],
+     "text": "Figure 9: Accuracy and cost in sorting tasks with ChatGPT-",
+     "label": "Figure 9"
+    },
+    {
+     "bbox": [
+      54.0,
+      420.3,
+      292.5,
+      430.3
+     ],
+     "text": "Figure 10: Accuracy and cost in set intersection with",
+     "label": "Figure 10"
+    }
+   ],
+   "overlay": "assets/got/_pages/p15.png"
+  },
+  {
+   "page": 16,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      89.2,
+      54.1,
+      522.8,
+      64.1
+     ],
+     "text": "Table 3: Prompt stubs for the sorting tasks; parameters in single curly brackets will be substituted at runtime.",
+     "label": "Table 3"
+    }
+   ],
+   "overlay": "assets/got/_pages/p16.png"
+  },
+  {
+   "page": 17,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      93.4,
+      54.1,
+      518.6,
+      64.1
+     ],
+     "text": "Table 4: Few-shot examples for each prompt used for the sorting tasks; some lists are truncated for brevity.",
+     "label": "Table 4"
+    }
+   ],
+   "overlay": "assets/got/_pages/p17.png"
+  },
+  {
+   "page": 18,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      187.2,
+      118.1,
+      424.8,
+      128.2
+     ],
+     "text": "Table 5: Sorting of a 32 element list: Execution plan (GoO)",
+     "label": "Table 5"
+    },
+    {
+     "bbox": [
+      176.7,
+      358.7,
+      435.3,
+      368.7
+     ],
+     "text": "Table 6: Sorting of a 32 element list: Step 1 (Prompt/Response)",
+     "label": "Table 6"
+    }
+   ],
+   "overlay": "assets/got/_pages/p18.png"
+  },
+  {
+   "page": 19,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      172.8,
+      194.3,
+      439.2,
+      204.4
+     ],
+     "text": "Table 7: Sorting of a 32 element list: Step 2 (Prompts/Responses)",
+     "label": "Table 7"
+    }
+   ],
+   "overlay": "assets/got/_pages/p19.png"
+  },
+  {
+   "page": 20,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      174.8,
+      121.8,
+      437.2,
+      131.9
+     ],
+     "text": "Table 8: Sorting of a 32 element list: Step 3 (Prompt/Responses)",
+     "label": "Table 8"
+    }
+   ],
+   "overlay": "assets/got/_pages/p20.png"
+  },
+  {
+   "page": 21,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      174.8,
+      58.1,
+      437.2,
+      68.2
+     ],
+     "text": "Table 9: Sorting of a 32 element list: Step 4 (Prompt/Responses)",
+     "label": "Table 9"
+    }
+   ],
+   "overlay": "assets/got/_pages/p21.png"
+  },
+  {
+   "page": 22,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/got/_pages/p22.png"
+  },
+  {
+   "page": 23,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      70.6,
+      216.2,
+      541.5,
+      226.1
+     ],
+     "text": "Table 10: Prompt stubs for the set intersection tasks; parameters in single curly brackets will be substituted at runtime.",
+     "label": "Table 10"
+    }
+   ],
+   "overlay": "assets/got/_pages/p23.png"
+  },
+  {
+   "page": 24,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      74.8,
+      81.6,
+      537.2,
+      91.6
+     ],
+     "text": "Table 11: Few-shot examples for each prompt used for the set intersection tasks; some lists are truncated for brevity.",
+     "label": "Table 11"
+    },
+    {
+     "bbox": [
+      168.9,
+      561.6,
+      443.1,
+      571.7
+     ],
+     "text": "Table 12: Intersection of two 32-element sets: Execution plan (GoO)",
+     "label": "Table 12"
+    }
+   ],
+   "overlay": "assets/got/_pages/p24.png"
+  },
+  {
+   "page": 25,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      158.4,
+      232.9,
+      453.6,
+      243.0
+     ],
+     "text": "Table 13: Intersection of two 32-element sets: Step 1 (Prompt/Response)",
+     "label": "Table 13"
+    }
+   ],
+   "overlay": "assets/got/_pages/p25.png"
+  },
+  {
+   "page": 26,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      154.5,
+      166.9,
+      457.5,
+      177.0
+     ],
+     "text": "Table 14: Intersection of two 32-element sets: Step 2 (Prompts/Responses)",
+     "label": "Table 14"
+    }
+   ],
+   "overlay": "assets/got/_pages/p26.png"
+  },
+  {
+   "page": 27,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      156.4,
+      227.7,
+      455.6,
+      237.8
+     ],
+     "text": "Table 15: Intersection of two 32-element sets: Step 3 (Prompt/Responses)",
+     "label": "Table 15"
+    }
+   ],
+   "overlay": "assets/got/_pages/p27.png"
+  },
+  {
+   "page": 28,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/got/_pages/p28.png"
+  },
+  {
+   "page": 29,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      66.6,
+      141.4,
+      545.4,
+      151.4
+     ],
+     "text": "Table 16: Prompt stubs for the keyword counting task; parameters in single curly brackets will be substituted at runtime.",
+     "label": "Table 16"
+    }
+   ],
+   "overlay": "assets/got/_pages/p29.png"
+  },
+  {
+   "page": 30,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      54.0,
+      179.6,
+      558.0,
+      189.7
+     ],
+     "text": "Table 17: Prompt stubs for the keyword counting task continued; parameters in single curly brackets will be substituted at",
+     "label": "Table 17"
+    }
+   ],
+   "overlay": "assets/got/_pages/p30.png"
+  },
+  {
+   "page": 31,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      54.0,
+      90.5,
+      558.0,
+      100.5
+     ],
+     "text": "Table 18: Few-shot examples for count prompt used for the keyword counting task; some paragraphs and dictionaries are",
+     "label": "Table 18"
+    }
+   ],
+   "overlay": "assets/got/_pages/p31.png"
+  },
+  {
+   "page": 32,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      54.0,
+      82.9,
+      558.0,
+      93.0
+     ],
+     "text": "Table 19: Few-shot examples for split, merge and improve merge prompts used for the keyword counting task; some para-",
+     "label": "Table 19"
+    },
+    {
+     "bbox": [
+      123.9,
+      560.2,
+      488.1,
+      570.3
+     ],
+     "text": "Table 20: Keyword counting for an example 4-passage split (GoT4): Execution plan (GoO)",
+     "label": "Table 20"
+    }
+   ],
+   "overlay": "assets/got/_pages/p32.png"
+  },
+  {
+   "page": 33,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      113.4,
+      117.9,
+      498.6,
+      127.9
+     ],
+     "text": "Table 21: Keyword counting for an example 4-passage split (GoT4): Step 1 (Prompt/Response)",
+     "label": "Table 21"
+    }
+   ],
+   "overlay": "assets/got/_pages/p33.png"
+  },
+  {
+   "page": 34,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      109.0,
+      131.1,
+      503.0,
+      141.1
+     ],
+     "text": "Table 22: Keyword counting for an example 4-passage split (GoT4): Step 2a (Prompt/Responses)",
+     "label": "Table 22"
+    }
+   ],
+   "overlay": "assets/got/_pages/p34.png"
+  },
+  {
+   "page": 35,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      108.7,
+      65.3,
+      503.3,
+      75.4
+     ],
+     "text": "Table 23: Keyword counting for an example 4-passage split (GoT4): Step 2b (Prompt/Responses)",
+     "label": "Table 23"
+    }
+   ],
+   "overlay": "assets/got/_pages/p35.png"
+  },
+  {
+   "page": 36,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      109.3,
+      54.0,
+      502.7,
+      64.1
+     ],
+     "text": "Table 24: Keyword counting for an example 4-passage split (GoT4): Step 2c (Prompt/Responses)",
+     "label": "Table 24"
+    }
+   ],
+   "overlay": "assets/got/_pages/p36.png"
+  },
+  {
+   "page": 37,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      108.7,
+      125.6,
+      503.3,
+      135.6
+     ],
+     "text": "Table 25: Keyword counting for an example 4-passage split (GoT4): Step 2d (Prompt/Responses)",
+     "label": "Table 25"
+    }
+   ],
+   "overlay": "assets/got/_pages/p37.png"
+  },
+  {
+   "page": 38,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      109.0,
+      197.3,
+      503.0,
+      207.4
+     ],
+     "text": "Table 26: Keyword counting for an example 4-passage split (GoT4): Step 3a (Prompt/Responses)",
+     "label": "Table 26"
+    }
+   ],
+   "overlay": "assets/got/_pages/p38.png"
+  },
+  {
+   "page": 39,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      108.7,
+      197.3,
+      503.3,
+      207.4
+     ],
+     "text": "Table 27: Keyword counting for an example 4-passage split (GoT4): Step 3b (Prompt/Responses)",
+     "label": "Table 27"
+    }
+   ],
+   "overlay": "assets/got/_pages/p39.png"
+  },
+  {
+   "page": 40,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      109.3,
+      142.3,
+      502.7,
+      152.4
+     ],
+     "text": "Table 28: Keyword counting for an example 4-passage split (GoT4): Step 3c (Prompt/Responses)",
+     "label": "Table 28"
+    }
+   ],
+   "overlay": "assets/got/_pages/p40.png"
+  },
+  {
+   "page": 41,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/got/_pages/p41.png"
+  },
+  {
+   "page": 42,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      65.1,
+      62.7,
+      546.9,
+      72.7
+     ],
+     "text": "Table 29: Prompt stubs for the document merging task; parameters in single curly brackets will be substituted at runtime.",
+     "label": "Table 29"
+    }
+   ],
+   "overlay": "assets/got/_pages/p42.png"
+  },
+  {
+   "page": 43,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      54.0,
+      282.2,
+      558.0,
+      292.3
+     ],
+     "text": "Table 30: Prompt stubs for the document merging task continued; parameters in single curly brackets will be substituted at",
+     "label": "Table 30"
+    }
+   ],
+   "overlay": "assets/got/_pages/p43.png"
+  },
+  {
+   "page": 44,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      247.9,
+      109.5,
+      364.1,
+      119.5
+     ],
+     "text": "Table 31: Input NDA 1 and 2",
+     "label": "Table 31"
+    }
+   ],
+   "overlay": "assets/got/_pages/p44.png"
+  },
+  {
+   "page": 45,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      260.1,
+      180.2,
+      351.9,
+      190.2
+     ],
+     "text": "Table 32: Input NDA 3",
+     "label": "Table 32"
+    }
+   ],
+   "overlay": "assets/got/_pages/p45.png"
+  },
+  {
+   "page": 46,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      260.1,
+      87.0,
+      351.9,
+      96.9
+     ],
+     "text": "Table 33: Input NDA 4",
+     "label": "Table 33"
+    },
+    {
+     "bbox": [
+      186.2,
+      567.3,
+      425.8,
+      577.3
+     ],
+     "text": "Table 34: Merging 4 example NDAs: Execution plan (GoO)",
+     "label": "Table 34"
+    }
+   ],
+   "overlay": "assets/got/_pages/p46.png"
+  },
+  {
+   "page": 47,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      197.0,
+      114.1,
+      415.0,
+      124.2
+     ],
+     "text": "Table 35: Merging 4 example NDAs: Step 1 (Prompt)",
+     "label": "Table 35"
+    }
+   ],
+   "overlay": "assets/got/_pages/p47.png"
+  },
+  {
+   "page": 48,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      56.9,
+      75.3,
+      555.1,
+      85.3
+     ],
+     "text": "Table 36: Merging 4 example NDAs; we only present the highest scoring response fully in Tables 37-38: Step 1 (Responses)",
+     "label": "Table 36"
+    }
+   ],
+   "overlay": "assets/got/_pages/p48.png"
+  },
+  {
+   "page": 49,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      143.8,
+      108.6,
+      468.2,
+      118.7
+     ],
+     "text": "Table 37: Merging 4 example NDAs: Step 1 (Highest Scoring Response Part 1)",
+     "label": "Table 37"
+    }
+   ],
+   "overlay": "assets/got/_pages/p49.png"
+  },
+  {
+   "page": 50,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      143.8,
+      80.7,
+      468.2,
+      90.8
+     ],
+     "text": "Table 38: Merging 4 example NDAs: Step 1 (Highest Scoring Response Part 2)",
+     "label": "Table 38"
+    }
+   ],
+   "overlay": "assets/got/_pages/p50.png"
+  },
+  {
+   "page": 51,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      155.6,
+      75.8,
+      456.4,
+      85.8
+     ],
+     "text": "Table 39: Merging 4 example NDAs: Step 1 (Scoring Example – Prompt)",
+     "label": "Table 39"
+    }
+   ],
+   "overlay": "assets/got/_pages/p51.png"
+  },
+  {
+   "page": 52,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      150.0,
+      89.3,
+      462.0,
+      99.3
+     ],
+     "text": "Table 40: Merging 4 example NDAs: Step 1 (Scoring Example – Responses)",
+     "label": "Table 40"
+    }
+   ],
+   "overlay": "assets/got/_pages/p52.png"
+  },
+  {
+   "page": 53,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      54.0,
+      103.2,
+      558.0,
+      113.2
+     ],
+     "text": "Table 41: Merging 4 example NDAs; Note that S1-S3 are the three best scoring merge attemps from the previous step: Step 2",
+     "label": "Table 41"
+    }
+   ],
+   "overlay": "assets/got/_pages/p53.png"
+  },
+  {
+   "page": 54,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      191.4,
+      73.8,
+      420.6,
+      83.8
+     ],
+     "text": "Table 42: Merging 4 example NDAs: Step 2 (Responses)",
+     "label": "Table 42"
+    }
+   ],
+   "overlay": "assets/got/_pages/p54.png"
+  },
+  {
+   "page": 55,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      197.0,
+      56.8,
+      415.0,
+      66.9
+     ],
+     "text": "Table 43: Merging 4 example NDAs: Step 3 (Prompt)",
+     "label": "Table 43"
+    }
+   ],
+   "overlay": "assets/got/_pages/p55.png"
+  },
+  {
+   "page": 56,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      54.0,
+      56.1,
+      558.0,
+      66.1
+     ],
+     "text": "Table 44: Merging 4 example NDAs; we only present the highest scoring response fully in Table 46: Step 3 (Responses Part",
+     "label": "Table 44"
+    }
+   ],
+   "overlay": "assets/got/_pages/p56.png"
+  },
+  {
+   "page": 57,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      54.0,
+      54.0,
+      558.0,
+      64.1
+     ],
+     "text": "Table 45: Merging 4 example NDAs; we only present the highest scoring response fully in Table 46: Step 3 (Responses Part",
+     "label": "Table 45"
+    }
+   ],
+   "overlay": "assets/got/_pages/p57.png"
+  },
+  {
+   "page": 58,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      158.2,
+      234.2,
+      453.8,
+      244.2
+     ],
+     "text": "Table 46: Merging 4 example NDAs: Step 3 (Highest Scoring Response)",
+     "label": "Table 46"
+    }
+   ],
+   "overlay": "assets/got/_pages/p58.png"
+  },
+  {
+   "page": 59,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      155.6,
+      59.3,
+      456.4,
+      69.4
+     ],
+     "text": "Table 47: Merging 4 example NDAs: Step 3 (Scoring Example – Prompt)",
+     "label": "Table 47"
+    }
+   ],
+   "overlay": "assets/got/_pages/p59.png"
+  },
+  {
+   "page": 60,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      150.0,
+      123.1,
+      462.0,
+      133.2
+     ],
+     "text": "Table 48: Merging 4 example NDAs: Step 3 (Scoring Example – Responses)",
+     "label": "Table 48"
+    }
+   ],
+   "overlay": "assets/got/_pages/p60.png"
+  },
+  {
+   "page": 61,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      190.2,
+      234.2,
+      421.8,
+      244.2
+     ],
+     "text": "Table 49: Merging 4 example NDAs: Final Merged NDA",
+     "label": "Table 49"
+    }
+   ],
+   "overlay": "assets/got/_pages/p61.png"
+  },
+  {
+   "page": 62,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/got/_pages/p62.png"
+  },
+  {
+   "page": 63,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/got/_pages/p63.png"
+  }
+ ]
+}

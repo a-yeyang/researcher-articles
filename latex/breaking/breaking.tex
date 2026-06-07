@@ -1,0 +1,1147 @@
+\documentclass[11pt,UTF8,fontset=fandol]{ctexart}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx,float,caption,subcaption}
+\usepackage{booktabs,array,multirow,makecell}
+\usepackage{geometry,enumitem,xcolor}
+\usepackage[hidelinks]{hyperref}
+\usepackage{url}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\geometry{margin=2.3cm}
+\graphicspath{{/Users/yye/project/论文/assets/breaking/}}
+\captionsetup{font=small,labelfont=bf}
+\setlength{\parskip}{0.4em}
+
+\renewcommand{\algorithmicrequire}{\textbf{输入：}}
+\floatname{algorithm}{算法}
+
+\title{\textbf{突破强化学习的性能上限需要推理策略}}
+\author{
+Felix Chalumeau\textsuperscript{*\,1} \quad Daniel Rajaonarivonivelomanantsoa\textsuperscript{*\,1,2} \quad Ruan de Kock\textsuperscript{*\,1}\\
+Claude Formanek\textsuperscript{1} \quad Sasha Abramowitz\textsuperscript{1} \quad Omayma Mahjoub\textsuperscript{1} \quad Wiem Khlifi\textsuperscript{1}\\
+Simon Du Toit\textsuperscript{1} \quad Louay Ben Nessir\textsuperscript{1} \quad Refiloe Shabe\textsuperscript{1} \quad Noah De Nicola\textsuperscript{1}\\
+Arnol Fokam\textsuperscript{1} \quad Siddarth Singh\textsuperscript{1} \quad Ulrich Mbou Sob\textsuperscript{1} \quad Arnu Pretorius\textsuperscript{1,2}\\[0.6em]
+\textsuperscript{1}\,InstaDeep（InstaDeep 公司）\quad
+\textsuperscript{2}\,Stellenbosch University（斯泰伦博斯大学）
+}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+强化学习（reinforcement learning，RL）系统拥有无数应用，从能源电网管理到蛋白质设计皆然。然而，这类现实世界场景往往极其困难、本质上具有组合性，并且需要多个智能体之间进行复杂的协调。这种复杂程度可能导致即便是经过训练直至收敛的最先进 RL 系统，也会触及一个无法通过零样本（zero-shot）推理突破的性能上限。与此同时，许多数字化或基于仿真的应用允许设置一个推理阶段，该阶段利用特定的时间与算力预算，在输出最终解之前探索多次尝试。在本工作中，我们表明：在执行时采用这样的推理阶段以及选择相应的推理策略（inference strategy），是突破复杂多智能体 RL 问题中所观测到的性能上限的关键。我们的主要结果令人瞩目：在 17 个任务上，仅在执行期间额外花费几秒钟的实际时钟时间（wall-clock time），我们就能相比此前的最先进水平获得最高 126\,\% 、平均 45\,\% 的提升。我们还展示了颇具前景的算力扩展（compute scaling）特性，背后有超过 60k 次实验作支撑，使其成为迄今为止针对复杂 RL 的推理策略所开展的最大规模研究。我们的实验数据与代码可在以下网址获取：\url{https://sites.google.com/view/inference-strategies-rl}。
+\end{abstract}
+
+\begin{figure}[H]\centering
+  \includegraphics[width=0.95\linewidth]{cand_p01_k00.pdf}
+  \caption{相比零样本最先进水平，使用推理时搜索（inference-time search）所带来的提升。在 17 个复杂强化学习任务上，仅在执行期间使用 30 秒的搜索预算，我们就获得了一致且显著的性能增益。柱状图横轴为各任务，从低到高的提升数值依次为：9.5\,\%、10.4\,\%、14.0\,\%、20.7\,\%、21.8\,\%、22.3\,\%、32.3\,\%、35.0\,\%、35.7\,\%、36.5\,\%、42.3\,\%、47.9\,\%、53.3\,\%、85.5\,\%、86.8\,\%、92.2\,\%、126.4\,\%。}
+  \label{fig:1}
+\end{figure}
+
+\noindent\rule{0.35\linewidth}{0.4pt}\\
+{\footnotesize \textsuperscript{*}\,同等贡献。通讯作者：f.chalumeau@instadeep.com\\
+第 39 届神经信息处理系统大会（NeurIPS 2025）。}
+
+\section{引言}
+
+学习求解序贯决策（sequential decision-making）任务是人工智能（artificial intelligence，AI）中的一个核心挑战，其应用极为广泛，涵盖能源电网优化（Ahmad et al., 2021）、自主物流（Laterre et al., 2018）、分子发现（Olivecrona et al., 2017）以及药物设计（Popova et al., 2018）等。无法通过传统优化技术求解的复杂序贯现实问题本质上是复杂的，需要在高维解空间中进行导航。强化学习（RL）为提升我们求解这类问题之高效解的能力提供了一条颇具前景的途径。然而，尽管过去十年取得了惊人的进展——例如在 Atari 游戏中达到人类水平的表现（Mnih et al., 2015）、在围棋比赛中击败世界冠军（Silver et al., 2016），或使 AI 系统与人类偏好对齐（Stiennon et al., 2020）——当前方法仍面临一些挑战，阻碍其在大多数现实世界系统中得到普遍部署（Dulac-Arnold et al., 2020）。
+
+这种困难的一大根源在于许多决策任务的组合性本质。随着问题规模增大，可能解的空间呈指数增长（Karp, 1975）。在多智能体系统中，挑战进一步复合：智能体必须在仅有部分信息可用的环境中进行协调，联合动作空间具有组合性，且最优行为依赖于与其他智能体的精确交互（Bernstein et al., 2000; Canese et al., 2021）。这些特性使得依赖训练好的策略的零样本性能在本质上十分困难，即便该策略已在一个具有代表性的训练分布上被优化至收敛也是如此。这导致零样本性能与最优性之间的差距随着复杂度的增加而大幅扩大（见图~\ref{fig:1}）。
+
+然而，众多实际应用并不局限于产生单个零样本解。相反，推理通常被允许在数秒、数分钟或数小时内进行，并配有给定的计算资源。此外，模型和模拟器往往是可访问且非常高效的（例如能源电网管理、列车调度、包裹投递、路径规划、印刷电路板设计），并能提供精确分数或非常准确的近似。在另一些与现实差距可能更大的应用中（例如蛋白质设计、机器人学），在仿真分数下改进解仍可被认为能朝着真实目标提供显著的改进（Hayes et al., 2025; Dona et al., 2024; Hundt et al., 2019; Rao et al., 2020）。
+
+这开启了一种机会：与其依赖训练好的策略的单次尝试，不如利用时间预算和算力，按照某种推理时策略通过多次尝试主动搜索更优解。例如，逐步构建一棵可能解的树，或利用过往尝试的结果来调整策略。即便是直截了当的策略也能以低时间成本带来显著的性能提升。例如，使用随机采样并行生成一大批多样化的解，而非单个贪心解：给定一块现代 GPU，这能在相同实际时钟时间内产生数百个解，从而实现大规模探索而不增加时间成本。
+
+这些策略在现有基准（Papoudakis et al., 2021; Mahjoub et al., 2025）中很少被强调，许多从业者投入数月研究，试图在那些只能取得边际改进的场景上提升模型的零样本性能。而实际上，他们本可以借助推理时搜索来释放性能增益，且在中等算力下以可忽略的实际时钟时间成本做到这一点（图~\ref{fig:1}）。
+
+针对组合优化（Combinatorial Optimisation，CO）的 RL 研究已经产生了高效的推理策略（Bello* et al., 2017; Hottung et al., 2022; Choo et al., 2022; Chalumeau et al., 2023b），它们常被称为主动搜索（active search）或在线适应（online adaptation）方法。然而，其经验性研究仍仅限于少数几个问题、狭窄的预算设置范围（Chalumeau et al., 2025），且几乎没有关于其扩展特性的洞见。在多智能体情形下，尚无针对协作团队的推理策略研究：大多数关于团队适应的工作聚焦于临时组队（Ad Hoc Teamwork）（Mirsky et al., 2022; Wang et al., 2024a; Ruhdorfer et al., 2025），这与我们的目标相邻但不同。有趣的是，最近关于推理策略影响的大多数研究来自大语言模型（Large Language Model，LLM）文献（Snell et al., 2025; Muennighoff et al., 2025; Wu et al., 2025），在该领域，将高效模型与推理策略进行恰当结合目前是最先进水平（state-of-the-art，SOTA）。
+
+在本工作中，我们对推理策略在复杂决策任务中的作用进行了形式化并展开研究。为了完整刻画上文所述任务的复杂性，我们将问题设定形式化为一个去中心化部分可观测马尔可夫决策过程（decentralised partially observable Markov decision process，Dec-POMDP）（Kaelbling et al., 1998）。这取代了许多 RL 研究中通常使用的单智能体 MDP。我们做出这一选择有几个原因：(1) 它更准确地对应于许多我们关注的复杂现实世界问题；(2) Dec-POMDP 因其严格更复杂而涵盖了 MDP（Bernstein et al., 2000）；(3) 正因如此，我们预期我们的发现能够推广到所有更简单的问题形式。在该设定下，我们对流行的推理策略范式给出了一个统一的视角，包括策略采样（policy sampling）、树搜索（tree search）（Choo et al., 2022）、在线微调（online fine-tuning）（Bello* et al., 2017; Hottung et al., 2022）以及基于多样性的搜索（diversity-based search）（Chalumeau et al., 2023b）。令人瞩目的是，我们表明，在一系列专门挑选的困难 RL 问题上，推理策略相比零样本 SOTA 平均提升性能 45\,\%。此外，在最佳情形下，这一提升可高达 126\,\%。所有这些，仅需在执行时额外花费几秒钟。
+
+我们的结果呼吁改变评估和部署 RL 系统的方式：推理策略并非一个无足轻重的后处理步骤，而是在现实条件下的一个关键性能驱动因素。本工作为对序贯决策中的推理建立更细致入微的视角奠定了基础，并提供了构建能够随算力扩展的系统的工具。我们所有的代码与实验数据均可访问：\url{https://sites.google.com/view/inference-strategies-rl}。
+
+\section{相关工作}
+
+\textbf{来自 RL for CO 的推理策略}\quad 除了朴素的随机采样之外，已有若干范式被探索用于在推理期间利用训练好的策略检查点（checkpoint）生成尽可能优的解。在线微调（Bello* et al., 2017）利用过往尝试以 RL 重训所有策略参数。Hottung et al. (2022) 仅重训策略参数的一个子集，以降低内存和算力开销，从而在给定推理预算下进行更多尝试，并在 RL 项之外加入了一个模仿学习（imitation learning）项，以迫使探索贴近目前找到的最优解。Macfarlane et al. (2024) 也研究了通过序贯更新进行的推理时策略改进。Choo et al. (2022) 使用树搜索，在预算约束下采用由仿真引导的节点估计，其性能优于束搜索（Beam Search）和蒙特卡洛树搜索（Monte Carlo Tree Search）（Coulom, 2006）。基于多样性的方法：受先前寻求多样性方法的启发，例如无监督技能发现（unsupervised skill discovery）（Eysenbach et al., 2019; Sharma et al., 2019; Kumar et al., 2020）以及质量-多样性（quality-diversity）（Chalumeau et al., 2023a; Cully and Demiris, 2017）。Grinsztajn et al. (2023) 引入了一个 RL 目标，训练一个由多样化且专门化的策略组成的种群（population），对少样本（few-shot）性能十分高效。Chalumeau et al. (2023b) 使用这一目标，并将多样性编码在一个可在推理时进行搜索的连续隐空间（latent space）中，提出了 SOTA 方法 COMPASS；与此同时，Hottung et al. (2024) 采用了类似的思路，但使用离散的编码空间。
+
+这些工作引入了我们在本文中所考虑的大多数推理策略，但它们在三个我们旨在改进的重要方面存在不足：(i) 它们在零样本最优性已达 95\,\% 以上的基准上评估推理策略，留给有意义增益的空间很小；(ii) 这些基准依赖于诸如起始点（starting points）或实例增强（instance augmentations）等领域特定技巧；(iii) 各方法是在唯一的预算设置下进行比较的，忽视了相对性能取决于可用算力与时间预算这一事实。此外，尽管随算力扩展的能力是一项关键特性，但它们在这方面的能力仍未被探索。
+
+\textbf{元强化学习与离线到在线强化学习中的策略适应}\quad 元强化学习（Meta-RL）与离线到在线强化学习（Offline-to-Online RL）都设计了策略适应机制，从而与若干流行的推理策略在概念上有密切联系。COMPASS（Chalumeau et al., 2023b）和 VariBAD（Zintgraf et al., 2021）都将策略以隐空间为条件，并通过搜索它来进行适应。MEMENTO（Chalumeau et al., 2025）和 RL2（Duan et al., 2016）同样依赖记忆和一条学到的规则来搜索策略空间。DIMES（Qiu et al., 2022）依照 MAML 的方法论（Finn et al., 2017）显式地执行元强化学习。虽然我们尚不知有直接受离线到在线 RL 文献启发的推理策略，但 Nakamoto et al. (2023) 和 Mark et al. (2025) 引入的机制可能在推理时有益。
+
+值得强调这些领域之间的根本区别。推理策略关注的是：(i) 找到的解而非学到的策略；(ii) 最大性能而非平均性能；(iii) 测试时的单个实例。而大多数元强化学习与离线到在线 RL 方法是从一个分布适应到另一个分布以提升泛化能力。
+
+\begin{figure}[H]\centering
+  \includegraphics[width=0.92\linewidth]{cand_p04_k00.pdf}
+  \caption{RL 的众多应用涉及两个不同的阶段：(1) 训练阶段（图中 TRAINING PHASE），通常在时间和算力上不受约束，在此期间策略在具有代表性的问题实例分布（training distribution）上被优化，得到决策策略（decision-making policy）；以及 (2) 推理阶段（图中 INFERENCE PHASE），在此阶段为一个新实例（new instance）分配有限的时间与算力预算（compute \& time budget）来求解。推理阶段常被忽视，尽管在复杂任务中它起着至关重要的作用——在这些任务中，部分可观测性以及观测空间与动作空间的组合增长使得仅凭零样本执行无法获得优质解。推理策略包括：随机采样（stochastic sampling）、树搜索（tree search）、在线微调（online fine-tuning）、COMPASS 的搜索。}
+  \label{fig:2}
+\end{figure}
+
+\textbf{多智能体 RL 中的搜索与适应}\quad 关于多智能体 RL（MARL）中推理策略的工作十分有限。大多数关于 MARL 内搜索与适应的工作聚焦于临时组队（Ad Hoc Teamwork）的挑战（Yourdshahi et al., 2018; Hu et al., 2020; Mirsky et al., 2022; Wang et al., 2024a; Ruhdorfer et al., 2025; Hammond et al., 2025），常以零样本协调（zero-shot coordination）的形式出现，即智能体必须在执行时泛化到新的伙伴。尽管这些研究方向在方法论上有一些相似之处，例如使用寻求多样性的训练（Long et al., 2024; Lupu et al., 2021）或通过树搜索进行适应（Yourdshahi et al., 2018），但它们追求的目标根本不同，且与我们的目标正交。在我们的工作中，我们主要聚焦于求解困难且复杂的工业优化任务。
+
+\textbf{LLM 的推理时算力}\quad LLM 的最新进展与推理策略的使用密切交织（Snell et al., 2025; Wei et al., 2022; Wang et al., 2024b），并且越来越多的努力投入到研究其扩展特性上（Muennighoff et al., 2025; Wu et al., 2025）。然而，典型的推理时设定通常与我们的不同。LLM 的前向传播（forward pass）非常昂贵，且无法获得其答案的精确分数，但可以使用一个奖励模型（reward model）来近似（Ouyang et al., 2022）。LLM 最流行的策略是为少样本设计的，即采样和集成（ensembling）（例如多数投票，majority voting）。
+
+总体而言，文献中已经提出了众多高效的推理策略，但它们在各种设置下的效率仍未得到考察。多智能体 RL 尽管具有内在的复杂性，但除临时组队之外很少考虑推理时搜索。此外，更广泛的决策领域尚未系统地研究推理策略如何随算力扩展。我们的工作旨在通过扩展 RL 中推理策略的评估来填补这些空白，在广泛的预算设置范围内展示出重大的性能增益以及令人印象深刻的扩展特性。
+
+\section{在给定时间与算力预算下寻找最优解}
+
+\subsection{预备知识}
+
+我们聚焦于 RL 方法，并使用一个神经网络（策略），它能够通过采取一系列动作来构建一个解。该策略在训练阶段被优化，然后在推理阶段连同一个推理策略一起使用，在给定的时间与算力预算下为一个新的问题实例构建尽可能优的解。这两个阶段（如图~\ref{fig:2} 所示）具有不同的假设、目标和约束，将在以下段落中详述。
+
+\textbf{问题实例}\quad 我们假设每个问题实例都可以表述为一个 Dec-POMDP（Kaelbling et al., 1998），由元组 $M = \langle N, S, O, \Omega, A, R, P, \gamma, H \rangle$ 定义。这里 $N$ 是智能体数量，$S$ 是环境状态空间，$O = \prod_{i=1}^{N} O_i$ 是联合智能体观测空间，$\Omega : S \mapsto O$ 是观测函数，$A = \prod_{i=1}^{N} A_i$ 是联合动作空间，$R : S \times A \mapsto \mathbb{R}$ 是共享奖励函数，$P : S \times A \mapsto \Delta S$ 是环境转移函数，标量 $\gamma \in [0, 1]$ 是折扣因子，$H$ 是有限的回合视界（episode horizon）。在每个时间步，环境处于一个状态 $s_t$，该状态通过 $\Omega$ 映射为一个联合部分观测 $o_t$。然后按照联合策略采样联合动作 $a_t \sim \pi(\cdot | o_t)$ 并执行；之后环境按照 $P(\cdot | s_t, a_t)$ 转移到下一状态 $s_{t+1}$，团队获得奖励 $r_t = R(s_t, a_t)$。
+
+\textbf{训练阶段}\quad 我们假设存在一个问题实例分布 $D$，在训练期间可从中采样。由 $\theta$ 参数化的联合策略 $\pi_\theta$ 用于通过在每个时间步以联合观测为条件采取联合动作来序贯地构建解。我们使用 RL 训练该策略，以最大化在为从分布 $D$ 中抽取的实例构建解时、在视界 $H$ 上所获得的期望回报：
+\[
+J(\pi_\theta) = \mathbb{E}_D \left[ \sum_{t=0}^{H} \gamma^t R(s_t, a_t) \right].
+\]
+这一训练目标对应于单次尝试（零样本）。理想情况下，该目标应当预先考虑推理时允许的多次尝试，但这很难扩展。近期工作纳入了这类少样本目标（Grinsztajn et al., 2023; Chalumeau et al., 2023b, 2025），但目前还没有方法能扩展到 200 次尝试以上。
+
+训练阶段在时间和算力上通常约束较为宽松，因为工业利益相关方通常愿意投入数天、数周乃至数月的训练，以获得一个在生产部署时能生成准确解的高性能策略。因此，在我们的实验中，我们将所有策略训练至收敛。
+
+\textbf{推理阶段}\quad 在推理时，一个新的问题实例 $\rho$ 从分布 $D'$（可能与 $D$ 不同）中抽取。这里通常存在输出最终解的硬约束：固定的时间限制 $T_{max}$ 约束实际时钟执行时间，而算力 $B_{max}$ 约束可并行执行的操作数。训练好的策略 $\pi_\theta$ 可在这些约束内用于生成问题的解，并最终采用最优解。奖励函数 $R$ 仍可用于为已尝试的解打分并为后续尝试提供信息。推理策略可定义为一个函数 $I : (\rho, \pi_\theta, B_{max}, T_{max}) \mapsto (a_1^*, ..., a_H^*)$，它使用基础策略 $\pi_\theta$ 以及任何额外的推理时搜索、适应、存储或优化方法，在预算 $T_{max}$ 与 $B_{max}$ 之下，为问题实例 $\rho$ 产生尽可能优的解，该解由动作序列 $(a_i^*)_{1 \le i \le H}$ 定义。因此目标可写为：
+\[
+I(\mathcal{I}) = \sum_{t=0}^{H} R(s_t, a_t^*) \quad \text{s.t.} \quad C(\mathcal{I}) \le B_{max}, \ T(\mathcal{I}) \le T_{max}
+\]
+其中 $C(\mathcal{I})$ 和 $T(\mathcal{I})$ 表示推理策略的算力成本与时间成本。这一表述凸显了：与传统 RL（其中零样本性能是主要衡量指标）不同，我们聚焦于能够在给定约束下实现进一步改进的策略。我们在附录~H 中提供了三个对应于该问题设定的现实世界示例，阐明了推理时搜索既自然又可行的实际场景。
+
+推理策略在如何探索解空间以及如何纳入先前尝试的结果以影响未来采样方面各不相同。它们的有效性取决于若干上下文因素，包括预训练策略的参数量、问题的底层结构、回合视界、奖励函数的性质，但最关键的是可用的时间与算力预算。
+
+\subsection{一份预算，多种可能：推理时搜索与适应}
+
+在本节中，我们详述四类推理策略以及我们如何调整它们以在多智能体设定下工作。我们用 JAX（Bradbury et al., 2018）实现并发布所有这些方法。
+
+\textbf{随机策略采样}\quad 提升解质量的第一个自然手段是从随机策略重新采样。换言之，除了创建一个唯一的贪心解（即在一条观测轨迹上使用 $a = \arg\max_{a'} \pi_\theta(a'|o)$）之外，还可以进行随机采样（如 $a \sim \pi_\theta(\cdot|o)$）以创建多样化的解。多智能体策略采样可轻松推广到多智能体情形，方法是从联合动作分布中采样 $a \sim \pi_\theta(\cdot|o)$。
+
+\textbf{树搜索}\quad 这类方法利用过往尝试存储关于部分解的信息，从而优先搜索解空间中有希望的区域，而不更新预训练策略。仿真引导束搜索（simulation guided beam search，SGBS）（Choo et al., 2022）在文献中提供了最佳的时间-性能平衡，其性能优于蒙特卡洛树搜索（Coulom, 2006）。与大多数树搜索一样，SGBS 有三个步骤：扩展（expansion）、仿真（simulation）、剪枝（pruning）。扩展使用策略从当前节点（部分解）决定最有希望的下一动作（即 $a = \text{top-}K(\pi_\theta(\cdot|o))$）。使用 $\pi_\theta$ 贪心地产生一次回合的仿真展开（rollout），并为每个节点收集回报。剪枝仅保留目前为止基于回报找到的最优节点。对于多智能体 SGBS，仅需调整扩展步骤。当可显式访问联合动作时（de Witt et al., 2020; Yu et al., 2022），这是平凡的，因为我们仍可选择排名靠前者（即 $a = \text{top-}K(\pi_\theta(\cdot|o))$）。对于使用自回归（auto-regressive）动作选择的方法（Mahjoub et al., 2025），访问排名靠前的联合动作是难以处理的，因此我们从同一节点随机采样 $K$ 次（即 $a[1], ..., a[K] \sim \pi_\theta(\cdot|o)$）。
+
+\textbf{在线微调}\quad 这类方法在推理时持续更新策略参数。给定一个基础策略 $\pi_\theta$，在线微调使用推理时的展开和策略梯度更新来优化 $\theta$：$\theta' = \theta + \alpha \nabla_\theta J(\pi_\theta)$，其中 $J(\pi_\theta)$ 表示一个适应目标。与（Bello* et al., 2017）一致，我们在固定实例上持续最大化过往尝试的期望回报（Bello* et al., 2017）（而非在训练分布上）。多智能体在线微调使用预训练时所采用的 MARL 算法，在新实例上重训 $\pi_\theta$（Bello* et al., 2017; Mahjoub et al., 2025; de Witt et al., 2020; Yu et al., 2022）。
+
+\textbf{基于多样性的方法}\quad 这类方法预训练一组多样化的专门化策略，可在推理时用于搜索最合适的解。COMPASS（Chalumeau et al., 2023b）将专门化策略编码在一个连续隐空间 $\mathcal{L}$ 中，方法是增强一个预训练策略，使其同时以观测和一个从 $\mathcal{L}$ 中采样的隐向量为条件（即 $a \sim \pi_\theta(\cdot | o, z), z \sim \mathcal{L}$）：实际上创建了一个连续的策略集合。COMPASS 在面向 CO 的单智能体 RL 中达到了 SOTA。为避免多智能体 COMPASS 的隐空间随智能体数量呈指数增长，我们为所有智能体保留一个隐空间 $\mathcal{L}$（即 $a \sim \pi_\theta(\cdot | o, z), z \sim \mathcal{L}$）。这使得训练可处理，并能借助协方差矩阵自适应进化策略 CMA-ES（covariance matrix adaptation evolution strategy）（Hansen and Ostermeier, 2001）进行高效的推理搜索。除了改为多智能体之外，我们将训练与推理阶段保持与 Chalumeau et al. (2023b) 所述的原始方法相近，并在附录~F.2 中提供更多细节与解释。与其他推理策略不同，COMPASS 包含一个额外的训练阶段，由于训练阶段不受约束（所有策略都训练至收敛），该阶段仍然可行。从预训练基础策略创建一个 COMPASS 检查点涉及添加用于处理隐向量的参数（附录~F.2），从而带来模型规模的适度增加。这一增加从不超过总策略规模的 2\,\%，对整体计算或内存占用的影响可忽略不计。我们在附录~I 中报告所有参数量。
+
+\section{实验}
+
+在我们的实验研究中，我们结合流行的 MARL 算法和推理策略，并在文献中的一组复杂 RL 任务上对它们进行基准测试。每个任务都因其难度而被专门挑选。我们在广泛的预算设置范围内，对所有基础策略在使用和不使用推理时搜索两种情况下进行评估。我们的实验构成了迄今为止针对决策的推理策略的最大规模研究。
+
+\textbf{基线（Baselines）}\quad 我们使用三种 MARL 方法来获得我们的基础策略：Independent PPO（de Witt et al., 2020）（IPPO）和 Multi-Agent PPO（Yu et al., 2022）（MAPPO），它们是被广泛使用且广为人知的 MARL 方法；以及近期的 SOTA 序列建模方法 SABLE（Mahjoub et al., 2025）。这三者（称为基础策略）均使用第~3.2 节引入的全部四种推理策略进行评估，即随机采样、SGBS、在线微调和 COMPASS。
+
+\begin{figure}[H]\centering
+  \includegraphics[width=0.5\linewidth]{cand_p06_k00.pdf}
+  \caption{我们的评估任务与实验研究概览。17 个复杂 RL 任务的集合（Set of 17 complex RL tasks）：Connector、StarCraft (SMAC)、RWARE；广泛的设置范围（Wide range of settings）：时间（time）、算力（compute）、复杂度（complexity）；推理策略的评估（Evaluation of inference strategies）。}
+  \label{fig:3}
+\end{figure}
+
+\textbf{任务（Tasks）}\quad Mahjoub et al. (2025) 在该领域迄今发表的最全面的 MARL 基准上确立了 SOTA。有趣的是，他们的结果表明，仍存在某些任务，对其而言尚无任何现有方法（包括 SABLE）能取得良好性能。具体而言，这些任务包括来自 Multi-Robot Warehouse（Papoudakis et al., 2021）（RWARE）的 tiny-2ag-hard、tiny-4ag-hard、small-4ag、small-4ag-hard、medium-4ag、medium-4ag-hard、medium-6ag、large-4ag、large-4ag-hard、large-8ag、large-8ag-hard、xlarge-4ag 和 xlarge-4ag-hard；来自 StarCraft Multi-Agent challenge（Samvelyan et al., 2019; Ellis et al., 2023）（SMAC）的 smacv2\_10\_units 和 smacv2\_20\_units；以及来自 Connector（Bonnet et al., 2023）的 con-10x10x10a 和 con-15x15x23a。
+
+每个环境（如图~\ref{fig:3} 所示）都引入了不同的挑战，从而构成其复杂性。RWARE 要求智能体进行协调，以便在不发生碰撞的情况下拾取并投递包裹，并且具有非常稀疏的奖励信号。在 SMACv2 任务中，一支队伍在多样化的、随机生成的场景中实时与敌人作战并相互协作。Connector 对印刷电路板的布线进行建模，智能体必须在不交叉路径的情况下连接到指定目标。这三个环境都具有组合性和高维的动作空间、部分可观测性，以及对紧密协调行为的需求，使得这 17 个任务成为一个引人注目的复杂 RL 测试平台，并具备建模现实世界任务各个方面的理想特性。我们使用来自 Jumanji（Bonnet et al., 2023）的基于 JAX 的 Connector 和 RWARE 实现，以及来自 JaxMARL（Rutherford et al., 2023）的 SMAC 实现。
+
+\begin{figure}[H]\centering
+  \includegraphics[width=0.65\linewidth]{cand_p07_k00.pdf}
+  \caption{将 SOTA 算法 Sable 训练至收敛仍不足以达到最优的零样本性能。我们报告每个任务的平均归一化性能（normalised performance），并在附录~L 中报告 95\,\% 自助法（bootstrap）置信区间。图中比较 20\,M steps（20M 步）、Converged（收敛后）、COMPASS 三种情况的归一化性能。}
+  \label{fig:4}
+\end{figure}
+
+\textbf{训练基础策略}\quad 为了为每个算法获得清晰的性能上限，并最好地隔离推理策略的效果，我们将所有基础策略训练至收敛。为了与此前采用截断式训练预算（通常为 20M 步）的工作保持连续性，我们在图~\ref{fig:4} 中报告每个收敛检查点的零样本结果，并与其先前对应的已报告性能进行比较。我们观察到，在大多数任务（17 个中的 14 个）上，收敛后的策略其归一化性能仍低于 70\,\%，表明该基准远未饱和。COMPASS 需要一个额外的训练阶段，它对现有基础策略进行“再生”（reincarnate），以创建隐空间的专门化。对于每个基础策略和任务，我们也将 COMPASS 检查点训练至收敛。这总共产生了 102 个训练好的策略检查点。
+
+\textbf{在推理期间评估性能}\quad 以一种无偏且与现实世界设定对齐的方式评估推理策略颇具挑战性。大多数论文报告的结果中，预算是基于尝试次数的，因此没有直接纳入推理策略的时间成本。时间成本虽有报告，但由于获得这些成本所用硬件的多样性，难以分析。由于我们在同一代码库中重新实现了所有基线，并以时间（以秒计）为单位设置预算，我们得以在研究中避免这一偏差。我们对所有实验使用相同的固定硬件，即一块 NVIDIA-A100-SXM4-80GB GPU。为了统计稳健性，我们始终运行 128 个独立种子。在所有情况下，我们通过改变所允许的批量并行尝试数来控制 $B_{max}$，而非在不同实验间更改硬件。对于跨多个任务的聚合，我们遵循 Agarwal et al. (2021) 的建议，使用 rliable 库来计算并报告四分位间均值（inter-quartile mean，IQM）和 95\,\% 分层自助法置信区间。
+
+\textbf{超参数（Hyperparameters）}\quad 为训练基础策略，我们复用 Mahjoub et al. (2025) 报告的超参数，这些超参数已针对我们的任务进行了优化。对于推理策略，我们遵循文献中的建议（Choo et al., 2022; Chalumeau et al., 2023b）。所有超参数选择都在附录~D 中报告。
+
+\subsection{几秒钟就够了}
+
+在本节中，我们展示推理时搜索能够帮助接近任务的最高性能，所用的基础策略其零样本性能停滞在 60\,\% 左右。
+
+\textbf{实验}\quad 为了证明推理时策略是可获取的，我们使用一个小预算：30 秒，以及一个能够并行生成 64 个解的算力。每个基础策略都先以单次尝试进行贪心评估，然后使用搜索预算、采用每种推理策略进行评估。我们在图~\ref{fig:5} 中报告 17 个任务上的性能分布，并在图~\ref{fig:1} 中报告最优推理时搜索相比最优零样本所带来的性能增益。
+
+\begin{figure}[H]\centering
+  \includegraphics[width=0.65\linewidth]{cand_p08_k00.pdf}
+  \caption{推理策略在基准上获得的性能。每个基础策略都用每种可能的推理策略进行评估。我们报告任务上的四分位间均值（IQM）以及 95\,\% 分层自助法置信区间。图中比较 Greedy（零样本）、Stochastic（随机采样）、Fine-tuning（在线微调）、SGBS、COMPASS 在 IPPO、MAPPO、Sable 上的表现，虚线为零样本 SOTA（Zero-shot SOTA）。}
+  \label{fig:5}
+\end{figure}
+
+\textbf{讨论}\quad 我们可以得出四个主要结论。第一，推理时搜索确实相比零样本提供了巨大的性能提升，这对每个基础策略都成立。对于 SOTA 零样本方法 SABLE，这意味着将史上最佳的聚合性能再推进了 45\,\% 以上，并创造出一个系统（SABLE+COMPASS），在所有可获得该指标的任务上达到接近 100\,\% 的胜率（win-rate）。第二，相比零样本性能所能实现的改进，随任务复杂度的增加而显著增长（几乎呈指数增长）（见图~\ref{fig:1}）。这表明随着该领域朝着越来越现实的场景推进，前方仍有可观的增益。第三，我们观察到 COMPASS 在各任务和各基础算法上都是领先的策略，并且即便使用推理时搜索，SABLE 仍是 SOTA 基础策略。有趣的是，在小时间预算下，随机采样的表现优于在线微调。不过我们在下一节将表明，在更大的预算下，这一结果可以得到细化，并分享我们对这些发现的解读。
+
+\subsection{在算力与时间预算下绘制性能图谱}
+
+此前关于推理策略的工作的一个反复出现的局限是在评估中使用固定预算，这造成了对方法的狭隘视角，且常常造成对某些类型方法的偏向。在本节中，我们旨在通过在时间与算力预算的网格上报告性能，对推理时搜索提供一个广阔得多的视角。
+
+\textbf{实验}\quad 我们选择 300 秒的最长时间，并使用领先的基础策略（SABLE），在 $\{4, 8, 16, 32, 64, 128, 256\}$ 的算力预算下评估所有推理策略。总而言之，我们有 4 种推理策略、7 种可能的算力预算、17 个任务，每个任务 128 个种子，从而得到 60\,928 个被评估的回合。这构成了迄今为止已发布的关于推理策略的最大规模研究。我们使用等高线图（contour plot）报告这些结果，其中 x 轴为时间，y 轴为所允许的并行尝试数（我们用作算力的代理量），颜色对应于所达到的性能（可获得时为胜率，否则为最小-最大归一化回报），从深紫色（最小）到黄色（最大）。我们在图~\ref{fig:6} 中保留 8 个最难的任务，即基于收敛后 SABLE 检查点的零样本性能（见图~\ref{fig:4}）排在后半部分的任务，并将其余任务推迟至附录~A。
+
+\begin{figure}[H]\centering
+  \includegraphics[width=\linewidth]{cand_p09_k00.pdf}
+  \caption{Sable 配合不同推理策略在一系列时间预算（x 轴）与算力（y 轴）上的性能等高线图，针对一组代表性任务。颜色表示性能，颜色越亮表示数值越高。}
+  \label{fig:6}
+\end{figure}
+
+\textbf{讨论}\quad 作为合理性检验，我们注意到当时间或算力增加时（朝右上角移动），性能总是提升（颜色变亮）。我们现在强调三个主要观察。第一，COMPASS 展现出惊人的多样适应性，相比其他推理策略取得显著增益，主导了所有图谱，唯一例外是 con-10x10x10a，在该任务上它被在线微调略微超越。第二，我们观察到在线微调具有高方差：在 con-10x10x10a 上大预算时接近 COMPASS，但在其他任务（如 RWARE 的 large-8ag）上却难以匹敌随机采样。这表明微调可能因减少了时间预算内所做的尝试次数而产生负面作用。此外，策略梯度可能不稳定（小批量大小）或收敛到局部最优。这一观察驳斥了一种常见看法，即推理时搜索就如同对问题实例过拟合那般平凡。最后，我们观察到 SGBS 尽管在 connector 任务上失败，但总体上取得了有竞争力的性能，甚至在低预算区间（即低于 100 秒且少于 10 次并行尝试）的某些场景（large-4ag 和 large-4ag-hard）中处于领先。
+
+\subsection{随预算增加的扩展}
+
+在实际应用中，时间往往比算力更受限：可以允许几秒或几分钟，有时几小时（为次日做列车调度），但很少更多。能够在固定时间预算下通过增加算力来提升解的质量是可取的。在本节中，我们分析不同方法如何随额外算力扩展。
+
+\textbf{实验}\quad 我们保持时间预算固定为 300 秒，并为每种可能的算力预算绘制最终性能（仍以并行尝试数作为代理量）。我们使用 SABLE 作为基础策略，并在 8 个最难的任务上评估所有推理策略。我们在图~\ref{fig:7} 中分别报告每种策略的结果以及在任务上聚合后的结果。
+
+\begin{figure}[H]\centering
+  \includegraphics[width=0.6\linewidth]{cand_p09_k01.pdf}
+  \caption{性能相对于算力（固定时间预算）的扩展。算力通过限制并行尝试数（\#parallel attempts）来设置。SABLE+COMPASS 展现出令人印象深刻的扩展特性，达到了性能边界。图中比较 Stochastic、Fine-tuning、SGBS、COMPASS 随并行尝试数 4、8、16、32、64、128、256 的扩展。}
+  \label{fig:7}
+\end{figure}
+
+\textbf{讨论}\quad 正如预期，随机采样具有最低的扩展系数：其搜索仅依赖于运气，没有任何适应或额外搜索发生。另一方面，我们可以看到在线微调从更多算力中获益，可能是由于对策略梯度有了更好的估计。不过，它需要 64 次并行尝试的预算才能明显超越随机采样。另一方面，COMPASS 始终提供显著优势。其扩展趋势起初似乎是线性的，具有较高的系数，仅在更高预算时才开始下降，因为已达到性能极限（可获得时胜率超过 95\,\%，否则为史上观测到的最佳性能）。对于这些尤为令人印象深刻的扩展特性，我们有两方面的解释：(i) 隐空间中所蕴含的多样性可以被更多的并行所利用，从而带来对解空间的大规模探索，即便初始策略远非最优；(ii) 批量大小越大，CMA-ES 搜索越好，使得 COMPASS 能够从给定时间预算内所允许的任何额外搜索步骤中挖掘出更多信息。我们在附录~K 中对此作进一步讨论。
+
+\section{结论}
+
+在本工作中，我们以多智能体 RL 作为代表性测试平台，证明了推理时策略是提升复杂任务中 RL 系统性能的一个关键且未被充分利用的杠杆。尽管训练时的改进长期主导着该领域，但我们的结果表明，推理时搜索可以仅用执行期间几秒到几分钟的额外实际时钟时间就提供显著的性能增益。我们引入了一个统一的推理策略视角，将其扩展到多智能体设定，并在不同的算力与时间预算下经验性地验证了其有效性。
+
+我们的大规模评估——迄今为止关于推理时方法最全面的评估——揭示了三个关键要点：(i) 采用相关策略的推理时搜索能带来显著改进，即便在严格的时间约束下也是如此；(ii) 增益取决于推理预算，我们的等高线图谱为从业者提供了基于其约束的实用指导；以及 (iii) SABLE+COMPASS 不仅主导了基准，而且展现出最有利的扩展趋势，使其对日益复杂的决策问题尤为有效。
+
+总体而言，我们的发现呼吁改变评估和部署决策模型的方式：推理时策略应被视为解决方案流程的核心组成部分，而非可有可无的精细化处理。我们希望我们的结果和开源工具能鼓励更广泛的采用，并激励在可扩展推理时算法设计上的进一步创新。
+
+\textbf{局限性与未来工作}\quad 我们聚焦于多智能体 RL，因为它更好地刻画了现实世界决策系统的复杂性——在这些系统中，成功运行往往依赖于多个智能体之间的协调。尽管如此，我们承认本质上属于单智能体的任务也可能高度复杂。本着为未来工作播下超越多智能体设定之更广泛探究种子的精神，我们在附录~C 中提供了单智能体 Craftax 基准上的额外结果，表明使用随机采样进行简单的 30 秒推理时搜索就能带来 37\,\% 的性能提升。这为我们的论断更普遍地成立提供了初步（但有限）的证据，我们将更彻底的研究留待未来工作。除了更广泛的 RL 设定之外，我们打算研究两个主要的未来研究方向。第一，研究如何最好地结合现有推理范式以利用它们互补的优势。第二，研究在分布外（out-of-distribution）评估时推理策略的比较情况。
+
+\section*{致谢}
+
+我们要感谢 Guillaume Toujas-Bernate、Jake Lourie 和 Thomas Lecat 就推理策略在现实世界应用中的使用所进行的有益讨论。我们感谢我们的 MLOps 团队开发了我们的模型训练与实验编排平台 AIchor。我们感谢 Python 和 JAX 社区开发了使这项研究成为可能的工具。我们感谢匿名审稿人提出的建设性反馈和宝贵建议。最后，我们感谢 Google 的 TPU 研究云（TPU Research Cloud，TRC）以 Cloud TPU 支持我们的研究。
+
+\section*{参考文献}
+\begin{enumerate}[leftmargin=2em,itemsep=2pt]
+\item R. Agarwal, M. Schwarzer, P. S. Castro, A. Courville, and M. G. Bellemare. Deep reinforcement learning at the edge of the statistical precipice. In Advances in Neural Information Processing Systems, 2021. URL \url{https://arxiv.org/abs/2108.13264}.
+\item T. Ahmad, D. Zhang, C. Huang, H. Zhang, N. Dai, Y. Song, and H. Chen. Artificial intelligence in sustainable energy industry: Status quo, challenges and opportunities. Journal of Cleaner Production, 289:125834, 2021. ISSN 0959-6526. doi: \url{https://doi.org/10.1016/j.jclepro.2021.125834}. URL \url{https://www.sciencedirect.com/science/article/pii/S0959652621000548}.
+\item I. Bello*, H. Pham*, Q. V. Le, M. Norouzi, and S. Bengio. Neural combinatorial optimization with reinforcement learning, 2017. URL \url{https://openreview.net/forum?id=rJY3vK9eg}.
+\item D. S. Bernstein, S. Zilberstein, and N. Immerman. The complexity of decentralized control of markov decision processes. In Proceedings of the Sixteenth Conference on Uncertainty in Artificial Intelligence, UAI'00, page 32--37, San Francisco, CA, USA, 2000. Morgan Kaufmann Publishers Inc. ISBN 1558607099.
+\item C. Bonnet, D. Luo, D. Byrne, S. Abramowitz, V. Coyette, P. Duckworth, D. Furelos-Blanco, N. Grinsztajn, T. Kalloniatis, V. Le, O. Mahjoub, L. Midgley, S. Surana, C. Waters, and A. Laterre. Jumanji: a suite of diverse and challenging reinforcement learning environments in jax, 2023. URL \url{https://github.com/instadeepai/jumanji}.
+\item J. Bradbury, R. Frostig, P. Hawkins, M. J. Johnson, C. Leary, D. Maclaurin, G. Necula, A. Paszke, J. VanderPlas, S. Wanderman-Milne, and Q. Zhang. JAX: composable transformations of Python+NumPy programs, 2018. URL \url{http://github.com/jax-ml/jax}.
+\item L. Canese, G. C. Cardarilli, L. Di Nunzio, R. Fazzolari, D. Giardino, M. Re, and S. Span\`o. Multi-agent reinforcement learning: A review of challenges and applications. Applied Sciences, 11(11), 2021. ISSN 2076-3417. doi: 10.3390/app11114948. URL \url{https://www.mdpi.com/2076-3417/11/11/4948}.
+\item F. Chalumeau, R. Boige, B. Lim, V. Mac\'e, M. Allard, A. Flajolet, A. Cully, and T. Pierrot. Neuroevolution is a competitive alternative to reinforcement learning for skill discovery. In International Conference on Learning Representations, 2023a. URL \url{https://openreview.net/forum?id=6BHlZgyPOZY}.
+\item F. Chalumeau, S. Surana, C. Bonnet, N. Grinsztajn, A. Pretorius, A. Laterre, and T. D. Barrett. Combinatorial optimization with policy adaptation using latent space search. In Thirty-seventh Conference on Neural Information Processing Systems, 2023b.
+\item F. Chalumeau, B. Lim, R. Boige, M. Allard, L. Grillotti, M. Flageat, V. Mac\'e, G. Richard, A. Flajolet, T. Pierrot, et al. Qdax: A library for quality-diversity and population-based algorithms with hardware acceleration. Journal of Machine Learning Research, 25(108):1--16, 2024.
+\item F. Chalumeau, R. Shabe, N. D. Nicola, A. Pretorius, T. D. Barrett, and N. Grinsztajn. Memory-enhanced neural solvers for routing problems. In The Thirty-ninth Annual Conference on Neural Information Processing Systems, 2025. URL \url{https://openreview.net/forum?id=p7WHZy8TCG}.
+\item J. Choo, Y.-D. Kwon, J. Kim, J. Jae, A. Hottung, K. Tierney, and Y. Gwon. Simulation-guided beam search for neural combinatorial optimization. In Advances in Neural Information Processing Systems (NeurIPS), 2022. URL \url{https://arxiv.org/abs/2207.06190}.
+\item R. Coulom. Efficient selectivity and backup operators in monte-carlo tree search. In International conference on computers and games, pages 72--83. Springer, 2006.
+\item A. Cully and Y. Demiris. Quality and diversity optimization: A unifying modular framework. IEEE Transactions on Evolutionary Computation, 22(2):245--259, 2017.
+\item R. de Kock, O. Mahjoub, S. Abramowitz, W. Khlifi, C. R. Tilbury, C. Formanek, A. Smit, and A. Pretorius. Mava: a research library for distributed multi-agent reinforcement learning in jax. arXiv preprint arXiv:2107.01460, 2021.
+\item C. S. de Witt, T. Gupta, D. Makoviichuk, V. Makoviychuk, P. H. S. Torr, M. Sun, and S. Whiteson. Is independent learning all you need in the starcraft multi-agent challenge?, 2020. URL \url{https://arxiv.org/abs/2011.09533}.
+\item DeepMind, I. Babuschkin, K. Baumli, A. Bell, S. Bhupatiraju, J. Bruce, P. Buchlovsky, D. Budden, T. Cai, A. Clark, I. Danihelka, A. Dedieu, C. Fantacci, J. Godwin, C. Jones, R. Hemsley, T. Hennigan, M. Hessel, S. Hou, S. Kapturowski, T. Keck, I. Kemaev, M. King, M. Kunesch, L. Martens, H. Merzic, V. Mikulik, T. Norman, G. Papamakarios, J. Quan, R. Ring, F. Ruiz, A. Sanchez, L. Sartran, R. Schneider, E. Sezener, S. Spencer, S. Srinivasan, M. Stanojevi\'c, W. Stokowiec, L. Wang, G. Zhou, and F. Viola. The DeepMind JAX Ecosystem, 2020. URL \url{http://github.com/google-deepmind}.
+\item J. Dona, A. Flajolet, A. Marginean, A. Cully, and T. Pierrot. Quality-diversity for one-shot biological sequence design. In ICML'24 Workshop ML for Life and Material Science: From Theory to Industry Applications, 2024. URL \url{https://openreview.net/forum?id=ZZPwFG5W7o}.
+\item Y. Duan, J. Schulman, X. Chen, P. L. Bartlett, I. Sutskever, and P. Abbeel. Rl2: Fast reinforcement learning via slow reinforcement learning, 2016. URL \url{https://arxiv.org/abs/1611.02779}.
+\item G. Dulac-Arnold, N. Levine, D. J. Mankowitz, J. Li, C. Paduraru, S. Gowal, and T. Hester. An empirical investigation of the challenges of real-world reinforcement learning. CoRR, abs/2003.11881, 2020. URL \url{https://arxiv.org/abs/2003.11881}.
+\item B. Ellis, J. Cook, S. Moalla, M. Samvelyan, M. Sun, A. Mahajan, J. Foerster, and S. Whiteson. Smacv2: An improved benchmark for cooperative multi-agent reinforcement learning. Advances in Neural Information Processing Systems, 36:37567--37593, 2023.
+\item B. Eysenbach, A. Gupta, J. Ibarz, and S. Levine. Diversity is all you need: Learning skills without a reward function. In International Conference on Learning Representations, 2019.
+\item C. Finn, P. Abbeel, and S. Levine. Model-agnostic meta-learning for fast adaptation of deep networks. In Proceedings of the 34th International Conference on Machine Learning - Volume 70, ICML'17, page 1126--1135. JMLR.org, 2017.
+\item N. Grinsztajn, D. Furelos-Blanco, S. Surana, C. Bonnet, and T. D. Barrett. Winner takes it all: Training performant rl populations for combinatorial optimization. In Advances in Neural Information Processing Systems, 2023.
+\item R. Hammond, D. Craggs, M. Guo, J. N. Foerster, and I. Reid. Symmetry-breaking augmentations for ad hoc teamwork. In ICLR 2025 Workshop on Bidirectional Human-AI Alignment, 2025. URL \url{https://openreview.net/forum?id=pEQwTKmcks}.
+\item N. Hansen and A. Ostermeier. Completely derandomized self-adaptation in evolution strategies. Evolutionary Computation, 9(2):159--195, 2001. doi: 10.1162/106365601750190398.
+\item T. Hayes, R. Rao, H. Akin, N. J. Sofroniew, D. Oktay, Z. Lin, R. Verkuil, V. Q. Tran, J. Deaton, M. Wiggert, R. Badkundri, I. Shafkat, J. Gong, A. Derry, R. S. Molina, N. Thomas, Y. A. Khan, C. Mishra, C. Kim, L. J. Bartie, M. Nemeth, P. D. Hsu, T. Sercu, S. Candido, and A. Rives. Simulating 500 million years of evolution with a language model. Science, 387(6736):850--858, 2025. doi: 10.1126/science.ads0018. URL \url{https://www.science.org/doi/abs/10.1126/science.ads0018}.
+\item J. Heek, A. Levskaya, A. Oliver, M. Ritter, B. Rondepierre, A. Steiner, and M. van Zee. Flax: A neural network library and ecosystem for JAX, 2024. URL \url{http://github.com/google/flax}.
+\item A. Hottung, Y.-D. Kwon, and K. Tierney. Efficient active search for combinatorial optimization problems. In International Conference on Learning Representations, 2022.
+\item A. Hottung, M. Mahajan, and K. Tierney. Polynet: Learning diverse solution strategies for neural combinatorial optimization. arXiv preprint arXiv:2402.14048, Feb 2024.
+\item H. Hu, A. Lerer, A. Peysakhovich, and J. Foerster. ``other-play'' for zero-shot coordination. In Proceedings of the 37th International Conference on Machine Learning, ICML'20. JMLR.org, 2020.
+\item A. Hundt, B. Killeen, H. Kwon, C. Paxton, and G. Hager. ``good robot!'': Efficient reinforcement learning for multi-step visual tasks via reward shaping, 09 2019.
+\item L. P. Kaelbling, M. L. Littman, and A. R. Cassandra. Planning and acting in partially observable stochastic domains. Artificial intelligence, 101(1-2):99--134, 1998.
+\item R. M. Karp. On the computational complexity of combinatorial problems. Networks, 5(1):45--68, 1975.
+\item S. Kumar, A. Kumar, S. Levine, and C. Finn. One solution is not all you need: Few-shot extrapolation via structured maxent rl. Advances in Neural Information Processing Systems, 33:8198--8210, 2020.
+\item A. Laterre, Y. Fu, M. K. Jabri, A.-S. Cohen, D. Kas, K. Hajjar, T. S. Dahl, A. Kerkeni, and K. Beguir. Ranked reward: Enabling self-play reinforcement learning for combinatorial optimization, 2018. URL \url{https://arxiv.org/abs/1807.01672}.
+\item W. Long, W. Wen, P. Zhai, and L. Zhang. Role play: Learning adaptive role-specific strategies in multi-agent interactions, 2024. URL \url{https://arxiv.org/abs/2411.01166}.
+\item A. Lupu, B. Cui, H. Hu, and J. Foerster. Trajectory diversity for zero-shot coordination. In M. Meila and T. Zhang, editors, Proceedings of the 38th International Conference on Machine Learning, volume 139 of Proceedings of Machine Learning Research, pages 7204--7213. PMLR, 18--24 Jul 2021. URL \url{https://proceedings.mlr.press/v139/lupu21a.html}.
+\item M. Macfarlane, E. Toledo, D. J. Byrne, P. Duckworth, and A. Laterre. SPO: Sequential monte carlo policy optimisation. In The Thirty-eighth Annual Conference on Neural Information Processing Systems, 2024. URL \url{https://openreview.net/forum?id=XKvYcPPH5G}.
+\item O. Mahjoub, S. Abramowitz, R. de Kock, W. Khlifi, S. du Toit, J. Daniel, L. B. Nessir, L. Beyers, C. Formanek, L. Clark, and A. Pretorius. Sable: a performant, efficient and scalable sequence model for marl. In Proceedings of the 42th International Conference on Machine Learning, ICML'25, 2025.
+\item M. S. Mark, T. Gao, G. G. Sampaio, M. K. Srirama, A. Sharma, C. Finn, and A. Kumar. Policy-agnostic RL: Offline RL and online RL fine-tuning of any class and backbone. In 7th Robot Learning Workshop: Towards Robots with Human-Level Abilities, 2025. URL \url{https://openreview.net/forum?id=VGOFxdc6AD}.
+\item M. Matthews, M. Beukman, B. Ellis, M. Samvelyan, M. Jackson, S. Coward, and J. Foerster. Craftax: a lightning-fast benchmark for open-ended reinforcement learning. In Proceedings of the 41st International Conference on Machine Learning, ICML'24. JMLR.org, 2024.
+\item R. Mirsky, I. Carlucho, A. Rahman, E. Fosong, W. Macke, M. Sridharan, P. Stone, and S. V. Albrecht. A survey of ad hoc teamwork research. In Multi-Agent Systems: 19th European Conference, EUMAS 2022, D\"usseldorf, Germany, September 14--16, 2022, Proceedings, page 275--293, Berlin, Heidelberg, 2022. Springer-Verlag. ISBN 978-3-031-20613-9. doi: 10.1007/978-3-031-20614-6\_16. URL \url{https://doi.org/10.1007/978-3-031-20614-6_16}.
+\item V. Mnih, K. Kavukcuoglu, D. Silver, A. A. Rusu, J. Veness, M. G. Bellemare, A. Graves, M. A. Riedmiller, A. Fidjeland, G. Ostrovski, S. Petersen, C. Beattie, A. Sadik, I. Antonoglou, H. King, D. Kumaran, D. Wierstra, S. Legg, and D. Hassabis. Human-level control through deep reinforcement learning. Nature, 518:529--533, 2015.
+\item N. Muennighoff, Z. Yang, W. Shi, X. L. Li, L. Fei-Fei, H. Hajishirzi, L. Zettlemoyer, P. Liang, E. Cand\`es, and T. Hashimoto. s1: Simple test-time scaling, 2025. URL \url{https://arxiv.org/abs/2501.19393}.
+\item M. Nakamoto, Y. Zhai, A. Singh, M. S. Mark, Y. Ma, C. Finn, A. Kumar, and S. Levine. Cal-QL: Calibrated offline RL pre-training for efficient online fine-tuning. In Thirty-seventh Conference on Neural Information Processing Systems, 2023. URL \url{https://openreview.net/forum?id=GcEIvidYSw}.
+\item M. Olivecrona, T. Blaschke, O. Engkvist, and H. Chen. Molecular de novo design through deep reinforcement learning. Journal of Cheminformatics, 9, 09 2017. doi: 10.1186/s13321-017-0235-x.
+\item L. Ouyang, J. Wu, X. Jiang, D. Almeida, C. L. Wainwright, P. Mishkin, C. Zhang, S. Agarwal, K. Slama, A. Ray, J. Schulman, J. Hilton, F. Kelton, L. Miller, M. Simens, A. Askell, P. Welinder, P. Christiano, J. Leike, and R. Lowe. Training language models to follow instructions with human feedback. In Proceedings of the 36th International Conference on Neural Information Processing Systems, NIPS '22, Red Hook, NY, USA, 2022. Curran Associates Inc. ISBN 9781713871088.
+\item G. Papoudakis, F. Christianos, L. Sch\"afer, and S. V. Albrecht. Benchmarking multi-agent deep reinforcement learning algorithms in cooperative tasks. In Proceedings of the Neural Information Processing Systems Track on Datasets and Benchmarks (NeurIPS), 2021. URL \url{http://arxiv.org/abs/2006.07869}.
+\item M. Popova, O. Isayev, and A. Tropsha. Deep reinforcement learning for de novo drug design. Science Advances, 4(7):eaap7885, 2018. doi: 10.1126/sciadv.aap7885. URL \url{https://www.science.org/doi/abs/10.1126/sciadv.aap7885}.
+\item R. Qiu, Z. Sun, and Y. Yang. DIMES: A differentiable meta solver for combinatorial optimization problems. In A. H. Oh, A. Agarwal, D. Belgrave, and K. Cho, editors, Advances in Neural Information Processing Systems, 2022. URL \url{https://openreview.net/forum?id=9u05zr0nhx}.
+\item K. Rao, C. Harris, A. Irpan, S. Levine, J. Ibarz, and M. Khansari. Rl-cyclegan: Reinforcement learning aware simulation-to-real. pages 11154--11163, 06 2020. doi: 10.1109/CVPR42600.2020.01117.
+\item C. Ruhdorfer, M. Bortoletto, A. Penzkofer, and A. Bulling. The overcooked generalisation challenge, 2025. URL \url{https://arxiv.org/abs/2406.17949}.
+\item A. Rutherford, B. Ellis, M. Gallici, J. Cook, A. Lupu, G. Ingvarsson, T. Willi, A. Khan, C. S. de Witt, A. Souly, et al. Jaxmarl: Multi-agent rl environments in jax. arXiv preprint arXiv:2311.10090, 2023.
+\item M. Samvelyan, T. Rashid, C. S. De Witt, G. Farquhar, N. Nardelli, T. G. Rudner, C.-M. Hung, P. H. Torr, J. Foerster, and S. Whiteson. The starcraft multi-agent challenge. arXiv preprint arXiv:1902.04043, 2019.
+\item A. Sharma, S. Gu, S. Levine, V. Kumar, and K. Hausman. Dynamics-aware unsupervised discovery of skills. arXiv preprint arXiv:1907.01657, 2019.
+\item D. Silver, A. Huang, C. J. Maddison, A. Guez, L. Sifre, G. Van Den Driessche, J. Schrittwieser, I. Antonoglou, V. Panneershelvam, M. Lanctot, et al. Mastering the game of go with deep neural networks and tree search. Nature, 529(7587):484--489, 2016.
+\item C. V. Snell, J. Lee, K. Xu, and A. Kumar. Scaling LLM test-time compute optimally can be more effective than scaling parameters for reasoning. In The Thirteenth International Conference on Learning Representations, 2025. URL \url{https://openreview.net/forum?id=4FWAwZtd2n}.
+\item N. Stiennon, L. Ouyang, J. Wu, D. M. Ziegler, R. Lowe, C. Voss, A. Radford, D. Amodei, and P. Christiano. Learning to summarize from human feedback. In Proceedings of the 34th International Conference on Neural Information Processing Systems, NIPS '20, Red Hook, NY, USA, 2020. Curran Associates Inc. ISBN 9781713829546.
+\item C. Wang, A. Rahman, I. Durugkar, E. Liebman, and P. Stone. N-agent ad hoc teamwork. In The Thirty-eighth Annual Conference on Neural Information Processing Systems, 2024a. URL \url{https://openreview.net/forum?id=q7TxGUWlhD}.
+\item R. Wang, E. Zelikman, G. Poesia, Y. Pu, N. Haber, and N. Goodman. Hypothesis search: Inductive reasoning with language models. In The Twelfth International Conference on Learning Representations, 2024b. URL \url{https://openreview.net/forum?id=G7UtIGQmjm}.
+\item J. Wei, X. Wang, D. Schuurmans, M. Bosma, B. Ichter, F. Xia, E. H. Chi, Q. V. Le, and D. Zhou. Chain-of-thought prompting elicits reasoning in large language models. In Proceedings of the 36th International Conference on Neural Information Processing Systems, NIPS '22, Red Hook, NY, USA, 2022. Curran Associates Inc. ISBN 9781713871088.
+\item Y. Wu, Z. Sun, S. Li, S. Welleck, and Y. Yang. Inference scaling laws: An empirical analysis of compute-optimal inference for problem-solving with language models, 2025. URL \url{https://arxiv.org/abs/2408.00724}.
+\item E. S. Yourdshahi, T. Pinder, G. Dhawan, L. S. Marcolino, and P. Angelov. Towards large scale ad-hoc teamwork. In 2018 IEEE International Conference on Agents (ICA), pages 44--49, 2018. doi: 10.1109/AGENTS.2018.8460136.
+\item C. Yu, A. Velu, E. Vinitsky, J. Gao, Y. Wang, A. Bayen, and Y. Wu. The surprising effectiveness of PPO in cooperative multi-agent games. In Thirty-sixth Conference on Neural Information Processing Systems Datasets and Benchmarks Track, 2022. URL \url{https://openreview.net/forum?id=YVXaxB6L2Pl}.
+\item L. Zintgraf, S. Schulze, C. Lu, L. Feng, M. Igl, K. Shiarlis, Y. Gal, K. Hofmann, and S. Whiteson. Varibad: variational bayes-adaptive deep rl via meta-learning. J. Mach. Learn. Res., 22(1), Jan. 2021. ISSN 1532-4435.
+\end{enumerate}
+
+\section*{NeurIPS 论文核查清单}
+
+\textbf{1. 论断（Claims）}\\
+问题：摘要和引言中所做的主要论断是否准确反映了论文的贡献与范围？\\
+回答：[是]\\
+理由：/\\
+指南：
+\begin{itemize}[leftmargin=1.5em,itemsep=1pt]
+\item 回答 NA 意味着摘要和引言不包含论文中所做的论断。
+\item 摘要和/或引言应清晰陈述所做的论断，包括论文的贡献以及重要的假设和局限。对此问题回答 No 或 NA 不会被审稿人正面看待。
+\item 所做的论断应与理论和实验结果相符，并反映这些结果在多大程度上可被预期推广到其他设定。
+\item 只要清楚说明这些目标并非本论文所达成的，包含作为动机的远景目标是可以的。
+\end{itemize}
+
+\textbf{2. 局限性（Limitations）}\\
+问题：论文是否讨论了作者所做工作的局限性？\\
+回答：[是]\\
+理由：\\
+指南：
+\begin{itemize}[leftmargin=1.5em,itemsep=1pt]
+\item 回答 NA 意味着论文没有局限性，而回答 No 意味着论文有局限性但未在论文中讨论。
+\item 鼓励作者在论文中单独设立“局限性”一节。
+\item 论文应指出任何强假设以及结果对这些假设被违背时的稳健程度（例如独立性假设、无噪声设定、模型良好设定、仅局部成立的渐近近似）。作者应反思这些假设在实践中可能如何被违背及其影响。
+\item 作者应反思所做论断的范围，例如该方法是否仅在少数数据集或少数运行上进行了测试。一般而言，经验结果往往依赖于隐含的假设，这些假设应被明确表述。
+\item 作者应反思影响该方法性能的因素。例如，人脸识别算法在图像分辨率低或图像在弱光下拍摄时可能表现不佳；或者语音转文字系统可能因无法处理技术行话而不能可靠地为在线讲座提供闭合字幕。
+\item 作者应讨论所提算法的计算效率以及它们如何随数据集规模扩展。
+\item 如适用，作者应讨论其方法在解决隐私和公平性问题方面可能存在的局限。
+\item 尽管作者可能担心对局限性的完全坦诚会被审稿人作为拒稿理由，但更糟的结果可能是审稿人发现论文中未承认的局限。作者应运用最佳判断，并认识到支持透明度的个体行动在发展维护社区诚信规范方面发挥重要作用。审稿人将被特别告知不要因对局限的坦诚而进行惩罚。
+\end{itemize}
+
+\textbf{3. 理论假设与证明（Theory Assumptions and Proofs）}\\
+问题：对于每个理论结果，论文是否提供了完整的假设集合以及完整（且正确）的证明？\\
+回答：[NA]\\
+理由：没有理论结果。\\
+指南：
+\begin{itemize}[leftmargin=1.5em,itemsep=1pt]
+\item 回答 NA 意味着论文不包含理论结果。
+\item 论文中所有的定理、公式和证明都应编号并交叉引用。
+\item 所有假设都应在任何定理的陈述中清晰说明或引用。
+\item 证明既可出现在正文，也可出现在补充材料中，但若出现在补充材料中，鼓励作者提供一个简短的证明概要以提供直觉。
+\item 反过来，论文核心中提供的任何非正式证明都应辅以附录或补充材料中提供的正式证明。
+\item 证明所依赖的定理和引理应被恰当引用。
+\end{itemize}
+
+\textbf{4. 实验结果可复现性（Experimental Result Reproducibility）}\\
+问题：论文是否充分披露了在影响论文主要论断和/或结论的程度上复现其主要实验结果所需的全部信息（无论是否提供代码和数据）？\\
+回答：[是]\\
+理由：提供了代码和模型检查点。\\
+指南：
+\begin{itemize}[leftmargin=1.5em,itemsep=1pt]
+\item 回答 NA 意味着论文不包含实验。
+\item 若论文包含实验，对此问题回答 No 不会被审稿人正面看待：无论是否提供代码和数据，使论文可复现都很重要。
+\item 如果贡献是数据集和/或模型，作者应描述为使其结果可复现或可验证而采取的步骤。
+\item 视贡献而定，可复现性可通过多种方式实现。例如，若贡献是一种新颖架构，充分描述该架构可能就足够；若贡献是特定模型和经验评估，则可能需要让他人能够用相同数据集复制模型，或提供对模型的访问。一般而言，发布代码和数据通常是实现这一点的好方法，但也可通过如何复制结果的详细说明、对托管模型的访问（例如大语言模型的情形）、发布模型检查点，或其他适合所开展研究的方式来提供可复现性。
+\item 虽然 NeurIPS 不要求发布代码，但会议确实要求所有投稿提供某种合理的可复现性途径，这可能取决于贡献的性质。例如：
+  \begin{itemize}[leftmargin=1.5em,itemsep=1pt]
+  \item (a) 若贡献主要是一种新算法，论文应清楚说明如何复现该算法。
+  \item (b) 若贡献主要是一种新的模型架构，论文应清晰且完整地描述该架构。
+  \item (c) 若贡献是一个新模型（例如大语言模型），则应提供访问该模型以复现结果的方式，或复现该模型的方式（例如用开源数据集或构建数据集的说明）。
+  \item (d) 我们认识到某些情况下可复现性可能较为棘手，此时欢迎作者描述他们提供可复现性的特定方式。对于闭源模型，对模型的访问可能在某种程度上受限（例如仅限注册用户），但其他研究者应能有某种途径来复现或验证结果。
+  \end{itemize}
+\end{itemize}
+
+\textbf{5. 数据与代码的开放获取（Open access to data and code）}\\
+问题：论文是否提供对数据和代码的开放获取，并附有足够的说明以忠实复现补充材料中所述的主要实验结果？\\
+回答：[是]\\
+理由：\\
+指南：
+\begin{itemize}[leftmargin=1.5em,itemsep=1pt]
+\item 回答 NA 意味着论文不包含需要代码的实验。
+\item 详情请参阅 NeurIPS 代码和数据投稿指南（\url{https://nips.cc/public/guides/CodeSubmissionPolicy}）。
+\item 虽然我们鼓励发布代码和数据，但我们理解这可能并非总能做到，因此“No”是可接受的回答。论文不能仅因未包含代码而被拒，除非这对贡献至关重要（例如对于新的开源基准）。
+\item 说明应包含为复现结果而运行的确切命令和环境。详情请参阅 NeurIPS 代码和数据投稿指南（\url{https://nips.cc/public/guides/CodeSubmissionPolicy}）。
+\item 作者应提供关于数据访问和准备的说明，包括如何访问原始数据、预处理数据、中间数据和生成数据等。
+\item 作者应提供脚本以复现所提新方法和基线的所有实验结果。若仅有部分实验可复现，应说明哪些被从脚本中省略及原因。
+\item 在投稿时，为保持匿名，作者应发布匿名化版本（如适用）。
+\item 建议在补充材料（附加于论文）中提供尽可能多的信息，但允许包含指向数据和代码的 URL。
+\end{itemize}
+
+\textbf{6. 实验设定/细节（Experimental Setting/Details）}\\
+问题：论文是否说明了理解结果所需的全部训练和测试细节（例如数据划分、超参数及其选择方式、优化器类型等）？\\
+回答：[是]\\
+理由：是，数值在附录中给出。\\
+指南：
+\begin{itemize}[leftmargin=1.5em,itemsep=1pt]
+\item 回答 NA 意味着论文不包含实验。
+\item 实验设定应在论文核心中以足够的细节水平呈现，以便理解结果并使之有意义。
+\item 完整细节可与代码一起、在附录中或作为补充材料提供。
+\end{itemize}
+
+\textbf{7. 实验统计显著性（Experiment Statistical Significance）}\\
+问题：论文是否恰当且正确地定义并报告了误差棒（error bar），或关于实验统计显著性的其他适当信息？\\
+回答：[是]\\
+理由：\\
+指南：
+\begin{itemize}[leftmargin=1.5em,itemsep=1pt]
+\item 回答 NA 意味着论文不包含实验。
+\item 若结果至少在支持论文主要论断的实验中附有误差棒、置信区间或统计显著性检验，作者应回答“是”。
+\item 应清楚说明误差棒所捕捉的变异性因素（例如训练/测试划分、初始化、某参数的随机抽取，或在给定实验条件下的整体运行）。
+\item 应解释计算误差棒的方法（闭式公式、调用库函数、自助法等）。
+\item 应给出所做的假设（例如误差服从正态分布）。
+\item 应清楚误差棒是标准差还是均值的标准误。
+\item 报告 1-sigma 误差棒是可以的，但应予以说明。若误差正态性的假设未被验证，作者应优先报告 2-sigma 误差棒，而非声称拥有 96\,\% 置信区间。
+\item 对于非对称分布，作者应注意不要在表或图中显示会产生超出范围结果（例如负的错误率）的对称误差棒。
+\item 若在表或图中报告误差棒，作者应在正文中解释它们是如何计算的，并引用相应的图或表。
+\end{itemize}
+
+\textbf{8. 实验算力资源（Experiments Compute Resources）}\\
+问题：对于每个实验，论文是否提供了关于复现实验所需计算资源（计算工作节点类型、内存、执行时间）的充分信息？\\
+回答：[是]\\
+理由：\\
+指南：
+\begin{itemize}[leftmargin=1.5em,itemsep=1pt]
+\item 回答 NA 意味着论文不包含实验。
+\item 论文应说明计算工作节点的类型（CPU 或 GPU、内部集群或云提供商），包括相关的内存和存储。
+\item 论文应提供每个单独实验运行所需的算力量以及总算力的估计。
+\item 论文应披露整个研究项目是否需要比论文中报告的实验更多的算力（例如未进入论文的初步或失败实验）。
+\end{itemize}
+
+\textbf{9. 伦理准则（Code Of Ethics）}\\
+问题：论文中所开展的研究是否在各个方面都符合 NeurIPS 伦理准则（\url{https://neurips.cc/public/EthicsGuidelines}）？\\
+回答：[是]\\
+理由：\\
+指南：
+\begin{itemize}[leftmargin=1.5em,itemsep=1pt]
+\item 回答 NA 意味着作者未审阅 NeurIPS 伦理准则。
+\item 若作者回答 No，他们应解释需要偏离伦理准则的特殊情况。
+\item 作者应确保保持匿名（例如，若因其管辖区的法律或法规存在特殊考量）。
+\end{itemize}
+
+\textbf{10. 更广泛的影响（Broader Impacts）}\\
+问题：论文是否讨论了所开展工作的潜在积极社会影响和消极社会影响？\\
+回答：[NA]\\
+理由：不相关。\\
+指南：
+\begin{itemize}[leftmargin=1.5em,itemsep=1pt]
+\item 回答 NA 意味着所开展工作没有社会影响。
+\item 若作者回答 NA 或 No，他们应解释为何其工作没有社会影响，或为何论文不涉及社会影响。
+\item 消极社会影响的例子包括潜在的恶意或非预期用途（例如虚假信息、生成虚假个人资料、监控）、公平性考量（例如部署可能对特定群体做出不公平决策的技术）、隐私考量和安全考量。
+\item 会议预期许多论文将是基础研究，与特定应用乃至部署无关。然而，若存在通向任何消极应用的直接路径，作者应予以指出。例如，指出生成模型质量的提升可能被用于生成深度伪造（deepfake）以传播虚假信息是合理的；另一方面，无需指出用于优化神经网络的通用算法可能使人们更快训练生成深度伪造的模型。
+\item 作者应考虑技术在按预期使用且正常运行时可能产生的危害、技术在按预期使用但给出错误结果时可能产生的危害，以及（有意或无意）误用技术所导致的危害。
+\item 若存在消极社会影响，作者也可讨论可能的缓解策略（例如受限发布模型、在攻击之外提供防御、监控误用的机制、监控系统随时间从反馈中学习的机制、提升机器学习的效率和可及性）。
+\end{itemize}
+
+\textbf{11. 防护措施（Safeguards）}\\
+问题：论文是否描述了为负责任地发布具有高误用风险的数据或模型（例如预训练语言模型、图像生成器或抓取的数据集）而采取的防护措施？\\
+回答：[NA]\\
+理由：\\
+指南：
+\begin{itemize}[leftmargin=1.5em,itemsep=1pt]
+\item 回答 NA 意味着论文不构成此类风险。
+\item 具有高误用或双重用途风险的已发布模型应附带必要的防护措施一起发布，以允许对模型进行受控使用，例如要求用户遵守使用指南或访问限制，或实施安全过滤器。
+\item 从互联网抓取的数据集可能构成安全风险。作者应描述他们如何避免发布不安全的图像。
+\item 我们认识到提供有效的防护措施颇具挑战性，许多论文不需要这样做，但我们鼓励作者考虑这一点并尽最大努力。
+\end{itemize}
+
+\textbf{12. 现有资产的许可（Licenses for existing assets）}\\
+问题：论文中所用资产（例如代码、数据、模型）的创建者或原始所有者是否得到了恰当的署名，许可和使用条款是否被明确提及并得到恰当尊重？\\
+回答：[NA]\\
+理由：\\
+指南：
+\begin{itemize}[leftmargin=1.5em,itemsep=1pt]
+\item 回答 NA 意味着论文不使用现有资产。
+\item 作者应引用产生该代码包或数据集的原始论文。
+\item 作者应说明所用资产的版本，并尽可能包含 URL。
+\item 应为每个资产包含许可名称（例如 CC-BY 4.0）。
+\item 对于从特定来源（例如网站）抓取的数据，应提供该来源的版权和服务条款。
+\item 若发布了资产，应在包中提供许可、版权信息和使用条款。对于流行数据集，paperswithcode.com/datasets 为某些数据集整理了许可。其许可指南可帮助确定数据集的许可。
+\item 对于被重新打包的现有数据集，应同时提供原始许可和衍生资产的许可（若有变化）。
+\item 若此信息无法在线获得，鼓励作者联系资产创建者。
+\end{itemize}
+
+\textbf{13. 新资产（New Assets）}\\
+问题：论文中引入的新资产是否有良好的文档记录，文档是否随资产一起提供？\\
+回答：[是]\\
+理由：\\
+指南：
+\begin{itemize}[leftmargin=1.5em,itemsep=1pt]
+\item 回答 NA 意味着论文不发布新资产。
+\item 研究者应通过结构化模板将数据集/代码/模型的细节作为投稿的一部分进行交流。这包括关于训练、许可、局限等的细节。
+\item 论文应讨论是否以及如何从其资产被使用的人那里获得同意。
+\item 在投稿时，记得匿名化你的资产（如适用）。你可以创建匿名 URL 或包含匿名 zip 文件。
+\end{itemize}
+
+\textbf{14. 众包与涉及人类受试者的研究（Crowdsourcing and Research with Human Subjects）}\\
+问题：对于众包实验和涉及人类受试者的研究，论文是否包含给参与者的指示全文以及（如适用）截图，以及关于报酬（若有）的细节？\\
+回答：[NA]\\
+理由：\\
+指南：
+\begin{itemize}[leftmargin=1.5em,itemsep=1pt]
+\item 回答 NA 意味着论文不涉及众包或涉及人类受试者的研究。
+\item 将此信息包含在补充材料中是可以的，但若论文的主要贡献涉及人类受试者，则应在正文中尽可能多地包含细节。
+\item 根据 NeurIPS 伦理准则，参与数据收集、整理或其他劳动的工作者应至少获得数据收集者所在国家的最低工资。
+\end{itemize}
+
+\textbf{15. 机构审查委员会（IRB）批准或涉及人类受试者研究的等效批准（Institutional Review Board (IRB) Approvals or Equivalent for Research with Human Subjects）}\\
+问题：论文是否描述了研究参与者所承担的潜在风险、此类风险是否向受试者披露，以及是否获得了机构审查委员会（IRB）批准（或基于你所在国家或机构要求的等效批准/审查）？\\
+回答：[NA]\\
+理由：\\
+指南：
+\begin{itemize}[leftmargin=1.5em,itemsep=1pt]
+\item 回答 NA 意味着论文不涉及众包或涉及人类受试者的研究。
+\item 视研究开展所在的国家而定，任何涉及人类受试者的研究可能需要 IRB 批准（或等效）。若你获得了 IRB 批准，应在论文中清楚说明。
+\item 我们认识到此程序在不同机构和地区之间可能存在显著差异，我们期望作者遵守 NeurIPS 伦理准则及其所在机构的指南。
+\item 对于初次投稿，请勿包含任何会破坏匿名性的信息（如适用），例如开展审查的机构。
+\end{itemize}
+
+\appendix
+\renewcommand{\thesection}{\Alph{section}}
+\section*{\centering 附录}
+
+\section{额外结果}
+
+第~4.2 节呈现了 Sable 配合所有推理策略在基准中 8 个最难任务上的等高线图。我们在图~\ref{fig:8} 中报告其余 9 个任务的等高线图。
+
+\begin{figure}[H]\centering
+  \includegraphics[width=\linewidth]{cand_p22_k00.pdf}
+  \caption{Sable 配合不同推理策略在其余 9 个任务上、在一系列时间预算（x 轴）与算力（y 轴）上的性能等高线图。颜色表示性能，颜色越亮表示数值越高。}
+  \label{fig:8}
+\end{figure}
+
+图~\ref{fig:8} 显示出与第~4.2 节所示相似的趋势。SABLE+COMPASS 带来最佳的整体性能。随机采样总体上提供了一个良好且稳健的基线。在线微调受方差困扰：尽管在少数任务上能接近 COMPASS，但它常被随机采样超越。最后，SGBS 在众多场景中获得良好性能，甚至在一个场景（smacv2\_10\_units）中领先。
+
+\section{关于任务的细节}
+
+\begin{figure}[H]\centering
+  \includegraphics[width=0.32\linewidth]{cand_p22_k01.pdf}
+  \caption{Connector 的环境渲染。任务名称：con-10x10-10a。图片来自 Mahjoub et al. (2025)。}
+  \label{fig:9}
+\end{figure}
+
+Connector 是一个旨在对印刷电路板（printed circuit board，PCB）布线进行建模的环境。智能体从随机生成的初始位置出发，必须在不与彼此路径重叠的情况下到达目标位置（在图~\ref{fig:9} 中以较低不透明度的彩色格子表示）。每个智能体拥有一个以自身为中心、视野固定的部分视图，以及其在网格上当前的 $(x, y)$ 坐标和其目标位置的 $(x, y)$ 坐标。在每个时间步，智能体获得一个小的负奖励 $-0.03$，并在成功连接到目标位置时获得 1 的奖励。该环境的特殊难度源于这样一个事实：智能体必须谨慎选择动作，使得它们不仅贪心地到达自己的目标，而且使所有智能体最终都能到达各自的目标。
+
+\begin{figure}[H]\centering
+  \includegraphics[width=0.32\linewidth]{cand_p23_k01.pdf}
+  \caption{Robot Warehouse 的环境渲染。任务名称：tiny-2ag。图片来自 Mahjoub et al. (2025)。}
+  \label{fig:10}
+\end{figure}
+
+RWARE 是一个智能体需要协调以在仓库中将货架（图~\ref{fig:10} 中的绿色格子）投递到目标位置（图~\ref{fig:10} 中的深灰色格子）的环境。奖励是稀疏的，因为智能体仅在成功将货架投递到目标位置时获得 1 的奖励，否则为 0。这种稀疏性使该环境特别困难，因为智能体必须完成一长串正确动作才能获得任何奖励信号。
+
+\begin{figure}[H]\centering
+  \includegraphics[width=0.32\linewidth]{cand_p23_k00.pdf}
+  \caption{SMAX 的环境渲染。任务名称：2s3z。图片来自 Mahjoub et al. (2025)。}
+  \label{fig:11}
+\end{figure}
+
+SMAC 是一个智能体需要协调并发展出正确微操策略（micro strategy）以击败敌方队伍的环境。已有研究表明原始基准过于简单，因此开发了 SMACv2（Ellis et al., 2023）以解决原始基准的不足。SMACv2 通过从一组单位类型中采样来随机生成一支盟军单位队伍，并在每个回合开始时随机生成盟军起始位置。对泛化的需求正是赋予该基准难度的原因。
+
+\textbf{基于 JAX 的实现}\quad 由于 Connector 是作为 Jumanji（Bonnet et al., 2023）的一部分开发的，我们直接使用其基于 JAX 的实现。对于 RWARE，我们使用来自 Jumanji 的基于 JAX 的重新实现；对于 SMAC 和 SMACv2，我们使用来自 JaxMARL（Rutherford et al., 2023）的基于 JAX 的重新实现，命名为 SMAX。关于任务命名约定的详细讨论，我们请读者参阅 Mahjoub et al. (2025) 的附录。
+
+\section{关于单智能体情形的结果与讨论}
+
+\subsection{单智能体挑战上的额外结果：Craftax}
+
+为证明我们的核心信息不限于多智能体情形，我们选择了一个至今仍远未被 RL 算法解决的单智能体任务，即 Craftax（Matthews et al., 2024）。
+
+我们训练了一个 SABLE 基础策略，并匹配了 Craftax-1B 排行榜上当前报告的最先进性能，即最高分的 18.3\,\%。然后我们使用最简单的推理策略（随机采样）运行了 30 秒的推理时搜索。结果报告在表~\ref{tab:1} 中。令人瞩目的是，与我们的主要结果相似，仅使用 30 秒的推理时搜索就带来了 37\,\% 的性能增益，达到最高分的 25.8\,\%。为进一步将其置于上下文中，这一性能提升的量级与训练基础策略的最后 3 亿步所带来的量级相同。
+
+这些新结果证实，推理时搜索所实现的显著改进不限于多智能体 RL，而是普遍适用于 RL。在下一小节中，我们讨论现有结果（文献中报告的）以进一步支持推理时搜索在单智能体设定中的重要性。
+
+\begin{table}[H]\centering
+\caption{Craftax-1B 上零样本推理与使用 30 秒预算的随机采样之间的性能比较。数值表示平均性能及 95\,\% 置信区间。}
+\label{tab:1}
+\begin{tabular}{lcc}
+\toprule
+场景 & 零样本 & 随机采样（30 秒预算）\\
+\midrule
+Craftax-1B & 18.8 (18.1, 19.5) & 25.8 (25.7, 26.1)\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{单智能体任务上的已发表结果}
+
+为进一步证明推理时策略在多智能体情形之外的影响，我们讨论文献中此前报告的结果。这些结果未展现出相同的影响，因为它们往往接近饱和，即便使用零样本也是如此。尽管如此，它们证明了推理时策略可成功应用于广泛的问题并提供可观的改进。
+
+我们参考引入了本文所用推理策略的开创性工作中报告的实验结果（Chalumeau et al., 2023b; Choo et al., 2022; Bello* et al., 2017）。所有这些工作都在单智能体任务（TSP、CVRP、JSSP、Knapsack、FFSP）上进行评估，并表明推理策略相比零样本性能带来了统计显著的改进。
+
+然而，我们重申在这些实验结果上识别出的局限：时间/算力设置的广度有限、方法对问题特定技巧的依赖，以及零样本性能已经非常高的饱和基准。
+
+\section{超参数}
+
+在本节中，我们报告实验中使用的超参数。它们也可在提交的代码文件中找到。
+
+\textbf{训练 - 基础策略}\quad 用于训练本基准基础策略的超参数取自 Mahjoub et al. (2025)。这些超参数使用树结构 Parzen 估计器（Tree-structured Parzen Estimator，TPE）贝叶斯优化算法、以 40 次试验的预算在每个任务上进行了调优，并在 Mahjoub et al. (2025) 中报告。
+
+\textbf{超参数 - COMPASS 训练}\quad 用于训练所有 COMPASS 检查点的超参数可在表~\ref{tab:2} 中找到。其中大多数与 Chalumeau et al. (2023b) 所用的原始超参数保持相近。
+
+\textbf{超参数 - 推理时搜索}\quad 大多数值直接取自原始工作或与之保持相近。当不同时，我们尝试使用原始工作的指导来决定如何设置它们。用于 COMPASS 的 CMA-ES 搜索（对所有基础策略）的值可在表~\ref{tab:3} 中找到。在线微调（所有基础策略）的值报告在表~\ref{tab:4} 中。SGBS（所有基础策略）的超参数报告在表~\ref{tab:5} 中，随机采样的超参数报告在表~\ref{tab:6} 中。
+
+\begin{table}[H]\centering
+\caption{COMPASS 训练阶段所用的超参数。对全部三种基础策略（即 SABLE、IPPO、MAPPO）使用相同的值。}
+\label{tab:2}
+\begin{tabular}{lc}
+\toprule
+参数 & 值\\
+\midrule
+Instances batch size（实例批量大小） & 128\\
+Latent space sample size（隐空间采样大小） & 64\\
+Latent space dimension size（隐空间维度大小） & 16\\
+Latent amplifier（隐放大器） & 1\\
+Padding with random weights（用随机权重填充） & True\\
+Weight noise amplitude（权重噪声幅度） & 0.01\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]\centering
+\caption{在推理时搜索 COMPASS 隐空间所用的 CMA-ES 过程的超参数。对所有任务和所有基础策略（即 SABLE、MAPPO 和 IPPO）使用相同的参数。}
+\label{tab:3}
+\begin{tabular}{lccccccc}
+\toprule
+参数 \textbackslash{} 尝试次数 & 4 & 8 & 16 & 32 & 64 & 128 & 256\\
+\midrule
+Latent sample size（隐采样大小） & 4 & 8 & 16 & 32 & 64 & 128 & 256\\
+Number of elites（精英数量） & 2 & 4 & 8 & 16 & 32 & 64 & 128\\
+Covariance matrix step size（协方差矩阵步长） & 1.0 & 1.0 & 1.0 & 1.0 & 1.0 & 1.0 & 1.0\\
+Initial sigma（初始 sigma） & 1.0 & 1.0 & 1.0 & 1.0 & 1.0 & 1.0 & 1.0\\
+Num. components（分量数） & 1 & 1 & 1 & 1 & 1 & 1 & 1\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]\centering
+\caption{在推理时对 SABLE、MAPPO 和 IPPO 进行在线微调时所用的超参数。}
+\label{tab:4}
+\small
+\begin{tabular}{llccc}
+\toprule
+参数 & 任务名称 & Sable & IPPO & MAPPO\\
+\midrule
+Max. trajectory size（最大轨迹大小） & All tasks（所有任务） & 64 & 64 & 64\\
+\midrule
+Learning rate（学习率） & con-10x10x10a & 0.001 & 0.00025 & 0.0001\\
+ & con-15x15x23a & 0.001 & 0.0001 & 0.0001\\
+ & large-4ag & 0.001 & 0.0005 & 0.0001\\
+ & large-4ag-hard & 0.001 & 0.0005 & 0.00025\\
+ & large-8ag & 0.001 & 0.00025 & 0.0001\\
+ & large-8ag-hard & 0.001 & 0.00025 & 0.0005\\
+ & medium-4ag & 0.001 & 0.00025 & 0.00025\\
+ & medium-4ag-hard & 0.0005 & 0.0005 & 0.00025\\
+ & medium-6ag & 0.0005 & 0.0001 & 0.00025\\
+ & smacv2\_10\_units & 0.00025 & 0.0005 & 0.00025\\
+ & smacv2\_20\_units & 0.001 & 0.0005 & 0.0005\\
+ & smacv2\_5\_units & 0.001 & 0.00025 & 0.00025\\
+ & small-4ag & 0.0005 & 0.0005 & 0.0005\\
+ & small-4ag-hard & 0.001 & 0.0001 & 0.00025\\
+ & tiny-2ag-hard & 0.001 & 0.00025 & 0.00025\\
+ & tiny-4ag-hard & 0.0005 & 0.0005 & 0.0005\\
+ & xlarge-4ag & 0.001 & 0.0005 & 0.0005\\
+ & xlarge-4ag-hard & 0.0001 & 0.0005 & 0.0001\\
+\midrule
+Entropy coefficient（熵系数） & Connector & 0.05 & 0.00 & 0.00\\
+ & RWARE & 0.0 & 0.0 & 0.0\\
+ & SMAX & 0.0 & 0.0 & 0.0\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]\centering
+\caption{仿真引导束搜索（SGBS）的超参数。对 SABLE、IPPO 和 MAPPO 使用相同的值。所选值使得扩展因子（expansion factor）和束宽（beam width，top-k）充分利用批量所允许的尝试数。}
+\label{tab:5}
+\begin{tabular}{lcccccc}
+\toprule
+参数 \textbackslash{} 尝试次数 & 4 & 16 & 32 & 64 & 128 & 256\\
+\midrule
+Expansion factor（扩展因子） & 4 & 4 & 4 & 4 & 4 & 4\\
+Beam width (Top k)（束宽，Top k） & 1 & 4 & 8 & 16 & 32 & 64\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]\centering
+\caption{为从策略（SABLE、IPPO 或 MAPPO）进行随机采样，我们始终使用与训练期间相同的温度：1.0。}
+\label{tab:6}
+\begin{tabular}{lc}
+\toprule
+参数 & 值\\
+\midrule
+Evaluation greedy（贪心评估） & False\\
+Temperature（温度） & 1.0\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{实验技术栈}
+
+所有算法实现都通过扩展基于 JAX 的研究库 Mava（de Kock et al., 2021）构建。我们用于搜索 COMPASS 隐空间的 CMA-ES 版本来自基于 JAX 的质量-多样性库 QDAX（Chalumeau et al., 2024）。这两个库都构建为利用 DeepMind JAX 生态系统（DeepMind et al., 2020），并使用 Flax（Heek et al., 2024）构建神经网络、使用 optax 作为优化器、使用 orbax 进行模型检查点保存。
+
+\section{关于训练的额外细节}
+
+\subsection{基础策略训练}
+
+在第~3 节中，我们解释了在我们的设定中假设所有方法都可训练至收敛。为了透明并与文献中此前的结果作比较，我们在表~\ref{tab:7} 中报告为使各方法达到收敛而给予的训练预算（以环境步数计）。
+
+\begin{table}[H]\centering
+\caption{每种方法在各任务上的训练预算（以环境步数计）。}
+\label{tab:7}
+\begin{tabular}{lccc}
+\toprule
+任务名称 & Sable & MAPPO & IPPO\\
+\midrule
+con-10x10x10a & 100M & 200M & 200M\\
+con-15x15x23a & 100M & 200M & 200M\\
+large-4ag & 600M & 200M & 200M\\
+large-4ag-hard & 600M & 400M & 200M\\
+large-8ag & 600M & 400M & 200M\\
+large-8ag-hard & 600M & 200M & 200M\\
+medium-4ag & 400M & 200M & 200M\\
+medium-4ag-hard & 600M & 200M & 200M\\
+medium-6ag & 600M & 200M & 200M\\
+small-4ag & 200M & 200M & 200M\\
+small-4ag-hard & 400M & 200M & 200M\\
+tiny-2ag-hard & 100M & 200M & 200M\\
+tiny-4ag-hard & 200M & 200M & 200M\\
+xlarge-4ag & 200M & 400M & 200M\\
+xlarge-4ag-hard & 200M & 200M & 200M\\
+smacv2\_10\_units & 100M & 200M & 200M\\
+smacv2\_20\_units & 600M & 200M & 200M\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{COMPASS 训练}
+
+在本节中，我们提供关于 COMPASS 及我们实现的细节。如需更深入的解释，我们请读者参阅原始论文（Chalumeau et al., 2023b）。我们的实现可在提交的代码文件中获得。
+
+COMPASS 是一种方法，它 (i) 使用一个预训练的基础策略并将其修改为以一个隐向量为条件；(ii) 对其进行重训，使隐向量能够创建出针对不同训练子分布而多样化且专门化的策略。在推理时，这使得能够搜索在待求解新实例上表现最佳的隐向量。
+
+\textbf{对预训练基础策略进行“再生”（Reincarnating）}\quad COMPASS 检查点不是从头训练的，而是对一个现有基础策略进行“再生”，向该策略添加参数以处理可作为额外输入给出的隐向量。因此，必须选择在现有架构中何处注入隐向量，并且必须修改神经策略的现有参数以适应输入的新形状。隐向量的输入方式必须能够使针对同一观测所产生的动作多样化（即确保不同的隐向量创建出不同的策略）。在实践中，我们将隐向量拼接到观测上。在相关情况下，我们确保这是在观测归一化层之后进行的。
+
+在原始工作中，添加到基础神经网络的额外权重用零初始化。在我们的情形中，我们观察到这无法在第一个训练步中提供足够的多样化，从而阻止任何专门化的出现，导致没有收益。我们发现用 $-0.01$ 到 $0.01$ 之间的随机均匀值初始化这些参数能在所有任务上解决该问题。
+
+\textbf{在隐空间中创建多样性与专门化}\quad 与原始方法类似，隐空间不是学习得到的，而是一个固定的先验，网络的权重被学习以从该先验空间创建多样性。我们也使用类似的先验，即在 16 个维度上、$-1$ 到 $1$ 之间的均匀分布。我们不需要对隐向量进行任何放大（即我们乘以 1，而原始工作乘以 100）。在每个训练步，从训练分布中采样一批实例，从该隐空间中采样一批隐向量，针对每个实例、每个隐向量评估条件化策略，并仅使用每个实例下表现最佳的隐向量参与损失的计算。这就创建了专门化（多样化）。关于更多动机和数学表述，我们请读者参阅 Chalumeau et al. (2023b)。与我们实验研究中的所有训练过程一样，该方法被允许训练至收敛。在实践中，每个 COMPASS 检查点训练了 1 亿步。
+
+\section{伪算法}
+
+在本节中，我们提供论文中所用推理策略的算法描述，展示策略在时间与预算约束下于推理时如何被使用。随机采样在算法~\ref{alg:1} 中解释，SGBS 在算法~\ref{alg:2} 中，在线微调在算法~\ref{alg:3} 中，COMPASS 在算法~\ref{alg:4} 中。
+
+算法使用术语轨迹 $\tau$，它等价于解。符号 $\circ$ 用于将一个新的步转移拼接到一个部分轨迹上。
+
+\begin{algorithm}[H]
+\caption{Stochastic Sampling（随机采样）}
+\label{alg:1}
+\begin{algorithmic}[1]
+\Require 策略 $\pi_\theta$，实例 $\rho$，时间预算 $T_{max}$，算力 $B_{max}$，奖励函数 $R$
+\State 初始化最优轨迹 $\tau^* \gets \varnothing$，最优分数 $R^* \gets -\infty$
+\While{已用时间 $< T_{max}$}
+  \For{并行展开 $b = 1$ 到 $B_{max}$}
+    \State 初始化轨迹 $\tau_b \gets \varnothing$
+    \For{步 $t = 1$ 到 $H$}
+      \State 从环境副本 $\rho_b$ 观测 $o_t$
+      \State 采样 $a_t \sim \pi_\theta(\cdot \mid o_t)$
+      \State 在 $\rho_b$ 中执行 $a_t$，观测 $o_{t+1}$
+      \State 将 $(o_t, a_t)$ 追加到 $\tau_b$
+    \EndFor
+    \State $R_b \gets R(\tau_b)$
+    \If{$R_b > R^*$}
+      \State $\tau^* \gets \tau_b$，$R^* \gets R_b$
+    \EndIf
+  \EndFor
+\EndWhile
+\State \textbf{返回} $\tau^*$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\caption{Simulation-Guided Beam Search（仿真引导束搜索）}
+\label{alg:2}
+\begin{algorithmic}[1]
+\Require 策略 $\pi_\theta$，实例 $\rho$，时间预算 $T_{max}$，算力 $B_{max}$，束宽 $K$，奖励函数 $R$
+\State 初始化束 $\mathcal{B} \gets \{\varnothing\}$，最优轨迹 $\tau^* \gets \varnothing$，最优分数 $R^* \gets -\infty$
+\While{已用时间 $< T_{max}$}
+  \State $\mathcal{B}_{new} \gets \varnothing$
+  \For{$\mathcal{B}$ 中的部分轨迹 $\tau$}
+    \For{采样 $b = 1$ 到 $B_{max}/|\mathcal{B}|$}
+      \State 令 $o_t$ 为 $\tau$ 末端处的观测
+      \State 采样 $a_t \sim \pi_\theta(\cdot \mid o_t)$
+      \State 使用 $\pi_\theta$ 从 $\tau \circ a_t$ 进行贪心展开仿真
+      \State 令 $\hat\tau_b$ 为得到的完整轨迹
+      \State $R_b \gets R(\hat\tau_b)$
+      \State 将 $(\tau \circ a_t, R_b)$ 加入 $\mathcal{B}_{new}$
+      \If{$R_b > R^*$}
+        \State $\tau^* \gets \hat\tau_b$，$R^* \gets R_b$
+      \EndIf
+    \EndFor
+  \EndFor
+  \State 将 $\mathcal{B}_{new}$ 中 top-$K$ 轨迹剪枝进 $\mathcal{B}$
+\EndWhile
+\State \textbf{返回} $\tau^*$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\caption{Online Fine-Tuning（在线微调）}
+\label{alg:3}
+\begin{algorithmic}[1]
+\Require 基础策略 $\pi_\theta$，实例 $\rho$，时间预算 $T_{max}$，算力 $B_{max}$，奖励函数 $R$，学习率 $\alpha$
+\State 初始化最优轨迹 $\tau^* \gets \varnothing$，最优分数 $R^* \gets -\infty$
+\State 初始化适应后的参数 $\theta' \gets \theta$
+\While{已用时间 $< T_{max}$}
+  \For{并行展开 $b = 1$ 到 $B_{max}$}
+    \State 在 $\rho$ 上展开 $\tau_b \sim \pi_{\theta'}$
+    \State $R_b \gets R(\tau_b)$
+    \If{$R_b > R^*$}
+      \State $\tau^* \gets \tau_b$，$R^* \gets R_b$
+    \EndIf
+  \EndFor
+  \State 计算梯度：$\nabla_\theta \gets \frac{1}{B_{max}} \sum_{b=1}^{B_{max}} \nabla_\theta \log \pi_{\theta'}(\tau_b) \cdot R_b$
+  \State 更新参数：$\theta' \gets \theta' + \alpha \nabla_\theta$
+\EndWhile
+\State \textbf{返回} $\tau^*$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\caption{COMPASS + CMA-ES search（COMPASS + CMA-ES 搜索）}
+\label{alg:4}
+\begin{algorithmic}[1]
+\Require 隐向量条件化策略 $\pi_\theta(\cdot \mid o, z)$，实例 $\rho$，时间预算 $T_{max}$，算力 $B_{max}$，奖励函数 $R$
+\State 初始化 CMA-ES：均值 $\mu$，协方差 $\Sigma$
+\State 初始化最优轨迹 $\tau^* \gets \varnothing$，最优分数 $R^* \gets -\infty$
+\While{已用时间 $< T_{max}$}
+  \State 采样 $\{z_b\}_{b=1}^{B_{max}} \sim \mathcal{N}(\mu, \Sigma)$
+  \For{每个 $z_b$ 并行}
+    \State 在 $\rho$ 上展开 $\tau_b \sim \pi_\theta(\cdot \mid o, z_b)$
+    \State $R_b \gets R(\tau_b)$
+    \If{$R_b > R^*$}
+      \State $\tau^* \gets \tau_b$，$R^* \gets R_b$
+    \EndIf
+  \EndFor
+  \State 使用 CMA-ES 以 $\{(z_b, R_b)\}_{b=1}^{B_{max}}$ 更新 $(\mu, \Sigma)$
+\EndWhile
+\State \textbf{返回} $\tau^*$
+\end{algorithmic}
+\end{algorithm}
+
+\section{推理时搜索适用的现实世界示例}
+
+将 RL 应用于现实世界应用是这项研究的一个关键驱动力。下面，我们描述三个我们有第一手经验的现实世界案例。在所有这些案例中，用户都允许设置一个时间预算，并且可访问解质量的一个代理量以为搜索提供信息。
+
+\textbf{印刷电路板布线}\quad 用户提交他们想要布线的 PCB 板规格。这项任务即便对专家而言，视板的复杂度，也可能耗时数天乃至数周。因此，用户通常乐意允许一个 AI 模型至少花费几分钟甚至几小时进行搜索以获得更优解（已布线的板）。此外，用户常会发现留出更多时间并给予更多计算以进一步改进板是有益的，这样的板随后可能更易于制造或降低其生产成本。
+
+\textbf{装箱（Bin Packing）}\quad 当一家物流公司想要用需要海运的物品装载集装箱时，操作员通常有几小时或几天来规划哪些物品需要被运输，因此可以允许推理时搜索。在此情形下，更优的物品分配（从而对相同数量的物品而言需要海运的集装箱更少）所带来的能源和金钱收益，将始终证明几小时的搜索或允许更多计算开销是值得的。
+
+\textbf{列车调度（Train Scheduling）}\quad 设计列车时刻表以满足需求预测，同时提出可行的时刻表（例如列车之间无碰撞），是另一个相关示例。这一过程通常每年发生一两次，可能需要数月才能完成。因此，无需依赖训练好的策略的单次展开，而是可以在数天内进行推理时搜索。
+
+\section{所有基础策略检查点的参数量}
+
+从预训练基础策略创建一个 COMPASS 检查点需要添加新参数以处理隐向量（见附录~F.2），从而增加模型规模。然而，这一增加很小，从不超过基础策略总模型规模的 2\,\%。
+
+我们报告所有基础策略检查点以及对应的所有 COMPASS 检查点的参数量，分别针对 IPPO（表~\ref{tab:9}）、MAPPO（表~\ref{tab:8}）和 Sable（表~\ref{tab:10}）。我们观察到：(i) 对于 IPPO 和 MAPPO，模型规模的增加保持在 1.6\,\% 以下；(ii) 对于 Sable，它通常使总参数量增加 0.5\,\%。因此，这一模型规模的增加对该方法的内存和计算占用影响甚微，这一点也被我们对随时间所达成尝试次数的研究（报告于附录~J）所证实。
+
+\begin{table}[H]\centering
+\caption{MAPPO 的参数量比较。}
+\label{tab:8}
+\begin{tabular}{lccc}
+\toprule
+场景 & Base Policy（基础策略） & COMPASS Policy（COMPASS 策略） & \% 增加\\
+\midrule
+small-4ag-hard & 125061 & 127109 & 1.64\%\\
+medium-6ag & 125317 & 127365 & 1.63\%\\
+tiny-4ag-hard & 125061 & 127109 & 1.64\%\\
+xlarge-4ag & 125061 & 127109 & 1.64\%\\
+xlarge-4ag-hard & 125061 & 127109 & 1.64\%\\
+large-8ag & 125573 & 127621 & 1.63\%\\
+tiny-2ag-hard & 124805 & 126853 & 1.64\%\\
+large-8ag-hard & 125573 & 127621 & 1.63\%\\
+medium-4ag & 125061 & 127109 & 1.64\%\\
+large-4ag & 125061 & 127109 & 1.64\%\\
+large-4ag-hard & 125061 & 127109 & 1.64\%\\
+medium-4ag-hard & 125061 & 127109 & 1.64\%\\
+smacv2\_20\_units & 187417 & 189465 & 1.09\%\\
+smacv2\_10\_units & 151567 & 153615 & 1.35\%\\
+small-4ag & 125061 & 127109 & 1.64\%\\
+con-10x10x10a & 124293 & 126341 & 1.65\%\\
+con-15x15x23a & 125957 & 128005 & 1.63\%\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]\centering
+\caption{IPPO 的参数量比较。}
+\label{tab:9}
+\begin{tabular}{lccc}
+\toprule
+场景 & Base Policy（基础策略） & COMPASS Policy（COMPASS 策略） & \% 增加\\
+\midrule
+large-8ag-hard & 125573 & 127621 & 1.63\%\\
+medium-6ag & 125317 & 127365 & 1.63\%\\
+large-8ag & 125573 & 127621 & 1.63\%\\
+tiny-4ag-hard & 125061 & 127109 & 1.64\%\\
+small-4ag-hard & 125061 & 127109 & 1.64\%\\
+tiny-2ag-hard & 124805 & 126853 & 1.64\%\\
+xlarge-4ag-hard & 125061 & 127109 & 1.64\%\\
+large-4ag-hard & 125061 & 127109 & 1.64\%\\
+large-4ag & 125061 & 127109 & 1.64\%\\
+xlarge-4ag & 125061 & 127109 & 1.64\%\\
+medium-4ag & 125061 & 127109 & 1.64\%\\
+medium-4ag-hard & 125061 & 127109 & 1.64\%\\
+smacv2\_20\_units & 187417 & 189465 & 1.09\%\\
+smacv2\_10\_units & 151567 & 153615 & 1.35\%\\
+small-4ag & 125061 & 127109 & 1.64\%\\
+con-10x10x10a & 124293 & 126341 & 1.65\%\\
+con-15x15x23a & 125957 & 128005 & 1.63\%\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]\centering
+\caption{SABLE 的参数量比较。}
+\label{tab:10}
+\begin{tabular}{lccc}
+\toprule
+场景 & Base Policy（基础策略） & COMPASS Policy（COMPASS 策略） & \% 增加\\
+\midrule
+large-8ag & 390096 & 392144 & 0.52\%\\
+smacv2\_20\_units & 43363 & 43875 & 1.18\%\\
+con-10x10x10a & 388422 & 390470 & 0.53\%\\
+con-15x15x23a & 389907 & 391955 & 0.53\%\\
+smacv2\_10\_units & 201435 & 202459 & 0.51\%\\
+medium-6ag & 389454 & 391502 & 0.53\%\\
+medium-4ag-hard & 389580 & 391628 & 0.53\%\\
+large-4ag-hard & 389004 & 391052 & 0.53\%\\
+large-8ag-hard & 389520 & 391568 & 0.53\%\\
+small-4ag-hard & 389004 & 391052 & 0.53\%\\
+tiny-4ag-hard & 1080524 & 1082572 & 0.19\%\\
+small-4ag & 389196 & 391244 & 0.53\%\\
+xlarge-4ag & 389004 & 391052 & 0.53\%\\
+medium-4ag & 389580 & 391628 & 0.53\%\\
+xlarge-4ag-hard & 1078796 & 1080844 & 0.19\%\\
+large-4ag & 389004 & 391052 & 0.53\%\\
+tiny-2ag-hard & 388746 & 390794 & 0.53\%\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{关于推理时预算的讨论}
+
+\textbf{实验中所用预算的选择}\quad 我们将实验设定创建得与实际用例相似。因此，我们使用时间作为主要预算约束，而非尝试次数（与该主题的大多数文献相反）。这使得能够计入搜索和适应的成本。尽管我们始终在每个任务的 128 个实例上评估方法，但我们确保每个实例都被完全独立地求解，以避免向量化过程造成对某一方法的偏向。我们选择以 30 到 300 秒的时间预算来研究各方法。下界取得较小，以表明即便短暂的推理时搜索也能提供显著的收益。上界则选得足够高，以观察哪种方法能真正从更长的搜索预算中获益。关于算力，我们选择了一个在实践中似乎可达成的取值范围。在现实世界场景中，仿真可能变得更复杂，并需要一个 CPU 核心进行一次仿真。因此我们认为大多数用例都能落在 256 次并行仿真的限制之内。尽管如此，我们的代码可用于更高的值，并可用于在新设置中（无论是时间还是并行尝试方面）获得结果。
+
+\textbf{在时间预算内所达成的总尝试次数}\quad 为与此前文献保持一致，并更好地理解每种推理策略和每个基础策略的搜索与适应成本，我们提供在时间限制内所达成的尝试次数，针对所有任务和算力（即所允许的并行尝试数）。SABLE 在 300 秒内的值报告如下：COMPASS 见表~\ref{tab:11}，在线微调见表~\ref{tab:12}，随机采样见表~\ref{tab:13}。SGBS 从现有部分解构建新解，因此其已尝试解的计数无法以与其他方法相同的方式获得。
+
+所有基础策略在 30 秒内的值报告在表~\ref{tab:14}、表~\ref{tab:16} 和表~\ref{tab:15} 中。
+
+\begin{table}[H]\centering
+\caption{在 300 秒推理时搜索期间使用 SABLE + COMPASS 时的尝试次数（生成的解数）。}
+\label{tab:11}
+\small
+\begin{tabular}{lrrrrrrr}
+\toprule
+任务名称 & 4 & 8 & 16 & 32 & 64 & 128 & 256\\
+\midrule
+con-10x10x10a & 9960 & 19448 & 37520 & 67296 & 131456 & 248320 & 422144\\
+con-15x15x23a & 1608 & 3112 & 7744 & 14144 & 27456 & 53248 & 80896\\
+large-4ag & 2608 & 5208 & 9360 & 16896 & 30464 & 44032 & 59392\\
+large-4ag-hard & 2596 & 5000 & 9360 & 16832 & 29568 & 44288 & 59904\\
+large-8ag & 1612 & 3200 & 6240 & 10304 & 17280 & 23424 & 30976\\
+large-8ag-hard & 1708 & 3144 & 6096 & 10624 & 18880 & 29056 & 39680\\
+medium-4ag & 2088 & 4072 & 7904 & 15104 & 29376 & 48256 & 87296\\
+medium-4ag-hard & 2072 & 4040 & 7888 & 16992 & 29632 & 48384 & 87552\\
+medium-6ag & 1536 & 3016 & 5728 & 10816 & 21440 & 37760 & 74240\\
+smacv2\_10\_units & 7628 & 13248 & 26176 & 45088 & 74304 & 122624 & 174336\\
+smacv2\_20\_units & 5824 & 10428 & 18528 & 34112 & 64064 & 111232 & 180992\\
+small-4ag & 1964 & 3880 & 8672 & 14112 & 28096 & 61568 & 83456\\
+small-4ag-hard & 1876 & 4216 & 7104 & 15488 & 30464 & 52096 & 93696\\
+tiny-2ag-hard & 2736 & 6072 & 11856 & 22496 & 44544 & 77440 & 147200\\
+tiny-4ag-hard & 1384 & 2648 & 5024 & 10624 & 16640 & 32256 & 45568\\
+xlarge-4ag & 1816 & 3568 & 7952 & 15264 & 24320 & 45440 & 81152\\
+xlarge-4ag-hard & 1180 & 2264 & 5344 & 9696 & 17792 & 28544 & 51200\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{关于 COMPASS 的额外讨论}
+
+在第~4.3 节中，我们提到了 COMPASS 为何取得良好性能和扩展趋势的解释。在本节中，我们对此加以详述，并强调三个主要方面。
+
+第一，COMPASS 训练的是一个“多次尝试”目标，这与其他方法不同——后者训练的是“单次尝试”性能。因此，COMPASS 的训练目标预先考虑到真正重要的是多次尝试上的最大性能，而非这些尝试上的平均性能。尽管它的平均解质量可能较低，但它产生一个卓越解的概率更高。这使得它在天然上更适合于允许多次尝试的推理时搜索。
+
+\begin{table}[H]\centering
+\caption{在 300 秒推理时搜索期间使用在线微调和 SABLE 时的尝试次数（生成的解数）。}
+\label{tab:12}
+\small
+\begin{tabular}{lrrrrrrr}
+\toprule
+任务名称 & 4 & 8 & 16 & 32 & 64 & 128 & 256\\
+\midrule
+con-10x10x10a & 10608 & 20256 & 37744 & 64448 & 115392 & 226560 & 395776\\
+con-15x15x23a & 2136 & 3952 & 6864 & 10496 & 16592 & 32000 & 60928\\
+large-4ag & 1792 & 3296 & 6560 & 9920 & 13376 & 24448 & 49664\\
+large-4ag-hard & 2064 & 3416 & 6448 & 8832 & 13248 & 24448 & 46592\\
+large-8ag & 1416 & 2336 & 4592 & 7552 & 11136 & 19200 & 34304\\
+large-8ag-hard & 1140 & 2576 & 4064 & 6752 & 12736 & 26624 & 44032\\
+medium-4ag & 2000 & 4176 & 7472 & 9920 & 15744 & 28160 & 48384\\
+medium-4ag-hard & 2024 & 3776 & 7232 & 10816 & 14848 & 28160 & 48384\\
+medium-6ag & 1700 & 2872 & 6448 & 8704 & 21120 & 32896 & 65792\\
+smacv2\_10\_units & 6848 & 12576 & 20176 & 37536 & 68160 & 156672 & 235776\\
+smacv2\_20\_units & 5700 & 10584 & 18176 & 25216 & 47488 & 104382 & 155904\\
+small-4ag & 1940 & 3688 & 7072 & 9600 & 14272 & 30336 & 49408\\
+small-4ag-hard & 1940 & 3688 & 7072 & 9600 & 14272 & 30336 & 49408\\
+tiny-2ag-hard & 2572 & 5600 & 9824 & 13344 & 22848 & 48768 & 86272\\
+tiny-4ag-hard & 2572 & 5568 & 9808 & 13344 & 22784 & 48768 & 86272\\
+xlarge-4ag & 1768 & 3856 & 6368 & 9792 & 13760 & 24448 & 46080\\
+xlarge-4ag-hard & 1280 & 2024 & 3776 & 6368 & 11456 & 21504 & 40192\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]\centering
+\caption{在 300 秒推理时搜索期间从 SABLE 进行随机采样时的尝试次数（生成的解数）。}
+\label{tab:13}
+\small
+\begin{tabular}{lrrrrrrr}
+\toprule
+任务名称 & 4 & 8 & 16 & 32 & 64 & 128 & 256\\
+\midrule
+con-10x10x10a & 10632 & 20504 & 39524 & 70720 & 138624 & 264960 & 448512\\
+con-15x15x23a & 2048 & 4056 & 7840 & 14144 & 27648 & 54144 & 101376\\
+large-4ag & 2092 & 3624 & 7808 & 15456 & 30336 & 46464 & 82944\\
+large-4ag-hard & 2108 & 3696 & 8112 & 13344 & 26816 & 46592 & 82176\\
+large-8ag & 1508 & 2552 & 5824 & 9568 & 17984 & 30720 & 52480\\
+large-8ag-hard & 1324 & 2256 & 4432 & 8416 & 16576 & 34048 & 32208\\
+medium-4ag & 2388 & 4576 & 8064 & 15296 & 29760 & 53120 & 81664\\
+medium-4ag-hard & 2144 & 4616 & 7968 & 16992 & 29696 & 52992 & 88576\\
+medium-6ag & 1344 & 3496 & 6768 & 10848 & 25280 & 66048 & 66048\\
+smacv2\_10\_units & 7168 & 11056 & 25376 & 47088 & 94720 & 148608 & 261888\\
+smacv2\_20\_units & 4848 & 9144 & 17584 & 34688 & 55232 & 102144 & 228608\\
+small-4ag & 1472 & 3896 & 7072 & 16448 & 27840 & 61056 & 84224\\
+small-4ag-hard & 1812 & 3704 & 7072 & 16448 & 26880 & 59776 & 84224\\
+tiny-2ag-hard & 2824 & 6168 & 10432 & 20192 & 45504 & 77952 & 165632\\
+tiny-4ag-hard & 1600 & 2672 & 5888 & 9184 & 16960 & 33152 & 58880\\
+xlarge-4ag & 1832 & 3624 & 7888 & 13248 & 27584 & 50944 & 81152\\
+xlarge-4ag-hard & 1164 & 2280 & 4480 & 8064 & 15296 & 33152 & 58880\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+第二，COMPASS 创建了一个由多样化且专门化的策略组成的稠密空间，从而创造了强大的探索能力。大多数其他方法依赖动作分布的熵来探索（即从预训练策略进行随机采样），而 COMPASS 可以利用其隐空间中编码的广泛多样性来构建多样化得多的策略。
+
+最后，COMPASS 在推理时使用的协方差矩阵自适应机制（CMA-ES）使其能够在隐空间中导航，并为手头的问题实例识别出最适应（最合适）的隐向量。相比在整个策略参数空间中使用梯度下降（即在线微调），在 16 维空间中使用 CMA-ES 搜索更高效且更不易陷入局部最优。
+
+\begin{table}[H]\centering
+\caption{在 30 秒推理时搜索期间对 SABLE、IPPO 和 MAPPO 使用 COMPASS 时的尝试次数（生成的解数）。}
+\label{tab:14}
+\small
+\begin{tabular}{lrrrrrrrr}
+\toprule
+任务名称 & Sable: 4 & 8 & 16 & 32 & 64 & 128 & 256 & PPO: 64\\
+\midrule
+con-10x10x10a & 996 & 1872 & 3744 & 6720 & 13120 & 24832 & 42240 & 65152\\
+con-15x15x23a & 160 & 384 & 768 & 1408 & 2752 & 5376 & 8192 & 36608\\
+large-4ag & 260 & 464 & 928 & 1664 & 3072 & 4480 & 5888 & 5056\\
+large-4ag-hard & 256 & 464 & 928 & 1664 & 2944 & 4480 & 6144 & 4928\\
+large-8ag & 160 & 312 & 624 & 1024 & 1728 & 2304 & 3072 & 3520\\
+large-8ag-hard & 168 & 304 & 608 & 1056 & 1856 & 2944 & 4096 & 3584\\
+medium-4ag & 208 & 392 & 784 & 1504 & 2944 & 4864 & 8704 & 5120\\
+medium-4ag-hard & 208 & 392 & 784 & 1696 & 2944 & 4864 & 8704 & 5056\\
+medium-6ag & 152 & 288 & 576 & 1088 & 2112 & 3840 & 7424 & 4416\\
+smacv2\_10\_units & 760 & 1304 & 2608 & 4480 & 7424 & 12288 & 17408 & 30464\\
+smacv2\_20\_units & 584 & 928 & 1856 & 3392 & 6400 & 11136 & 18176 & 26880\\
+small-4ag & 196 & 432 & 864 & 1408 & 2816 & 6144 & 8320 & 5248\\
+small-4ag-hard & 188 & 352 & 704 & 1536 & 3072 & 5120 & 9216 & 5248\\
+tiny-2ag-hard & 272 & 592 & 1184 & 2240 & 4480 & 7680 & 14592 & 6848\\
+tiny-4ag-hard & 136 & 248 & 496 & 1056 & 1664 & 3200 & 4608 & 5312\\
+xlarge-4ag & 180 & 392 & 784 & 1536 & 2432 & 4480 & 8192 & 4160\\
+xlarge-4ag-hard & 116 & 264 & 528 & 960 & 1792 & 2816 & 5120 & 4288\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]\centering
+\caption{在 30 秒推理时搜索期间对 SABLE、IPPO 和 MAPPO 使用随机采样时的尝试次数（生成的解数）。}
+\label{tab:15}
+\small
+\begin{tabular}{lrrrrrrrr}
+\toprule
+任务名称 & Sable: 4 & 8 & 16 & 32 & 64 & 128 & 256 & PPO: 64\\
+\midrule
+con-10x10x10a & 1060 & 2048 & 3940 & 7040 & 13760 & 26240 & 44800 & 103680\\
+con-15x15x23a & 204 & 400 & 780 & 1408 & 2752 & 5376 & 10112 & 51456\\
+large-4ag & 208 & 360 & 768 & 1536 & 3008 & 4608 & 8192 & 5312\\
+large-4ag-hard & 208 & 368 & 800 & 1312 & 2688 & 4608 & 8192 & 5184\\
+large-8ag & 148 & 248 & 576 & 928 & 1792 & 3072 & 5120 & 3904\\
+large-8ag-hard & 132 & 224 & 432 & 832 & 1664 & 3328 & 3200 & 3712\\
+medium-4ag & 236 & 456 & 800 & 1504 & 2944 & 5248 & 8128 & 5120\\
+medium-4ag-hard & 212 & 456 & 784 & 1696 & 2944 & 5248 & 8832 & 5312\\
+medium-6ag & 132 & 344 & 672 & 1056 & 2496 & 6528 & 6528 & 4480\\
+smacv2\_10\_units & 716 & 1104 & 2528 & 4704 & 9408 & 14848 & 26112 & 33408\\
+smacv2\_20\_units & 484 & 912 & 1744 & 3456 & 5504 & 10176 & 22784 & 31808\\
+small-4ag & 144 & 384 & 704 & 1632 & 2752 & 6016 & 8384 & 5184\\
+small-4ag-hard & 180 & 368 & 704 & 1632 & 2688 & 5888 & 8384 & 5248\\
+tiny-2ag-hard & 280 & 608 & 1040 & 2016 & 4544 & 7808 & 16512 & 4544\\
+tiny-4ag-hard & 160 & 264 & 576 & 896 & 1664 & 3328 & 5888 & 5312\\
+xlarge-4ag & 180 & 360 & 784 & 1312 & 2752 & 5120 & 8128 & 4416\\
+xlarge-4ag-hard & 116 & 224 & 448 & 800 & 1536 & 3328 & 5888 & 4352\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]\centering
+\caption{在 30 秒推理时搜索期间对 SABLE、IPPO 和 MAPPO 使用在线微调时的尝试次数（生成的解数）。}
+\label{tab:16}
+\small
+\begin{tabular}{lrrrrrrrr}
+\toprule
+任务名称 & Sable: 4 & 8 & 16 & 32 & 64 & 128 & 256 & PPO: 64\\
+\midrule
+con-10x10x10a & 1060 & 2024 & 3760 & 6432 & 11520 & 22656 & 39424 & 23680\\
+con-15x15x23a & 212 & 392 & 672 & 1024 & 1600 & 3200 & 5888 & 5888\\
+large-4ag & 176 & 328 & 656 & 992 & 1280 & 2432 & 4864 & 3136\\
+large-4ag-hard & 204 & 336 & 640 & 864 & 1280 & 2432 & 4608 & 2944\\
+large-8ag & 140 & 232 & 448 & 736 & 1088 & 1920 & 3328 & 2304\\
+large-8ag-hard & 112 & 256 & 400 & 672 & 1216 & 2560 & 4352 & 2112\\
+medium-4ag & 200 & 416 & 736 & 992 & 1536 & 2816 & 4608 & 2880\\
+medium-4ag-hard & 200 & 376 & 720 & 1056 & 1472 & 2816 & 4608 & 2880\\
+medium-6ag & 168 & 280 & 640 & 864 & 2112 & 3200 & 6400 & 4160\\
+smacv2\_10\_units & 684 & 1256 & 2016 & 3744 & 6784 & 15616 & 23552 & 8960\\
+smacv2\_20\_units & 568 & 1056 & 1808 & 2496 & 4736 & 10368 & 15360 & 7936\\
+small-4ag & 192 & 368 & 704 & 960 & 1408 & 2944 & 4864 & 2816\\
+small-4ag-hard & 192 & 368 & 704 & 960 & 1408 & 2944 & 4864 & 2816\\
+tiny-2ag-hard & 256 & 560 & 976 & 1312 & 2240 & 4864 & 8448 & 3904\\
+tiny-4ag-hard & 256 & 552 & 976 & 1312 & 2240 & 4864 & 8448 & 3904\\
+xlarge-4ag & 176 & 384 & 624 & 960 & 1344 & 2432 & 4608 & 2944\\
+xlarge-4ag-hard & 128 & 200 & 368 & 608 & 1088 & 2048 & 3840 & 2432\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{额外实验细节与误差棒}
+
+在图~\ref{fig:4} 中，我们报告了 SOTA 方法 SABLE 的零样本性能，并将其与 30 秒推理时搜索所观测到的最佳结果进行比较。我们在表~\ref{tab:17} 中报告误差值，并在图~\ref{fig:12} 中给出带误差棒的图。
+
+我们报告均值和 95\,\% 自助法置信区间。20M 时间步的值在 10 次独立运行上聚合，并直接根据随 Sable 论文（Mahjoub et al., 2025）一起提供的基准数据计算得到；对于训练至收敛的策略和 COMPASS，我们给出在 128 次独立运行上聚合的结果。
+
+\begin{figure}[H]\centering
+  \includegraphics[width=0.78\linewidth]{cand_p34_k00.pdf}
+  \caption{将 SOTA 算法 Sable 训练至收敛仍不足以达到最优的零样本性能，但使用 30 秒的搜索能够在整个基准上一致地达到 85\,\% 以上的归一化性能。我们报告均值和 95\,\% 自助法置信区间。图中比较 20\,M steps、Converged（收敛后）、COMPASS 三种情况。}
+  \label{fig:12}
+\end{figure}
+
+\begin{table}[H]\centering
+\caption{基础策略（在 20M 时间步后和收敛后）与 COMPASS 之间的性能比较。数值表示平均性能及 95\,\% 置信区间。}
+\label{tab:17}
+\small
+\begin{tabular}{lccc}
+\toprule
+场景 & 20M Timesteps（20M 时间步） & Converged（收敛后） & COMPASS\\
+\midrule
+con-10x10x10a & 0.388 (0.372, 0.404) & 0.500 (0.414, 0.586) & 0.953 (0.914, 0.984)\\
+con-15x15x23a & 0.075 (0.067, 0.083) & 0.078 (0.039, 0.125) & 0.867 (0.805, 0.922)\\
+large-4ag & 0.246 (0.200, 0.283) & 0.642 (0.618, 0.664) & 0.949 (0.940, 0.957)\\
+large-4ag-hard & 0.175 (0.113, 0.225) & 0.609 (0.581, 0.633) & 0.933 (0.922, 0.943)\\
+large-8ag & 0.203 (0.197, 0.208) & 0.496 (0.464, 0.526) & 0.953 (0.947, 0.959)\\
+large-8ag-hard & 0.209 (0.202, 0.216) & 0.516 (0.489, 0.541) & 0.957 (0.950, 0.963)\\
+medium-4ag & 0.376 (0.346, 0.396) & 0.666 (0.642, 0.686) & 0.947 (0.941, 0.953)\\
+medium-4ag-hard & 0.253 (0.220, 0.282) & 0.701 (0.677, 0.721) & 0.949 (0.943, 0.955)\\
+medium-6ag & 0.240 (0.227, 0.250) & 0.702 (0.668, 0.733) & 0.958 (0.954, 0.963)\\
+smacv2\_10\_units & 0.648 (0.623, 0.675) & 0.852 (0.789, 0.914) & 0.977 (0.945, 1.000)\\
+smacv2\_20\_units & 0.599 (0.548, 0.639) & 0.719 (0.641, 0.797) & 0.969 (0.938, 0.992)\\
+small-4ag & 0.384 (0.243, 0.484) & 0.728 (0.706, 0.746) & 0.963 (0.956, 0.969)\\
+small-4ag-hard & 0.349 (0.327, 0.371) & 0.707 (0.687, 0.725) & 0.955 (0.948, 0.962)\\
+tiny-2ag-hard & 0.664 (0.646, 0.684) & 0.810 (0.799, 0.821) & 0.978 (0.967, 0.989)\\
+tiny-4ag-hard & 0.548 (0.529, 0.566) & 0.783 (0.756, 0.806) & 0.958 (0.951, 0.964)\\
+xlarge-4ag & 0.193 (0.118, 0.261) & 0.485 (0.465, 0.504) & 0.905 (0.893, 0.916)\\
+xlarge-4ag-hard & 0.065 (0.001, 0.161) & 0.394 (0.373, 0.413) & 0.892 (0.879, 0.906)\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\end{document}

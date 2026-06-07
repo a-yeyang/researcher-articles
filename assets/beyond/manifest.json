@@ -1,0 +1,437 @@
+{
+ "pdf": "Beyond Task Completion- Revealing Corrupt Success in LLM Agents through Procedure-Aware Evaluation.pdf",
+ "slug": "beyond",
+ "page_count": 36,
+ "page_size": [
+  612.0,
+  792.0
+ ],
+ "pages": [
+  {
+   "page": 1,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/beyond/_pages/p01.png"
+  },
+  {
+   "page": 2,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/beyond/_pages/p02.png"
+  },
+  {
+   "page": 3,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/beyond/_pages/p03.png"
+  },
+  {
+   "page": 4,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/beyond/_pages/p04.png"
+  },
+  {
+   "page": 5,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/beyond/_pages/p05.png"
+  },
+  {
+   "page": 6,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/beyond/_pages/p06.png"
+  },
+  {
+   "page": 7,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/beyond/_pages/p07.png"
+  },
+  {
+   "page": 8,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      134.8,
+      440.9,
+      480.6,
+      450.9
+     ],
+     "text": "Table 1 presents the full PAE evaluation across all four axes. All models achieve",
+     "label": "Table 1"
+    }
+   ],
+   "overlay": "assets/beyond/_pages/p08.png"
+  },
+  {
+   "page": 9,
+   "candidates": [
+    {
+     "id": "cand_p09_k00",
+     "kind": "table",
+     "bbox": [
+      157.6,
+      161.3,
+      457.7,
+      185.1
+     ],
+     "pdf": "cand_p09_k00.pdf"
+    },
+    {
+     "id": "cand_p09_k01",
+     "kind": "table",
+     "bbox": [
+      157.6,
+      199.1,
+      457.7,
+      234.0
+     ],
+     "pdf": "cand_p09_k01.pdf"
+    },
+    {
+     "id": "cand_p09_k02",
+     "kind": "table",
+     "bbox": [
+      157.6,
+      248.0,
+      457.7,
+      304.7
+     ],
+     "pdf": "cand_p09_k02.pdf"
+    },
+    {
+     "id": "cand_p09_k03",
+     "kind": "table",
+     "bbox": [
+      157.6,
+      378.5,
+      457.7,
+      435.4
+     ],
+     "pdf": "cand_p09_k03.pdf"
+    },
+    {
+     "id": "cand_p09_k04",
+     "kind": "vector",
+     "bbox": [
+      157.6,
+      318.7,
+      457.7,
+      364.5
+     ],
+     "pdf": "cand_p09_k04.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      134.8,
+      115.4,
+      480.6,
+      124.5
+     ],
+     "text": "Table 1. Full PAE results across Retail and Airline domains (k=4 trials). ↑/↓indicates",
+     "label": "Table 1"
+    }
+   ],
+   "overlay": "assets/beyond/_pages/p09.png"
+  },
+  {
+   "page": 10,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      134.8,
+      115.4,
+      480.6,
+      124.5
+     ],
+     "text": "Table 2. LLM judge validation. Top: automatic proxy via action set comparison (excess",
+     "label": "Table 2"
+    }
+   ],
+   "overlay": "assets/beyond/_pages/p10.png"
+  },
+  {
+   "page": 11,
+   "candidates": [
+    {
+     "id": "cand_p11_k00",
+     "kind": "table",
+     "bbox": [
+      160.2,
+      146.1,
+      455.1,
+      286.9
+     ],
+     "pdf": "cand_p11_k00.pdf"
+    },
+    {
+     "id": "cand_p11_k01",
+     "kind": "table",
+     "bbox": [
+      160.2,
+      176.2,
+      455.1,
+      211.0
+     ],
+     "pdf": "cand_p11_k01.pdf"
+    },
+    {
+     "id": "cand_p11_k02",
+     "kind": "table",
+     "bbox": [
+      160.2,
+      214.1,
+      455.1,
+      248.9
+     ],
+     "pdf": "cand_p11_k02.pdf"
+    },
+    {
+     "id": "cand_p11_k03",
+     "kind": "table",
+     "bbox": [
+      160.2,
+      251.9,
+      455.1,
+      286.9
+     ],
+     "pdf": "cand_p11_k03.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      134.8,
+      114.8,
+      480.6,
+      124.0
+     ],
+     "text": "Table 3. Standard utility versus gated utility requiring six-dimension compliance. ∆",
+     "label": "Table 3"
+    },
+    {
+     "bbox": [
+      134.8,
+      498.4,
+      451.7,
+      508.4
+     ],
+     "text": "Table 3 compares standard utility metrics with their gated counterparts.",
+     "label": "Table 3"
+    }
+   ],
+   "overlay": "assets/beyond/_pages/p11.png"
+  },
+  {
+   "page": 12,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      134.8,
+      115.4,
+      480.6,
+      124.5
+     ],
+     "text": "Table 4. Manual validation and error distribution across models (Airline domain).",
+     "label": "Table 4"
+    }
+   ],
+   "overlay": "assets/beyond/_pages/p12.png"
+  },
+  {
+   "page": 13,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/beyond/_pages/p13.png"
+  },
+  {
+   "page": 14,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/beyond/_pages/p14.png"
+  },
+  {
+   "page": 15,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/beyond/_pages/p15.png"
+  },
+  {
+   "page": 16,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/beyond/_pages/p16.png"
+  },
+  {
+   "page": 17,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      134.8,
+      451.2,
+      480.6,
+      460.3
+     ],
+     "text": "Table 5. Error taxonomy mapping each LLM-as-judge metric to its typed error codes",
+     "label": "Table 5"
+    }
+   ],
+   "overlay": "assets/beyond/_pages/p17.png"
+  },
+  {
+   "page": 18,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      134.8,
+      182.0,
+      480.6,
+      191.1
+     ],
+     "text": "Table 6. Error pattern distribution and representative examples for GPT-5 corrupt",
+     "label": "Table 6"
+    }
+   ],
+   "overlay": "assets/beyond/_pages/p18.png"
+  },
+  {
+   "page": 19,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      134.8,
+      114.8,
+      480.6,
+      124.0
+     ],
+     "text": "Table 7. Error pattern distribution and representative examples for Mistral-Large-3",
+     "label": "Table 7"
+    }
+   ],
+   "overlay": "assets/beyond/_pages/p19.png"
+  },
+  {
+   "page": 20,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      134.8,
+      114.8,
+      480.6,
+      124.0
+     ],
+     "text": "Table 8. Error pattern distribution and representative examples for Kimi-K2-Thinking",
+     "label": "Table 8"
+    }
+   ],
+   "overlay": "assets/beyond/_pages/p20.png"
+  },
+  {
+   "page": 21,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/beyond/_pages/p21.png"
+  },
+  {
+   "page": 22,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/beyond/_pages/p22.png"
+  },
+  {
+   "page": 23,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/beyond/_pages/p23.png"
+  },
+  {
+   "page": 24,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/beyond/_pages/p24.png"
+  },
+  {
+   "page": 25,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/beyond/_pages/p25.png"
+  },
+  {
+   "page": 26,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/beyond/_pages/p26.png"
+  },
+  {
+   "page": 27,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/beyond/_pages/p27.png"
+  },
+  {
+   "page": 28,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/beyond/_pages/p28.png"
+  },
+  {
+   "page": 29,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/beyond/_pages/p29.png"
+  },
+  {
+   "page": 30,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/beyond/_pages/p30.png"
+  },
+  {
+   "page": 31,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/beyond/_pages/p31.png"
+  },
+  {
+   "page": 32,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/beyond/_pages/p32.png"
+  },
+  {
+   "page": 33,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/beyond/_pages/p33.png"
+  },
+  {
+   "page": 34,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/beyond/_pages/p34.png"
+  },
+  {
+   "page": 35,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/beyond/_pages/p35.png"
+  },
+  {
+   "page": 36,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/beyond/_pages/p36.png"
+  }
+ ]
+}

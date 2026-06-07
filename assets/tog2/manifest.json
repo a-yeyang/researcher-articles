@@ -1,0 +1,615 @@
+{
+ "pdf": "Think-on-Graph 2.0 (ToG-2).pdf",
+ "slug": "tog2",
+ "page_count": 25,
+ "page_size": [
+  612.0,
+  792.0
+ ],
+ "pages": [
+  {
+   "page": 1,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/tog2/_pages/p01.png"
+  },
+  {
+   "page": 2,
+   "candidates": [
+    {
+     "id": "cand_p02_k00",
+     "kind": "image",
+     "bbox": [
+      115.9,
+      81.9,
+      496.1,
+      286.2
+     ],
+     "pdf": "cand_p02_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      292.7,
+      504.0,
+      302.7
+     ],
+     "text": "Figure 1: The illustration of differences among (a) text-based RAG, (b) KG-based RAG, (c)",
+     "label": "Figure 1"
+    }
+   ],
+   "overlay": "assets/tog2/_pages/p02.png"
+  },
+  {
+   "page": 3,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/tog2/_pages/p03.png"
+  },
+  {
+   "page": 4,
+   "candidates": [
+    {
+     "id": "cand_p04_k00",
+     "kind": "image",
+     "bbox": [
+      108.0,
+      81.9,
+      504.0,
+      259.2
+     ],
+     "pdf": "cand_p04_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      191.1,
+      271.5,
+      420.9,
+      281.7
+     ],
+     "text": "Figure 2: An example illustrating the workflow of ToG-2.",
+     "label": "Figure 2"
+    }
+   ],
+   "overlay": "assets/tog2/_pages/p04.png"
+  },
+  {
+   "page": 5,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      419.3,
+      219.1,
+      430.8
+     ],
+     "text": "Figure 2, the topic entity e0",
+     "label": "Figure 2"
+    }
+   ],
+   "overlay": "assets/tog2/_pages/p05.png"
+  },
+  {
+   "page": 6,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/tog2/_pages/p06.png"
+  },
+  {
+   "page": 7,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      224.8,
+      504.0,
+      234.7
+     ],
+     "text": "Table 1: Performance comparison of different methods with GPT-3.5-turbo across various datasets.",
+     "label": "Table 1"
+    },
+    {
+     "bbox": [
+      248.2,
+      330.0,
+      363.8,
+      340.0
+     ],
+     "text": "Table 2: ToG-FinQA Results",
+     "label": "Table 2"
+    }
+   ],
+   "overlay": "assets/tog2/_pages/p07.png"
+  },
+  {
+   "page": 8,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      111.7,
+      152.6,
+      500.3,
+      162.6
+     ],
+     "text": "Table 3: Performance comparison of direct reasoning and ToG-2 with different backbone models.",
+     "label": "Table 3"
+    }
+   ],
+   "overlay": "assets/tog2/_pages/p08.png"
+  },
+  {
+   "page": 9,
+   "candidates": [
+    {
+     "id": "cand_p09_k00",
+     "kind": "image",
+     "bbox": [
+      157.5,
+      81.9,
+      454.5,
+      212.0
+     ],
+     "pdf": "cand_p09_k00.pdf"
+    },
+    {
+     "id": "cand_p09_k01",
+     "kind": "image",
+     "bbox": [
+      335.7,
+      366.2,
+      494.1,
+      470.5
+     ],
+     "pdf": "cand_p09_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      193.8,
+      221.4,
+      418.2,
+      231.3
+     ],
+     "text": "Figure 3: Comparative analysis of Entity-Pruning Tools.",
+     "label": "Figure 3"
+    },
+    {
+     "bbox": [
+      327.2,
+      480.6,
+      502.6,
+      490.5
+     ],
+     "text": "Figure 4: Width and depth settings analysis.",
+     "label": "Figure 4"
+    },
+    {
+     "bbox": [
+      108.0,
+      433.9,
+      315.8,
+      444.1
+     ],
+     "text": "Figure 4 illustrates the performance of ToG-2 on",
+     "label": "Figure 4"
+    },
+    {
+     "bbox": [
+      325.8,
+      633.2,
+      504.0,
+      643.2
+     ],
+     "text": "Table 4: Sources of answer clue origins: Di-",
+     "label": "Table 4"
+    }
+   ],
+   "overlay": "assets/tog2/_pages/p09.png"
+  },
+  {
+   "page": 10,
+   "candidates": [
+    {
+     "id": "cand_p10_k00",
+     "kind": "image",
+     "bbox": [
+      108.0,
+      392.4,
+      504.0,
+      508.1
+     ],
+     "pdf": "cand_p10_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      198.5,
+      504.0,
+      208.4
+     ],
+     "text": "Table 4, Doc-enhanced Answers have the highest proportion, at approximately 42%, while Triple-",
+     "label": "Table 4"
+    },
+    {
+     "bbox": [
+      108.8,
+      517.5,
+      503.2,
+      527.5
+     ],
+     "text": "Figure 5: Illustrations of Both-enhanced Answer (left side) and Doc-enhanced Answer (right side).",
+     "label": "Figure 5"
+    }
+   ],
+   "overlay": "assets/tog2/_pages/p10.png"
+  },
+  {
+   "page": 11,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/tog2/_pages/p11.png"
+  },
+  {
+   "page": 12,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/tog2/_pages/p12.png"
+  },
+  {
+   "page": 13,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      155.3,
+      253.3,
+      165.3
+     ],
+     "text": "Algorithm 1: The ToG-2 Algorithm",
+     "label": "Algorithm 1"
+    }
+   ],
+   "overlay": "assets/tog2/_pages/p13.png"
+  },
+  {
+   "page": 14,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      280.7,
+      504.0,
+      290.6
+     ],
+     "text": "Table 5: Human study for Correct and Incorrect cases from randomly sampled HotpotQA questions.",
+     "label": "Table 5"
+    }
+   ],
+   "overlay": "assets/tog2/_pages/p14.png"
+  },
+  {
+   "page": 15,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      167.7,
+      146.6,
+      444.3,
+      156.8
+     ],
+     "text": "Table 6: Distribution of answer types for ToG-2 on the Creak dataset.",
+     "label": "Table 6"
+    }
+   ],
+   "overlay": "assets/tog2/_pages/p15.png"
+  },
+  {
+   "page": 16,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      513.9,
+      504.0,
+      524.1
+     ],
+     "text": "Table 7: Influence of each module in ToG-2 on the final performance. / denote without. Clue: the",
+     "label": "Table 7"
+    },
+    {
+     "bbox": [
+      108.0,
+      722.1,
+      504.0,
+      732.3
+     ],
+     "text": "Table 9 below. ToG: For each question, ToG requires up to 2WD+D+1 API calls, where W is the",
+     "label": "Table 9"
+    }
+   ],
+   "overlay": "assets/tog2/_pages/p16.png"
+  },
+  {
+   "page": 17,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      117.9,
+      162.5,
+      494.1,
+      172.4
+     ],
+     "text": "Table 8: Running time comparison of ToG-2 and ToG on FEVER and AdvHotpotQA datasets.",
+     "label": "Table 8"
+    },
+    {
+     "bbox": [
+      162.6,
+      252.5,
+      449.4,
+      262.5
+     ],
+     "text": "Table 9: Comparison of API Call Counts and Runtime Across Methods.",
+     "label": "Table 9"
+    },
+    {
+     "bbox": [
+      108.0,
+      659.4,
+      504.0,
+      669.6
+     ],
+     "text": "Table 10: Effects of different thresholds on the final results in HotpotQA. The Avg. retained score",
+     "label": "Table 10"
+    }
+   ],
+   "overlay": "assets/tog2/_pages/p17.png"
+  },
+  {
+   "page": 18,
+   "candidates": [
+    {
+     "id": "cand_p18_k00",
+     "kind": "image",
+     "bbox": [
+      345.6,
+      236.4,
+      519.8,
+      356.4
+     ],
+     "pdf": "cand_p18_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      364.0,
+      357.5,
+      485.6,
+      367.5
+     ],
+     "text": "Figure 6: Impact of SC setting",
+     "label": "Figure 6"
+    },
+    {
+     "bbox": [
+      108.0,
+      243.1,
+      335.6,
+      253.0
+     ],
+     "text": "Figure 6 illustrates the impact of varying self-consistency",
+     "label": "Figure 6"
+    },
+    {
+     "bbox": [
+      108.0,
+      604.7,
+      504.0,
+      614.9
+     ],
+     "text": "Table 11: Impact of KG Completeness on ToG-2.0 Performance with Default (W = 3, D = 3) and",
+     "label": "Table 11"
+    }
+   ],
+   "overlay": "assets/tog2/_pages/p18.png"
+  },
+  {
+   "page": 19,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      320.9,
+      504.0,
+      331.1
+     ],
+     "text": "Table 12: ToG-2 significantly outperforms CoK and ToG on most datasets (p < 0.05), except on",
+     "label": "Table 12"
+    },
+    {
+     "bbox": [
+      184.1,
+      609.9,
+      427.9,
+      619.9
+     ],
+     "text": "Table 13: Key Statistics of the Chinese Financial QA Dataset",
+     "label": "Table 13"
+    }
+   ],
+   "overlay": "assets/tog2/_pages/p19.png"
+  },
+  {
+   "page": 20,
+   "candidates": [
+    {
+     "id": "cand_p20_k00",
+     "kind": "image",
+     "bbox": [
+      108.0,
+      201.3,
+      504.0,
+      427.5
+     ],
+     "pdf": "cand_p20_k00.pdf"
+    },
+    {
+     "id": "cand_p20_k01",
+     "kind": "image",
+     "bbox": [
+      207.0,
+      494.3,
+      405.0,
+      584.3
+     ],
+     "pdf": "cand_p20_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      249.2,
+      437.6,
+      362.8,
+      447.6
+     ],
+     "text": "Figure 7: ToG-FinQA Cases",
+     "label": "Figure 7"
+    },
+    {
+     "bbox": [
+      108.0,
+      461.6,
+      504.0,
+      471.6
+     ],
+     "text": "Figure 8 shows a Triple-enhanced case in HotpotQA, where the common style of the two movies is",
+     "label": "Figure 8"
+    },
+    {
+     "bbox": [
+      242.9,
+      594.3,
+      369.1,
+      604.3
+     ],
+     "text": "Figure 8: Triple-enhanced Case",
+     "label": "Figure 8"
+    }
+   ],
+   "overlay": "assets/tog2/_pages/p20.png"
+  },
+  {
+   "page": 21,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      261.8,
+      684.7,
+      350.2,
+      694.6
+     ],
+     "text": "Table 14: Topic Prune",
+     "label": "Table 14"
+    }
+   ],
+   "overlay": "assets/tog2/_pages/p21.png"
+  },
+  {
+   "page": 22,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      245.9,
+      660.9,
+      366.1,
+      670.8
+     ],
+     "text": "Table 15: Topic Prune Prompt",
+     "label": "Table 15"
+    }
+   ],
+   "overlay": "assets/tog2/_pages/p22.png"
+  },
+  {
+   "page": 23,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      227.9,
+      719.7,
+      384.1,
+      729.7
+     ],
+     "text": "Table 16: Relation Prune CMB Prompt",
+     "label": "Table 16"
+    }
+   ],
+   "overlay": "assets/tog2/_pages/p23.png"
+  },
+  {
+   "page": 24,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      205.1,
+      634.3,
+      406.9,
+      644.2
+     ],
+     "text": "Table 17: Relation Prune CMB Prompt (Continue)",
+     "label": "Table 17"
+    }
+   ],
+   "overlay": "assets/tog2/_pages/p24.png"
+  },
+  {
+   "page": 25,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      236.0,
+      619.2,
+      376.0,
+      629.2
+     ],
+     "text": "Table 18: Reasoning Prompt (QA).",
+     "label": "Table 18"
+    },
+    {
+     "bbox": [
+      239.4,
+      713.2,
+      372.6,
+      723.1
+     ],
+     "text": "Table 19: Query Re-form Prompt",
+     "label": "Table 19"
+    }
+   ],
+   "overlay": "assets/tog2/_pages/p25.png"
+  }
+ ]
+}

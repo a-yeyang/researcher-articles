@@ -1,0 +1,839 @@
+{
+ "pdf": "HippoRAG.pdf",
+ "slug": "hipporag",
+ "page_count": 31,
+ "page_size": [
+  612.0,
+  792.0
+ ],
+ "pages": [
+  {
+   "page": 1,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/hipporag/_pages/p01.png"
+  },
+  {
+   "page": 2,
+   "candidates": [
+    {
+     "id": "cand_p02_k00",
+     "kind": "table",
+     "bbox": [
+      111.5,
+      88.6,
+      232.8,
+      285.9
+     ],
+     "pdf": "cand_p02_k00.pdf"
+    },
+    {
+     "id": "cand_p02_k01",
+     "kind": "table",
+     "bbox": [
+      261.6,
+      91.8,
+      440.8,
+      279.0
+     ],
+     "pdf": "cand_p02_k01.pdf"
+    },
+    {
+     "id": "cand_p02_k02",
+     "kind": "image",
+     "bbox": [
+      156.5,
+      147.3,
+      242.6,
+      218.5
+     ],
+     "pdf": "cand_p02_k02.pdf"
+    },
+    {
+     "id": "cand_p02_k03",
+     "kind": "image",
+     "bbox": [
+      278.0,
+      147.3,
+      364.2,
+      218.4
+     ],
+     "pdf": "cand_p02_k03.pdf"
+    },
+    {
+     "id": "cand_p02_k04",
+     "kind": "image",
+     "bbox": [
+      367.8,
+      147.3,
+      454.0,
+      218.4
+     ],
+     "pdf": "cand_p02_k04.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      302.3,
+      504.3,
+      312.2
+     ],
+     "text": "Figure 1: Knowledge Integration & RAG. Tasks that require knowledge integration are particularly",
+     "label": "Figure 1"
+    }
+   ],
+   "overlay": "assets/hipporag/_pages/p02.png"
+  },
+  {
+   "page": 3,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/hipporag/_pages/p03.png"
+  },
+  {
+   "page": 4,
+   "candidates": [
+    {
+     "id": "cand_p04_k00",
+     "kind": "image",
+     "bbox": [
+      103.3,
+      1.7,
+      527.5,
+      426.0
+     ],
+     "pdf": "cand_p04_k00.pdf"
+    },
+    {
+     "id": "cand_p04_k01",
+     "kind": "image",
+     "bbox": [
+      271.1,
+      64.6,
+      349.9,
+      129.7
+     ],
+     "pdf": "cand_p04_k01.pdf"
+    },
+    {
+     "id": "cand_p04_k02",
+     "kind": "image",
+     "bbox": [
+      388.5,
+      64.6,
+      467.2,
+      129.6
+     ],
+     "pdf": "cand_p04_k02.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      275.7,
+      504.0,
+      285.7
+     ],
+     "text": "Figure 2: Detailed HippoRAG Methodology. We model the three components of human long-term",
+     "label": "Figure 2"
+    }
+   ],
+   "overlay": "assets/hipporag/_pages/p04.png"
+  },
+  {
+   "page": 5,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      119.5,
+      481.1,
+      492.5,
+      491.3
+     ],
+     "text": "Table 1: Retrieval corpora and extracted KG statistics for each of our 1,000 question dev sets.",
+     "label": "Table 1"
+    }
+   ],
+   "overlay": "assets/hipporag/_pages/p05.png"
+  },
+  {
+   "page": 6,
+   "candidates": [
+    {
+     "id": "cand_p06_k00",
+     "kind": "table",
+     "bbox": [
+      136.2,
+      115.5,
+      475.8,
+      240.6
+     ],
+     "pdf": "cand_p06_k00.pdf"
+    },
+    {
+     "id": "cand_p06_k01",
+     "kind": "table",
+     "bbox": [
+      136.2,
+      133.7,
+      475.8,
+      215.5
+     ],
+     "pdf": "cand_p06_k01.pdf"
+    },
+    {
+     "id": "cand_p06_k02",
+     "kind": "table",
+     "bbox": [
+      136.2,
+      218.7,
+      475.8,
+      240.6
+     ],
+     "pdf": "cand_p06_k02.pdf"
+    },
+    {
+     "id": "cand_p06_k03",
+     "kind": "table",
+     "bbox": [
+      118.0,
+      303.8,
+      491.8,
+      379.3
+     ],
+     "pdf": "cand_p06_k03.pdf"
+    },
+    {
+     "id": "cand_p06_k04",
+     "kind": "table",
+     "bbox": [
+      118.0,
+      357.1,
+      491.8,
+      379.3
+     ],
+     "pdf": "cand_p06_k04.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      107.7,
+      71.3,
+      504.0,
+      81.3
+     ],
+     "text": "Table 2: Single-step retrieval performance. HippoRAG outperforms all baselines on MuSiQue and",
+     "label": "Table 2"
+    },
+    {
+     "bbox": [
+      107.7,
+      259.6,
+      504.0,
+      269.5
+     ],
+     "text": "Table 3: Multi-step retrieval performance. Combining HippoRAG with standard multi-step retrieval",
+     "label": "Table 3"
+    }
+   ],
+   "overlay": "assets/hipporag/_pages/p06.png"
+  },
+  {
+   "page": 7,
+   "candidates": [
+    {
+     "id": "cand_p07_k00",
+     "kind": "table",
+     "bbox": [
+      114.1,
+      115.6,
+      497.9,
+      191.2
+     ],
+     "pdf": "cand_p07_k00.pdf"
+    },
+    {
+     "id": "cand_p07_k01",
+     "kind": "table",
+     "bbox": [
+      114.1,
+      169.0,
+      497.9,
+      191.2
+     ],
+     "pdf": "cand_p07_k01.pdf"
+    },
+    {
+     "id": "cand_p07_k02",
+     "kind": "table",
+     "bbox": [
+      108.0,
+      603.9,
+      509.6,
+      719.6
+     ],
+     "pdf": "cand_p07_k02.pdf"
+    },
+    {
+     "id": "cand_p07_k03",
+     "kind": "table",
+     "bbox": [
+      108.0,
+      672.4,
+      509.6,
+      694.3
+     ],
+     "pdf": "cand_p07_k03.pdf"
+    },
+    {
+     "id": "cand_p07_k04",
+     "kind": "table",
+     "bbox": [
+      108.0,
+      697.5,
+      509.6,
+      719.6
+     ],
+     "pdf": "cand_p07_k04.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      107.7,
+      71.3,
+      504.0,
+      81.2
+     ],
+     "text": "Table 4: QA performance. HippoRAG’s QA improvements correlate with its retrieval improvements",
+     "label": "Table 4"
+    },
+    {
+     "bbox": [
+      107.7,
+      559.5,
+      504.0,
+      569.6
+     ],
+     "text": "Table 5: Dissecting HippoRAG. To understand what makes it work well, we replace its OpenIE",
+     "label": "Table 5"
+    }
+   ],
+   "overlay": "assets/hipporag/_pages/p07.png"
+  },
+  {
+   "page": 8,
+   "candidates": [
+    {
+     "id": "cand_p08_k00",
+     "kind": "table",
+     "bbox": [
+      126.5,
+      430.5,
+      485.5,
+      470.8
+     ],
+     "pdf": "cand_p08_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      107.7,
+      375.3,
+      504.0,
+      385.3
+     ],
+     "text": "Table 6: All-Recall metric. We measure the percentage of queries for which all supporting passages",
+     "label": "Table 6"
+    },
+    {
+     "bbox": [
+      107.7,
+      575.8,
+      504.0,
+      585.8
+     ],
+     "text": "Table 7: Multi-hop question types. We show example results for different approaches on path-finding",
+     "label": "Table 7"
+    }
+   ],
+   "overlay": "assets/hipporag/_pages/p08.png"
+  },
+  {
+   "page": 9,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/hipporag/_pages/p09.png"
+  },
+  {
+   "page": 10,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/hipporag/_pages/p10.png"
+  },
+  {
+   "page": 11,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/hipporag/_pages/p11.png"
+  },
+  {
+   "page": 12,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/hipporag/_pages/p12.png"
+  },
+  {
+   "page": 13,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/hipporag/_pages/p13.png"
+  },
+  {
+   "page": 14,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/hipporag/_pages/p14.png"
+  },
+  {
+   "page": 15,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/hipporag/_pages/p15.png"
+  },
+  {
+   "page": 16,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/hipporag/_pages/p16.png"
+  },
+  {
+   "page": 17,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/hipporag/_pages/p17.png"
+  },
+  {
+   "page": 18,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/hipporag/_pages/p18.png"
+  },
+  {
+   "page": 19,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/hipporag/_pages/p19.png"
+  },
+  {
+   "page": 20,
+   "candidates": [
+    {
+     "id": "cand_p20_k00",
+     "kind": "table",
+     "bbox": [
+      108.0,
+      72.0,
+      504.0,
+      448.1
+     ],
+     "pdf": "cand_p20_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      458.2,
+      504.0,
+      468.4
+     ],
+     "text": "Figure 3: HippoRAG Pipeline Example (Question and Annotations). (Top) We provide an",
+     "label": "Figure 3"
+    }
+   ],
+   "overlay": "assets/hipporag/_pages/p20.png"
+  },
+  {
+   "page": 21,
+   "candidates": [
+    {
+     "id": "cand_p21_k00",
+     "kind": "table",
+     "bbox": [
+      108.0,
+      127.8,
+      504.0,
+      622.3
+     ],
+     "pdf": "cand_p21_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      632.6,
+      504.0,
+      642.7
+     ],
+     "text": "Figure 4: HippoRAG Pipeline Example (Indexing). NER and OpenIE are sequentially conducted",
+     "label": "Figure 4"
+    }
+   ],
+   "overlay": "assets/hipporag/_pages/p21.png"
+  },
+  {
+   "page": 22,
+   "candidates": [
+    {
+     "id": "cand_p22_k00",
+     "kind": "table",
+     "bbox": [
+      108.0,
+      72.0,
+      504.0,
+      640.0
+     ],
+     "pdf": "cand_p22_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      650.3,
+      504.3,
+      660.4
+     ],
+     "text": "Figure 5: HippoRAG Pipeline Example (Retrieval). For retrieval, the named entities in the query",
+     "label": "Figure 5"
+    }
+   ],
+   "overlay": "assets/hipporag/_pages/p22.png"
+  },
+  {
+   "page": 23,
+   "candidates": [
+    {
+     "id": "cand_p23_k00",
+     "kind": "vector",
+     "bbox": [
+      108.0,
+      184.7,
+      504.0,
+      283.8
+     ],
+     "pdf": "cand_p23_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      294.1,
+      504.7,
+      304.1
+     ],
+     "text": "Figure 6: Density of similarity scores of candidate passages (distractors and supporting passages)",
+     "label": "Figure 6"
+    },
+    {
+     "bbox": [
+      168.1,
+      438.5,
+      443.9,
+      448.4
+     ],
+     "text": "Table 8: Knowledge graph statistics using different OpenIE methods.",
+     "label": "Table 8"
+    }
+   ],
+   "overlay": "assets/hipporag/_pages/p23.png"
+  },
+  {
+   "page": 24,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      117.5,
+      172.8,
+      494.5,
+      182.8
+     ],
+     "text": "Table 9: Intrinsic OpenIE evaluation using the CaRB [6] framework on 20 annotated passages.",
+     "label": "Table 9"
+    }
+   ],
+   "overlay": "assets/hipporag/_pages/p24.png"
+  },
+  {
+   "page": 25,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      107.7,
+      203.3,
+      504.0,
+      213.3
+     ],
+     "text": "Table 10: Ranking result examples for different approaches on several path-finding multi-hop",
+     "label": "Table 10"
+    }
+   ],
+   "overlay": "assets/hipporag/_pages/p25.png"
+  },
+  {
+   "page": 26,
+   "candidates": [
+    {
+     "id": "cand_p26_k00",
+     "kind": "table",
+     "bbox": [
+      115.0,
+      532.6,
+      497.0,
+      623.2
+     ],
+     "pdf": "cand_p26_k00.pdf"
+    },
+    {
+     "id": "cand_p26_k01",
+     "kind": "table",
+     "bbox": [
+      115.0,
+      576.0,
+      497.0,
+      597.9
+     ],
+     "pdf": "cand_p26_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      230.0,
+      71.2,
+      382.0,
+      81.2
+     ],
+     "text": "Table 11: Error analysis on MuSiQue.",
+     "label": "Table 11"
+    },
+    {
+     "bbox": [
+      163.0,
+      326.8,
+      449.0,
+      336.8
+     ],
+     "text": "Table 12: Examples showing the concept-context tradeoff on MuSiQue.",
+     "label": "Table 12"
+    },
+    {
+     "bbox": [
+      107.7,
+      477.5,
+      504.0,
+      487.4
+     ],
+     "text": "Table 13: Single-step retrieval performance. HippoRAG performs substantially better on MuSiQue",
+     "label": "Table 13"
+    }
+   ],
+   "overlay": "assets/hipporag/_pages/p26.png"
+  },
+  {
+   "page": 27,
+   "candidates": [
+    {
+     "id": "cand_p27_k00",
+     "kind": "table",
+     "bbox": [
+      111.6,
+      227.3,
+      500.4,
+      317.9
+     ],
+     "pdf": "cand_p27_k00.pdf"
+    },
+    {
+     "id": "cand_p27_k01",
+     "kind": "table",
+     "bbox": [
+      111.6,
+      295.8,
+      500.4,
+      317.9
+     ],
+     "pdf": "cand_p27_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      107.7,
+      182.9,
+      504.0,
+      193.1
+     ],
+     "text": "Table 14: Multi-step retrieval performance. Combining HippoRAG with standard multi-step",
+     "label": "Table 14"
+    },
+    {
+     "bbox": [
+      170.3,
+      477.6,
+      441.7,
+      487.6
+     ],
+     "text": "Table 15: Open information extraction error examples on MuSiQue.",
+     "label": "Table 15"
+    }
+   ],
+   "overlay": "assets/hipporag/_pages/p27.png"
+  },
+  {
+   "page": 28,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      107.7,
+      71.1,
+      504.0,
+      81.2
+     ],
+     "text": "Table 16: Intrinsic OpenIE evaluation using the CaRB [6] framework. Performance difference",
+     "label": "Table 16"
+    },
+    {
+     "bbox": [
+      107.7,
+      272.7,
+      504.0,
+      282.9
+     ],
+     "text": "Table 17, HippoRAG can be 6 to 13 times faster than IRCoT, depending on the number of retrieval",
+     "label": "Table 17"
+    },
+    {
+     "bbox": [
+      107.7,
+      305.3,
+      504.0,
+      315.3
+     ],
+     "text": "Table 17: Average cost and efficiency measurements for online retrieval using GPT-3.5 Turbo on",
+     "label": "Table 17"
+    },
+    {
+     "bbox": [
+      107.7,
+      508.7,
+      504.0,
+      518.8
+     ],
+     "text": "Table 18: Average cost and latency measurements for offline indexing using GPT-3.5 Turbo and",
+     "label": "Table 18"
+    }
+   ],
+   "overlay": "assets/hipporag/_pages/p28.png"
+  },
+  {
+   "page": 29,
+   "candidates": [
+    {
+     "id": "cand_p29_k00",
+     "kind": "table",
+     "bbox": [
+      108.0,
+      328.9,
+      503.9,
+      615.9
+     ],
+     "pdf": "cand_p29_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      202.6,
+      626.2,
+      409.4,
+      636.2
+     ],
+     "text": "Figure 7: Prompt for passage NER during indexing.",
+     "label": "Figure 7"
+    }
+   ],
+   "overlay": "assets/hipporag/_pages/p29.png"
+  },
+  {
+   "page": 30,
+   "candidates": [
+    {
+     "id": "cand_p30_k00",
+     "kind": "table",
+     "bbox": [
+      108.0,
+      292.2,
+      504.0,
+      479.6
+     ],
+     "pdf": "cand_p30_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      207.7,
+      490.0,
+      404.3,
+      500.0
+     ],
+     "text": "Figure 8: Prompt for query NER during retrieval.",
+     "label": "Figure 8"
+    }
+   ],
+   "overlay": "assets/hipporag/_pages/p30.png"
+  },
+  {
+   "page": 31,
+   "candidates": [
+    {
+     "id": "cand_p31_k00",
+     "kind": "vector",
+     "bbox": [
+      111.0,
+      123.2,
+      501.5,
+      646.9
+     ],
+     "pdf": "cand_p31_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      213.8,
+      660.4,
+      398.2,
+      670.3
+     ],
+     "text": "Figure 9: Prompt for OpenIE during indexing.",
+     "label": "Figure 9"
+    }
+   ],
+   "overlay": "assets/hipporag/_pages/p31.png"
+  }
+ ]
+}

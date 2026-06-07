@@ -1,0 +1,1056 @@
+{
+ "pdf": "Think-on-Graph (ToG).pdf",
+ "slug": "tog",
+ "page_count": 31,
+ "page_size": [
+  612.0,
+  792.0
+ ],
+ "pages": [
+  {
+   "page": 1,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/tog/_pages/p01.png"
+  },
+  {
+   "page": 2,
+   "candidates": [
+    {
+     "id": "cand_p02_k00",
+     "kind": "image",
+     "bbox": [
+      119.8,
+      82.9,
+      491.6,
+      139.9
+     ],
+     "pdf": "cand_p02_k00.pdf"
+    },
+    {
+     "id": "cand_p02_k01",
+     "kind": "vector",
+     "bbox": [
+      119.8,
+      149.1,
+      493.4,
+      282.9
+     ],
+     "pdf": "cand_p02_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      307.0,
+      505.7,
+      316.8
+     ],
+     "text": "Figure 1: Representative workflow of three LLM reasoning paradigms: (a) LLM-only (e.g., Chain-of-",
+     "label": "Figure 1"
+    }
+   ],
+   "overlay": "assets/tog/_pages/p02.png"
+  },
+  {
+   "page": 3,
+   "candidates": [
+    {
+     "id": "cand_p03_k00",
+     "kind": "image",
+     "bbox": [
+      119.4,
+      83.4,
+      483.6,
+      311.3
+     ],
+     "pdf": "cand_p03_k00.pdf"
+    },
+    {
+     "id": "cand_p03_k01",
+     "kind": "image",
+     "bbox": [
+      118.9,
+      187.1,
+      210.3,
+      267.4
+     ],
+     "pdf": "cand_p03_k01.pdf"
+    },
+    {
+     "id": "cand_p03_k02",
+     "kind": "image",
+     "bbox": [
+      188.7,
+      279.2,
+      484.9,
+      313.8
+     ],
+     "pdf": "cand_p03_k02.pdf"
+    },
+    {
+     "id": "cand_p03_k03",
+     "kind": "image",
+     "bbox": [
+      238.3,
+      187.3,
+      339.9,
+      267.7
+     ],
+     "pdf": "cand_p03_k03.pdf"
+    },
+    {
+     "id": "cand_p03_k04",
+     "kind": "image",
+     "bbox": [
+      368.9,
+      187.1,
+      483.8,
+      267.4
+     ],
+     "pdf": "cand_p03_k04.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      324.9,
+      504.0,
+      334.9
+     ],
+     "text": "Figure 2: An example workflow of ToG. The glowing entities are the central entities where the",
+     "label": "Figure 2"
+    }
+   ],
+   "overlay": "assets/tog/_pages/p03.png"
+  },
+  {
+   "page": 4,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/tog/_pages/p04.png"
+  },
+  {
+   "page": 5,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/tog/_pages/p05.png"
+  },
+  {
+   "page": 6,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      107.7,
+      223.5,
+      504.4,
+      233.5
+     ],
+     "text": "Table 1: The ToG results for different datasets. The prior FT (Fine-tuned) and prompting SOTA",
+     "label": "Table 1"
+    },
+    {
+     "bbox": [
+      305.7,
+      637.1,
+      505.7,
+      647.0
+     ],
+     "text": "Table 2: Performances of ToG using different back-",
+     "label": "Table 2"
+    }
+   ],
+   "overlay": "assets/tog/_pages/p06.png"
+  },
+  {
+   "page": 7,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      345.3,
+      625.9,
+      504.0,
+      636.0
+     ],
+     "text": "Table 3: Performances of ToG using",
+     "label": "Table 3"
+    }
+   ],
+   "overlay": "assets/tog/_pages/p07.png"
+  },
+  {
+   "page": 8,
+   "candidates": [
+    {
+     "id": "cand_p08_k00",
+     "kind": "image",
+     "bbox": [
+      108.0,
+      81.9,
+      203.8,
+      152.3
+     ],
+     "pdf": "cand_p08_k00.pdf"
+    },
+    {
+     "id": "cand_p08_k01",
+     "kind": "image",
+     "bbox": [
+      208.1,
+      82.5,
+      303.9,
+      152.3
+     ],
+     "pdf": "cand_p08_k01.pdf"
+    },
+    {
+     "id": "cand_p08_k02",
+     "kind": "image",
+     "bbox": [
+      308.1,
+      82.0,
+      403.9,
+      152.3
+     ],
+     "pdf": "cand_p08_k02.pdf"
+    },
+    {
+     "id": "cand_p08_k03",
+     "kind": "image",
+     "bbox": [
+      408.2,
+      82.4,
+      504.0,
+      152.3
+     ],
+     "pdf": "cand_p08_k03.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      162.8,
+      162.4,
+      449.2,
+      172.3
+     ],
+     "text": "Figure 3: Performances of ToG with different search depths and widths.",
+     "label": "Figure 3"
+    },
+    {
+     "bbox": [
+      345.3,
+      364.6,
+      505.7,
+      374.5
+     ],
+     "text": "Table 4: Performances of ToG using dif-",
+     "label": "Table 4"
+    },
+    {
+     "bbox": [
+      345.3,
+      561.1,
+      505.7,
+      571.1
+     ],
+     "text": "Table 5: Performances of ToG using dif-",
+     "label": "Table 5"
+    }
+   ],
+   "overlay": "assets/tog/_pages/p08.png"
+  },
+  {
+   "page": 9,
+   "candidates": [
+    {
+     "id": "cand_p09_k00",
+     "kind": "image",
+     "bbox": [
+      110.0,
+      81.9,
+      502.0,
+      212.5
+     ],
+     "pdf": "cand_p09_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      150.9,
+      222.5,
+      461.1,
+      232.5
+     ],
+     "text": "Figure 4: The illustration of knowledge traceability and correctability of ToG.",
+     "label": "Figure 4"
+    }
+   ],
+   "overlay": "assets/tog/_pages/p09.png"
+  },
+  {
+   "page": 10,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/tog/_pages/p10.png"
+  },
+  {
+   "page": 11,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/tog/_pages/p11.png"
+  },
+  {
+   "page": 12,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/tog/_pages/p12.png"
+  },
+  {
+   "page": 13,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/tog/_pages/p13.png"
+  },
+  {
+   "page": 14,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/tog/_pages/p14.png"
+  },
+  {
+   "page": 15,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/tog/_pages/p15.png"
+  },
+  {
+   "page": 16,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/tog/_pages/p16.png"
+  },
+  {
+   "page": 17,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      107.6,
+      119.0,
+      183.5,
+      129.0
+     ],
+     "text": "Algorithm 1 and 2.",
+     "label": "Algorithm 1"
+    },
+    {
+     "bbox": [
+      107.6,
+      154.8,
+      179.3,
+      164.8
+     ],
+     "text": "Algorithm 1 ToG",
+     "label": "Algorithm 1"
+    },
+    {
+     "bbox": [
+      307.5,
+      154.8,
+      389.2,
+      164.8
+     ],
+     "text": "Algorithm 2 ToG-R",
+     "label": "Algorithm 2"
+    },
+    {
+     "bbox": [
+      345.3,
+      718.9,
+      504.0,
+      728.9
+     ],
+     "text": "Table 6: The results of Naive Beam",
+     "label": "Table 6"
+    }
+   ],
+   "overlay": "assets/tog/_pages/p17.png"
+  },
+  {
+   "page": 18,
+   "candidates": [
+    {
+     "id": "cand_p18_k00",
+     "kind": "image",
+     "bbox": [
+      108.0,
+      82.5,
+      302.0,
+      230.0
+     ],
+     "pdf": "cand_p18_k00.pdf"
+    },
+    {
+     "id": "cand_p18_k01",
+     "kind": "image",
+     "bbox": [
+      310.0,
+      81.9,
+      504.0,
+      230.0
+     ],
+     "pdf": "cand_p18_k01.pdf"
+    },
+    {
+     "id": "cand_p18_k02",
+     "kind": "image",
+     "bbox": [
+      108.0,
+      276.0,
+      234.7,
+      369.2
+     ],
+     "pdf": "cand_p18_k02.pdf"
+    },
+    {
+     "id": "cand_p18_k03",
+     "kind": "image",
+     "bbox": [
+      242.6,
+      274.0,
+      369.4,
+      369.2
+     ],
+     "pdf": "cand_p18_k03.pdf"
+    },
+    {
+     "id": "cand_p18_k04",
+     "kind": "image",
+     "bbox": [
+      377.3,
+      274.4,
+      504.0,
+      369.2
+     ],
+     "pdf": "cand_p18_k04.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      240.2,
+      504.0,
+      250.1
+     ],
+     "text": "Figure 5: Exemplar sensitivity analysis for CWQ and WebQSP for ToG, where \"0\" denotes zero-shot",
+     "label": "Figure 5"
+    },
+    {
+     "bbox": [
+      108.0,
+      379.2,
+      505.2,
+      389.3
+     ],
+     "text": "Figure 6: The erroneous instances and categories in the CWQ, WebQSP, and GrailQA of IO, CoT,",
+     "label": "Figure 6"
+    }
+   ],
+   "overlay": "assets/tog/_pages/p18.png"
+  },
+  {
+   "page": 19,
+   "candidates": [
+    {
+     "id": "cand_p19_k00",
+     "kind": "image",
+     "bbox": [
+      108.0,
+      149.7,
+      234.7,
+      270.3
+     ],
+     "pdf": "cand_p19_k00.pdf"
+    },
+    {
+     "id": "cand_p19_k01",
+     "kind": "image",
+     "bbox": [
+      242.6,
+      149.7,
+      369.4,
+      270.3
+     ],
+     "pdf": "cand_p19_k01.pdf"
+    },
+    {
+     "id": "cand_p19_k02",
+     "kind": "image",
+     "bbox": [
+      377.3,
+      149.5,
+      504.0,
+      270.3
+     ],
+     "pdf": "cand_p19_k02.pdf"
+    },
+    {
+     "id": "cand_p19_k03",
+     "kind": "image",
+     "bbox": [
+      108.0,
+      308.7,
+      234.7,
+      429.2
+     ],
+     "pdf": "cand_p19_k03.pdf"
+    },
+    {
+     "id": "cand_p19_k04",
+     "kind": "image",
+     "bbox": [
+      242.6,
+      308.6,
+      369.4,
+      429.2
+     ],
+     "pdf": "cand_p19_k04.pdf"
+    },
+    {
+     "id": "cand_p19_k05",
+     "kind": "image",
+     "bbox": [
+      377.3,
+      308.6,
+      504.0,
+      429.2
+     ],
+     "pdf": "cand_p19_k05.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      107.7,
+      95.3,
+      504.0,
+      105.2
+     ],
+     "text": "Table 21). This distinction sets our approach apart from traditional graph-based search methods, as it",
+     "label": "Table 21"
+    },
+    {
+     "bbox": [
+      108.4,
+      280.4,
+      503.6,
+      290.4
+     ],
+     "text": "Figure 7: The proportions of ToG’s evidence of answers on CWQ, WebQSP, and GrailQA datasets.",
+     "label": "Figure 7"
+    },
+    {
+     "bbox": [
+      117.6,
+      439.3,
+      494.4,
+      449.2
+     ],
+     "text": "Figure 8: The explored path overlap ratio of ToG-R on CWQ, WebQSP, and GrailQA datasets.",
+     "label": "Figure 8"
+    }
+   ],
+   "overlay": "assets/tog/_pages/p19.png"
+  },
+  {
+   "page": 20,
+   "candidates": [
+    {
+     "id": "cand_p20_k00",
+     "kind": "image",
+     "bbox": [
+      117.9,
+      91.4,
+      494.1,
+      170.9
+     ],
+     "pdf": "cand_p20_k00.pdf"
+    },
+    {
+     "id": "cand_p20_k01",
+     "kind": "image",
+     "bbox": [
+      108.0,
+      219.4,
+      234.7,
+      324.7
+     ],
+     "pdf": "cand_p20_k01.pdf"
+    },
+    {
+     "id": "cand_p20_k02",
+     "kind": "image",
+     "bbox": [
+      242.6,
+      219.3,
+      369.4,
+      324.7
+     ],
+     "pdf": "cand_p20_k02.pdf"
+    },
+    {
+     "id": "cand_p20_k03",
+     "kind": "image",
+     "bbox": [
+      377.3,
+      218.9,
+      504.0,
+      324.7
+     ],
+     "pdf": "cand_p20_k03.pdf"
+    },
+    {
+     "id": "cand_p20_k04",
+     "kind": "image",
+     "bbox": [
+      108.0,
+      372.7,
+      234.7,
+      478.3
+     ],
+     "pdf": "cand_p20_k04.pdf"
+    },
+    {
+     "id": "cand_p20_k05",
+     "kind": "image",
+     "bbox": [
+      242.6,
+      373.0,
+      369.4,
+      478.3
+     ],
+     "pdf": "cand_p20_k05.pdf"
+    },
+    {
+     "id": "cand_p20_k06",
+     "kind": "image",
+     "bbox": [
+      377.3,
+      372.7,
+      504.0,
+      478.3
+     ],
+     "pdf": "cand_p20_k06.pdf"
+    },
+    {
+     "id": "cand_p20_k07",
+     "kind": "image",
+     "bbox": [
+      167.4,
+      526.3,
+      444.6,
+      688.4
+     ],
+     "pdf": "cand_p20_k07.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      215.0,
+      181.0,
+      397.0,
+      190.9
+     ],
+     "text": "Figure 9: Path schematic to calculate overlap.",
+     "label": "Figure 9"
+    },
+    {
+     "bbox": [
+      120.1,
+      334.7,
+      491.9,
+      344.7
+     ],
+     "text": "Figure 10: The explored path overlap ratio of ToG on CWQ, WebQSP, and GrailQA datasets.",
+     "label": "Figure 10"
+    },
+    {
+     "bbox": [
+      133.7,
+      488.4,
+      478.3,
+      498.3
+     ],
+     "text": "Figure 11: The path overlap ratio of ToG-R on CWQ, WebQSP, and GrailQA datasets.",
+     "label": "Figure 11"
+    },
+    {
+     "bbox": [
+      108.0,
+      698.5,
+      505.2,
+      708.4
+     ],
+     "text": "Figure 12: The lengths of the ground-truth SPARQL queries within the CWQ and WebQSP datasets,",
+     "label": "Figure 12"
+    }
+   ],
+   "overlay": "assets/tog/_pages/p20.png"
+  },
+  {
+   "page": 21,
+   "candidates": [
+    {
+     "id": "cand_p21_k00",
+     "kind": "image",
+     "bbox": [
+      130.5,
+      81.9,
+      304.7,
+      186.7
+     ],
+     "pdf": "cand_p21_k00.pdf"
+    },
+    {
+     "id": "cand_p21_k01",
+     "kind": "image",
+     "bbox": [
+      307.2,
+      81.9,
+      481.5,
+      186.7
+     ],
+     "pdf": "cand_p21_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      138.8,
+      196.7,
+      473.2,
+      206.7
+     ],
+     "text": "Figure 13: ToG, ToG-R and CoT’s performance among CWQ and WebQSP dataset.",
+     "label": "Figure 13"
+    }
+   ],
+   "overlay": "assets/tog/_pages/p21.png"
+  },
+  {
+   "page": 22,
+   "candidates": [
+    {
+     "id": "cand_p22_k00",
+     "kind": "table",
+     "bbox": [
+      214.6,
+      82.1,
+      412.6,
+      104.4
+     ],
+     "pdf": "cand_p22_k00.pdf"
+    },
+    {
+     "id": "cand_p22_k01",
+     "kind": "table",
+     "bbox": [
+      248.8,
+      137.7,
+      420.2,
+      160.0
+     ],
+     "pdf": "cand_p22_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      182.5,
+      114.7,
+      429.2,
+      124.6
+     ],
+     "text": "Table 7: Average Number of LLM Calls per Question (Part 1)",
+     "label": "Table 7"
+    },
+    {
+     "bbox": [
+      182.5,
+      170.2,
+      429.2,
+      180.2
+     ],
+     "text": "Table 8: Average Number of LLM Calls per Question (Part 2)",
+     "label": "Table 8"
+    }
+   ],
+   "overlay": "assets/tog/_pages/p22.png"
+  },
+  {
+   "page": 23,
+   "candidates": [
+    {
+     "id": "cand_p23_k00",
+     "kind": "table",
+     "bbox": [
+      110.9,
+      114.5,
+      501.1,
+      231.6
+     ],
+     "pdf": "cand_p23_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      107.7,
+      241.6,
+      504.0,
+      251.7
+     ],
+     "text": "Table 9: The statistics of the datasets used in this paper. * denotes we randomly selected 1,000",
+     "label": "Table 9"
+    },
+    {
+     "bbox": [
+      108.5,
+      476.0,
+      503.2,
+      485.9
+     ],
+     "text": "Table 10: The statics of Fine-Tuning, prompting-based methods of ComplexWebQuestions dataset.",
+     "label": "Table 10"
+    },
+    {
+     "bbox": [
+      137.5,
+      699.7,
+      474.2,
+      709.7
+     ],
+     "text": "Table 11: The statics of Fine-Tuning, prompting-based methods of WebQSP dataset.",
+     "label": "Table 11"
+    }
+   ],
+   "overlay": "assets/tog/_pages/p23.png"
+  },
+  {
+   "page": 24,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      139.5,
+      219.7,
+      472.2,
+      229.7
+     ],
+     "text": "Table 12: The statics of Fine-Tuning, prompting-based methods of GrailQA dataset",
+     "label": "Table 12"
+    },
+    {
+     "bbox": [
+      130.5,
+      347.9,
+      481.2,
+      357.8
+     ],
+     "text": "Table 13: The statics of Fine-Tuning, prompting-based methods of QALD10-en dataset.",
+     "label": "Table 13"
+    },
+    {
+     "bbox": [
+      121.6,
+      508.9,
+      490.1,
+      518.9
+     ],
+     "text": "Table 14: The statics of Fine-Tuning, prompting-based methods of SimpleQuetsions dataset.",
+     "label": "Table 14"
+    },
+    {
+     "bbox": [
+      126.7,
+      703.2,
+      485.0,
+      713.2
+     ],
+     "text": "Table 15: The statics of Fine-Tuning, prompting-based methods of WebQuestions dataset.",
+     "label": "Table 15"
+    }
+   ],
+   "overlay": "assets/tog/_pages/p24.png"
+  },
+  {
+   "page": 25,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      107.7,
+      203.4,
+      150.3,
+      213.5
+     ],
+     "text": "Table 16:",
+     "label": "Table 16"
+    },
+    {
+     "bbox": [
+      325.5,
+      203.4,
+      368.1,
+      213.5
+     ],
+     "text": "Table 17:",
+     "label": "Table 17"
+    },
+    {
+     "bbox": [
+      143.7,
+      348.1,
+      467.9,
+      358.1
+     ],
+     "text": "Table 18: The statics of Fine-Tuning, prompting-based methods of Creak dataset.",
+     "label": "Table 18"
+    }
+   ],
+   "overlay": "assets/tog/_pages/p25.png"
+  },
+  {
+   "page": 26,
+   "candidates": [
+    {
+     "id": "cand_p26_k00",
+     "kind": "table",
+     "bbox": [
+      108.0,
+      182.6,
+      504.0,
+      420.3
+     ],
+     "pdf": "cand_p26_k00.pdf"
+    },
+    {
+     "id": "cand_p26_k01",
+     "kind": "table",
+     "bbox": [
+      108.0,
+      470.1,
+      504.0,
+      669.3
+     ],
+     "pdf": "cand_p26_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      107.7,
+      430.3,
+      504.0,
+      440.3
+     ],
+     "text": "Table 19: Case for ToG. The wrong answers are highlighted with red color, and the correct answers",
+     "label": "Table 19"
+    },
+    {
+     "bbox": [
+      107.7,
+      679.4,
+      504.0,
+      689.4
+     ],
+     "text": "Table 20: Case for ToG. The wrong answers are highlighted with red color, and the correct answers",
+     "label": "Table 20"
+    }
+   ],
+   "overlay": "assets/tog/_pages/p26.png"
+  },
+  {
+   "page": 27,
+   "candidates": [
+    {
+     "id": "cand_p27_k00",
+     "kind": "table",
+     "bbox": [
+      108.0,
+      93.4,
+      504.0,
+      385.8
+     ],
+     "pdf": "cand_p27_k00.pdf"
+    },
+    {
+     "id": "cand_p27_k01",
+     "kind": "table",
+     "bbox": [
+      108.0,
+      448.8,
+      504.0,
+      686.4
+     ],
+     "pdf": "cand_p27_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      107.7,
+      395.8,
+      504.0,
+      405.9
+     ],
+     "text": "Table 21: Case for ToG-R. \"Unknown\" denotes LLM is unable to generate a valid response. The",
+     "label": "Table 21"
+    },
+    {
+     "bbox": [
+      107.7,
+      696.5,
+      504.0,
+      706.5
+     ],
+     "text": "Table 22: Case for ToG. The wrong answers are highlighted with red color, and the correct answers",
+     "label": "Table 22"
+    }
+   ],
+   "overlay": "assets/tog/_pages/p27.png"
+  },
+  {
+   "page": 28,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/tog/_pages/p28.png"
+  },
+  {
+   "page": 29,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/tog/_pages/p29.png"
+  },
+  {
+   "page": 30,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/tog/_pages/p30.png"
+  },
+  {
+   "page": 31,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/tog/_pages/p31.png"
+  }
+ ]
+}

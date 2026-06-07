@@ -1,0 +1,473 @@
+\documentclass[11pt,UTF8,fontset=fandol,openany]{ctexrep}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx,float,caption}
+\usepackage{booktabs,array,multirow,makecell,longtable}
+\usepackage{geometry,enumitem,xcolor}
+\usepackage[hidelinks]{hyperref}
+\usepackage{url,fancyhdr,titlesec,titletoc}
+\usepackage{listings}
+
+\geometry{a4paper, left=2.5cm, right=2.5cm, top=2.8cm, bottom=2.8cm, headheight=14pt}
+
+% NVIDIA 主题绿色
+\definecolor{nvidiagreen}{HTML}{76B900}
+\definecolor{nvidiagreenlight}{HTML}{E8F5D0}
+\definecolor{codebg}{HTML}{EEEEEE}
+
+% 图表路径
+\graphicspath{{/Users/yye/project/论文/latex/gpu_debug/}}
+
+% 设置章节标题样式
+\ctexset{
+  chapter = {
+    format = \huge\bfseries,
+    nameformat = {},
+    titleformat = {},
+    beforeskip = 30pt,
+    afterskip = 20pt,
+  },
+  section = {
+    format = \LARGE\color{nvidiagreen},
+    beforeskip = 20pt,
+    afterskip = 12pt,
+  },
+  subsection = {
+    format = \Large\color{nvidiagreen},
+    beforeskip = 15pt,
+    afterskip = 10pt,
+  },
+}
+
+% 在章标题前添加绿色横线
+\titleformat{\chapter}[display]
+  {\huge\bfseries}
+  {\textcolor{nvidiagreen}{\rule{\textwidth}{2pt}}\vspace{6pt}\\ 第\,\thechapter\,章.}
+  {0.5em}
+  {}
+
+% 页眉页脚
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textbf{NVIDIA GPU 调试指南，版本 r560}}
+\fancyhead[R]{}
+\fancyfoot[C]{}
+\fancyfoot[R]{\thepage}
+\fancyfoot[L]{\small\leftmark}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0.4pt}
+
+% 题注设置
+\captionsetup{font=small,labelfont=bf}
+
+% 代码块样式
+\lstset{
+  basicstyle=\ttfamily\small,
+  backgroundcolor=\color{codebg},
+  frame=single,
+  framerule=0pt,
+  breaklines=true,
+  xleftmargin=1em,
+  xrightmargin=1em,
+}
+
+% 列表样式（使用实心三角符号）
+\setlist[itemize]{label={\color{nvidiagreen}$\blacktriangleright$}, leftmargin=2em, itemsep=2pt}
+\setlist[itemize,2]{label={\color{nvidiagreen}$\blacktriangleright$}, leftmargin=2em, itemsep=1pt}
+
+\setlength{\parskip}{0.5em}
+\setlength{\parindent}{0pt}
+
+\begin{document}
+
+% ============================================================
+% 封面页
+% ============================================================
+\thispagestyle{empty}
+\vspace*{0.5cm}
+\noindent\rule{\textwidth}{1.5pt}
+
+\vspace{1.5cm}
+
+\noindent\includegraphics[width=3.5cm]{nvidia_logo.pdf}
+
+\vspace{2cm}
+
+\begin{center}
+{\fontsize{28}{34}\selectfont\textbf{NVIDIA GPU 调试指南}}
+
+\vspace{0.3cm}
+{\Large\itshape 版本 r560}
+\end{center}
+
+\vspace{3cm}
+
+\begin{center}
+{\Large NVIDIA 公司}
+\end{center}
+
+\vfill
+
+\begin{center}
+{\large 2024 年 11 月 13 日}
+\end{center}
+
+\newpage
+
+% ============================================================
+% 目录
+% ============================================================
+\thispagestyle{empty}
+\tableofcontents
+\newpage
+
+% ============================================================
+% 前言介绍页
+% ============================================================
+\setcounter{page}{1}
+
+\noindent{\Large\bfseries\color{nvidiagreen} NVIDIA GPU 调试指南}
+
+\vspace{0.8em}
+
+本文档提供 GPU 错误调试与诊断指南，旨在帮助系统管理员、开发人员和现场应用工程师（FAE）尽快恢复服务器的正常运行。
+
+本文档提供了一套流程框架及相关细节，说明如何开始调试 GPU 服务器上的常见问题。其目的是涵盖数据中心 GPU 运维中最常见的问题，但并非面面俱到。以下信息是多份不同文档和 GPU 系统问题调试最佳实践的综合概要。
+
+本调试流程旨在提供通用指导，可能与您的系统供应商的特定故障排查指南不完全一致。请尽早（而非等到问题恶化后）与您的系统供应商沟通，以确保系统能够尽快恢复至正常状态。然而，通过使用本流程，基础设施团队应能够完成调试过程的初步步骤，尽可能多地收集数据，甚至完全避免提交技术支持请求。
+
+\newpage
+
+% ============================================================
+% 第 1 章 初始事件报告
+% ============================================================
+\chapter{初始事件报告}
+
+在管理 GPU 系统事件时，与所有系统事件一样，拥有一套设计良好的流程有助于更快速地诊断事件，使系统更快恢复生产状态。在任何事件发生之初，无论是系统自动检测到的还是用户报告的，都应尝试记录以下问题：
+
+\begin{itemize}
+  \item 观察到了什么异常现象？
+  \item 事件是何时被发现的？
+  \item 事件是如何被发现的？
+  \item 该行为是否在多个系统或组件上均被观察到？
+  \item 如果是，涉及多少系统？发生频率如何？
+  \item 系统、驱动程序或应用程序的行为最近是否有任何变更？
+\end{itemize}
+
+收集这些问题的相关信息以启动调试流程非常重要，因为这能提供对问题的最佳理解。通过记录这些信息，可以将其与其他事件进行关联分析，从而更好地了解整体系统行为与健康状况。
+
+\newpage
+
+% ============================================================
+% 第 2 章 GPU 节点故障排查
+% ============================================================
+\chapter{GPU 节点故障排查}
+
+系统支持团队有多种途径可以获知基于 GPU 的系统上的潜在问题通知。这些通知可能来自错误报告、系统事件监控和诊断指标。虽然这些事件可能影响 GPU 系统的运行，但并非所有事件都需要系统供应商介入处理。此外，还有一些通用工具可用于在系统出现问题后收集数据，这些数据对本地系统支持团队和供应商进行节点故障排查都非常有用。
+
+图\,\ref{fig:triage-flow} 至图\,\ref{fig:debug-app} 是基于所提供的信息（表明可能存在节点问题）启动节点故障排查的流程图。
+
+\section{报告 GPU 问题}
+
+在为系统供应商收集数据时，应包含以下信息：
+
+\begin{itemize}
+  \item 基本系统配置，如操作系统和驱动程序信息。
+  \item 问题的清晰描述，包括描述问题的关键日志消息。
+  \item 已执行的调试步骤列表。
+  \item 上述关键消息所在日志的完整内容。
+  \item \texttt{nvidia-bug-report.sh} 的输出。
+  \item HGX 系统的 Fabric Manager 日志文件。
+  \item DCGM 诊断日志。
+  \item 如果与用户应用程序相关，应提供尽可能多的应用程序详细信息（ISV 代码、框架、版本号等）以及源代码链接（如有可能）。
+  \item 向系统供应商提交工单。
+\end{itemize}
+
+\section{理解 Xid 消息}
+
+XID 错误文档提供了 XID 错误及其潜在原因的列表。在文档末尾还提供了一些常见 XID 错误的更多信息和建议操作。详情请参阅 \url{https://docs.nvidia.com/deploy/xid-errors/index.html}。
+
+数据中心部署中最常见的 XID 消息及建议步骤如表\,\ref{tab:xid} 所示。
+
+% Figure 1
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.92\linewidth]{fig1.pdf}
+  \caption{GPU 故障排查流程图}
+  \label{fig:triage-flow}
+\end{figure}
+
+\newpage
+
+% Figure 2
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.78\linewidth]{fig2.pdf}
+  \caption{GPU 故障排查流程图（用户报告的错误）}
+  \label{fig:user-error}
+\end{figure}
+
+\newpage
+
+% Figure 3
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.82\linewidth]{fig3.pdf}
+  \caption{GPU 故障排查流程图（调试应用程序）}
+  \label{fig:debug-app}
+\end{figure}
+
+\newpage
+
+% Table 1: XID Messages
+\begin{table}[H]
+\centering
+\caption{常见 XID 消息及建议操作}
+\label{tab:xid}
+\small
+\begin{tabular}{c p{5.2cm} p{7.2cm}}
+\toprule
+\textbf{Xid} & \textbf{描述} & \textbf{操作} \\
+\midrule
+13 & 图形引擎异常（Graphics Engine Exception） &
+  运行 DCGM 和现场诊断以确认问题是否与硬件相关。如确认，请参阅"报告 GPU 问题"。\\
+\midrule
+31 & 疑似硬件问题（Suspected Hardware Problems） &
+  联系硬件供应商。供应商可执行标准 RMA 流程。\\
+\midrule
+45 & 鲁棒通道抢占式移除（Robust Channel Preemptive Removal） &
+  无需操作，仅为信息通知。表示受错误影响的通道已被抢占式移除。\\
+\midrule
+48 & 双比特 ECC 错误（Double Bit ECC Error） &
+  如果 Xid 48 之后跟随 Xid 63 或 64：隔离/封锁节点，等待页面退役并重置 GPU。\\
+\midrule
+61 & PMU 断点（PMU Breakpoint） &
+  报告 GPU 问题并重置报告该 XID 的 GPU。\\
+\midrule
+62 & PMU 停止错误（PMU Halt Error） &
+  报告 GPU 问题并重置报告该 XID 的 GPU。\\
+\midrule
+63 & \textbf{传统 GPU：} ECC 页面退役记录事件\newline \textbf{A100：} 行重映射记录事件 &
+  传统 GPU：如与 XID 48 关联，隔离/封锁节点，等待页面退役。\newline
+  A100：如与 XID 94 关联，遇到该错误的应用程序需要重新启动。\\
+\midrule
+64 & \textbf{传统 GPU：} ECC 页面退役记录失败\newline \textbf{A100：} 行重映射记录失败 &
+  传统 GPU：参见上文，但应密切监控节点。\newline
+  A100：应立即重启节点，因为存在数据损坏风险。\\
+\midrule
+74 & NVLink 错误（NVLink Error） &
+  提取 XID 错误消息中的十六进制字符串。\\
+\midrule
+79 & GPU 从总线脱落（GPU has fallen off the bus） &
+  排空工作负载并参阅"报告 GPU 问题"。\\
+\midrule
+92 & 高单比特 ECC 错误率 &
+  参阅"运行现场诊断"以收集额外调试数据。\\
+\midrule
+94 & 已隔离 ECC 错误（仅 A100） &
+  遇到该错误的应用程序需要重新启动。\\
+\midrule
+95 & 未隔离 ECC 错误（仅 A100） &
+  如果启用了 MIG，排空其他 GPU 实例上的所有工作负载。重置 GPU。\\
+\midrule
+123 & SPI PMU RPC 写入失败 &
+  报告 GPU 问题并重置报告该 XID 的 GPU。\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+XID 消息 48、63、64、92、94 和 95 与 GPU 内存错误相关。A100 之前的 NVIDIA GPU 支持动态页面退役（dynamic page retirement）。有关动态页面退役的详细信息，请参阅 \url{https://docs.nvidia.com/deploy/dynamic-page-retirement/index.html}。
+
+NVIDIA A100 GPU 引入了新的内存错误恢复功能，能够提高系统韧性并避免影响未受影响的应用程序。有关 A100 GPU 内存错误管理的详细信息，请参阅 \url{https://docs.nvidia.com/deploy/a100-gpu-mem-error-mgmt/index.html}。
+
+此外，还有针对 NVSwitch 问题的 SXID 消息。根据严重程度（致命与非致命）和受影响的端口，这些错误可能会中止现有的 CUDA 作业并阻止新的 CUDA 作业启动。详情请参阅 \url{https://docs.nvidia.com/datacenter/tesla/fabric-manager-user-guide/index.html}。
+
+\vspace{1em}
+\noindent\textbf{\color{nvidiagreen}GPU/虚拟机/系统重置功能与限制：}
+
+\vspace{0.5em}
+参阅以下 \texttt{nvidia-smi} 手册页的摘录：
+
+\vspace{0.3em}
+{\small
+触发一个或多个 GPU 的重置。可用于清除 GPU 硬件和软件状态，避免在其他情况下需要重启整台机器。通常在发生双比特 ECC 错误后使用。可选的 \texttt{-i} 参数可用于指定一个或多个特定设备。如果不使用此选项，将重置所有 GPU。需要 root 权限。执行重置时不能有任何应用程序正在使用这些设备（例如 CUDA 应用程序、X 服务器等图形应用程序、其他 \texttt{nvidia-smi} 实例等监控应用程序）。
+}
+
+\vspace{1em}
+
+% Table 2: Reset Capabilities
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{p{5.8cm} c p{6.5cm}}
+\toprule
+ & \textbf{FM 状态} & \textbf{裸金属} \\
+\midrule
+NVIDIA Ampere 架构及更新架构，采用直连 NVLink &
+  N/A &
+  可单独重置某个 GPU。\\
+\midrule
+\multirow{2}{5.8cm}{NVIDIA Ampere 架构 + NVSwitch} &
+  Running &
+  可单独重置某个 GPU。重置后 FM 重新配置 NVSwitch。\\
+\cmidrule{2-3}
+ & NOT Running &
+  不支持单个 GPU 重置。需要完整的节点重置。\\
+\midrule
+Hopper 及更新架构 + NVSwitch &
+  N/A &
+  可单独重置 GPU，不受 FM 状态影响。\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{运行 DCGM 诊断}
+
+\begin{quote}
+\textbf{DCGM 是一个系统级工具，提供面向生产环境的诊断测试，用于评估节点健康状况和集群就绪性。} 详情请参阅 \url{https://docs.nvidia.com/datacenter/dcgm/latest/dcgm-user-guide/dcgm-diagnostics.html}。
+\end{quote}
+
+运行测试有许多可用选项，也有一些默认配置适用于大多数系统，通过 \texttt{-{}-run}（\texttt{-r}）选项指定。可用的测试套件包括 1（短）、2（中）和 3（长）。要对系统进行完整压力测试，请使用长测试（3）选项。
+
+\begin{lstlisting}
+# dcgmi diag -r 3
+\end{lstlisting}
+
+长测试大约需要 30 分钟。其他选项可用作预检或在系统 prolog 中验证节点，以确保其在开始作业之前处于正常状态。
+
+当 DCGM 诊断发现问题时，应尝试解决该问题。配置相关的问题可通过 IT 命令处理，DCGM 可能会提供从何处开始的建议。如果诊断测试发现 GPU 或 NVSwitch Fabric（如存在）的运行存在问题，请检查节点及其配置是否有异常。
+
+\section{运行现场诊断}
+
+现场诊断（Field Diagnostic）是 NVIDIA 用于确定 GPU 健康状况的权威且全面的工具。通常在启动 RMA（返修授权）流程之前必须运行此工具。请联系您的系统供应商，了解何时、是否以及如何运行此工具。
+
+\section{网络测试}
+
+可以使用 NCCL 性能测试（\url{https://github.com/NVIDIA/nccl-tests}）来测试网络性能和延迟。特别是，\texttt{all\_reduce\_perf} 测试非常适合用于评估节点组之间的网络性能。节点间的成对测试应产生相同的性能结果。当识别出性能较慢的节点对时，应使用这些节点与其他不同节点重新测试以隔离问题。在多轨网络拓扑中，测试还可以隔离到特定轨道以确定哪个网络接口存在问题。更多信息请参阅 \url{https://developer.nvidia.com/nccl}。
+
+建议在系统投入生产之前运行网络测试并记录所达到的性能。这将帮助您了解网络性能并为未来的比较提供基线。节点组的性能可能因系统网络拓扑而异。请与您的网络供应商/架构师协调，以了解应可达到的性能水平。
+
+\section{调试应用程序}
+
+调试应用程序通常需要将调试器附加到用户应用程序，并在应用程序崩溃前尽可能多地收集数据。导致应用程序崩溃的问题可能与系统软件有关，但调试过程是了解崩溃位置以及能否从应用程序端解决问题的最快方式。从调试器收集的数据可供 NVIDIA 用于开始调试系统软件问题。
+
+CUDA-GDB 是 NVIDIA 用于调试在 Linux 和 QNX 上运行的 CUDA 应用程序的工具。它使开发人员能够调试应用程序，而无需受到模拟和仿真环境引入的潜在差异的影响。详情请参阅 \url{https://developer.nvidia.com/cuda-gdb} 和 \url{https://docs.nvidia.com/cuda/cuda-gdb/index.html}。
+
+如果问题与性能相关，可以使用性能分析器（profiler），如 Nsight Systems 或 Nsight Compute，来了解应用程序的性能和瓶颈。系统软件的变更可能导致应用程序性能的变化，因此即使应用程序本身没有变更，对应用程序进行性能分析也是一个重要步骤。分析器数据可以突出显示 CPU、存储或 GPU 中的性能问题，帮助了解性能问题可能源自何处。
+
+\newpage
+
+% ============================================================
+% 第 3 章 最佳实践
+% ============================================================
+\chapter{最佳实践}
+
+调试应用程序通常需要将调试器附加到用户应用程序，并在应用程序崩溃前尽可能多地收集数据。导致应用程序崩溃的问题可能与系统软件有关，但调试过程是了解崩溃位置以及能否从应用程序端解决问题的最快方式。从调试器收集的数据可供 NVIDIA 用于开始调试系统软件问题。
+
+CUDA-GDB 是 NVIDIA 用于调试在 Linux 和 QNX 上运行的 CUDA 应用程序的工具。它使开发人员能够调试应用程序，而无需受到模拟和仿真环境引入的潜在差异的影响。详情请参阅 \url{https://developer.nvidia.com/cuda-gdb} 和 \url{https://docs.nvidia.com/cuda/cuda-gdb/index.html}。
+
+如果问题与性能相关，可以使用性能分析器（profiler），如 Nsight Systems 或 Nsight Compute，来了解应用程序的性能和瓶颈。系统软件的变更可能导致应用程序性能的变化，因此即使应用程序本身没有变更，对应用程序进行性能分析也是一个重要步骤。分析器数据可以突出显示 CPU、存储或 GPU 中的性能问题，帮助了解性能问题可能源自何处。
+
+\section{收集节点指标}
+
+节点性能和运行状态可以通过系统指标来推断。收集系统指标的时间序列数据可以帮助管理员检测节点何时开始出现异常运行，或用于主动式系统维护。
+
+可以使用带内工具（如 DCGM Prometheus 插件）和带外工具（如 IPMI）来收集指标。有关 DCGM Prometheus 插件的详细信息，请参阅 \url{https://docs.nvidia.com/datacenter/cloud-native/gpu-telemetry/latest/kube-prometheus.html}。
+
+DCGM 提供了面向 Kubernetes 部署的容器化版本。详情请参阅"在 Kubernetes 中使用 DCGM 监控 GPU"。
+
+在基于 GPU 的系统上应收集的关键指标包括：
+
+\begin{itemize}
+  \item 各电源供应器的功耗
+  \item PDU（配电单元）处的功耗
+  \item PDU 功率因数
+  \item CPU 功耗和 CPU 温度
+  \item GPU 功耗、GPU 温度、GPU 显存温度和 GPU 时钟频率
+  \item NVLink 指标（仅 A100）
+  \item 节点风扇转速
+  \item 进风口温度
+\end{itemize}
+
+根据数据中心的具体情况，其他指标也可能有用。
+
+数据可以存储在时间序列数据库或其他 NoSQL 数据库中，并根据需要进行查询。此外，可以创建告警规则来检测可能对系统和应用程序性能产生负面影响的条件。这些告警包括：
+
+\begin{itemize}
+  \item 进风口温度上升可能表明数据中心冷却系统存在问题，或有杂物阻塞了气流。
+  \item GPU 和 GPU 显存温度过高将导致 GPU 降频（throttling）和性能下降。
+\end{itemize}
+
+\section{在错误发生前捕获错误}
+
+本文档的目标是帮助管理员发现最常见的系统问题，并提供解决方案或快速解决路径。然而，最好在系统问题影响用户作业之前就捕获它们。最佳时机是在作业开始时通过初始化容器（init-container）或 prolog 脚本执行检查，或在作业结束时通过 epilog 脚本执行检查。以下是一些建议的测试项目，有助于在系统错误影响用户作业之前捕获它们。
+
+\vspace{0.5em}
+\noindent\textbf{GPU 专项检查：}
+
+\begin{itemize}
+  \item 确认关键软件组件已加载
+  \begin{itemize}
+    \item GPU 驱动程序
+    \item \texttt{nv-peer-mem}（用于 GPUDirect RDMA，\url{https://developer.nvidia.com/gpudirect}）
+    \item Gdrdrv（用于 GDRCopy，\url{https://github.com/NVIDIA/gdrcopy}）
+    \item HGX 系统的 Fabric Manager
+  \end{itemize}
+  \item 确认节点的特定 GPU 功能配置正确（GPU 数量、PCIe 链路速度、VBIOS 等）。
+  \item 确认驱动程序持久化设置正确。驱动程序持久化应通过 Persistence Daemon 控制。（\url{https://docs.nvidia.com/deploy/driver-persistence/index.html}）
+  \item 对于基于 NVSwitch 的系统：
+  \begin{itemize}
+    \item 确认 Fabric Manager 正在运行
+    \item 确认 NVLink Fabric 拓扑正确
+  \end{itemize}
+  \item 检查是否有最近的 XID 错误
+  \item 运行 \texttt{dcgmi diag -r 2} 以快速检查系统软件和 GPU 功能
+\end{itemize}
+
+\noindent\textbf{其他非 GPU 检查项目：}
+
+\begin{itemize}
+  \item 检查所有网络链路是否处于活动状态
+  \begin{itemize}
+    \item 这可以是简单的活动状态检查，也可以是更全面的检查，验证预期链路速度、固件版本、PCIe 链路宽度等。
+  \end{itemize}
+  \item 检查所有预期的文件系统挂载点是否存在
+  \item 通过运行一些 CUDA 工作负载来检查节点设置是否正确。详情请参阅 \url{https://docs.nvidia.com/datacenter/tesla/hgx-software-guide/index.html} 和 \url{https://docs.nvidia.com/datacenter/tesla/driver-installation-guide/index.html}
+\end{itemize}
+
+\newpage
+
+% ============================================================
+% 第 4 章 声明
+% ============================================================
+\chapter{声明}
+
+本文档仅供参考之用，不应被视为对产品特定功能、状态或质量的保证。NVIDIA 公司（以下简称"NVIDIA"）对本文档所含信息的准确性或完整性不作任何明示或暗示的声明或保证，也不对本文档中可能存在的任何错误承担责任。NVIDIA 对因使用此类信息所造成的后果或因使用此类信息而可能导致的任何专利侵权或第三方其他权利侵犯不承担任何责任。本文档并非开发、发布或交付任何材料（定义见下文）、代码或功能的承诺。
+
+NVIDIA 保留随时对本文档进行修正、修改、增强、改进及任何其他变更的权利，恕不另行通知。
+
+客户应在下单前获取最新的相关信息，并应验证该信息是最新且完整的。
+
+NVIDIA 产品按订单确认时提供的 NVIDIA 标准销售条款和条件销售，除非 NVIDIA 和客户的授权代表另行签署了单独的销售协议（以下简称"销售条款"）。NVIDIA 在此明确反对将任何客户的一般条款和条件适用于本文档所引用的 NVIDIA 产品的购买。本文档不直接或间接形成任何合同义务。
+
+NVIDIA 产品未被设计、授权或保证适用于医疗、军事、航空、航天或生命维持设备，也不适用于 NVIDIA 产品的故障或功能异常可合理预期会导致人身伤害、死亡或财产或环境损害的应用。NVIDIA 对将 NVIDIA 产品包含和/或用于此类设备或应用不承担任何责任，因此此类包含和/或使用完全由客户自行承担风险。
+
+NVIDIA 对基于本文档的产品是否适合任何特定用途不作任何声明或保证。NVIDIA 不一定对每种产品的所有参数进行测试。客户全权负责评估和确定本文档所含任何信息的适用性，确保产品适合且满足客户计划的应用要求，并执行必要的应用测试以避免应用或产品出现缺陷。客户产品设计中的缺陷可能影响 NVIDIA 产品的质量和可靠性，并可能导致本文档所述之外的附加或不同条件和/或要求。NVIDIA 对任何可归因于以下情况的缺陷、损害、成本或问题不承担责任：(i) 以任何违反本文档的方式使用 NVIDIA 产品，或 (ii) 客户的产品设计。
+
+本文档未明示或暗示授予任何 NVIDIA 专利权、版权或其他 NVIDIA 知识产权下的许可。NVIDIA 发布的有关第三方产品或服务的信息不构成 NVIDIA 授权使用此类产品或服务的许可，也不构成对其的保证或背书。使用此类信息可能需要获得第三方的专利或其他知识产权许可，或 NVIDIA 的专利或其他知识产权许可。
+
+本文档中信息的复制仅在 NVIDIA 事先书面批准后方可进行，且须未经修改地复制，完全遵守所有适用的出口法律法规，并附带所有相关条件、限制和通知。
+
+本文档及所有 NVIDIA 设计规范、参考板、文件、图纸、诊断程序、列表和其他文档（统称或分别称为"材料"）均按"原样"提供。NVIDIA 对材料不作任何明示、暗示、法定或其他保证，并明确否认所有关于不侵权、适销性和特定用途适用性的暗示保证。在法律不禁止的范围内，NVIDIA 在任何情况下均不对任何损害承担责任，包括但不限于任何直接、间接、特殊、附带、惩罚性或后果性损害，无论其因何种原因造成，也无论基于何种责任理论，即使 NVIDIA 已被告知存在此类损害的可能性。尽管客户可能因任何原因遭受任何损害，NVIDIA 对本文所述产品对客户的总计和累计责任应限于产品销售条款所规定的范围。
+
+\section{商标}
+
+NVIDIA 和 NVIDIA 标志是 NVIDIA 公司在美国和其他国家/地区的商标或注册商标。其他公司和产品名称可能是其各自关联公司的商标。
+
+\vspace{2em}
+
+\noindent{\Large\bfseries\color{nvidiagreen} 版权}
+
+\vspace{0.5em}
+\noindent\textcopyright 2013--2024，NVIDIA 公司及其关联公司。保留所有权利。
+
+\end{document}

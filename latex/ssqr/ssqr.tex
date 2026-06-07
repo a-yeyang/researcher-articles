@@ -1,0 +1,439 @@
+\documentclass[11pt,UTF8,fontset=fandol]{ctexart}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx,float,caption,subcaption}
+\usepackage{booktabs,array,multirow,makecell}
+\usepackage{geometry,enumitem,xcolor}
+\usepackage[hidelinks]{hyperref}
+\usepackage{url}
+\geometry{margin=2.3cm}
+\graphicspath{{/Users/yye/project/论文/assets/ssqr/}}
+\captionsetup{font=small,labelfont=bf}
+\setlength{\parskip}{0.4em}
+\hypersetup{pdftitle={SSQR 中文精读导读},pdfauthor={Lin et al.}}
+
+% 小白知识卡片：上下加线 + 粗体标签，稳健不挑内容
+\newenvironment{tip}[1]{%
+  \par\smallskip\noindent\rule{\linewidth}{0.4pt}\par\nobreak
+  \noindent\textbf{【小白补丁】#1}\par\nobreak\noindent\ignorespaces
+}{%
+  \par\noindent\rule{\linewidth}{0.4pt}\par\smallskip
+}
+
+\title{SSQR 中文精读导读：把知识图谱“压缩成离散码”，无缝塞进大模型}
+\author{原文：Lin, Zhao, He, Peng, Xu, Huang, Ma, Feng（新加坡国立大学、西安交通大学，ACL 2025）}
+\date{}
+
+\begin{document}
+\maketitle
+\begin{center}\small\textit{本导读为面向初学者的中文学习笔记：含要点翻译、公式精讲与图表解读。}\end{center}
+
+\section*{论文卡片}
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{标题} & Self-supervised Quantized Representation for Seamlessly \\
+            & Integrating Knowledge Graphs with Large Language Models \\
+\textbf{中译} & 用自监督量化表示，把知识图谱无缝接入大语言模型 \\
+\textbf{作者} & Qika Lin, Tianzhe Zhao, Kai He, Zhen Peng, Fangzhi Xu, \\
+            & Ling Huang, Jingying Ma, Mengling Feng \\
+\textbf{机构} & 新加坡国立大学（NUS）、西安交通大学 \\
+\textbf{会议} & ACL 2025（计算语言学协会年会） \\
+\textbf{arXiv} & 2501.18119 \\
+\textbf{方向} & 知识图谱（KG）$\times$ 大模型 $\times$ 向量量化 / 离散表示 \\
+\textbf{一句话} & 把每个实体的“结构 + 语义”用自监督方式压成 16 个离散码（token），\\
+              & 这些码能像普通词一样直接喂进 LLM，做知识图谱补全等任务。 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{一、这篇论文在解决什么问题}
+
+知识图谱（Knowledge Graph, KG）用\textbf{三元组}“(头实体, 关系, 尾实体)”的形式，
+把海量事实知识结构化地存起来，例如“(哈利波特, 作者, J.K.罗琳)”。它是大语言模型
+（Large Language Model, LLM，如 LLaMA、GPT-4）的天然“知识外挂”：能补充事实、减少胡说。
+
+但麻烦在于：\textbf{KG 是“图”，LLM 只认“一串离散的词（token）”}，两者的表示形式天生不一样
+（作者称之为“自然鸿沟 natural gap”）。怎么把图的结构信息\emph{无缝}注入 LLM，是一个公开难题。
+已有做法都有硬伤：
+
+\begin{enumerate}[leftmargin=2em]
+  \item \textbf{直接把子图“摊平”成文字喂给 LLM}（图~\ref{fig:strategy}(a)）：把相关三元组、邻居一条条
+        写成文本提示。问题是 token 会爆炸——作者实测，FB15k-237 上只采样 20\% 的 2-跳邻居，
+        每个实体平均就需要约 3000 个 token（中位数也要约 300 个），30\% 采样时中位数更逼近 2500。
+        一个任务往往涉及多个实体，连最强的长上下文 LLM 也吃不消；而采样又会破坏图的整体结构、丢信息。
+  \item \textbf{用一个可学习的适配器（adapter）把 KG 的连续向量嵌入对齐进 LLM}：要额外引入新网络，
+        还要在“KG 嵌入空间”和“LLM 表示空间”这两个不同的隐空间之间做精细对齐，很别扭。
+  \item \textbf{已有的“量化”方法是无监督的}（NodePiece、EARL、RandomEQ）：它们靠无监督地选“锚点
+        （anchor）”来表示实体，无法对图的整体结构和语义做建模，码的区分度不够。
+\end{enumerate}
+
+\textbf{本文的目标}：借鉴多模态大模型里的“早融合（early fusion）”思想，把每个实体压缩成一串
+\textbf{离散的码（discrete codes，即 token）}，而不是连续向量。这些码和自然语言是同一种“离散形式”
+（见图~\ref{fig:strategy}(b)），于是只要给 LLM 的词表扩充这些新 token，就能\textbf{无缝}把 KG 接进 LLM，
+不用改任何框架结构。
+
+\begin{figure}[H]\centering
+  \includegraphics[width=0.86\linewidth]{cand_p01_k00.pdf}
+  \caption{把 KG 接入 LLM 的两种策略（原文 Figure 1，图内英文为原文保留）。
+  (a) 直接法：把（采样得到的）图结构和语义文本一条条写成文字喂给 LLM，token 量巨大；
+  (b) 本文 SSQR：先用编码器把实体学成一小串\emph{离散的量化码}（图中绿色小方块里的数字
+  5,73,47,$\dots$），再像普通词一样喂进 LLM，实现“无缝整合”。}
+  \label{fig:strategy}
+\end{figure}
+
+\section{二、摘要中译}
+
+\begin{quote}
+由于知识图谱（KG）结构与自然语言之间存在天然鸿沟，如何把 KG 的整体结构信息有效地与大语言模型
+（LLM）结合，已成为一个重要问题。为此，我们提出一个\textbf{两阶段框架}，为每个实体学习并应用
+\textbf{量化码（quantized codes）}，以实现 KG 与 LLM 的无缝整合。第一阶段，我们提出一种
+\textbf{自监督量化表示（Self-supervised Quantized Representation, SSQR）}方法，把 KG 的\emph{结构知识}
+与\emph{语义知识}一起压缩成离散的码（即 token），使其对齐自然语言句子的格式。第二阶段，我们把这些
+学到的码当作特征，设计 KG 指令跟随（instruction-following）数据直接输入 LLM，从而实现无缝整合。
+实验表明：SSQR 优于已有的无监督量化方法，能产生区分度更高的码；进一步地，微调后的 LLaMA2 与
+LLaMA3.1 在 KG 链接预测（link prediction）与三元组分类（triple classification）任务上也取得了更优表现，
+而且\textbf{每个实体只用 16 个 token}，远少于传统提示方法所需的成千上万个 token。
+\end{quote}
+
+\section{三、三大核心贡献}
+\begin{enumerate}[leftmargin=2em]
+  \item \textbf{首个自监督的 KG 量化方法（SSQR）}：能同时获取 KG 的\emph{结构}与\emph{语义}知识。
+        据作者所知，这是第一项以自监督方式做 KG 量化学习的研究。
+  \item \textbf{首次用学到的码“无缝”整合 KG 与 LLM}：把码当作输入特征、设计 KG 指令数据，
+        无需修改 LLM 框架，只需扩充词表。可广泛用于 KG 链接预测、三元组分类等任务。
+  \item \textbf{扎实的实验证据}：SSQR 优于现有无监督量化方法、码更可区分；仅用 16 个码，
+        微调后的 LLaMA2 / LLaMA3.1 在链接预测和三元组分类上都表现优越。
+\end{enumerate}
+
+\section{四、预备知识（小白先看这里）}
+
+\begin{tip}{知识图谱（KG）与三元组（triple）}
+KG 把知识写成“(头实体 $h$, 关系 $r$, 尾实体 $t$)”的三元组，例如“(北京, 是首都, 中国)”。
+一堆三元组连起来就成了一张“图”：实体是\textbf{节点}，关系是带标签的\textbf{有向边}。
+本文形式化记作 $G=\{\mathcal{E},\mathcal{R},\mathcal{F}\}$——实体集 $\mathcal{E}$、关系集 $\mathcal{R}$、
+三元组集 $\mathcal{F}\subseteq \mathcal{E}\times\mathcal{R}\times\mathcal{E}$。
+\end{tip}
+
+\begin{tip}{什么是“量化 / 向量量化（VQ）/ 码本（codebook）”}
+\textbf{量化（quantization）}就是“把连续的东西，用有限个离散档位来近似表示”。
+\textbf{向量量化（Vector Quantization, VQ）}更具体：先准备一本\textbf{码本（codebook）}
+$X=[x_1,x_2,\dots,x_M]$——可以把它想成一个有 $M$ 行的“调色板/字典”，每一行 $x_m$ 是一个可学习的向量，
+代表第 $m$ 号“码（code）”。给定任意一个向量 $e$，就在码本里找\emph{离它最近}的那一行，
+用那一行的“编号 $i$”来代替它。于是“一个连续向量”就被压成了“一个离散整数编号”，
+正好像一个词的 ID。VQ 最早火于 VQ-VAE、VQ-GAN 这类图像生成模型。本文把它搬到了 KG 上。
+\end{tip}
+
+\begin{tip}{为什么要“离散码”而不是“连续向量”}
+LLM 的词表本质是一堆离散 token（每个词一个整数 ID）。如果实体也被表示成\textbf{离散整数码}，
+它就和普通词“同一种语言”，可以直接塞进 LLM 的词表和句子里，无需额外的对齐网络——这正是“无缝”的来源。
+反观连续向量，得再训一个适配器去对齐空间，麻烦且容易没对准。
+\end{tip}
+
+\begin{tip}{自监督（self-supervised）与“语义蒸馏”}
+\textbf{自监督}指不依赖人工标注，而是从数据本身造出“监督信号”来训练。本文的自监督信号有两路：
+（1）\textbf{结构重建}——要求学到的码能反推回“原图里哪些三元组成立”；
+（2）\textbf{语义蒸馏（distilling）}——让码去对齐“一个现成大模型给实体文字描述算出的文本向量”。
+\textbf{蒸馏}就是“让小模型/新表示去模仿大模型的输出”，这里是让离散码去逼近 LLM 的语义嵌入。
+\end{tip}
+
+形式化记号（看不懂可跳过，用到时再回看）：对每个实体 $e$，用它的\textbf{邻居} $N(e)$ 描述\emph{结构}，
+用它的\textbf{文字描述} $T_e$ 描述\emph{语义}。码本大小记作 $M$（共多少种码），
+每个实体被表示成长度为 $N$ 的\textbf{码序列} $[q_1,q_2,\dots,q_N]$（每个 $q_n$ 是码本里的一个编号）。
+直觉上：$M$ 越大“调色板”越丰富，$N$ 越长“每个实体用的码越多、越能精细刻画”。
+
+\section{五、数据集与任务}
+
+作者在三个常用 KG 数据集上做实验（统计源自原文 Table 6）：
+
+\begin{table}[H]\centering
+\caption{实验所用数据集统计（数据源自原文 Table 6）。前两个用于链接预测，FB15k-237N 用于三元组分类。}
+\begin{tabular}{lccccc}
+\toprule
+数据集 & 实体数 & 关系数 & 训练集 & 验证集 & 测试集 \\
+\midrule
+WN18RR & 40{,}943 & 11 & 86{,}835 & 3{,}034 & 3{,}134 \\
+FB15k-237 & 14{,}541 & 237 & 272{,}115 & 17{,}535 & 20{,}466 \\
+FB15k-237N & 13{,}104 & 93 & 87{,}282 & 7{,}041/7{,}041 & 8{,}226/8{,}226 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{itemize}[leftmargin=2em]
+  \item \textbf{WN18RR}：源自 WordNet 的词义关系图，关系种类少（11 种）、结构\emph{稀疏}、实体多。
+  \item \textbf{FB15k-237}：源自 Freebase 的常识知识图，关系种类多（237 种）、结构\emph{丰富}。
+  \item \textbf{FB15k-237N}：上者的变体，带正/负样本（“/”左右分别是正、负），专门用于三元组分类。
+\end{itemize}
+
+\textbf{两个下游任务}：
+\begin{enumerate}[leftmargin=2em]
+  \item \textbf{链接预测（link prediction）/ KG 补全}：给定一个缺尾巴的查询三元组 $(h,r,?)$，
+        从候选实体里预测正确的尾实体，并排序。指标用 \textbf{MRR}（平均倒数排名）和
+        \textbf{Hits@$k$}（正确答案排进前 $k$ 名的比例）。
+  \item \textbf{三元组分类（triple classification）}：判断一个给定三元组 $(h,r,t)$ 是真还是假
+        （True/False）。指标用准确率 Acc、精确率 P、召回率 R、F1。
+\end{enumerate}
+
+\begin{tip}{MRR 和 Hits@$k$ 怎么读}
+模型对每个查询会输出一个候选\textbf{排名列表}。\textbf{Hits@1} = 正确答案恰好排第一的比例（越高越好）；
+\textbf{Hits@10} = 正确答案排进前 10 的比例。\textbf{MRR}：若正确答案排第 $n$ 名，则该题得分 $1/n$，
+对所有题求平均——排得越靠前，分越高。三者都是“越大越好”。
+\end{tip}
+
+\section{六、方法逐节精讲：SSQR 怎么把图压成码}
+
+整体是一条\textbf{两阶段流水线}（见图~\ref{fig:arch}）：
+\textbf{阶段一}（图 (a)）自监督地学码——编码器把图结构编码，经向量量化得到离散码，再用两路监督
+（结构重建 + 语义蒸馏）训练；\textbf{阶段二}（图 (b)）把学好的“编码器+量化”\emph{冻结}，
+用它给实体生成码，把码写进指令里去微调 LLM。图中\textbf{火苗图标}表示该模块在训练（参数更新），
+\textbf{雪花图标}表示冻结不动。
+
+\begin{figure}[H]\centering
+  \includegraphics[width=0.98\linewidth]{cand_p03_k00.pdf}
+  \caption{SSQR 总体架构（原文 Figure 3，图内英文为原文保留）。
+  (a) SSQR 量化表示学习：图 $G$ $\to$ \emph{Encoder}（GCN 编码多跳邻居结构）$\to$
+  \emph{quantization}（按码本 $X$ 就近匹配，得到离散码）$\to$ \emph{Decoder}（做\emph{结构重建}，
+  虚线回到原图）；同时下方一路把实体文字经\emph{冻结的} LLM 得到语义向量，做\emph{语义蒸馏}对齐。
+  (b) 指令微调：把冻结的“Encoder \& Quantization”产生的码，作为 \emph{Input} 写进 \emph{Instruction}，
+  交给 LLM 生成答案。火苗=训练，雪花=冻结。}
+  \label{fig:arch}
+\end{figure}
+
+\subsection{第 1 步：结构建模（Structural Modeling）—— 用 GCN 编码邻居}
+用图卷积网络（Graph Convolutional Network, GCN）按“消息传递”逐层更新实体向量，
+把第 $l$ 层的表示更新到第 $l{+}1$ 层：
+\begin{equation*}
+  e_j^{\,l+1}=W_1^{\,l}\,e_j^{\,l}+\!\!\sum_{(e_i,r)\in N(e_j)}\!\!W_2^{\,l}\,m_{e_i,r,e_j}^{\,l},
+  \tag{1}
+\end{equation*}
+其中 $e$ 是实体向量，$W$ 是变换矩阵，$m$ 是某条边携带的“消息”。边的消息用关系向量 $v_r$ 与
+邻居实体向量做\emph{逐元素相乘}（$\ast$）来算（即“composition 组合操作”）：
+\begin{equation*}
+  m_{e_i,r,e_j}^{\,l}=e_i^{\,l}\ast v_r^{\,l}.\tag{2}
+\end{equation*}
+关系向量在层间用线性变换更新 $v^{\,l+1}=W_{\text{rel}}^{\,l}v^{\,l}$。堆叠 $L$ 层后，得到实体表示
+$e^L$ 和关系表示 $v^L$。
+
+\begin{tip}{“消息传递”一句话直觉}
+GCN 的核心是“看邻居、攒信息”：每个实体的新表示 = 它自己的旧表示 + 邻居们传来的消息之和。
+层数 $L$ 越多，能“看到”越远的邻居（多跳结构），从而把图的整体结构吸收进每个实体的向量里。
+\end{tip}
+
+\subsection{第 2 步：量化表示（Quantized Representation）—— 把向量压成离散码}
+准备一个可学习的码本 $X=[x_1,\dots,x_M]$（每个 $x_m\in\mathbb{R}^d$ 代表第 $m$ 号码）。
+任一向量 $e$ 的量化，就是在码本里找\emph{欧氏距离最近}的那一行：
+\begin{equation*}
+  Q(e)=x_i,\quad \text{其中}\ i=\arg\min_{m}\|e-x_m\|_2^2.\tag{3}
+\end{equation*}
+若每个实体只配一个码，表达力太弱。于是先用前馈网络把实体表示 $e^L$ 升维成 $N$ 倍
+（$\mathrm{FFN}(e^L)\in\mathbb{R}^{N\times d}$），这样每个实体就能对应一段\textbf{长度为 $N$ 的码序列}
+$[q_1,\dots,q_N]$。其量化表示向量为：
+\begin{equation*}
+  q_e=W_q\,Q(e^L),\qquad Q(e^L)=[x_{q_1},x_{q_2},\dots,x_{q_N}].\tag{4}
+\end{equation*}
+由于“取最近邻”这一步不可导，作者用 VQ-VAE 提出的\textbf{直通梯度估计（straight-through estimator）}
+让整个模型端到端可训，量化损失为：
+\begin{equation*}
+  L_q=\big\|\,\mathrm{sg}[e^L]-q_e\,\big\|_2^2+\beta\,\big\|\,e^L-\mathrm{sg}[q_e]\,\big\|_2^2.\tag{5}
+\end{equation*}
+
+\begin{tip}{公式 (5) 在干嘛？$\mathrm{sg}[\cdot]$ 与两个损失项}
+$\mathrm{sg}[\cdot]$ 是“停止梯度（stop gradient）”：前向计算时它就是原值，反向传播时它的梯度被截成 0。
+第一项 $\|\mathrm{sg}[e^L]-q_e\|^2$ 是\textbf{码本损失}：固定编码器输出、去拉近\emph{码}，让码靠近编码器的输出；
+第二项 $\|e^L-\mathrm{sg}[q_e]\|^2$ 是\textbf{承诺损失（commit loss）}：固定码、去拉近\emph{编码器}，
+让编码器别乱跑、要“承诺”靠近自己选中的码。$\beta$（取 0.25）是平衡两项的权重。
+直觉：让“连续向量”和“它选中的离散码”互相靠拢，从而量化误差尽量小。
+\end{tip}
+
+\subsection{第 3 步：结构重建（Structure Reconstruction）—— 让码记住图}
+为把整体结构信息注入码，作者要求“学到的码能反推 KG 结构”。但 KG 异质又稀疏，
+直接预测邻接矩阵不合适。于是改成\textbf{逐三元组判真伪}（用 ConvE 打分）：
+\begin{equation*}
+  s(h,r,t)=\mathrm{Flat}\big(\mathrm{Conv}(\bar q_h\,\|\,\bar v_r^{\,L})\big)^{\!\top}W_c\,q_t.\tag{6}
+\end{equation*}
+其中 $\mathrm{Conv}$、$\mathrm{Flat}$ 是 2D 卷积与展平，$\bar q,\bar v$ 是嵌入的变换矩阵，$\|$ 表示拼接。
+分数过 sigmoid 得 $\tilde y=\sigma(s(h,r,t))$，再与真实标签 $y$ 算二元交叉熵：
+\begin{equation*}
+  L_{st}=-\frac{1}{|\mathcal{F}|}\sum_i\big[\,y_i\log\tilde y_i+(1-y_i)\log(1-\tilde y_i)\,\big].\tag{7}
+\end{equation*}
+
+\subsection{第 4 步：语义蒸馏（Semantic Distilling）—— 让码听懂文字}
+让码也含有实体文字描述的语义。先用一个强力文本嵌入模型（OpenAI 的
+\texttt{text-embedding-3-large}，输出 3072 维）把实体文字编码成 $t_e=\mathrm{LLM}(T_e)$，
+再要求量化输出去逼近它（均方误差）：
+\begin{equation*}
+  L_{se}=-\frac{1}{|\mathcal{E}|}\sum_i\big\|\,W_s\,q_{e_i}-t_{e_i}\,\big\|_2^2.\tag{8}
+\end{equation*}
+这样就把现成 LLM 的语义知识“蒸馏”进了离散码。
+
+\textbf{阶段一总损失}：把量化、结构、语义三项加起来，端到端训练：
+\begin{equation*}
+  L=L_q+L_{st}+L_{se}.\tag{9}
+\end{equation*}
+
+\subsection{第 5 步：用 SSQR 微调 LLM（阶段二）}
+每个实体现在都是一串长度 $N$ 的码，形式同自然语言。把每个码当作\textbf{一个新 token}加进 LLM 词表，
+再设计指令数据。以\textbf{链接预测}为例（原文 Table 1 的指令格式）：给出查询 $(h,r,?)$ 的头实体码
+$\mathrm{Code}(h)$，再附上若干候选实体及其码（候选由传统 KG 嵌入模型如 AdaProp 生成），
+要 LLM 输出 Top-3 答案的码序列。微调时按“下一个 token 预测”优化：
+\begin{equation*}
+  L_{llm}=-\sum_{n=1}^{N}\log\big(x_n\mid x_{<n},\,I\big),\tag{10}
+\end{equation*}
+其中 $I$ 是指令。三元组分类则把指令换成“给定 $(h,r,t)$ 的码，回答 True/False”。
+
+\begin{tip}{“候选选择 + 排序”这一招很关键}
+LLM 不是从零生成答案，而是\emph{从给定候选里挑并排序}。这样既缩小了搜索空间，又把难题
+转成了“认码、比对、排序”。论文后面指出：哪怕候选生成模型本身一般，SSQR 也常能把
+正确答案从候选列表中后排（如第 16、17 名）精准提到第 1 名（见案例研究 Table 8、9）。
+\end{tip}
+
+\section{七、实验与结果解读}
+
+\textbf{设置}：编码器用 2 层 GCN；阶段一码本 $M{=}2048$、码长 $N{=}32$；微调 LLM 时为效率把
+$M{=}2048$、$N{=}16$（即每个实体仅 16 个 token）。LLM 用 LLaMA2 (7B) 与 LLaMA3.1 (8B)，4 张 H100。
+
+\subsection{结果一：SSQR 量化本身就比已有无监督方法强（原文 Table 2）}
+
+\begin{table}[H]\centering
+\caption{SSQR 与无监督量化方法对比（数值源自原文 Table 2；越高越好，加粗为最优）。
+$\Delta(\uparrow)$ 为 SSQR 相对最佳基线的提升；下半部为消融。}
+\begin{tabular}{lcccc}
+\toprule
+\multirow{2}{*}{模型} & \multicolumn{2}{c}{WN18RR} & \multicolumn{2}{c}{FB15k-237} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}
+ & MRR & Hits@10 & MRR & Hits@10 \\
+\midrule
+NodePiece              & 0.403 & 0.515 & 0.256 & 0.420 \\
+\quad +RandomEQ        & 0.425 & 0.522 & 0.263 & 0.425 \\
+EARL                   & 0.440 & 0.527 & 0.310 & 0.501 \\
+\quad +RandomEQ        & 0.442 & 0.536 & 0.308 & 0.502 \\
+\textbf{SSQR}          & \textbf{0.483} & \textbf{0.578} & \textbf{0.361} & \textbf{0.545} \\
+\quad $\Delta(\uparrow)$ & 9.28\% & 7.84\% & 16.45\% & 8.57\% \\
+\midrule
+\quad w/o GCN（去结构）   & 0.479 & 0.577 & 0.309 & 0.482 \\
+\quad w/o sem（去语义）   & 0.447 & 0.521 & 0.347 & 0.528 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{怎么读}：SSQR 在两个数据集上全面超过 NodePiece、EARL、RandomEQ，
+MRR 在 WN18RR 上提升 9.28\%、在结构更丰富的 FB15k-237 上更是提升 16.45\%。
+\textbf{消融}很有意思：去掉 GCN（结构）对 FB15k-237 伤害最大（MRR 掉 14.40\%），
+因为它结构丰富、靠 GCN 才抓得住；而去掉语义对稀疏的 WN18RR 伤害更大（掉 7.45\%），
+因为它结构信息少、得靠文字语义补。结论：\textbf{结构与语义两路互补，缺一不可}。
+
+\begin{tip}{“各向异性（anisotropic）”——码为什么要更“分得开”}
+作者用余弦相似度可视化（原文 Figure 4）发现：只用原始文本嵌入时，实体之间相似度都是“小正数”、
+挤在空间一个角落；而“SSQR 去掉 GCN”后相似度几乎全是 1（彼此分不开）——这叫\textbf{各向异性}，
+即表示空间没被充分利用。完整的 SSQR 让相似度有了更大范围和差异，\textbf{实体之间更可区分}，
+这正是离散码“好用”的前提。
+\end{tip}
+
+\subsection{结果二：接入 LLM 后，链接预测刷新 SOTA（原文 Table 3）}
+
+\begin{table}[H]\centering
+\caption{KG 链接预测主结果（数值源自原文 Table 3；越高越好，加粗为本文方法）。}
+\begin{tabular}{lcccc cccc}
+\toprule
+\multirow{2}{*}{模型} & \multicolumn{4}{c}{WN18RR} & \multicolumn{4}{c}{FB15k-237} \\
+\cmidrule(lr){2-5}\cmidrule(lr){6-9}
+ & MRR & H@1 & H@3 & H@10 & MRR & H@1 & H@3 & H@10 \\
+\midrule
+\multicolumn{9}{l}{\textit{传统 KG 嵌入方法}}\\
+TransE        & 0.223 & 0.014 & 0.401 & 0.529 & 0.330 & 0.231 & 0.369 & 0.528 \\
+CompGCN       & 0.479 & 0.443 & 0.494 & 0.546 & 0.355 & 0.264 & 0.390 & 0.535 \\
+MA-GNN        & 0.565 & 0.507 & 0.592 & 0.679 & 0.379 & 0.282 & 0.415 & 0.569 \\
+\midrule
+\multicolumn{9}{l}{\textit{基于 LLM 的方法}}\\
+KICGPT        & 0.549 & 0.474 & 0.585 & 0.641 & 0.412 & 0.327 & 0.448 & 0.554 \\
+KG-FIT        & 0.553 & 0.488 & 0.595 & \textbf{0.695} & 0.362 & 0.275 & 0.485 & 0.572 \\
+MKGL          & 0.552 & 0.500 & 0.577 & 0.656 & 0.415 & 0.325 & 0.454 & 0.591 \\
+\textbf{SSQR-LLaMA2}   & 0.591 & 0.548 & 0.618 & 0.673 & 0.449 & 0.374 & 0.491 & \textbf{0.597} \\
+\textbf{SSQR-LLaMA3.1} & \textbf{0.598} & \textbf{0.559} & \textbf{0.618} & 0.675 & \textbf{0.459} & \textbf{0.393} & \textbf{0.491} & \textbf{0.597} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{怎么读}：相比此前最强的 MA-GNN，SSQR-LLaMA2 在两数据集上分别约提升
+4.60\%/8.09\%/4.39\%/$-0.88\%$（WN18RR）与 18.47\%/32.62\%/18.31\%/4.92\%（FB15k-237）。
+\textbf{亮点集中在 Hits@1}（如 FB15k-237 上 Hits@1 从 0.282 升到 0.374，+32.62\%）——
+这正是“候选选择 + 排序”策略的功劳：模型擅长把正确答案从候选里挑到第一。
+换更强的 LLaMA3.1 还能再涨，说明方法能吃到“更大模型”的红利。
+
+\subsection{结果三：三元组分类同样领先（原文 Table 4）}
+
+\begin{table}[H]\centering
+\caption{FB15k-237N 三元组分类结果（数值源自原文 Table 4；w/o SSQR 为去掉码、只用实体名的消融）。}
+\begin{tabular}{lcccc}
+\toprule
+模型 & Acc & P & R & F1 \\
+\midrule
+KG-LLaMA      & 0.748 & 0.674 & 0.962 & 0.793 \\
+KoPA          & 0.777 & 0.708 & 0.941 & 0.808 \\
+\textbf{SSQR-LLaMA2}   & \textbf{0.794} & \textbf{0.757} & 0.867 & 0.808 \\
+\quad w/o SSQR         & 0.754 & 0.699 & 0.891 & 0.783 \\
+\textbf{SSQR-LLaMA3.1} & \textbf{0.798} & \textbf{0.759} & 0.872 & \textbf{0.811} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{怎么读}：SSQR-LLaMA2/3.1 的准确率 0.794/0.798，明显超过最强基线 KoPA 的 0.777。
+更关键的是\textbf{消融对照}：去掉 SSQR 码、只用实体名字微调（w/o SSQR），分数明显下滑，
+且作者发现此时 LLM 会\textbf{过拟合}——训练集分数很高却无法泛化到验证/测试集。
+这说明\textbf{学到的离散码确实是“可区分、有代表性”的好特征}，而不是简单背名字。
+
+\subsection{结果四：消融再确认“码”的价值（原文 Table 5）}
+在链接预测上去掉 SSQR 码（w/o SSQR）：WN18RR 的 MRR 从 0.591 掉到 0.541（$-8.46\%$）、
+Hits@1 掉 9.67\%；FB15k-237 的 MRR 从 0.449 掉到 0.401（$-10.69\%$）、Hits@1 掉 13.90\%。
+\textbf{码一旦拿掉，LLM 就明显变差}，印证了量化表示是性能的关键来源。
+
+\begin{tip}{案例研究直观感受（原文 Table 8/9）}
+WN18RR 上查询“(radiotherapy, hypernym, ?)”（放疗的上位词是什么），正确答案 therapy 在候选里原本
+排第 17，SSQR-LLaMA2 把它的码序列准确生成在\textbf{第 1 位}；FB15k-237 上正确答案 Indiana 从第 16
+被提到第 1。可见模型是\emph{真的在用码做匹配与排序}，而非碰运气。
+\end{tip}
+
+\section{八、附录里值得一看的补充}
+\begin{itemize}[leftmargin=2em]
+  \item \textbf{token 省了多少}（附录 A、原文 Figure 2/9）：在 WN18RR 上 100\% 采样邻居时，
+        每个实体中位需 623 个 token、均值约 1493 个；FB15k-237 更夸张。而 SSQR \textbf{每个实体只要 16 个 token}。
+  \item \textbf{$M$ 与 $N$ 的影响}（原文 Figure 5/7）：总体上 $M$、$N$ 越大越好；其中\textbf{$N$（码长）比
+        $M$（码本大小）更关键}，尤其在 FB15k-237 上把 $N$ 调小掉分明显——长码序列更能区分实体。
+  \item \textbf{区分度量化}（附录 D）：用“熵”和“Jaccard 距离”度量码的多样性与区分度，SSQR 与 RandomEQ
+        都远高于 NodePiece、EARL；SSQR 在 WN18RR 上更优。
+  \item \textbf{码与真实词在 LLM 里“各占一方”}（原文 Figure 8/13）：用 t-SNE 把 2048 个码 token 和等量真实
+        词 token 降到 2 维，二者明显分成两簇——说明 LLM 能感知“这是不同类型的 token”，为后续探索留了空间。
+  \item \textbf{局限}（Limitations）：目前是“一个 KG + 一个任务”地微调 LLM，泛化性受限、计算开销大；
+        作者计划构建面向多任务的统一 KG-LLM 框架。
+\end{itemize}
+
+\section{九、小白知识点卡片（速查）}
+\begin{itemize}[leftmargin=2em]
+  \item \textbf{知识图谱 / 三元组}：用“(头, 关系, 尾)”存事实的结构化图。
+  \item \textbf{向量量化 VQ / 码本 codebook}：用有限个离散“码”近似连续向量；码本是可学习的“向量字典”。
+  \item \textbf{离散码 / token}：每个实体被压成一串整数编号，和词一样能塞进 LLM。
+  \item \textbf{自监督}：不用人工标注，从数据自身造监督信号（这里=结构重建 + 语义蒸馏）。
+  \item \textbf{蒸馏 distilling}：让新表示去模仿一个强模型的输出（这里让码逼近 LLM 的文本嵌入）。
+  \item \textbf{GCN / 消息传递}：图神经网络，靠“聚合邻居信息”更新每个节点的向量。
+  \item \textbf{直通梯度估计（straight-through）}：让“取最近邻”这种不可导操作也能反向传播训练。
+  \item \textbf{各向异性 anisotropic}：表示都挤在空间一角、彼此分不开，是“坏”的表示空间。
+  \item \textbf{链接预测 / 三元组分类}：KG 的两类经典任务——补全缺失实体 / 判真伪。
+  \item \textbf{MRR、Hits@$k$}：排名类指标，正确答案越靠前分越高。
+\end{itemize}
+
+\section{十、一句话总结与定位}
+
+\textbf{一句话}：SSQR 用\emph{自监督}（结构重建 + 语义蒸馏）把每个 KG 实体压成一小串\emph{离散码}，
+这些码与自然语言同形、可直接当 token 喂进 LLM；于是只需扩词表 + 指令微调，就能\textbf{无缝}地把
+图的结构与语义注入大模型，在链接预测、三元组分类上又准、又省 token（每个实体仅 16 个）。
+
+\textbf{在“KG $\times$ LLM”谱系里的位置}：它走的是\textbf{“离散量化对齐”}路线——把图\emph{量化成 token}
+去匹配 LLM 的离散词表，这是它“无缝”的核心，区别于
+（1）\textbf{直接提示 / 检索}把子图\emph{摊成文字}（token 爆炸）、
+（2）\textbf{连续适配器}（如 KoPA）把 KG 连续嵌入\emph{对齐进} LLM（需额外网络与空间对齐）。
+思想上它借鉴了多模态的\emph{早融合}与 VQ-VAE/VQ-GAN 的\emph{向量量化}，是把“离散表示学习”引入
+KG-LLM 融合的代表性尝试。
+
+\textbf{适合谁读}：想理解“如何把非文本结构（图）变成 LLM 能直接消化的 token”的同学；
+本文是入门“量化表示 + 知识图谱 + 大模型指令微调”的一篇很清晰的范例。
+
+\end{document}

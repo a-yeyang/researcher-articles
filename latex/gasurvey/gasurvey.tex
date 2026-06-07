@@ -1,0 +1,609 @@
+\documentclass[10pt,UTF8,fontset=fandol]{ctexart}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx,float,caption,subcaption}
+\usepackage{booktabs,array,multirow,makecell}
+\usepackage{geometry,enumitem,xcolor}
+\usepackage[hidelinks]{hyperref}
+\usepackage{url}
+\geometry{margin=2.2cm}
+\graphicspath{{/Users/yye/project/论文/assets/gasurvey/}}
+\captionsetup{font=small,labelfont=bf}
+\setlength{\parskip}{0.4em}
+\renewcommand{\arraystretch}{1.15}
+
+\title{\textbf{图遇见 AI 智能体：分类体系、研究进展与未来机遇}}
+
+\author{Yuanchen Bei, Weizhi Zhang, Siwen Wang, Weizhi Chen, Sheng Zhou, Hao Chen, Yong Li, Jiajun Bu,\\
+Shirui Pan,~\textit{Senior Member, IEEE},~Yizhou Yu,~\textit{Fellow, IEEE},~Irwin King,~\textit{Fellow, IEEE},\\
+Fakhri Karray,~\textit{Fellow, IEEE},~Philip S. Yu,~\textit{Fellow, IEEE}%
+\thanks{Yuanchen Bei、Weizhi Chen、Sheng Zhou 和 Jiajun Bu 供职于中国杭州浙江大学（Zhejiang University）。电子邮件：yuanchenbei@zju.edu.cn；chenweizhi@zju.edu.cn；zhousheng\_zju@zju.edu.cn；bjj@zju.edu.cn。}%
+\thanks{Weizhi Zhang 和 Philip S. Yu 供职于美国芝加哥伊利诺伊大学芝加哥分校（University of Illinois Chicago）。电子邮件：wzhan42@uic.edu；psyu@uic.edu。}%
+\thanks{Siwen Wang 和 Fakhri Karray 供职于阿联酋阿布扎比穆罕默德·本·扎耶德人工智能大学（Mohamed Bin Zayed University of Artificial Intelligence）。电子邮件：wangsiwendut@gmail.com；Fakhri.Karray@mbzuai.ac.ae。}%
+\thanks{Hao Chen 供职于中国澳门特别行政区澳门城市大学（City University of Macau）。电子邮件：sundaychenhao@gmail.com。Yong Li 供职于中国杭州蚂蚁集团（Ant Group）。电子邮件：liyong.liy@antgroup.com。Shirui Pan 供职于澳大利亚布里斯班格里菲斯大学（Griffith University）。电子邮件：s.pan@griffith.edu.au。Yizhou Yu 供职于中国香港特别行政区香港大学（The University of Hong Kong）。电子邮件：yizhouy@acm.org。Irwin King 供职于中国香港特别行政区香港中文大学（The Chinese University of Hong Kong）。电子邮件：king@cse.cuhk.edu.hk。}%
+}
+
+\date{}
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent AI 智能体（AI agents）经历了一次范式转变：从早期由强化学习（reinforcement learning, RL）主导，到由大语言模型（large language models, LLMs）驱动的智能体崛起，再到如今进一步迈向 RL 与 LLM 能力的协同融合。这一演进历程使 AI 智能体具备了日益强大的能力。尽管取得了这些进展，但要完成复杂的现实任务，智能体仍需要进行有效的规划与执行、维护可靠的记忆，并与其他智能体顺畅协同。要实现这些能力，就必须应对无处不在的繁杂信息、操作与交互。面对这一挑战，数据结构化（data structurization）可以发挥重要作用，它能将繁杂无序的数据转化为良好的结构化形式，使智能体得以更高效地理解和处理。在这一背景下，图（graphs）凭借其在组织、管理和利用繁杂数据关系方面的天然优势，为结构化提供了一种强大的数据范式，从而支撑高级 AI 智能体所需的各项能力。为此，本综述首次系统性地回顾了图如何赋能 AI 智能体。具体而言，我们探讨了图技术与核心智能体功能的融合，重点介绍了重要的应用，并指出了未来研究的前景方向。通过全面梳理这一新兴交叉领域，我们希望能够激发新一代 AI 智能体的发展，使其能够借助图来应对日益复杂的挑战。相关资源已收集并持续更新，详见 Github 链接，供学界使用。
+\end{abstract}
+
+\noindent\textbf{关键词}——图（Graphs）、图学习（Graph Learning）、智能体（Agents）、大语言模型（Large Language Models）、强化学习（Reinforcement Learning）、综述（Survey）。
+
+\section{引言}
+
+在快速演进的人工智能领域，AI 智能体（AI agents）因其自动化任务处理的潜力而受到了广泛关注。这些智能体经历了一段变革性的发展历程：从早期基于强化学习（reinforcement learning, RL）的智能体 [1]、[2]，到由大语言模型（large language model, LLM）驱动的智能体 [3]、[4]，再到最近将 LLM 作为基础知识骨干、并以 RL 作为任务特定学习范式而紧密耦合的架构 [5]。这一进展标志着智能体能力的重大飞跃，使其能够借助 LLM 中固有的广泛基础世界知识来理解复杂任务，并通过 RL 优化学习如何准确地处理任务。
+
+执行复杂现实任务的 AI 智能体往往需要具备多样化的能力 [6]、[7]。有效的任务导航需要多种智能体功能，例如复杂的规划、涉及外部工具的精确执行、可靠记忆系统的维护，以及与其他智能体的有效协同 [8]、[9]。然而，一个核心挑战在于：由于任务的复杂性，智能体在这些功能中常常面临繁杂无序的信息、操作子（operators）和交互。因此，必须找到一种有效的方式来组织和管理智能体功能中所遇到的这类数据，使智能体能够更好地理解并高效处理呈现给它们的信息，从而最终提升其处理复杂任务的有效性。例如，在规划阶段，智能体需要解析非结构化的任务描述，并将其重新组织为一份可执行的子任务时间表。在智能体执行阶段，应当对种类繁多的可用外部工具进行编排，以同时兼顾使用时的效率与准确性。此外，记忆中的海量内容也应得到组织，以便有用信息得以保留并便于智能体随时检索。再者，在多智能体（multi-agent）设置中，应确定一种协同拓扑（coordination topology），使智能体之间能够有效地传递有意义的消息。面对非结构化数据，传统智能体在学习过程中只能隐式地识别信息、操作子或其他智能体之间潜在的关联。基于数据中固有的有益关系，采用显式的基于图的建模进行结构化，成为应对这些挑战的一条有前景的途径，它能将原始而复杂的输入转化为简洁且组织良好、更易于智能体理解和处理的形式。这类经过组织的信息有助于 AI 智能体探索复杂任务并做出明智的决策。
+
+图（graphs）已在多个领域展现出广泛的适用性 [10]--[12]，并被证明是一种用于管理数据、组织含有价值关系信息的强大范式。在所构建的图的基础上，图学习（graph learning）随后在利用结构化信息方面取得了成功 [13]、[14]。具体而言，将实体表示并建模为节点（nodes）、将它们之间显式或隐式的相互关联表示为边（edges），从而构成一张图，这为数据组织提供了一种有效途径。一张合适的图是智能体数据组织的核心。图构建的灵活性允许根据特定的环境、任务、操作子和应用来定制结构 [15]--[17]，或者使用已有的外部知识图谱（knowledge graphs）[18]、[19]。这种通用性使得图能够被广泛地集成到各类智能体及其多样化的功能中。在良构图（well-formed graphs）的基础之上，图学习技术可以进一步提供一个强大的框架，通过在图上进行知识抽取（knowledge extraction）来捕获精细的关系和对智能体有意义的信息。这使得图技术成为在复杂场景中增强 AI 智能体能力的理想方法。因此，图与 AI 智能体这一新颖的交叉点，在增强智能体处理和利用结构化信息的能力方面蕴含着巨大的前景，从而促进更有效的智能体功能，例如规划、执行、记忆和多智能体协同。
+
+\textbf{分类体系。} 本综述系统性地考察了图在为 AI 智能体组织信息、操作子和多模型方面所发挥的作用，涵盖了从基于 RL 到基于 LLM 的智能体范式这一谱系。鉴于 RL 技术与 LLM 基础模型日益融合，我们的分析并未显式地区分图学习在这两种智能体架构之间的作用差异。相反，如图~\ref{fig:1} 所示，我们的讨论围绕由图所赋能的核心智能体功能展开。我们主要聚焦于图学习在增强智能体规划、智能体执行、智能体记忆和多智能体协同方面的潜力。此外，本综述还探讨了这一互惠关系，详细阐述了 AI 智能体反过来如何赋能和优化图学习过程。最后，基于上述综述，我们勾勒出有前景的应用，并指出这一充满活力的跨学科领域中关键的未来研究机遇。通过梳理这一不断演进领域中的全面洞见，我们旨在催化新一代 AI 智能体的进步，使其能够借助结构化知识来应对日益复杂的挑战。
+
+在本文所涉及的语境中，已有综述主要探讨了图在强化学习中的效用 [20]、[21]。最近，随着 LLM 的显著进步，图学习也被认为是提升 LLM 能力的一种有效技术。已有若干综述涵盖了这一领域 [22]、[23]。然而，尽管有这些贡献，专门阐明图如何能够惠及 AI 智能体各项功能的系统性综述却明显缺失。据我们所知，本综述首次系统性地专门探索了图技术与 AI 智能体多方面运作之间的交叉点。基于这一全面的综述，我们的目标是提供有益的洞见，以启发新一代 AI 智能体的发展。本文的主要贡献如下：
+
+\begin{itemize}[leftmargin=1.6em]
+    \item 本文首次对图技术与 AI 智能体这一强大且充满前景的交叉领域进行了全面综述\footnote{相关资源已收集于 Github 链接中。}。
+    \item 我们引入了一种新颖的分类体系，从结构化的视角阐述了图在不同智能体功能中所发挥的作用：规划、执行、记忆以及与其他智能体的协同。我们还讨论了智能体反过来如何推进图学习。
+    \item 基于本综述，我们进一步讨论了图赋能 AI 智能体的有意义应用、关键挑战和未来机遇。
+\end{itemize}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.98\linewidth]{cand_p02_k00.pdf}
+\caption{图遇见 AI 智能体的整体示意图。(1) 图方法论（Graph Methodology）：利用图进行图数据组织与知识抽取。(2) AI 智能体方法论（AI Agent Methodology）：基于 LLM 的基础模型与基于 RL 的学习范式，共同构成核心 AI 智能体流程。(3) 面向图的 AI 智能体（AI Agents for Graphs）：智能体在图建模与图学习方面的强大能力，例如图标注（graph annotation）、合成（synthesis）与理解（understanding）。(4) 面向 AI 智能体的图（Graphs for AI Agents）：图与图学习在赋能智能体核心功能中的作用与潜力，包括智能体规划、执行、记忆和多智能体协同。(5) 代表性应用（Representative Applications）。(6) 挑战与未来机遇（Challenges and Future Opportunities）。}
+\label{fig:1}
+\end{figure*}
+
+本文其余部分的组织结构如下。我们在第~II~节给出与本综述相关的关键预备知识。随后，第~III~节至第~VII~节基于我们的分类体系介绍了详细的相关工作综述。此外，第~VIII~节和第~IX~节讨论了图技术与 AI 智能体交叉领域中有前景的应用与未来机遇。最后，第~X~节给出本文的关键总结。
+
+\section{预备知识}
+
+\subsection{AI 智能体（AI Agents）}
+
+AI 智能体是一种能够感知其环境并自主做出决策以实现特定目标的智能模型 [24]。在传统 AI 智能体中，可学习模型主要通过强化学习进行优化。通过精心设计的奖励函数（reward function），在智能体经由潜在动作集合与环境交互的过程中，引导其针对特定任务做出合适的决策。因此，我们也可以将这类 AI 智能体称为 RL 智能体（RL agent）。
+
+近年来，随着以大语言模型为中心的生成式人工智能取得显著进展，基于 LLM 的智能体受到了越来越多的关注。我们可以将这一新兴的智能体范式称为 LLM 智能体（LLM agent）。除了像此前的 RL 智能体那样具备感知环境、理解任务和为任务规划解决方案的能力外，LLM 智能体还拥有记忆机制（memory mechanisms）和工具使用（tool usage）能力。它们能够存储和管理记忆，并调用外部工具/函数来执行任务。
+
+需要注意的是，由于强化学习已经展现出其增强大语言模型的强大能力 [25]--[27]，二者正逐渐融合为不可分割的整体。因此，在本综述中，我们将从 AI 智能体的早期阶段起，回顾图学习在 AI 智能体中的功能，而不再显式地区分这两类技术骨干。
+
+\subsection{强化学习（Reinforcement Learning）}
+
+强化学习（RL）处于机器学习、控制理论和认知科学的交叉点。与主要依赖大规模标注数据集的监督学习不同，RL 让智能体通过行动、观察后果，并使用标量奖励或惩罚来灵活地优化其行为（无论是否有人工标签）来进行学习。该范式专注于序列决策（sequential decision making），即优化一连串动作以获取长期回报 [28]、[29]。
+
+\textbf{为什么 RL 是适合 AI 智能体的学习范式？} 首先，强化学习本质上建立在“交互—反馈”（interaction-feedback）循环之上，反映了智能体持续的“感知—行动”（perceive-act）循环。通过这种方式，它能够从经验中学习，而无需严重依赖标注数据集。其次，RL 与快速模拟器（fast simulators）天然契合，使智能体能够在部署前通过自我对弈（self-play）或探索积累大量经验。此外，RL 通过奖励设计直接编码任务目标，让智能体专注于最大化回报。这些特点使 RL 智能体能够根据特定任务和环境的特点，灵活地设计定制化的学习策略。
+
+\subsection{大语言模型（Large Language Models）}
+
+近年来，凭借大规模预训练（pretraining）期间所获得的广泛世界知识，大语言模型（LLMs）在自然语言理解和生成任务中展现出强大的知识表达能力 [30]。尽管 RL 能够通过基于奖励的学习灵活地塑造适应不同场景的智能体，但 RL 智能体需要针对每个特定任务单独训练。在预训练基础知识的支撑下，LLM 可以作为智能体的基础模型来完成各类任务，而无需进行代价高昂的重新训练。
+
+\textbf{为什么 LLM 是适合 AI 智能体的基础模型？} 首先，LLM 出色的自然语言理解能力使其能够准确解读用户的指令和需求，为有效的智能体—用户交互奠定了基础。其次，其强大的语言生成能力使其能够通过文本描述和操作，针对不同的任务场景创建动作策略、调用外部工具/函数，并管理历史记忆 [9]、[31]。此外，LLM 可以通过检索增强生成（retrieval-augmented generation）或后训练（post-training）持续地学习和更新其知识 [32]、[33]，以适应多样化和不断变化的任务。这种适应性和演化能力使它们能够在各类应用中更好地服务用户。
+
+\subsection{图与图学习（Graphs and Graph Learning）}
+
+在现实世界中，数据内部往往存在显式或隐式的结构关系。图技术旨在构建一个有效的图模型，用节点（表示实体）和边（表示关系）来组织数据，从而借助一张经过组织的图来建模或学习复杂的结构化知识。它们被广泛应用于社交网络分析、生物信息学和推荐系统等领域 [141]--[143]。图学习过程通常可以划分为两个关键部分：数据组织（data organization）和知识抽取（knowledge extraction）。这两个部分同样能够回答：为什么图能够在 AI 智能体中发挥强大作用？
+
+\textbf{数据组织（图）。} 良好的图结构对于抽取有效信息至关重要。将数据组织成一张合适的图，是信息与操作子结构化的基础和重要组成部分。传统 AI 智能体主要处理非结构化数据，需要进行大量的环境试验，才能从复杂的任务数据中获得与任务相关的知识。然而，智能体所遇到的许多信息和操作子都可以通过图得到更好的组织。例如，任务规划可以借助子任务依赖图（sub-task dependency graphs）来实现，记忆可以通过图来组织，多个智能体之间的通信模式也可以表示为图拓扑（graph topologies）。
+
+\textbf{知识抽取（图学习）。} 一旦获得了组织良好的图，图模型（如图神经网络，graph neural networks, GNNs）便可以通过利用并聚合图中每个节点及其邻域的信息，来抽取任务所需的知识。与直接从非结构化数据中学习相比，在从结构化知识中学习时，已定义的节点可以与其邻居共享信息，使它们不仅仅依据局部信息来做出决策。通过这种方式，它能够更灵活地支持智能体的复杂操作子，例如任务依赖建模、高效的决策搜索、有效的记忆管理与检索，以及多智能体通信优化。
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.97\linewidth]{cand_p04_k00.pdf}
+\caption{本综述的分类体系概览，列出了图赋能 AI 智能体功能与智能体促进图学习的代表性方法。}
+\label{fig:2}
+\end{figure*}
+
+\subsection{分类体系概览（Taxonomy Overview）}
+
+在本文中，我们提出了一种关于图技术与 AI 智能体如何相互增强的新颖分类体系，如图~\ref{fig:2} 所示。具体而言，在第~III~节至第~VI~节中，我们介绍了图学习如何支持智能体的核心功能，包括规划（第~III~节）、执行（第~IV~节）、记忆（第~V~节）和多智能体协同（第~VI~节）。通过这种方式，按图赋能智能体功能的协同点进行划分，不仅契合了智能体系统设计中天然的模块化，也凸显了以图为中心的技术在每项功能中独特的机遇。此外，在第~VII~节中，我们还讨论了智能体范式反过来如何被用于强化图学习过程。通过显式地考虑反向方向，即基于智能体的范式如何惠及图学习，我们强调双向创新，并倡导一种整体视角：图与智能体共同演化、深度融合，从而启发超越单向采用的全新方法论。基于这一组织良好的分类体系，我们随后可以在第~VIII~节和第~IX~节中讨论应用与未来机遇。
+
+\section{面向智能体规划的图}
+
+规划（planning）是 AI 智能体的基础且关键的能力之一。为了实现特定目标或任务，规划指的是 AI 智能体在考虑各种可用因素后，理解任务并制定一系列合理且有序的行动方案的过程 [8]。例如，在游戏对弈场景中，AI 智能体需要规划如何选择合适的装备、确定最优路线等，以完成通关挑战的任务。如图~\ref{fig:3} 所示，图可以在智能体规划的各个方面发挥作用，主要包括有效地组织任务推理形式、安排任务分解流程，以及构建高效的任务决策搜索过程。
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.95\linewidth]{cand_p05_k00.pdf}
+\caption{面向智能体规划的图示意图。}
+\label{fig:3}
+\end{figure*}
+
+\subsection{任务推理（Task Reasoning）}
+
+从思维链（Chain-of-Thought, CoT）[144] 到 Deepseek-R1 [27]，许多研究通过改进提示（prompts）和思考过程来提升基于 LLM 的智能体的任务推理能力。这些方法利用智能体的中间思考过程来进行深度任务推理。为了更好地增强这种思考能力，并帮助智能体借助图有效地抽取关键任务知识，许多工作探索了知识图谱辅助（knowledge graph auxiliary）与基于图的组织来服务任务推理过程。
+
+\subsubsection{知识图谱辅助推理}
+知识图谱辅助推理主要通过利用辅助知识图谱（auxiliary knowledge graph）上的额外信息来增强智能体对任务的推理。形式上，知识图谱（KG）是知识的结构化表示。KG 中的节点表示模型能够识别或生成的实体或概念，而边则表示这些实体或概念之间的关系 [145]。智能体可以根据任务中涉及的实体以及实体之间的关系，从辅助知识图谱（KG）中抽取多跳子图（multi-hop subgraph）信息。这使得智能体能够更深入地理解实体，并对目标任务形成更全面的把握。
+
+在早期，一项代表性工作 QA-GNN [18] 通过结合语言模型和辅助 KG 来改进问答系统，它使用一种相关性评分机制（relevance scoring mechanism）来评估 KG 节点对目标任务的重要性。通过支持相互表示更新的 GNN，该模型能够处理复杂的结构化推理任务。随后，鉴于使用提示来激活 LLM 能力所取得的显著成功，近期的工作开始利用与 QA-GNN 相关的洞见。例如，ToG [34] 和 KG-CoT [19] 开始用基于 KG 的检索增强生成（retrieval-augmented generation, RAG）来增强 LLM 智能体的任务推理过程。这些研究专注于从提示中抽取关键实体，并采用图检索技术在辅助 KG 中识别相应实体的相关多跳子图或路径。这一过程揭示了目标任务的高阶关系和知识。随后，各种方法开始探索辅助 KG 与 LLM 智能体之间更深层融合的增强机制。例如，RoG [35] 引入了一个新颖的“规划—检索—推理”（planning-retrieval-reasoning）框架，专注于从 KG 中生成关系路径作为计划，以优化 LLM 智能体的推理过程。MindMap [36] 构建了一张思维导图（mind map），将外部 KG 知识与 LLM 的隐式知识更深入地连接起来以进行推理。此外，PoG [37] 包含动态多阶段路径探索和高效的路径剪枝，以从 KG 中抽取多跳推理路径和信息。
+
+\subsubsection{结构化组织推理}
+与直接生成响应相比，LLM 智能体的中间思考和推理过程能够生成大量额外的有用信息。结构增强推理（structure-enhanced reasoning）可以通过用树或更复杂的图形式来组织这些过程，帮助 LLM 智能体更高效地理解关键的任务相关知识 [146]。
+
+最初，一些工作探索使用树结构（tree structure，图的一种特例）来从结构上增强 CoT 推理过程。代表性地，ToT [38] 构建了连贯思维的树状结构表示，使智能体能够同时探索多条推理路径，并通过对当前状态的自我评估进行全局决策。RATT [39] 进一步通过在思维分支的每个点上进行规划和前瞻，来调整和优化思维树的结构，从而探索和评估多个潜在的推理步骤，并结合了检索增强生成（RAG）的事实核查能力。为了在推理过程中考虑更复杂的关系，GoT [40] 和 Graph of Thoughts [41] 将 LLM 智能体思维的信息单元表示为节点，将它们之间的依赖关系表示为边，以推进智能体的推理能力，这提供了比纯树结构更复杂的关系。此外，与 GoT 和 Graph-of-Thought 通过将 LLM 生成的中间结果组织成图结构来改进推理不同，RwG [42] 从上下文中抽取信息来构建图。然后，它通过多轮验证不断改进和优化这些图，使其更好地与特定任务对齐。
+
+\subsection{任务分解（Task Decomposition）}
+
+在 AI 智能体中，任务规划需要将用户请求（对 LLM 智能体而言是自然语言形式）分解为具体的子任务。一个复杂任务通常由若干更易处理的子任务组成 [8]、[147]。恰当的任务分解很重要，因为合理的子任务分解可以提高智能体执行任务的准确性和效率。这些子任务之间往往存在依赖关系，例如一个任务的输出作为另一个任务的输入。这些子任务及其依赖关系构成了一张任务依赖图（task dependency graph, TDG）。TDG 是任务分解过程中使用的主要组织图结构。形式上，TDG 的节点通常是从一个任务分解出来的若干子任务。节点的特征可以用自然语言描述，也可以用子任务节点的关键特征向量来表示。子任务节点之间的边严格依据诸如任务执行顺序之类的依赖关系建立。为了确保任务执行过程中不出现死循环，TDG 通常是一个有向无环图（directed acyclic graph, DAG）。
+
+构建 TDG 主要有两种方式。一种针对具有隐式子任务依赖关系的任务，利用 LLM 类似 CoT 的推理来拆分子任务并挖掘依赖关系，例如 DAG-Plan [47]、LGC-MARL [48] 和 VillagerAgent [44]。需要注意的是，前述结构化组织推理方法也可以直接应用于此，通过提示 LLM 在推理过程中执行任务分解来对隐式子任务依赖进行建模。另一种方式是直接利用先验的显式子任务关系和规则来构建图，例如 DynTaskMAS [45] 和 Plan-over-Graph [46]。
+
+基于确定的 TDG，智能体规划的目标是在 TDG 中识别出连通的、无环的路径或子图，并按顺序调用合适的子任务以完成任务。现有方法主要采用三类技术，包括 LLM、RL 和 GNN，来规划 TDG 中的最优执行路径或子图。代表性地，基于 LLM 的推理能力，AgentKit [43]、VillagerAgent [44] 和 Plan-over-Graph [46] 以文本形式描述 TDG，供 LLM 智能体生成执行计划。此外，DAG-Plan [47] 和 LGC-MARL [48] 通过在 TDG 上设计特定的奖励函数来开展强化学习，以完成路径规划。再者，FGRL [49] 和 GNN4TaskPlan [50] 利用子任务节点之间的信息聚合，使用 GNN 在任务图中优化一条合适的子任务执行路径。
+
+\subsection{任务决策搜索（Task Decision Searching）}
+
+任务决策搜索是 AI 智能体规划阶段的一个重要过程，涉及在复杂环境中做出序列决策以实现特定目标 [148]。搜索算法涉及决策空间内的状态转移，这自然形成一种图结构，其中状态之间存在转移。这些状态及其转移构成了一张状态空间图（state space graph, SSG）。形式上，SSG 中的每个节点表示一个状态，节点的属性是该状态的信息，例如其文本描述或参数。状态之间的转移作为节点之间的边。需要注意的是，SSG 中的边关系通常由搜索算法本身优化，而非预先定义。它涉及智能体的这样一个过程：基于当前状态和环境，在环境中探索不同的状态和动作，以动态地生成和更新 SSG，从而识别出一条能最大化长期奖励的动作序列。
+
+通常，蒙特卡洛树搜索（Monte Carlo Tree Search, MCTS）是一种用于决策的启发式搜索算法 [51]。它以分层树状结构表示复杂问题的状态空间。每个节点表示一个状态，每条边表示一个动作。这种树状结构使算法能够有序地探索和管理可能的状态与动作，从而提升搜索效率，并避免在庞大的状态空间中进行盲目搜索。许多方法使用 MCTS 来提升智能体的任务处理能力。例如，PromptAgent [54] 使用 MCTS 进行自动提示优化。LATS [55] 利用 MCTS 为 LLM 智能体的统一规划与理解提供了基础。一些近期工作还探索了在树状 SSG 中增强智能体的搜索能力。例如，M-MCTS [52] 通过引入记忆机制来增强 MCTS 的 SSG，以提升模型的在线搜索性能。MENS-DT-RL [53] 使用进化算法（evolutionary algorithms）来搜索树结构，从而提高决策树的可解释性。一些方法发现，树状 SSG 仍然存在计算效率低下和信息共享方面的问题。它们无法在不同分支间共享评估信息，从而造成计算和内存的浪费。为了解决这一问题，这些方法将搜索结构从树扩展为有向无环图，例如 MCGS [56] 和 GBOP [57]，从而实现分支间的信息共享，并合并具有相同状态表示的节点，以进行更高效的搜索。此外，CMCGS [58] 增强了 SSG，将 MCGS 从离散状态空间中的搜索扩展为连续空间中的高效搜索。
+
+\section{面向智能体执行的图}
+
+在智能体完成规划之后，执行（execution）阶段便是将所制定的计划付诸行动的环节。在此阶段，有两个主要模块可以发挥重要作用。(1) 工具使用（Tool usage）：智能体需要结合自身知识调用合适的外部工具，以完成指定的动作。(2) 环境交互（Environment interaction）：智能体应与邻近环境交互，以感知其所面临的信息，并根据当前情境采取行动。图可以帮助安排这众多工具的调度，并建模智能体与其所处环境之间丰富的关系。这些过程的示例如图~\ref{fig:4} 所示。
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.92\linewidth]{cand_p07_k00.pdf}
+\caption{面向智能体执行的图示意图。}
+\label{fig:4}
+\end{figure}
+
+\subsection{工具使用（Tool Usage）}
+
+智能体工具使用指的是智能体调用预定义工具（可以是 API、软件库或各种函数调用）以执行特定动作的过程。例如，GRAPH-COT [59] 通过在推理过程中以交互式工具调用结合外部图相关知识，强化了 LLM 智能体的图推理能力。随着近期模型上下文协议（Model Context Protocol, MCP）的发展（MCP 是 Anthropic\footnote{\url{https://github.com/modelcontextprotocol}} 于 2024 年推出的一种开放、统一、结构化且安全的标准），智能体对外部数据的复杂结构化调用开始引起广泛关注。当一个智能体拥有大量工具时，它们之间往往存在错综复杂的依赖和调用关系。
+
+除了帮助智能体推理图状数据外，图的组织与学习还可以用于构建工具图（tool graph），以清晰地展示这些工具之间的相互联系，使智能体能够高效地使用和管理海量工具。为实现这一目标，GPTSwarm [16] 提出了一个灵活的基于图的工具使用流程，其中智能体被抽象为一个 DAG。在该框架中，每个节点代表某个特定函数，边则表示节点之间的信息流。ToolNet [17] 和 Tool Fusion [60] 利用工具使用模式的稀疏性，将工具组织成一张有向图（directed graph），这意味着当某个特定工具被调用时，后续要调用的工具通常被限制在非常有限的选项集合内。这使得智能体能够处理大量工具，而不会显著增加 token 消耗。此外，ControlLLM [61] 构建了一张包含资源节点（resource nodes）和工具节点（tool nodes）的工具图，并采用并行图搜索算法来高效地寻找合适的工具路径，从而避免了工具使用中的幻觉（hallucination）问题。
+
+\subsection{环境交互（Environment Interaction）}
+
+由于环境是智能体执行任务和优化其行为的基础，因此感知环境并与之交互的能力是智能体的一项关键能力。图作为一种通用数据结构，可用于建模智能体与环境实体之间的关系，例如连通性、空间邻近性和交互依赖性。场景图（scene graph）是图的一种特殊类型，它通过将对象编码为节点、将它们之间的空间或语义关系（例如“位于……之上”“握住”）编码为边，来表示视觉场景 [149]。对这些关系进行建模的方法可以分为两类：基于启发式（heuristic-based）的方法，依赖预定义的规则或先验知识；以及基于学习（learning-based）的方法，通过数据驱动的优化来学习关系。
+
+\subsubsection{基于启发式的关系}
+基于启发式的关系是依据对环境的先验知识手动定义的，在智能体系统中得到了广泛采用。基于 RL 的智能体需要与环境进行大量交互，通过专门设计的 RL 算法来优化策略。因此，建模智能体与环境实体之间的关系对于这些算法的有效性至关重要。例子包括：城市环境中的自动驾驶智能体如 Rollout [62]，仓库调度场景中的具身智能体（embodied agents）如 GRLOS [63]，通信网络环境中的路由智能体如 Graph-MARL [64]，以及在线广告场景中的自动竞价智能体如 LGD-AB [65]。一旦这些图针对特定环境设计完成，相应的关系结构便可以作为结构先验（structural priors），辅助基于 RL 的智能体与环境交互并获得更高的奖励。
+
+最近，具备强大推理和规划能力的 LLM 的出现，引发了人们对将其集成到智能体系统中日益浓厚的兴趣。然而，由于缺乏 LLM 能够有效处理的环境表示，基于 LLM 的智能体往往难以将其能力落地（ground）到具体环境中 [150]。场景图 [149] 提供了环境的结构化表示，补充了 LLM 的推理能力，从而增强了基于 LLM 的智能体的环境理解和交互能力。这种协同效应已在各种设置中得到探索，包括室内环境中的具身智能体如 MoMa-LLM [66]、室外环境中的自动驾驶智能体如 PlanAgent [67]，以及模拟环境中的 LLM 智能体如 SG-RwR [68]。类似地，Xplore-Agent [69] 构建了一张 GUI 转移图（GUI Transition Graph）来建模 GUI 屏幕之间的关系，引导 LLM 完成多个下游任务。
+
+\subsubsection{基于学习的关系}
+由于基于启发式的关系在很大程度上依赖人工设计，且往往难以在不同环境间泛化，一些工作开始提出基于学习的关系。这些方法涉及先初始化关系，然后用可学习参数或特定模型来学习关系，这在不同环境中更具灵活性。在确定了节点内容和初始节点关系之后，这些方法使用可学习参数或基于注意力的模型（如 Transformer [151] 或图注意力网络，Graph Attention Networks, GAT [152]）来动态学习节点之间的关系权重或嵌入。这有助于捕获智能体与环境节点之间的关系。例如，MAGNet [70] 和 TransfQMix [15] 基于智能体所依赖或观察到的环境实体来初始化图，然后使用自注意力机制动态调整边权重并确定邻域重要性。CAM [71] 首先基于障碍物密集的环境构建边特征，然后使用多层感知机进一步学习所构建的边。GAR-CoNav [72] 识别全局环境中的节点实体，并使用 GAT 来学习节点之间的关联强度。STGNN [73] 将环境建模为基于网格的图，并将可学习权重融入图卷积网络（Graph Convolutional Networks, GCN）[153]，以捕获数据中的时空依赖关系。
+
+\section{面向智能体记忆的图}
+
+记忆（memory）是一项关键能力，它使智能体能够存储和回忆过往经验或相关知识 [154]、[155]。它使智能体能够积累经验，从而促成更明智、更恰当的行动。当应用于智能体记忆时，基于图的记忆组织能够有效地揭示智能体所遇到的各种信息之间潜在的关联。在基于图的记忆组织之上，配合有效的记忆检索（memory retrieval）和维护（maintenance），智能体识别那些可能并不显而易见的模式和联系的能力得到了增强，从而在较长时期内丰富其知识库并改进其在动态环境中的执行表现。图~\ref{fig:5} 展示了一个图赋能记忆的玩具示例（toy example）。
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.97\linewidth]{cand_p08_k00.pdf}
+\caption{面向智能体记忆的图示意图。}
+\label{fig:5}
+\end{figure*}
+
+\subsection{记忆组织（Memory Organization）}
+
+配备了图结构记忆的智能体可以将知识和经验存储为相互关联的表示，这受到了现代记忆认知模型的启发，这些模型强调人类的关系推理和情境推理能力 [156]、[157]。近期基于 LLM 的智能体探索了从非结构化文本块（unstructured text chunks）到结构化知识图谱的一系列记忆表示。特别是，知识图谱（由语义三元组组成）和其他结构化形式（例如原子事实，atomic facts，和摘要笔记，summarized notes）正越来越多地被用于组织智能体的长期记忆。例如，AriGraph [74] 系统将智能体的记忆表示为一张由三元组构成的结构化知识图谱，该图谱既编码了语义事实，也编码了来自智能体经验的情节性事件（episodic events）。这种基于图的记忆组织使智能体不仅能够回忆孤立的数据点，还能回忆它们之间结构化的联系（例如因果关系、时间或关系链接），这对于不同场景而言至关重要，例如面向工业多模态数据的 IKG [75]、面向教育的 Graphusion [76]、面向专利分析的 MemGraph [77]，以及面向网络搜索的 Mind Map [78]。此外，StructuralMemory [79] 在多个场景中评估了四种类型的记忆结构：文本块、知识三元组、原子事实和摘要。研究发现，不同的记忆结构能够针对特定任务提供各自独特的优势。
+
+为了整合更丰富的信息，一些工作开始引入层次化或混合图（hierarchical or hybrid graphs），利用多层次或多粒度的信息来改进组织。例如，去中心化的多智能体框架 DAMCS [80] 使用层次化知识图谱作为记忆，其中多模态经验在不同的抽象层次上被组织。这种层次结构使智能体能够记录低层次细节和高层次摘要，并仅与队友共享相关部分，从而增强协作行为。类似地，GraphRAG [81] 构建了一张混合知识图谱，同时编码实体级（entity-level）和社区级（community-level）节点。这种分层设计使得既能检索紧密连接的局部事实，又能保留更广泛的语义聚类，从而便于对那些同时需要细粒度和整体性理解的问题给出情境感知（context-aware）的响应。KG-Retriever [82] 进一步推进了这一方向，它将知识索引到一张由实体级和文档级（document-level）节点构成的层次图中。这种结构便于在不同语义分辨率上进行后续检索，使智能体能够根据查询的复杂程度，对特定实体进行推理或从整个文档中聚合信息。
+
+\subsection{记忆检索（Memory Retrieval）}
+
+基于结构化记忆，对 LLM 智能体而言，准确而高效地从中检索有用信息作为可靠的指引至关重要。尽管传统的基于相似度的检索器可以直接应用于基于图的记忆 [158]，但为了充分利用图信息的特性，近期的工作（主要包括基于图的检索增强生成，graph-based RAG）已开始关注专门为基于图的知识库和记忆设计的检索器 [159]、[160]。
+
+在检索过程中，一些工作关注所检索知识子图的准确性方面，这是直接影响智能体所做决策的关键因素。代表性地，G-Retriever [83] 和 GFM-RAG [84] 整合了语义相似度和图度量（graph metrics）来进行定制化的检索器设计，以对信息丰富的子图进行排序和搜索；而 SubgraphRAG [85] 则提供了一个带有三元组评分机制（triple-scoring mechanism）的轻量级感知机，以基于查询相关性进行灵活的子图检索。此外，LightRAG [86] 提出了一个双检索器系统，包括用于实体级问题的局部检索器（local retriever）和用于需要子图推理的复杂查询的全局检索器（global retriever）。
+
+除了准确性之外，由于记忆检索需要额外的处理时间，会影响智能体的效率，因此一些研究还在兼顾有效性的前提下，对检索进行面向效率的优化。例如，GRAG [87] 提出了一种新颖的分而治之（divide-and-conquer）策略，以在线性时间内检索最优子图，同时辅以两种互补的视图来帮助 LLM 理解图上下文。此外，PathRAG [88] 通过基于流（flow-based）的剪枝去除语义上重叠的路径，在保持召回率的同时降低了检索延迟。
+
+\subsection{记忆维护（Memory Maintenance）}
+
+与基于图的 RAG 相比，除了组织和检索结构化知识之外，基于图的智能体记忆还有一个关键且具有挑战性的方面，即其动态演化（dynamic evolution）——也就是响应新的经验和交互，持续更新和优化记忆表示与图拓扑的能力。
+
+因此，动态的基于图的记忆架构已在一些研究中涌现，成为在 LLM 智能体中维护和演化长期记忆的有效解决方案 [161]。例如，A-MEM [89] 通过动态索引和链接创建相互关联的知识网络，使得在整合新记忆时能够持续优化情境表示。AriGraph [74] 由情节记忆（episodic memories）和语义记忆（semantic memories）组成。情节记忆记录智能体在特定步骤接收到的观察及其时间关系。智能体持续检测并移除过时的知识，扩展语义记忆，并更新情节记忆，以维护动态图。
+
+为了更好地捕获和存储元素之间的长期关系，一些工作进一步通过层次化动态图（hierarchical dynamic graphs）来构建记忆。代表性地，DAMCS [80] 为长期记忆提出了一种面向目标的层次化知识图谱，包含较低层次的经验节点和目标节点，用于追踪智能体的历程。还会生成更高层次的长期目标节点，以提供对长期进展的概览。Zep [90] 由 Graphiti（一个时间感知的层次化知识图谱引擎）提供支持。它动态地整合非结构化的对话数据，维护历史关系。记忆管理通过一张包含情节（plot）、语义实体（semantic entity）和社区（community）子图的多层知识图谱来实现。对于图更新策略，HippoRAG [91] 和 LightRAG [86] 等工作包含动态增量式的图更新。KG-Agent [92] 引入 LLM 来更新知识图谱。此外，InstructRAG [93] 采用带有设计好的动作的 RL 智能体来维护和更新图。
+
+\section{面向多智能体协同的图}
+
+多智能体系统（multi-agent system, MAS）是一个复杂系统，它整合多个 AI 智能体以实现相互融合、协作与竞争。其目标是通过各智能体之间的交互，完成单个智能体难以完成的复杂任务 [162]、[163]。在这些系统中，每个智能体都有其自身的专门优势，例如领域特定知识、推理能力，而协同的整体效果取决于智能体之间的信息交换和决策共识。协同多个智能体的核心焦点是关系建模（relational modeling）。图的组织与学习可以利用其处理关系数据的固有能力，在此类建模中表现出色。为使综述保持一致，我们将多智能体协同的图组织定义为智能体协同图（agent coordination graph, ACG）。形式上，在 ACG 中，核心节点是智能体。节点特征表示每个智能体的信息。边是智能体节点之间的通信路径，用于在智能体之间传递消息。对于一个 MAS，图主要有两个作用。第一，基于预定义的 ACG（任务特定和环境特定的关系），学习智能体应当通信哪些信息以最大化 MAS 的性能。第二，优化 ACG 拓扑以提升多个智能体之间的通信有效性。这一过程如图~\ref{fig:6} 所示。
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.9\linewidth]{cand_p10_k00.pdf}
+\caption{面向多智能体协同的图示意图。}
+\label{fig:6}
+\end{figure}
+
+\subsection{协同消息传递（Coordination Message Passing）}
+
+可以利用智能体所执行任务中以及它们所交互环境中蕴含的启发式关系，来构建多智能体系统的交互拓扑。在这一先验关系知识的基础上，近期的工作开始探索如何在智能体之间更有效地传递和优化消息。
+
+\subsubsection{任务特定关系}
+任务特定关系（task-specific relationship）主要由两个方面构成：显式的任务依赖，以及通过隐式关系将任务分配给智能体。
+
+\textbf{基于任务依赖的关系。} 在这类关系中，用于子任务依赖建模的 TDG 被用作 ACG。在智能体任务执行的工作流中，多个智能体分别负责一个子任务。这些智能体将基于 TDG 的依赖关系进行消息传递，以实现高效的任务执行。例如，基于 TDG，FLOW-GNN [94] 和 LGC-MARL [48] 分别采用 GNN 和基于图的多智能体 RL 来优化任务工作流。DynTaskMAS [45] 提出了一个在 TDG 下动态管理多智能体协作的框架。此外，MACNET [97] 使用评论家—行动者（critic-actor）任务 DAG 来进行智能体协作。
+
+\textbf{基于任务分配的关系。} 对于需要协作以在缺乏显式子任务间依赖关系的环境中完成复杂任务的多个智能体，一些方法启动构建基于任务分配的关系图，以进行有效的信息抽取和交换，例如 RandStructure2Vec [96] 和 MAGNNET [95]。具体而言，这些方法在 ACG 中引入表示任务的节点。通过这种方式，将智能体节点与相关的任务节点相连，并利用 GNN 进行多层图消息传递，它们能够捕获高阶的智能体—智能体、智能体—任务和任务—任务关联，从而增强多智能体任务处理能力。
+
+\subsubsection{环境特定关系}
+多智能体协同中的环境特定关系（environment-specific relationship）专注于建模在特定智能体环境下多个智能体之间的关系以及消息传递。在这类关系中，ACG 中的每个节点表示一个智能体，图的构建基于指定环境的特征。
+
+与第~IV~节中讨论的基于启发式的关系类似，一些方法依赖预定义规则来表示智能体之间的关系。例如，GRL [98] 将车辆建模为图节点，将它们的交互建模为边，用于交互式交通场景中的决策。在 MAGNNETO [99] 中，智能体根据计算机网络中底层的图结构与邻近智能体交换信息。ExpoComm [100] 使用指数拓扑（exponential topology）在大规模多智能体系统中实现智能体之间高效的信息传播。相比之下，与前面讨论的基于学习的关系类似，若干方法在特定环境中初始化之后，动态地学习智能体之间关系的权重。例如，GraphComm [101] 和 MAGI [102] 探索游戏对弈场景中的多智能体通信，HEAT [103] 专注于城市驾驶场景，COMAT [104] 则针对异构多机器人系统中的协作。
+
+\subsection{协同拓扑优化（Coordination Topology Optimization）}
+
+由于现实世界中任务设置多样，在设计多智能体协同图结构时，往往缺乏可用的先验关系。因此，有必要为给定的多智能体场景学习和优化一种通信拓扑 [115]、[117]。许多现有工作探索了这一问题，可归为拓扑优化的三个主要类别，包括边重要性度量（edge importance measurement）、图自编码器优化（graph autoencoder optimization）和强化学习。
+
+\textbf{边重要性度量。} 在整体流程中，这些方法首先在多个智能体之间初始化一个全连接或基于规则的拓扑。然后，一方面，许多工作通过注意力机制、重要性分数或可学习的参数化边权重来选择有用的边，例如 DICG [105]、DiscoGraph [106]、CoPU [107] 和 DMCG [108]。在这一思路的基础上，由于参数化的连通图因拓扑密度高而计算效率低下，一些方法通过阈值二值化（threshold binarization，若权重超过某个阈值则边存在，否则不存在）或可微的 Gumbel-Softmax 离散化 [164] 将其转换回离散图，例如 G2ANet [109]、MAGIC [110]、MAGE-X [111] 和 CommFormer [112]。另一方面，一些工作直接利用可训练的图掩码（graph masking）来剪除冗余和不必要的通信节点或边。例如，AgentPrune [113] 通过低秩原则的图掩码识别关键的多智能体连接，AGP [114] 则通过一个节点掩码头（node masking head）动态确定哪些智能体节点参与特定任务。
+
+\textbf{图自编码器优化。} 图自编码器（graph auto-encoders, GAEs）通过编码器层编码节点表示，并通过解码器层优化特定任务。许多图学习工作使用 GAE 架构进行节点间的自监督链接预测（link prediction）[165]、[166]。其核心思想是用编码器学习节点表示，并用解码器预测链接。基于这一洞见，GAE 可以通过预测智能体之间存在的高置信度边，用于智能体通信拓扑学习。相关工作如 G-Designer [115] 和 GNN-VAE [116] 通过图变分自编码器（graph variational autoencoders）[167]，稳健地预测智能体节点之间是否存在边，以确定最优的多智能体协同拓扑。AGP [114] 利用 GAE 对采样得到的通信拓扑进行软剪枝（soft-pruning），并为框架内后续的优化提供监督信号。
+
+\textbf{强化学习。} 基于 RL 的方法在优化多智能体 ACG 拓扑时，主要专注于设计一个合适的奖励函数，由其决定两个智能体节点之间是否应当存在边。例如，HGRL [118] 使用链接智能体（link agent）来学习为某个节点添加或移除哪些边，以最大化长期 RL 奖励。GPTSwarm [16] 将边概率参数化为一个连续且可优化的分布，并根据任务结果（例如任务响应准确率）来更新它。这些 RL 方法的主要挑战在于平衡建模有效性、开销和效率。
+
+\section{面向图学习的智能体}
+
+如前几节所示，图学习在各个阶段都对 AI 智能体的能力做出了重要贡献。然而，图与智能体之间的关系并非仅仅是单向的。同样地，AI 智能体范式也可以赋能图学习和图相关任务，为自动化、有效的图处理开辟新途径。如图~\ref{fig:7} 所示，这种协同主要体现在两个主要方面：(1) 图标注与合成（graph annotation and synthesis），以及 (2) 图理解（graph understanding）任务。
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.92\linewidth]{cand_p11_k00.pdf}
+\caption{面向图学习的智能体示意图。}
+\label{fig:7}
+\end{figure}
+
+\subsection{图标注与合成（Graph Annotation and Synthesis）}
+
+由于在许多现实应用中，为图模型训练标注和合成高质量图数据的成本很高，因此图标注与合成在图学习中至关重要 [168]、[169]。
+
+\textbf{图标注。} 由于图标注可以被视为一个以标签预测和修正为目标的决策过程，RL 智能体可以通过试错来针对标注进行优化。代表性地，GPA [119] 将图上的主动学习（active learning）问题形式化为一个马尔可夫决策过程（Markov decision process），并使用 RL 来学习最优的查询策略。GPA [119] 可以在若干带有完整标签的源图上联合训练，以学习一个可迁移的主动学习策略，该策略可以直接泛化到未标注的图上。BIGENE [120] 将图主动学习建模为一个多智能体 RL 问题，用于节点标注。在每个时间步，BIGENE 中的每个智能体选择一个未标注的节点，共同构成一个联合动作。所有智能体共享相同的奖励函数，并旨在协作以最大化分类模型的改进。
+
+\textbf{图合成。} 凭借 LLM 丰富的预训练知识，许多工作采用 LLM 智能体范式来生成用于训练或模拟的特定图。例如，LLM4GraphGen [121] 提出了一个灵活的流程，将图生成任务形式化为文本提示，并要求 LLM 智能体以特定格式输出图。GAG [122] 采用 LLM 智能体来生成属性化为文本的动态社交图。它使用智能体自动模拟人—物（human-item）交互，以生成镜像真实世界网络的图。IGDA [123] 是一个迭代式图生成智能体，它通过提示 LLM 推理因果关系来预测初始图，然后迭代地更新图。在每一轮中，不确定性最高的边被优先用于实验。实验之后，根据反馈更新图。Plan-over-Graph [46] 首先用定义好的规则合成一个初始图。然后，提示一个 LLM 智能体将该图转换为描述，并通过自我修正来确保生成图与原始图之间的一致性。GraphMaster [124] 进一步提出了一个用于图数据合成的多智能体框架，它由四个专门的 LLM 智能体组成：管理者（manager）、感知（perception）、增强（enhancement）和评估（evaluation）智能体，它们协作以优化合成过程。
+
+\subsection{图理解（Graph Understanding）}
+
+传统图学习主要旨在为图理解和图建模任务（包括节点分类、链接预测和图分类）学习合适的表示和模型参数。
+
+\textbf{RL 智能体。} 传统图建模方法，如 GCN [153] 和 GAT [152]，基于固定的设计逻辑。然而，现实世界的图结构是多样的，固定的建模逻辑无法充分发挥图学习的潜力。因此，诸如 RL 智能体之类的方法开始为图学习设计自适应的聚合机制。例如，Policy-GNN [125] 使用 RL 为每个节点自适应地确定聚合次数，解决了不同节点需要不同聚合迭代次数才能充分捕获结构信息的问题。SUGAR [126] 和 MAG-GNN [127] 采用 RL 来设计自适应的子图级（subgraph-level）聚合操作子，以增强图建模能力。为了进一步发挥 RL 中多智能体的威力，AgentNet [128] 训练神经智能体在图中游走，并在不应用传统消息传递的情况下共同决定输出。GAgN [129] 将每个节点视为一个智能体，并提出一种去中心化的图结构智能体网络学习来推断全局感知，从而能够抵御对图操作子的攻击。
+
+\textbf{LLM 智能体。} 凭借 LLM 强大的知识，许多工作正在探索如何设计和调优 LLM 智能体，以在图建模任务中充分发挥 LLM 的能力。这些工作的核心是在图数据上对 LLM 进行后训练。这样，LLM 智能体便能够通过文本描述的图信息自动理解图数据，并执行诸如节点分类之类的下游任务。GL-Agent [130] 和 GraphGPT [131] 最初提出了用于在各类图上进行智能体式图学习的 LLM 框架。GA [132] 使用 LLM 作为智能体的基础模型，并采用记忆机制来存储节点或边的嵌入以进行检索增强。此外，OFA [133] 和 ZeroG [134] 使用 LLM 智能体将来自不同图的节点映射到统一的语义空间，以确保跨数据集和图理解任务的泛化能力。LLaGA [135] 进一步将图输入转换为 LLM 可理解的 token 空间。这种转换允许在不修改 LLM 参数的情况下，将 LLM 固有的推理能力用于图相关任务。GraphInstruct [136] 构建了多样化的图生成过程和描述，并为 LLM 的监督微调（supervised fine-tuning）提出了一种逐步掩码（step-by-step masking）训练策略。除了通过调优使模型基于图结构和文本提示生成推理路径之外，GraphWiz [137] 还通过使用 DPO [170] 来比较推理路径，进一步提升了推理能力。
+
+\textbf{LLM 多智能体。} 图建模可以被视为一个涉及多个子建模任务的复杂任务，例如图数据处理、图架构选择和图任务执行，单个智能体难以全部处理。因此，最近许多工作引入多个 LLM 来构建一个多智能体系统，每个智能体专注于一个特定的子建模任务。例如，GraphAgent-Reasoner [138] 提出了首个基于 LLM 且无需微调的多智能体图推理框架。主 LLM 从文本描述中抽取节点和边信息，并为每个节点构建一个智能体。这些智能体与邻域通信，并根据 LLM 的指令更新其状态。GraphAgent [139] 定义了图生成智能体、任务规划智能体和任务执行智能体。这些智能体协同工作，以整合语言模型和图模型，旨在发现复杂的关系信息和数据语义依赖。受人类问题求解过程的启发，GraphTeam [140] 进一步设计了一个具有三个功能组的多智能体框架：输入—输出规范化（input-output regularization）、外部知识检索（external knowledge retrieval）和基于图的问题求解（graph-based problem solving）。
+
+\section{应用}
+
+\subsection{科学计算（Scientific Computing）}
+
+图学习与智能体系统相结合，已在科学计算领域展现出巨大潜力，特别是在自动化科学发现和生物信息学分析等方面 [171]、[172]。深度融合可以分为两个主要方面。第一，使用图来连接科学知识并增强智能体的科学理解。第二，应用图学习来建模某些学科中固有的结构化数据，例如分子和蛋白质结构，然后与智能体对齐。例如，一方面，SciAgents [173] 通过整合大规模本体知识图谱（ontology knowledge graphs）和 LLM 多智能体系统，实现了跨学科知识的自动发现和假设生成。Thought Graph [174] 将 LLM 智能体的结构化思维树（Tree-of-Thought）理解过程与遗传知识库相结合，在基因集分析（gene set analysis）方面取得了成功。另一方面，LLaMo [175] 提出了多层次图投影器（multi-level graph projectors）和对 LLM 智能体的结构指令调优（structure instruction tuning），以应对分子结构与语言模态之间相互转换的挑战。
+
+\subsection{具身人工智能（Embodied AI）}
+
+在具身人工智能（embodied AI）中，智能体必须感知其周围环境并执行恰当的动作 [176]。基于图的表示是该领域的强大工具，大致可分为两类。第一，场景图提供了环境的结构化高层表示，增强了具身智能体的场景理解能力。例如，Ravichandran 等人 [177] 使用 GNN 将场景图嵌入到一个潜在特征空间中，使智能体能够通过强化学习学习有效的导航策略。SayPlan [178] 利用场景图引导 LLM 进行语义搜索，并根据来自图模拟器的反馈优化初始计划。SG-Nav [179] 在环境探索过程中增量式地构建场景图，为 LLM 提供场景上下文，以推理目标的位置并选择探索前沿（exploration frontiers）。第二，知识图谱已被用于具身人工智能中，以支持更明智的决策。例如，[180] 表示与任务相关的知识，而 [181] 则基于知识图谱编码安全协议和物理约束。Scene-MMKG [182] 将基于提示的模式抽取（schema extraction）与来自多个来源的知识相结合，以构建场景特定的知识图谱。通过引入结构化的知识表示，这些方法增强了具身智能体在规划、操纵和导航方面的能力。
+
+\subsection{游戏人工智能（Game AI）}
+
+图结构作为游戏人工智能（game AI）中一种有效的表示和建模工具，正受到越来越多的关注。一个重要原因是，游戏涉及玩家之间，以及玩家控制的角色与游戏环境之间的策略性交互 [183]。例如，在双人游戏的分析中，响应图（response graph）模型不仅能捕获游戏的非平凡性质，还能揭示不同类型游戏之间深刻的联系 [184]。在多智能体游戏系统中，游戏抽象（game abstraction）机制可以简化策略学习过程，并提升算法的渐近性能 [109]。具体而言，在多智能体体育游戏中，基于图的生成模型在预测多智能体轨迹和分布相似度度量方面表现出更优的性能 [185]。最近，随着 LLM 的广泛应用，基于文本的游戏（text-based games）变得越来越知名 [186]、[187]。代表性地，GATA [188] 采用动态信念图（dynamic belief graphs）来更好地理解游戏状态并在基于文本的游戏中做出决策，相较于传统的基于文本的模型实现了性能提升。
+
+\subsection{智能体式信息检索（Agentic Information Retrieval）}
+
+通过集成图学习以支持结构化的检索规划和自适应推理，智能体式信息检索（agentic information retrieval）的未来研究可以得到显著推进。代表性方法如 Think-on-Graph [34]、[189] 和 Graph Chain-of-Thought [59]，其中 LLM 作为一个智能体，交互式地探索知识图谱（KG）以检索相关信息并进行推理。这是通过一个迭代式的提示循环来实现的：LLM 在图上生成下一个查询或“移动”（move），而检索到的节点事实被反馈回提示中。与此同时，基于 RL 的优化也正在智能体式检索和推理中得到探索。近期方法 [190]--[192] 使用鼓励有效搜索查询和迭代证据收集的奖励信号来训练 LLM 智能体，表明模型可以学会何时调用外部知识，甚至在失败后重试搜索。一个有前景的未来方向是将基于图的智能体式规划与 RL 驱动的学习统一到一个循环中。例如，一个自主检索智能体既能利用知识图谱关系进行决策，又能持续学习以优化其搜索和推理策略，从而在复杂任务中实现更稳健、可解释且高效的信息检索。
+
+\subsection{工业与自动化系统（Industrial and Automation Systems）}
+
+在工业 4.0 和物联网（Internet of Things, IoT）时代，焦点在于通过智能技术实现高效和自动化的生产 [193]。目前，智能体系统已开始应用于仓储管理、制造调度等领域，为工业 4.0 提供了关键技术支撑 [194]、[195]。在这些工业系统中，智能体应当具备的关键能力是可扩展性（scalability）、动态可演化性（dynamic evolvability）和鲁棒性（robustness）。就可扩展性而言，在工业系统中，智能体往往涉及庞大的搜索空间和大量的工具调用。智能体之间也存在大量关系。图的组织与学习可以获得一张稀疏的关联图，以减少无信息量的交互并实现高效性能 [17]、[96]、[112]。基于图的模型还可以借助动态图演化，在动态环境中保持灵活性 [108]、[196]。此外，智能体系统的鲁棒性可以通过学习图数据中固有的模式和结构来增强，从而滤除系统中的异常或噪声信息 [197]、[198]。
+
+\subsection{人类社会（Human Society）}
+
+近年来，基于 LLM 的智能体在分析和模拟人类社会行为方面展现出巨大潜力。研究表明，由 LLM 驱动的智能体能够有效地建模社交网络中的信息传播、情感和态度变化以及复杂网络的形成 [199]。一个重要原因是，LLM 智能体可以模拟现实世界社交网络中的关键动态 [200]。这些动态包括优先连接（preferential attachment）、三元闭包（triadic closure）、同质性（homophily）和社区结构（community structure）。此外，LLM 智能体可以根据网络的特征调整其行为策略。基于这一基础能力，许多工作采用 LLM 智能体进行社交网络和用户行为模拟 [122]、[201]--[203]。进一步地，一些工作采用 LLM 智能体进行人类社会分析。例如，[204] 使用 LLM 智能体在在线社交网络中进行人格分析，[205] 采用 LLM 智能体分析社会谣言传播的机制。
+
+\section{挑战与未来机遇}
+
+\subsection{基准评测（Benchmarking Evaluation）}
+
+如表~\ref{tab:1} 所示，目前已有大量代表性基准（benchmarks）和开源工具包（open-source toolkits）被提出，用于评估不同的智能体任务，尤其是基于 LLM 的智能体。图相关的智能体基准近年来也开始受到关注。就挑战方面而言，现有基准在任务定义或评估数据上仍存在差异，使得统一评估变得困难。此外，随着 LLM 基础模型与 RL 技术的深度融合，未来的基准可以将二者都纳入其中，并将基于图的模型作为其中的一部分。同时，对于图学习展现出巨大潜力的新兴复杂场景，例如大规模动态环境中的多智能体推理、记忆和协作，目前还缺乏以图为中心的智能体基准。
+
+\begin{table*}[t]
+\centering
+\caption{代表性基准与开源工具包合集。}
+\label{tab:1}
+\begin{tabular}{c l l l l}
+\toprule
+ & \textbf{基准与工具包} & \textbf{智能体类型} & \textbf{评估任务} & \textbf{链接} \\
+\midrule
+\multirow{13}{*}{\rotatebox{90}{\textbf{通用（General）}}}
+ & EPyMARL [206]       & RL Agent  & 多智能体协同 & Github \\
+ & BenchMARL [207]     & RL Agent  & 多智能体协同 & Github \\
+ & Memory Gym [208]    & RL Agent  & 智能体记忆 & Github \\
+ & API-Bank [209]      & LLM Agent & 工具使用 & Github \\
+ & PlanBench [210]     & LLM Agent & 任务推理、任务分解 & Github \\
+ & AgentBench [211]    & LLM Agent & 通用 & Github \\
+ & ToolBench [212]     & LLM Agent & 工具使用 & Github \\
+ & GTA [213]           & LLM Agent & 工具使用 & Github \\
+ & TravelPlanner [214] & LLM Agent & 任务推理、任务分解、工具使用 & Github \\
+ & $\tau$-bench [215]  & LLM Agent & 工具使用、智能体—环境交互 & Github \\
+ & TOOLSANDBOX [216]   & LLM Agent & 工具使用、智能体—环境交互 & Github \\
+ & REALM-Bench [217]   & LLM Agent & 任务推理、任务分解、多智能体协同 & Github \\
+ & LangGraph           & LLM Agent & 工具使用、多智能体协同 & Github \\
+\midrule
+\multirow{7}{*}{\rotatebox{90}{\textbf{图相关（Graph-Related）}}}
+ & GLBench [218]       & LLM Agent & 图建模 & Github \\
+ & ProGraph [219]      & LLM Agent & 图建模 & Github \\
+ & GraphArena [220]    & LLM Agent & 图建模 & Github \\
+ & GPTSwarm [16]       & LLM Agent & 任务推理、工具使用、多智能体协同 & Github \\
+ & MACNET [97]         & LLM Agent & 多智能体协同 & Github \\
+ & ToolLinkOS [60]     & LLM Agent & 工具使用 & Github \\
+ & FLORA-Bench [94]    & LLM Agent & 任务推理、任务分解 & Github \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\subsection{面向智能体的图基础模型（Graph Foundation Models for Agents）}
+
+在传统的图建模任务中，GCN [153] 和 GAT [152] 等代表性方法采用消息传递进行知识抽取，为图建模奠定了坚实的基础。基于这样的基础，许多后续工作和应用被提出，以加速该领域的发展。例如，一些方法开始探索统一而有效的图基础模型（graph foundation models, GFMs），用于同时处理多个图领域 [221]、[222]。对于 AI 智能体，存在面向不同任务的各种基于图的方法。然而，目前缺乏可供广泛使用的基础性图操作子。因此，在基于智能体的功能中开发有效的 GFMs 是一个有前景的方向。此外，鉴于智能体场景往往需要处理复杂任务，面向智能体的 GFMs 可以从有效性（Effectiveness）、可解释性（Explainability）和可扩展性（Scalability）（简称 EES）的视角进行设计。具体而言，在服务于有效性的同时，GFMs 可以基于图的优势，利用节点之间的逻辑关系来提升智能体决策的可解释性 [223]、[224]，并通过以结构化方式组织信息和操作子来提升系统的可扩展性 [17]。
+
+\subsection{隐私与安全（Privacy and Security）}
+
+对于 AI 智能体，图的组织与学习主要在实体（例如智能体节点和外部工具）之间建立连接，以实现高效的消息共享与传输，而这可能带来安全问题。(1) 数据隐私（Data Privacy）：一个未来方向在于，在确保隐私的前提下，实现涉及私有信息的节点之间的消息共享与传输 [225]--[227]，例如私域智能体之间的通信 [228]、[229]。例如，在医疗场景中，患者数据高度敏感。如果智能体的操作子或多个智能体的交互涉及信息传递，那么确保患者隐私得到保护就至关重要。(2) 攻击防御（Attack Defense）：多智能体通信和智能体—环境交互天然地形成一种图拓扑，容易受到对抗攻击（adversarial attacks）[229]--[231]。攻击者可以发送难以区分的对抗消息，严重扰乱智能体系统的性能并导致隐私数据泄露 [229]、[232]。一些工作探索了多智能体拓扑对系统安全的影响 [233]、[234]。高度连接的拓扑可能使系统更容易受到攻击，因为恶意信息可以在智能体之间迅速传播。未来研究应专注于设计更安全的多智能体协同和智能体—环境交互策略。有必要开发能够在维持通信有效性的同时抵御对抗攻击的拓扑和机制。
+
+\subsection{多模态智能体（Multimodal Agents）}
+
+以 LLM 作为基础模型的智能体范式，在语言空间中执行任务方面已取得显著性能。关于智能体和 LLM 的研究仍在不断演进。例如，最近在大型视觉语言模型（large vision language models）[235] 或多模态大语言模型（multimodal large language models）[236] 方面取得了一些突破。它们也可以作为新一代 AI 智能体的基础模型。多模态智能体（multimodal agents）将超越当前以语言或单一模态为中心的系统，演化为能够理解和整合文本、视觉、语音等信息流的统一实体 [237]、[238]。这类智能体应当能够自主地做出决策并从异构数据源中学习。在这一演进过程中，图学习可以发挥至关重要的作用，因为多模态数据本身就以复杂而动态的关系相互关联。图技术可以抽象并连接不同的模态，无缝地整合和对齐来自外部世界的模态实体、感知到的对象和环境状态 [11]、[239]、[240]。
+
+\subsection{模型上下文协议（Model Context Protocol）}
+
+MCP 是一种开放标准，为 LLM 智能体提供了一种统一、结构化且安全的方式来与外部世界交换数据。MCP 协议定义了上下文信息如何在智能体与外部数据之间交换，为智能体应用与外部数据源、工具和服务之间的无缝集成提供了标准化手段 [241]、[242]。由于智能体与外部数据之间的结构化交互是 MCP 的关键洞见，图学习可以从两个有前景的视角增强 MCP。(1) 高效数据集成（Efficient Data Integration）：各种数据类型和来源可以被集成到一个统一的 KG 中。图学习可以揭示隐藏的关系和模式，改进 KG 的构建。这丰富了可通过 MCP 协议访问的知识库，为 AI 模型提供更全面、准确的上下文，以更好地解决问题。(2) 个性化推荐（Personalized Recommendations）：通过建模智能体的行为和偏好，图学习可以提供个性化的工具和数据源推荐。MCP 协议可以利用这一点进行扩展，从而为不同的智能体快速定位并调用最合适的工具和数据，提升其体验和生产力。
+
+\subsection{开放智能体网络（Open Agent Network）}
+
+单个智能体很难同时优化安全性、延迟、领域专长和工具使用。在由 LLM 赋能的智能体快速发展过程中，智能体正从单一、整体、通用的聊天机器人，转变为由专门化智能体构成的生态系统和集群 [9]、[243]。开放智能体网络（Open Agent Network, OAN）将是一个有前景的、公开且去中心化的网络，在其中注册和编排智能体 [244]。它可以是一张统一、异构且大规模的图，在未来包括潜在的网络参与者，如智能体、工具、任务（应用）、人类和策略（监管者）。在 OAN 的前景中，网络基础设施提供发现（discovery）、路由（routing）、调用（invocation）、结算（settlement）和声誉（reputation）服务。任何合规的第三方都可以发布或调用智能体，从而产生一张可组合的智能体图（composable agent graph）。在 OAN 中，图可以将若干互补的能力编织在一起。(1) OAN 有效性（OAN Effectiveness）：图学习可以通过纳入延迟和成本来预测最优调用路径，在线持续更新 OAN 图，并归纳式地为新加入的节点生成表示。(2) OAN 风险控制（OAN Risk Control）：图表示通过应用节点分类和链接预测等任务来评估新注册智能体的声誉并突出脆弱的依赖链，从而实现信任与风险分析；同时，从边日志中抽取的时间模式可被用于检测潜在的异常。
+
+\section{结论}
+
+在本文中，我们对图技术与 AI 智能体的交叉领域进行了全面而系统的综述，涵盖了由图赋能的智能体功能，包括规划、执行、记忆和多智能体协同。此外，我们还考察了 AI 智能体范式如何能够增强图学习，例如图标注、合成和理解。基于这一详细的综述，我们随后总结了这一快速发展的交叉领域中有意义的应用、开放问题和未来机遇，为面对日益复杂和繁杂的任务信息的新一代智能体提供了新的潜在思路。相关资源已在 Github 链接中进行组织和更新，供研究界和产业界使用。
+
+\section*{参考文献}
+\begin{enumerate}[leftmargin=2.4em,labelsep=0.4em,itemsep=0.15em]
+\item T. T. Nguyen, N. D. Nguyen, and S. Nahavandi, ``Deep reinforcement learning for multiagent systems: A review of challenges, solutions, and applications,'' \textit{IEEE transactions on cybernetics}, vol. 50, no. 9, pp. 3826--3839, 2020.
+\item C. Florensa, D. Held, X. Geng, and P. Abbeel, ``Automatic goal generation for reinforcement learning agents,'' in \textit{International conference on machine learning}. PMLR, 2018, pp. 1515--1528.
+\item L. Wang, C. Ma, X. Feng, Z. Zhang, H. Yang, J. Zhang, Z. Chen, J. Tang, X. Chen, Y. Lin et al., ``A survey on large language model based autonomous agents,'' \textit{Frontiers of Computer Science}, vol. 18, no. 6, p. 186345, 2024.
+\item A. Zhao, D. Huang, Q. Xu, M. Lin, Y.-J. Liu, and G. Huang, ``Expel: Llm agents are experiential learners,'' in \textit{Proceedings of the AAAI Conference on Artificial Intelligence}, vol. 38, no. 17, 2024, pp. 19\,632--19\,642.
+\item F. Peiyuan, Y. He, G. Huang, Y. Lin, H. Zhang, Y. Zhang, and H. Li, ``Agile: A novel reinforcement learning framework of llm agents,'' in \textit{Advances in Neural Information Processing Systems}, vol. 37, 2024, pp. 5244--5284.
+\item T. Masterman, S. Besen, M. Sawtell, and A. Chao, ``The landscape of emerging ai agent architectures for reasoning, planning, and tool calling: A survey,'' \textit{arXiv preprint arXiv:2404.11584}, 2024.
+\item N. Krishnan, ``Ai agents: Evolution, architecture, and real-world applications,'' \textit{arXiv preprint arXiv:2503.12687}, 2025.
+\item X. Huang, W. Liu, X. Chen, X. Wang, H. Wang, D. Lian, Y. Wang, R. Tang, and E. Chen, ``Understanding the planning of llm agents: A survey,'' \textit{arXiv preprint arXiv:2402.02716}, 2024.
+\item T. Guo, X. Chen, Y. Wang, R. Chang, S. Pei, N. V. Chawla, O. Wiest, and X. Zhang, ``Large language model based multi-agents: a survey of progress and challenges,'' in \textit{Proceedings of the Thirty-Third International Joint Conference on Artificial Intelligence}, 2024, pp. 8048--8057.
+\item Q. Guo, F. Zhuang, C. Qin, H. Zhu, X. Xie, H. Xiong, and Q. He, ``A survey on knowledge graph-based recommender systems,'' \textit{IEEE Transactions on Knowledge and Data Engineering}, vol. 34, no. 8, pp. 3549--3568, 2020.
+\item Y. Ektefaie, G. Dasoulas, A. Noori, M. Farhat, and M. Zitnik, ``Multimodal learning with graphs,'' \textit{Nature Machine Intelligence}, vol. 5, no. 4, pp. 340--350, 2023.
+\item C. Chen, Y. Wu, Q. Dai, H.-Y. Zhou, M. Xu, S. Yang, X. Han, and Y. Yu, ``A survey on graph neural networks and graph transformers in computer vision: A task-oriented perspective,'' \textit{IEEE Transactions on Pattern Analysis and Machine Intelligence}, 2024.
+\item Z. Wu, S. Pan, F. Chen, G. Long, C. Zhang, and P. S. Yu, ``A comprehensive survey on graph neural networks,'' \textit{IEEE transactions on neural networks and learning systems}, vol. 32, no. 1, pp. 4--24, 2020.
+\item L. Wu, Y. Chen, K. Shen, X. Guo, H. Gao, S. Li, J. Pei, B. Long et al., ``Graph neural networks for natural language processing: A survey,'' \textit{Foundations and Trends in Machine Learning}, vol. 16, no. 2, pp. 119--328, 2023.
+\item M. Gallici, M. Martin, and I. Masmitja, ``Transfqmix: Transformers for leveraging the graph structure of multi-agent reinforcement learning problems,'' in \textit{Proceedings of the 2023 International Conference on Autonomous Agents and Multiagent Systems}, 2023, pp. 1679--1687.
+\item M. Zhuge, W. Wang, L. Kirsch, F. Faccio, D. Khizbullin, and J. Schmidhuber, ``Gptswarm: Language agents as optimizable graphs,'' in \textit{Forty-first International Conference on Machine Learning}, 2024.
+\item X. Liu, Z. Peng, X. Yi, X. Xie, L. Xiang, Y. Liu, and D. Xu, ``Toolnet: Connecting large language models with massive tools via tool graph,'' \textit{arXiv preprint arXiv:2403.00839}, 2024.
+\item M. Yasunaga, H. Ren, A. Bosselut, P. Liang, and J. Leskovec, ``Qa-gnn: Reasoning with language models and knowledge graphs for question answering,'' in \textit{Proceedings of the 2021 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies}, 2021, pp. 535--546.
+\item R. Zhao, F. Zhao, L. Wang, X. Wang, and G. Xu, ``Kg-cot: Chain-of-thought prompting of large language models over knowledge graphs for knowledge-aware question answering,'' in \textit{Proceedings of the Thirty-Third International Joint Conference on Artificial Intelligence (IJCAI-24)}. International Joint Conferences on Artificial Intelligence, 2024, pp. 6642--6650.
+\item S. Munikoti, D. Agarwal, L. Das, M. Halappanavar, and B. Natarajan, ``Challenges and opportunities in deep reinforcement learning with graph neural networks: A comprehensive review of algorithms and applications,'' \textit{IEEE transactions on neural networks and learning systems}, 2023.
+\item Z. Liu, J. Zhang, E. Shi, Z. Liu, D. Niyato, B. Ai, and X. S. Shen, ``Graph neural network meets multi-agent reinforcement learning: Fundamentals, applications, and future directions,'' \textit{IEEE Wireless Communications}, 2024.
+\item Y. Li, Z. Li, P. Wang, J. Li, X. Sun, H. Cheng, and J. X. Yu, ``A survey of graph meets large language model: progress and future directions,'' in \textit{Proceedings of the Thirty-Third International Joint Conference on Artificial Intelligence}, 2024, pp. 8123--8131.
+\item B. Jin, G. Liu, C. Han, M. Jiang, H. Ji, and J. Han, ``Large language models on graphs: A comprehensive survey,'' \textit{IEEE Transactions on Knowledge and Data Engineering}, 2024.
+\item M. Wooldridge and N. R. Jennings, ``Intelligent agents: Theory and practice,'' \textit{The knowledge engineering review}, vol. 10, no. 2, pp. 115--152, 1995.
+\item Y. Cao, H. Zhao, Y. Cheng, T. Shu, Y. Chen, G. Liu, G. Liang, J. Zhao, J. Yan, and Y. Li, ``Survey on large language model-enhanced reinforcement learning: Concept, taxonomy, and methods,'' \textit{IEEE Transactions on Neural Networks and Learning Systems}, 2024.
+\item S. Wang, S. Zhang, J. Zhang, R. Hu, X. Li, T. Zhang, J. Li, F. Wu, G. Wang, and E. Hovy, ``Reinforcement learning enhanced llms: A survey,'' \textit{arXiv preprint arXiv:2412.10400}, 2024.
+\item D. Guo, D. Yang, H. Zhang, J. Song, R. Zhang, R. Xu, Q. Zhu, S. Ma, P. Wang, X. Bi et al., ``Deepseek-r1: Incentivizing reasoning capability in llms via reinforcement learning,'' \textit{arXiv preprint arXiv:2501.12948}, 2025.
+\item K. Arulkumaran, M. P. Deisenroth, M. Brundage, and A. A. Bharath, ``Deep reinforcement learning: A brief survey,'' \textit{IEEE Signal Processing Magazine}, vol. 34, no. 6, pp. 26--38, 2017.
+\item T. M. Moerland, J. Broekens, A. Plaat, C. M. Jonker et al., ``Model-based reinforcement learning: A survey,'' \textit{Foundations and Trends in Machine Learning}, vol. 16, no. 1, pp. 1--118, 2023.
+\item Y. Chang, X. Wang, J. Wang, Y. Wu, L. Yang, K. Zhu, H. Chen, X. Yi, C. Wang, Y. Wang et al., ``A survey on evaluation of large language models,'' \textit{ACM transactions on intelligent systems and technology}, vol. 15, no. 3, pp. 1--45, 2024.
+\item Z. Zhang, X. Bo, C. Ma, R. Li, X. Chen, Q. Dai, J. Zhu, Z. Dong, and J.-R. Wen, ``A survey on the memory mechanism of large language model based agents,'' \textit{arXiv preprint arXiv:2404.13501}, 2024.
+\item W. Fan, Y. Ding, L. Ning, S. Wang, H. Li, D. Yin, T.-S. Chua, and Q. Li, ``A survey on rag meeting llms: Towards retrieval-augmented large language models,'' in \textit{Proceedings of the 30th ACM SIGKDD Conference on Knowledge Discovery and Data Mining}, 2024, pp. 6491--6501.
+\item K. Kumar, T. Ashraf, O. Thawakar, R. M. Anwer, H. Cholakkal, M. Shah, M.-H. Yang, P. H. Torr, F. S. Khan, and S. Khan, ``Llm post-training: A deep dive into reasoning large language models,'' \textit{arXiv preprint arXiv:2502.21321}, 2025.
+\item J. Sun, C. Xu, L. Tang, S. Wang, C. Lin, Y. Gong, L. Ni, H.-Y. Shum, and J. Guo, ``Think-on-graph: Deep and responsible reasoning of large language model on knowledge graph,'' in \textit{The Twelfth International Conference on Learning Representations}, 2024.
+\item L. Luo, Y.-F. Li, G. Haffari, and S. Pan, ``Reasoning on graphs: Faithful and interpretable large language model reasoning,'' in \textit{The Twelfth International Conference on Learning Representations}, 2024.
+\item Y. Wen, Z. Wang, and J. Sun, ``Mindmap: Knowledge graph prompting sparks graph of thoughts in large language models,'' in \textit{Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)}, 2024, pp. 10\,370--10\,388.
+\item X. Tan, X. Wang, Q. Liu, X. Xu, X. Yuan, and W. Zhang, ``Paths-over-graph: Knowledge graph empowered large language model reasoning,'' in \textit{Proceedings of the ACM on Web Conference 2025}, 2025, pp. 3505--3522.
+\item S. Yao, D. Yu, J. Zhao, I. Shafran, T. Griffiths, Y. Cao, and K. Narasimhan, ``Tree of thoughts: Deliberate problem solving with large language models,'' in \textit{Thirty-seventh Conference on Neural Information Processing Systems}, vol. 36, 2023, pp. 11\,809--11\,822.
+\item J. Zhang, X. Wang, W. Ren, L. Jiang, D. Wang, and K. Liu, ``Ratt: A thought structure for coherent and correct llm reasoning,'' in \textit{Proceedings of the AAAI Conference on Artificial Intelligence}, vol. 39, no. 25, 2025, pp. 26\,733--26\,741.
+\item Y. Yao, Z. Li, and H. Zhao, ``Got: Effective graph-of-thought reasoning in language models,'' in \textit{Findings of the Association for Computational Linguistics: NAACL 2024}, 2024, pp. 2901--2921.
+\item M. Besta, N. Blach, A. Kubicek, R. Gerstenberger, M. Podstawski, L. Gianinazzi, J. Gajda, T. Lehmann, H. Niewiadomski, P. Nyczyk et al., ``Graph of thoughts: Solving elaborate problems with large language models,'' in \textit{Proceedings of the AAAI Conference on Artificial Intelligence}, vol. 38, no. 16, 2024, pp. 17\,682--17\,690.
+\item H. Han, Y. Xie, H. Liu, X. Tang, S. Nag, W. Headden, Y. Li, C. Luo, S. Ji, Q. He et al., ``Reasoning with graphs: Structuring implicit knowledge to enhance llms reasoning,'' \textit{arXiv preprint arXiv:2501.07845}, 2025.
+\item Y. Wu, Y. Fan, S. Y. Min, S. Prabhumoye, S. M. McAleer, R. Salakhutdinov, Y. Bisk, Y. Li, and T. Mitchell, ``Agentkit: Structured LLM reasoning with dynamic graphs,'' in \textit{First Conference on Language Modeling}, 2024.
+\item Y. Dong, X. Zhu, Z. Pan, L. Zhu, and Y. Yang, ``Villageragent: A graph-based multi-agent framework for coordinating complex task dependencies in minecraft,'' in \textit{Findings of the Association for Computational Linguistics ACL 2024}, 2024, pp. 16\,290--16\,314.
+\item J. Yu, Y. Ding, and H. Sato, ``Dyntaskmas: A dynamic task graph-driven framework for asynchronous and parallel llm-based multi-agent systems,'' \textit{arXiv preprint arXiv:2503.07675}, 2025.
+\item S. Zhang, X. Ma, Z. Cao, Z. Zhang, and H. Zhao, ``Plan-over-graph: Towards parallelable llm agent schedule,'' \textit{arXiv preprint arXiv:2502.14563}, 2025.
+\item Z. Gao, Y. Mu, J. Qu, M. Hu, L. Guo, P. Luo, and Y. Lu, ``Dag-plan: Generating directed acyclic dependency graphs for dual-arm cooperative planning,'' \textit{arXiv preprint arXiv:2406.09953}, 2024.
+\item Z. Jia, J. Li, X. Qu, and J. Wang, ``Enhancing multi-agent systems via reinforcement learning with llm-based planner and graph-based policy,'' in \textit{2025 IEEE International Conference on Robotics and Automation (ICRA)}. IEEE, 2025.
+\item T. Marzi, A. S. Khehra, A. Cini, and C. Alippi, ``Feudal graph reinforcement learning,'' \textit{Transactions on Machine Learning Research}, 2024.
+\item X. Wu, Y. Shen, C. Shan, K. Song, S. Wang, B. Zhang, J. Feng, H. Cheng, W. Chen, Y. Xiong et al., ``Can graph learning improve planning in llm-based agents?'' in \textit{The Thirty-eighth Annual Conference on Neural Information Processing Systems}, 2024.
+\item X. Guo, S. Singh, H. Lee, R. L. Lewis, and X. Wang, ``Deep learning for real-time atari game play using offline monte-carlo tree search planning,'' in \textit{Advances in Neural Information Processing Systems}, vol. 27, 2014.
+\item C. Xiao, J. Mei, and M. Müller, ``Memory-augmented monte carlo tree search,'' in \textit{Proceedings of the AAAI conference on artificial intelligence}, vol. 32, no. 1, 2018.
+\item V. G. Costa, J. Pérez-Aracil, S. Salcedo-Sanz, and C. E. Pedreira, ``Evolving interpretable decision trees for reinforcement learning,'' \textit{Artificial Intelligence}, vol. 327, p. 104057, 2024.
+\item X. Wang, C. Li, Z. Wang, F. Bai, H. Luo, J. Zhang, N. Jojic, E. Xing, and Z. Hu, ``Promptagent: Strategic planning with language models enables expert-level prompt optimization,'' in \textit{The Twelfth International Conference on Learning Representations}, 2024.
+\item A. Zhou, K. Yan, M. Shlapentokh-Rothman, H. Wang, and Y.-X. Wang, ``Language agent tree search unifies reasoning, acting, and planning in language models,'' in \textit{Forty-first International Conference on Machine Learning}, 2024.
+\item J. Czech, P. Korus, and K. Kersting, ``Improving alphazero using monte-carlo graph search,'' in \textit{Proceedings of the International Conference on Automated Planning and Scheduling}, vol. 31, 2021, pp. 103--111.
+\item E. Leurent and O.-A. Maillard, ``Monte-carlo graph search: the value of merging similar states,'' in \textit{Asian Conference on Machine Learning}. PMLR, 2020, pp. 577--592.
+\item K. Kujanpää, A. Babadi, Y. Zhao, J. Kannala, A. Ilin, and J. Pajarinen, ``Continuous monte carlo graph search,'' in \textit{Proceedings of the 23rd International Conference on Autonomous Agents and Multiagent Systems}, 2024, pp. 1047--1056.
+\item B. Jin, C. Xie, J. Zhang, K. K. Roy, Y. Zhang, Z. Li, R. Li, X. Tang, S. Wang, Y. Meng et al., ``Graph chain-of-thought: Augmenting large language models by reasoning on graphs,'' in \textit{Findings of the Association for Computational Linguistics ACL 2024}, 2024, pp. 163--184.
+\item E. Lumer, P. H. Basavaraju, M. Mason, J. A. Burke, and V. K. Subbiah, ``Graph rag-tool fusion,'' \textit{arXiv preprint arXiv:2502.07223}, 2025.
+\item Z. Liu, Z. Lai, Z. Gao, E. Cui, Z. Li, X. Zhu, L. Lu, Q. Chen, Y. Qiao, J. Dai et al., ``Controlllm: Augment language models with tools by searching on graphs,'' in \textit{European Conference on Computer Vision}. Springer, 2024, pp. 89--105.
+\item D. Garces, S. Bhattacharya, S. Gil, and D. Bertsekas, ``Multiagent reinforcement learning for autonomous routing and pickup problem with adaptation to variable demand,'' in \textit{2023 IEEE International Conference on Robotics and Automation (ICRA)}. IEEE, 2023, pp. 3524--3531.
+\item S.-N. Johnn, V.-A. Darvariu, J. Handl, and J. Kalcsics, ``A graph reinforcement learning framework for neural adaptive large neighbourhood search,'' \textit{Computers \& Operations Research}, vol. 172, p. 106791, 2024.
+\item J. Weil, Z. Bao, O. Abboud, and T. Meuser, ``Towards generalizability of multi-agent reinforcement learning in graphs with recurrent message passing,'' in \textit{Proceedings of the 23rd International Conference on Autonomous Agents and Multiagent Systems}, 2024, pp. 1919--1927.
+\item D. Huh and P. Mohapatra, ``Multi-agent auto-bidding with latent graph diffusion models,'' \textit{arXiv preprint arXiv:2503.05805}, 2025.
+\item D. Honerkamp, M. Büchner, F. Despinoy, T. Welschehold, and A. Valada, ``Language-grounded dynamic scene graphs for interactive object search with mobile manipulation,'' \textit{IEEE Robotics and Automation Letters}, 2024.
+\item Y. Zheng, Z. Xing, Q. Zhang, B. Jin, P. Li, Y. Zheng, Z. Xia, K. Zhan, X. Lang, Y. Chen et al., ``Planagent: A multi-modal large language agent for closed-loop vehicle motion planning,'' \textit{arXiv preprint arXiv:2406.01587}, 2024.
+\item Y. Chen, H. Sawhney, N. Gydé, Y. Jian, J. Saunders, P. Vela, and B. Lundell, ``A schema-guided reason-while-retrieve framework for reasoning on scene graphs with large-language-models (llms),'' \textit{arXiv preprint arXiv:2502.03450}, 2025.
+\item Y. Sun, S. Zhao, T. Yu, H. Wen, S. Va, M. Xu, Y. Li, and C. Zhang, ``Gui-xplore: Empowering generalizable gui agents with one exploration,'' in \textit{Proceedings of the Computer Vision and Pattern Recognition Conference}, 2025, pp. 19\,477--19\,486.
+\item A. Malysheva, T. T. Sung, C.-B. Sohn, D. Kudenko, and A. Shpilman, ``Deep multi-agent reinforcement learning with relevance graphs,'' \textit{arXiv preprint arXiv:1811.12557}, 2018.
+\item C. Yu, H. Yu, and S. Gao, ``Learning control admissibility models with graph neural networks for multi-agent navigation,'' in \textit{Conference on Robot Learning}. PMLR, 2023, pp. 934--945.
+\item W. Ou, B. Luo, X. Xu, Y. Feng, and Y. Zhao, ``Reinforcement learned multi--agent cooperative navigation in hybrid environment with relational graph learning,'' \textit{IEEE Transactions on Artificial Intelligence}, 2024.
+\item C. Dik, C. Emmanouilidis, and B. Duqueroie, ``Graph network-based human movement prediction for socially-aware robot navigation in shared workspaces,'' \textit{Neural Computing and Applications}, vol. 36, no. 34, pp. 21\,743--21\,759, 2024.
+\item P. Anokhin, N. Semenov, A. Sorokin, D. Evseev, M. Burtsev, and E. Burnaev, ``Arigraph: Learning knowledge graph world models with episodic memory for llm agents,'' \textit{arXiv preprint arXiv:2407.04363}, 2024.
+\item P. Zheng, L. Xia, C. Li, X. Li, and B. Liu, ``Towards self-x cognitive manufacturing network: An industrial knowledge graph-based multi-agent reinforcement learning approach,'' \textit{Journal of Manufacturing Systems}, vol. 61, pp. 16--26, 2021.
+\item R. Yang, B. Yang, A. Feng, S. Ouyang, M. Blum, T. She, Y. Jiang, F. Lecue, J. Lu, and I. Li, ``Graphusion: a rag framework for knowledge graph construction with a global perspective,'' \textit{arXiv preprint arXiv:2410.17600}, 2024.
+\item Q. Xiong, Z. Xu, Z. Liu, M. Wang, Z. Chen, Y. Sun, Y. Gu, X. Li, and G. Yu, ``Enhancing the patent matching capability of large language models via memory graph,'' in \textit{Proceedings of the 48th International ACM SIGIR Conference on Research and Development in Information Retrieval}, 2025.
+\item J. Wu, J. Zhu, and Y. Liu, ``Agentic reasoning: Reasoning llms with tools for the deep research,'' \textit{arXiv preprint arXiv:2502.04644}, 2025.
+\item R. Zeng, J. Fang, S. Liu, and Z. Meng, ``On the structural memory of llm agents,'' \textit{arXiv preprint arXiv:2412.15266}, 2024.
+\item H. Yang, J. Chen, M. Siew, T. Lorido-Botran, and C. Joe-Wong, ``Llm-powered decentralized generative agents with adaptive hierarchical knowledge graph for cooperative planning,'' \textit{arXiv preprint arXiv:2502.05453}, 2025.
+\item D. Edge, H. Trinh, N. Cheng, J. Bradley, A. Chao, A. Mody, S. Truitt, D. Metropolitansky, R. O. Ness, and J. Larson, ``From local to global: A graph rag approach to query-focused summarization,'' \textit{arXiv preprint arXiv:2404.16130}, 2024.
+\item W. Chen, T. Bai, J. Su, J. Luan, W. Liu, and C. Shi, ``Kg-retriever: Efficient knowledge indexing for retrieval-augmented large language models,'' \textit{arXiv preprint arXiv:2412.05547}, 2024.
+\item X. He, Y. Tian, Y. Sun, N. Chawla, T. Laurent, Y. LeCun, X. Bresson, and B. Hooi, ``G-retriever: Retrieval-augmented generation for textual graph understanding and question answering,'' in \textit{Advances in Neural Information Processing Systems}, vol. 37, 2024, pp. 132\,876--132\,907.
+\item L. Luo, Z. Zhao, G. Haffari, D. Phung, C. Gong, and S. Pan, ``Gfm-rag: Graph foundation model for retrieval augmented generation,'' \textit{arXiv preprint arXiv:2502.01113}, 2025.
+\item M. Li, S. Miao, and P. Li, ``Simple is effective: The roles of graphs and large language models in knowledge-graph-based retrieval-augmented generation,'' in \textit{International Conference on Learning Representations}, 2025.
+\item Z. Guo, L. Xia, Y. Yu, T. Ao, and C. Huang, ``Lightrag: Simple and fast retrieval-augmented generation,'' \textit{arXiv preprint arXiv:2410.05779}, 2024.
+\item Y. Hu, Z. Lei, Z. Zhang, B. Pan, C. Ling, and L. Zhao, ``Grag: Graph retrieval-augmented generation,'' in \textit{Findings of the Association for Computational Linguistics: NAACL 2025}, 2025.
+\item B. Chen, Z. Guo, Z. Yang, Y. Chen, J. Chen, Z. Liu, C. Shi, and C. Yang, ``Pathrag: Pruning graph-based retrieval augmented generation with relational paths,'' \textit{arXiv preprint arXiv:2502.14902}, 2025.
+\item W. Xu, K. Mei, H. Gao, J. Tan, Z. Liang, and Y. Zhang, ``A-mem: Agentic memory for llm agents,'' \textit{arXiv preprint arXiv:2502.12110}, 2025.
+\item P. Rasmussen, P. Paliychuk, T. Beauvais, J. Ryan, and D. Chalef, ``Zep: A temporal knowledge graph architecture for agent memory,'' \textit{arXiv preprint arXiv:2501.13956}, 2025.
+\item B. Jimenez Gutierrez, Y. Shu, Y. Gu, M. Yasunaga, and Y. Su, ``Hipporag: Neurobiologically inspired long-term memory for large language models,'' in \textit{Advances in Neural Information Processing Systems}, vol. 37, 2024, pp. 59\,532--59\,569.
+\item J. Jiang, K. Zhou, W. X. Zhao, Y. Song, C. Zhu, H. Zhu, and J.-R. Wen, ``Kg-agent: An efficient autonomous agent framework for complex reasoning over knowledge graph,'' \textit{arXiv preprint arXiv:2402.11163}, 2024.
+\item Z. Wang, S. X. Teo, J. J. Chew, and W. Shi, ``Instructrag: Leveraging retrieval-augmented generation on instruction graphs for llm-based task planning,'' \textit{arXiv preprint arXiv:2504.13032}, 2025.
+\item Y. Zhang, Y. Hou, B. Tang, S. Chen, M. Zhang, X. Dong, and S. Chen, ``Gnns as predictors of agentic workflow performances,'' \textit{arXiv preprint arXiv:2503.11301}, 2025.
+\item L. Ratnabala, A. Fedoseev, R. Peter, and D. Tsetserukou, ``Magnnet: Multi-agent graph neural network-based efficient task allocation for autonomous vehicles with deep reinforcement learning,'' \textit{arXiv preprint arXiv:2502.02311}, 2025.
+\item H. Kang, T. Kwon, J. Park, and J. R. Morrison, ``Learning NP-hard multi-agent assignment planning using GNN: Inference on a random graph and provable auction-fitted q-learning,'' in \textit{Advances in Neural Information Processing Systems}, A. H. Oh, A. Agarwal, D. Belgrave, and K. Cho, Eds., 2022.
+\item C. Qian, Z. Xie, Y. Wang, W. Liu, K. Zhu, H. Xia, Y. Dang, Z. Du, W. Chen, C. Yang, Z. Liu, and M. Sun, ``Scaling large language model-based multi-agent collaboration,'' in \textit{The Thirteenth International Conference on Learning Representations}, 2025.
+\item Q. Liu, Z. Li, X. Li, J. Wu, and S. Yuan, ``Graph convolution-based deep reinforcement learning for multi-agent decision-making in interactive traffic scenarios,'' in \textit{2022 IEEE 25th International Conference on Intelligent Transportation Systems (ITSC)}. IEEE, 2022, pp. 4074--4081.
+\item G. Bernárdez, J. Suárez-Varela, A. López, X. Shi, S. Xiao, X. Cheng, P. Barlet-Ros, and A. Cabellos-Aparicio, ``Magnneto: A graph neural network-based multi-agent system for traffic engineering,'' \textit{IEEE Transactions on Cognitive Communications and Networking}, vol. 9, no. 2, pp. 494--506, 2023.
+\item X. Li, X. Wang, C. Bai, and J. Zhang, ``Exponential topology-enabled scalable communication in multi-agent reinforcement learning,'' in \textit{The Thirteenth International Conference on Learning Representations}, 2025.
+\item S. Shen, Y. Fu, H. Su, H. Pan, P. Qiao, Y. Dou, and C. Wang, ``Graphcomm: A graph neural network based method for multi-agent reinforcement learning,'' in \textit{ICASSP 2021-2021 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP)}. IEEE, 2021, pp. 3510--3514.
+\item S. Ding, W. Du, L. Ding, J. Zhang, L. Guo, and B. An, ``Robust multi-agent communication with graph information bottleneck optimization,'' \textit{IEEE Transactions on Pattern Analysis and Machine Intelligence}, vol. 46, no. 5, pp. 3096--3107, 2023.
+\item X. Mo, Z. Huang, Y. Xing, and C. Lv, ``Multi-agent trajectory prediction with heterogeneous edge-enhanced graph attention network,'' \textit{IEEE Transactions on Intelligent Transportation Systems}, vol. 23, no. 7, pp. 9554--9567, 2022.
+\item Y. Cai, X. He, H. Guo, W.-Y. Yau, and C. Lv, ``Transformer-based multi-agent reinforcement learning for generalization of heterogeneous multi-robot cooperation,'' in \textit{2024 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)}. IEEE, 2024, pp. 13\,695--13\,702.
+\item S. Li, J. K. Gupta, P. Morales, R. Allen, and M. J. Kochenderfer, ``Deep implicit coordination graphs for multi-agent reinforcement learning,'' in \textit{Proceedings of the 20th International Conference on Autonomous Agents and MultiAgent Systems}, 2021, pp. 764--772.
+\item Y. Li, S. Ren, P. Wu, S. Chen, C. Feng, and W. Zhang, ``Learning distilled collaboration graph for multi-agent perception,'' in \textit{Advances in Neural Information Processing Systems}, A. Beygelzimer, Y. Dauphin, P. Liang, and J. W. Vaughan, Eds., 2021.
+\item M. Li, S. Chen, Y. Shen, G. Liu, I. W. Tsang, and Y. Zhang, ``Online multi-agent forecasting with interpretable collaborative graph neural networks,'' \textit{IEEE Transactions on Neural Networks and Learning Systems}, vol. 35, no. 4, pp. 4768--4782, 2022.
+\item N. Gupta, J. Z. Hare, R. Kannan, and V. Prasanna, ``Deep meta coordination graphs for multi-agent reinforcement learning,'' \textit{arXiv preprint arXiv:2502.04028}, 2025.
+\item Y. Liu, W. Wang, Y. Hu, J. Hao, X. Chen, and Y. Gao, ``Multi-agent game abstraction via graph attention neural network,'' in \textit{Proceedings of the AAAI conference on artificial intelligence}, vol. 34, no. 05, 2020, pp. 7211--7218.
+\item Y. Niu, R. Paleja, and M. Gombolay, ``Multi-agent graph-attention communication and teaming,'' in \textit{Proceedings of the 20th International Conference on Autonomous Agents and MultiAgent Systems}, 2021, pp. 964--973.
+\item X. Yang, S. Huang, Y. Sun, Y. Yang, C. Yu, W.-W. Tu, H. Yang, and Y. Wang, ``Learning graph-enhanced commander-executor for multi-agent navigation,'' in \textit{Proceedings of the 2023 International Conference on Autonomous Agents and Multiagent Systems}, 2023, pp. 1652--1660.
+\item S. Hu, L. Shen, Y. Zhang, and D. Tao, ``Learning multi-agent communication from graph modeling perspective,'' in \textit{The Twelfth International Conference on Learning Representations}, 2024.
+\item G. Zhang, Y. Yue, Z. Li, S. Yun, G. Wan, K. Wang, D. Cheng, J. X. Yu, and T. Chen, ``Cut the crap: An economical communication pipeline for LLM-based multi-agent systems,'' in \textit{The Thirteenth International Conference on Learning Representations}, 2025.
+\item B. Li, Z. Zhao, D.-H. Lee, and G. Wang, ``Adaptive graph pruning for multi-agent communication,'' \textit{arXiv preprint arXiv:2506.02951}, 2025.
+\item G. Zhang, Y. Yue, X. Sun, G. Wan, M. Yu, J. Fang, K. Wang, T. Chen, and D. Cheng, ``G-designer: Architecting multi-agent communication topologies via graph neural networks,'' \textit{arXiv preprint arXiv:2410.11782}, 2024.
+\item Y. Meng, N. Majcherczyk, W. Liu, S. Kiesel, C. Fan, and F. Pecora, ``Reliable and efficient multi-agent coordination via graph neural network variational autoencoders,'' in \textit{2025 IEEE International Conference on Robotics and Automation (ICRA)}. IEEE, 2025.
+\item Z. Liu, Y. Zhang, P. Li, Y. Liu, and D. Yang, ``A dynamic LLM-powered agent network for task-oriented agent collaboration,'' in \textit{First Conference on Language Modeling}, 2024.
+\item Q. Chen and B. Heydari, ``Adaptive network intervention for complex systems: A hierarchical graph reinforcement learning approach,'' \textit{Journal of Computing and Information Science in Engineering}, vol. 25, no. 6, 2025.
+\item S. Hu, Z. Xiong, M. Qu, X. Yuan, M.-A. Côté, Z. Liu, and J. Tang, ``Graph policy network for transferable active learning on graphs,'' in \textit{Advances in neural information processing systems}, vol. 33, 2020, pp. 10\,174--10\,185.
+\item Y. Zhang, H. Tong, Y. Xia, Y. Zhu, Y. Chi, and L. Ying, ``Batch active learning with graph neural networks via multi-agent deep reinforcement learning,'' in \textit{Proceedings of the AAAI conference on artificial intelligence}, vol. 36, no. 8, 2022, pp. 9118--9126.
+\item Y. Yao, X. Wang, Z. Zhang, Y. Qin, Z. Zhang, X. Chu, Y. Yang, W. Zhu, and H. Mei, ``Exploring the potential of large language models in graph generation,'' \textit{arXiv preprint arXiv:2403.14358}, 2024.
+\item J. Ji, R. Lei, J. Bi, Z. Wei, X. Chen, Y. Lin, X. Pan, Y. Li, and B. Ding, ``Llm-based multi-agent systems are scalable graph generative models,'' \textit{arXiv preprint arXiv:2410.09824}, 2024.
+\item A. Havrilla, D. Alvarez-Melis, and N. Fusi, ``Igda: Interactive graph discovery through large language model agents,'' \textit{arXiv preprint arXiv:2502.17189}, 2025.
+\item E. Du, X. Li, T. Jin, Z. Zhang, R.-H. Li, and G. Wang, ``Graphmaster: Automated graph synthesis via llm agents in data-limited environments,'' \textit{arXiv preprint arXiv:2504.00711}, 2025.
+\item K.-H. Lai, D. Zha, K. Zhou, and X. Hu, ``Policy-gnn: Aggregation optimization for graph neural networks,'' in \textit{Proceedings of the 26th ACM SIGKDD International Conference on Knowledge Discovery \& Data Mining}, 2020, pp. 461--471.
+\item Q. Sun, J. Li, H. Peng, J. Wu, Y. Ning, P. S. Yu, and L. He, ``Sugar: Subgraph neural network with reinforcement pooling and self-supervised mutual information mechanism,'' in \textit{Proceedings of the web conference 2021}, 2021, pp. 2081--2091.
+\item L. Kong, J. Feng, H. Liu, D. Tao, Y. Chen, and M. Zhang, ``Mag-gnn: Reinforcement learning boosted graph neural network,'' in \textit{Advances in neural information processing systems}, vol. 36, 2023, pp. 12\,000--12\,021.
+\item K. Martinkus, P. A. Papp, B. Schesch, and R. Wattenhofer, ``Agent-based graph neural networks,'' in \textit{The Eleventh International Conference on Learning Representations}, 2023.
+\item A. Liu, W. Li, T. Li, B. Li, G. Xu, P. Zhou, W. Ma, and H. Huang, ``Graph agent network: Empowering nodes with inference capabilities for adversarial resilience,'' in \textit{Proceedings of the AAAI Conference on Artificial Intelligence}, vol. 39, no. 18, 2025, pp. 18\,746--18\,753.
+\item L. Wei, H. Zhao, X. Zheng, Z. He, and Q. Yao, ``A versatile graph learning approach through llm-based agent,'' \textit{arXiv preprint arXiv:2309.04565}, 2023.
+\item J. Tang, Y. Yang, W. Wei, L. Shi, L. Su, S. Cheng, D. Yin, and C. Huang, ``Graphgpt: Graph instruction tuning for large language models,'' in \textit{Proceedings of the 47th International ACM SIGIR Conference on Research and Development in Information Retrieval}, 2024, pp. 491--500.
+\item Q. Wang, Z. Gao, and R. Xu, ``Graph agent: Explicit reasoning agent for graphs,'' \textit{arXiv preprint arXiv:2310.16421}, 2023.
+\item H. Liu, J. Feng, L. Kong, N. Liang, D. Tao, Y. Chen, and M. Zhang, ``One for all: Towards training one graph model for all classification tasks,'' in \textit{The Twelfth International Conference on Learning Representations}, 2024.
+\item Y. Li, P. Wang, Z. Li, J. X. Yu, and J. Li, ``Zerog: Investigating cross-dataset zero-shot transferability in graphs,'' in \textit{Proceedings of the 30th ACM SIGKDD Conference on Knowledge Discovery and Data Mining}, 2024, pp. 1725--1735.
+\item R. Chen, T. Zhao, A. K. JAISWAL, N. Shah, and Z. Wang, ``LLaGA: Large language and graph assistant,'' in \textit{Forty-first International Conference on Machine Learning}, 2024.
+\item Z. Luo, X. Song, H. Huang, J. Lian, C. Zhang, J. Jiang, and X. Xie, ``Graphinstruct: Empowering large language models with graph understanding and reasoning capability,'' \textit{arXiv preprint arXiv:2403.04483}, 2024.
+\item N. Chen, Y. Li, J. Tang, and J. Li, ``Graphwiz: An instruction-following language model for graph computational problems,'' in \textit{Proceedings of the 30th ACM SIGKDD Conference on Knowledge Discovery and Data Mining}, 2024, pp. 353--364.
+\item Y. Hu, R. Lei, X. Huang, Z. Wei, and Y. Liu, ``Scalable and accurate graph reasoning with llm-based multi-agents,'' \textit{arXiv preprint arXiv:2410.05130}, 2024.
+\item Y. Yang, J. Tang, L. Xia, X. Zou, Y. Liang, and C. Huang, ``Graphagent: Agentic graph language assistant,'' \textit{arXiv preprint arXiv:2412.17029}, 2024.
+\item X. S. Li, Q. Chu, Y. Chen, Y. Liu, Y. Liu, Z. Yu, W. Chen, C. Qian, C. Shi, and C. Yang, ``Graphteam: Facilitating large language model-based graph analysis via multi-agent collaboration,'' \textit{arXiv preprint arXiv:2410.18032}, 2024.
+\item A. Sankar, Y. Liu, J. Yu, and N. Shah, ``Graph neural networks for friend ranking in large-scale social platforms,'' in \textit{Proceedings of the Web Conference 2021}, 2021, pp. 2535--2546.
+\item H.-C. Yi, Z.-H. You, D.-S. Huang, and C. K. Kwoh, ``Graph representation learning in bioinformatics: trends, methods and applications,'' \textit{Briefings in Bioinformatics}, vol. 23, no. 1, p. bbab340, 2022.
+\item H. Chen, Y. Bei, Q. Shen, Y. Xu, S. Zhou, W. Huang, F. Huang, S. Wang, and X. Huang, ``Macro graph neural networks for online billion-scale recommender systems,'' in \textit{Proceedings of the ACM web conference 2024}, 2024, pp. 3598--3608.
+\item J. Wei, X. Wang, D. Schuurmans, M. Bosma, F. Xia, E. Chi, Q. V. Le, D. Zhou et al., ``Chain-of-thought prompting elicits reasoning in large language models,'' in \textit{Advances in neural information processing systems}, vol. 35, 2022, pp. 24\,824--24\,837.
+\item S. Ji, S. Pan, E. Cambria, P. Marttinen, and P. S. Yu, ``A survey on knowledge graphs: Representation, acquisition, and applications,'' \textit{IEEE transactions on neural networks and learning systems}, vol. 33, no. 2, pp. 494--514, 2021.
+\item Q. Chen, L. Qin, J. Liu, D. Peng, J. Guan, P. Wang, M. Hu, Y. Zhou, T. Gao, and W. Che, ``Towards reasoning era: A survey of long chain-of-thought for reasoning large language models,'' \textit{arXiv preprint arXiv:2503.09567}, 2025.
+\item Y. Guan, D. Wang, Z. Chu, S. Wang, F. Ni, R. Song, and C. Zhuang, ``Intelligent agents with llm-based process automation,'' in \textit{Proceedings of the 30th ACM SIGKDD Conference on Knowledge Discovery and Data Mining}, 2024, pp. 5018--5027.
+\item P. Ladosz, L. Weng, M. Kim, and H. Oh, ``Exploration in deep reinforcement learning: A survey,'' \textit{Information Fusion}, vol. 85, pp. 1--22, 2022.
+\item X. Chang, P. Ren, P. Xu, Z. Li, X. Chen, and A. Hauptmann, ``A comprehensive survey of scene graphs: Generation and application,'' \textit{IEEE Transactions on Pattern Analysis and Machine Intelligence}, vol. 45, no. 1, pp. 1--26, 2021.
+\item W. Huang, F. Xia, D. Shah, D. Driess, A. Zeng, Y. Lu, P. Florence, I. Mordatch, S. Levine, K. Hausman et al., ``Grounded decoding: Guiding text generation with grounded models for embodied agents,'' \textit{Advances in Neural Information Processing Systems}, vol. 36, pp. 59\,636--59\,661, 2023.
+\item A. Vaswani, N. Shazeer, N. Parmar, J. Uszkoreit, L. Jones, A. N. Gomez, L. u. Kaiser, and I. Polosukhin, ``Attention is all you need,'' in \textit{Advances in Neural Information Processing Systems}, vol. 30, 2017.
+\item P. Veličković, G. Cucurull, A. Casanova, A. Romero, P. Lio, and Y. Bengio, ``Graph attention networks,'' in \textit{International Conference on Learning Representations}, 2018.
+\item T. N. Kipf and M. Welling, ``Semi-supervised classification with graph convolutional networks,'' in \textit{International Conference on Learning Representations}, 2017.
+\item J. Luo, W. Zhang, Y. Yuan, Y. Zhao, J. Yang, Y. Gu, B. Wu, B. Chen, Z. Qiao, Q. Long et al., ``Large language model agent: A survey on methodology, applications and challenges,'' \textit{arXiv preprint arXiv:2503.21460}, 2025.
+\item W. Zhang, X. Zhang, C. Zhang, L. Yang, J. Shang, Z. Wei, H. P. Zou, Z. Huang, Z. Wang, Y. Gao et al., ``Personaagent: When large language model agents meet personalization at test time,'' \textit{arXiv preprint arXiv:2506.06254}, 2025.
+\item D. Kumaran, D. Hassabis, and J. L. McClelland, ``What learning systems do intelligent agents need? complementary learning systems theory updated,'' \textit{Trends in cognitive sciences}, vol. 20, no. 7, pp. 512--534, 2016.
+\item T. L. Griffiths, F. Callaway, M. B. Chang, E. Grant, P. M. Krueger, and F. Lieder, ``Doing more with less: meta-reasoning and meta-learning in humans and machines,'' \textit{Current Opinion in Behavioral Sciences}, vol. 29, pp. 24--30, 2019.
+\item S. Robertson, H. Zaragoza et al., ``The probabilistic relevance framework: Bm25 and beyond,'' \textit{Foundations and Trends in Information Retrieval}, vol. 3, no. 4, pp. 333--389, 2009.
+\item B. Peng, Y. Zhu, Y. Liu, X. Bo, H. Shi, C. Hong, Y. Zhang, and S. Tang, ``Graph retrieval-augmented generation: A survey,'' \textit{arXiv preprint arXiv:2408.08921}, 2024.
+\item Q. Zhang, S. Chen, Y. Bei, Z. Yuan, H. Zhou, Z. Hong, J. Dong, H. Chen, Y. Chang, and X. Huang, ``A survey of graph retrieval-augmented generation for customized large language models,'' \textit{arXiv preprint arXiv:2501.13958}, 2025.
+\item K. Hatalis, D. Christou, J. Myers, S. Jones, K. Lambert, A. Amos-Binks, Z. Dannenhauer, and D. Dannenhauer, ``Memory matters: The need to improve long-term memory in llm-agents,'' in \textit{Proceedings of the AAAI Symposium Series}, vol. 2, no. 1, 2023, pp. 277--280.
+\item A. Amirkhani and A. H. Barshooi, ``Consensus in multi-agent systems: a review,'' \textit{Artificial Intelligence Review}, vol. 55, no. 5, pp. 3897--3935, 2022.
+\item S. Han, Q. Zhang, Y. Yao, W. Jin, Z. Xu, and C. He, ``Llm multi-agent systems: Challenges and open problems,'' \textit{arXiv preprint arXiv:2402.03578}, 2024.
+\item E. Jang, S. Gu, and B. Poole, ``Categorical reparameterization with gumbel-softmax,'' in \textit{International Conference on Learning Representations}, 2017.
+\item G. Salha, S. Limnios, R. Hennequin, V.-A. Tran, and M. Vazirgiannis, ``Gravity-inspired graph autoencoders for directed link prediction,'' in \textit{Proceedings of the 28th ACM international conference on information and knowledge management}, 2019, pp. 589--598.
+\item Z. Hou, X. Liu, Y. Cen, Y. Dong, H. Yang, C. Wang, and J. Tang, ``Graphmae: Self-supervised masked graph autoencoders,'' in \textit{Proceedings of the 28th ACM SIGKDD conference on knowledge discovery and data mining}, 2022, pp. 594--604.
+\item T. N. Kipf and M. Welling, ``Variational graph auto-encoders,'' in \textit{NIPS Workshop on Bayesian Deep Learning}, 2016.
+\item Y. Zhu, Y. Du, Y. Wang, Y. Xu, J. Zhang, Q. Liu, and S. Wu, ``A survey on deep graph generation: Methods and applications,'' in \textit{Learning on Graphs Conference}. PMLR, 2022, pp. 47--1.
+\item S. Huang, G. Lee, Z. Bao, and S. Pan, ``Cost-effective data labelling for graph neural networks,'' in \textit{Proceedings of the ACM Web Conference 2024}, 2024, pp. 353--364.
+\item R. Rafailov, A. Sharma, E. Mitchell, C. D. Manning, S. Ermon, and C. Finn, ``Direct preference optimization: Your language model is secretly a reward model,'' in \textit{Advances in neural information processing systems}, vol. 36, 2023, pp. 53\,728--53\,741.
+\item H. Wang, T. Fu, Y. Du, W. Gao, K. Huang, Z. Liu, P. Chandak, S. Liu, P. Van Katwyk, A. Deac et al., ``Scientific discovery in the age of artificial intelligence,'' \textit{Nature}, vol. 620, no. 7972, pp. 47--60, 2023.
+\item Y. Zhang, X. Chen, B. Jin, S. Wang, S. Ji, W. Wang, and J. Han, ``A comprehensive survey of scientific large language models and their applications in scientific discovery,'' in \textit{Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing}, 2024, pp. 8783--8817.
+\item A. Ghafarollahi and M. J. Buehler, ``Sciagents: Automating scientific discovery through bioinspired multi-agent intelligent graph reasoning,'' \textit{Advanced Materials}, p. 2413523, 2024.
+\item C.-Y. Hsu, K. Cox, J. Xu, Z. Tan, T. Zhai, M. Hu, D. Pratt, T. Chen, Z. Hu, and Y. Ding, ``Thought graph: Generating thought process for biological reasoning,'' in \textit{Companion Proceedings of the ACM Web Conference 2024}, 2024, pp. 537--540.
+\item J. Park, M. Bae, D. Ko, and H. J. Kim, ``Llamo: Large language model-based molecular graph assistant,'' in \textit{The Thirty-eighth Annual Conference on Neural Information Processing Systems}, 2024.
+\item Y. Liu, W. Chen, Y. Bai, X. Liang, G. Li, W. Gao, and L. Lin, ``Aligning cyber space with physical world: A comprehensive survey on embodied ai,'' \textit{arXiv preprint arXiv:2407.06886}, 2024.
+\item Z. Ravichandran, L. Peng, N. Hughes, J. D. Griffith, and L. Carlone, ``Hierarchical representations and explicit memory: Learning effective navigation policies on 3d scene graphs using graph neural networks,'' in \textit{2022 International Conference on Robotics and Automation (ICRA)}. IEEE, 2022, pp. 9272--9279.
+\item K. Rana, J. Haviland, S. Garg, J. Abou-Chakra, I. Reid, and N. Suenderhauf, ``Sayplan: Grounding large language models using 3d scene graphs for scalable robot task planning,'' in \textit{Conference on Robot Learning}. PMLR, 2023, pp. 23--72.
+\item H. Yin, X. Xu, Z. Wu, J. Zhou, and J. Lu, ``Sg-nav: Online 3d scene graph prompting for llm-based zero-shot object navigation,'' in \textit{Advances in Neural Information Processing Systems}, vol. 37, 2024, pp. 5285--5307.
+\item F. Yang, W. Chen, H. Lin, S. Wu, X. Li, Z. Li, and Y. Wang, ``Task-oriented tool manipulation with robotic dexterous hands: A knowledge graph approach from fingers to functionality,'' \textit{IEEE Transactions on Cybernetics}, 2024.
+\item Y. Qi, G. Kyebambo, S. Xie, W. Shen, S. Wang, B. Xie, B. He, Z. Wang, and S. Jiang, ``Safety control of service robots with llms and embodied knowledge graphs,'' \textit{arXiv preprint arXiv:2405.17846}, 2024.
+\item Y. Song, P. Sun, H. Liu, Z. Li, W. Song, Y. Xiao, and X. Zhou, ``Scene-driven multimodal knowledge graph construction for embodied ai,'' \textit{IEEE Transactions on Knowledge and Data Engineering}, 2024.
+\item D. Perez-Liebana, J. Liu, A. Khalifa, R. D. Gaina, J. Togelius, and S. M. Lucas, ``General video game ai: A multitrack framework for evaluating agents, games, and content generation algorithms,'' \textit{IEEE Transactions on Games}, vol. 11, no. 3, pp. 195--214, 2019.
+\item O. Biggar and I. Shames, ``The graph structure of two-player games,'' \textit{Scientific Reports}, vol. 13, no. 1, p. 1833, 2023.
+\item R. A. Yeh, A. G. Schwing, J. Huang, and K. Murphy, ``Diverse generation for multi-agent sports games,'' in \textit{Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition}, 2019, pp. 4610--4619.
+\item S. Hu, T. Huang, G. Liu, R. R. Kompella, F. Ilhan, S. F. Tekin, Y. Xu, Z. Yahn, and L. Liu, ``A survey on large language model-based game agents,'' \textit{arXiv preprint arXiv:2404.02039}, 2024.
+\item Z. Shi, M. Fang, and L. Chen, ``Monte carlo planning with large language model for text-based game agents,'' \textit{arXiv preprint arXiv:2504.16855}, 2025.
+\item A. Adhikari, X. Yuan, M.-A. Côté, M. Zelinka, M.-A. Rondeau, R. Laroche, P. Poupart, J. Tang, A. Trischler, and W. Hamilton, ``Learning dynamic belief graphs to generalize on text-based games,'' in \textit{Advances in Neural Information Processing Systems}, vol. 33, 2020, pp. 3045--3057.
+\item S. Ma, C. Xu, X. Jiang, M. Li, H. Qu, C. Yang, J. Mao, and J. Guo, ``Think-on-graph 2.0: Deep and faithful large language model reasoning with knowledge-guided retrieval augmented generation,'' in \textit{The Twelfth International Conference on Learning Representations}, 2025.
+\item B. Jin, H. Zeng, Z. Yue, J. Yoon, S. Arik, D. Wang, H. Zamani, and J. Han, ``Search-r1: Training llms to reason and leverage search engines with reinforcement learning,'' \textit{arXiv preprint arXiv:2503.09516}, 2025.
+\item H. Song, J. Jiang, Y. Min, J. Chen, Z. Chen, W. X. Zhao, L. Fang, and J.-R. Wen, ``R1-searcher: Incentivizing the search capability in llms via reinforcement learning,'' \textit{arXiv preprint arXiv:2503.05592}, 2025.
+\item M. Chen, T. Li, H. Sun, Y. Zhou, C. Zhu, H. Wang, J. Z. Pan, W. Zhang, H. Chen, F. Yang et al., ``Learning to reason with search for llms via reinforcement learning,'' \textit{arXiv preprint arXiv:2503.19470}, 2025.
+\item G. Dong, M. Tang, Z. Wang, J. Gao, S. Guo, L. Cai, R. Gutierrez, B. Campbel, L. E. Barnes, and M. Boukhechba, ``Graph neural networks in iot: A survey,'' \textit{ACM Transactions on Sensor Networks}, vol. 19, no. 2, pp. 1--50, 2023.
+\item J. Huang, J. Su, and Q. Chang, ``Graph neural network and multi-agent reinforcement learning for machine-process-system integrated control to optimize production yield,'' \textit{Journal of Manufacturing Systems}, vol. 64, pp. 81--93, 2022.
+\item L. Duan and L. Da Xu, ``Data analytics in industry 4.0: A survey,'' \textit{Information Systems Frontiers}, vol. 26, no. 6, pp. 2287--2303, 2024.
+\item J. Shen, Y. Lin, Y. Zhang, W. Zhang, F. Shu, and J. Li, ``Content caching-assisted vehicular edge computing using multi-agent graph attention reinforcement learning,'' \textit{IEEE Transactions on Vehicular Technology}, 2024.
+\item Y. Wu, H.-N. Dai, and H. Tang, ``Graph neural networks for anomaly detection in industrial internet of things,'' \textit{IEEE Internet of Things Journal}, vol. 9, no. 12, pp. 9214--9231, 2021.
+\item S. Li, W. Hu, D. Cao, J. Hu, Z. Chen, and F. Blaabjerg, ``Coordinated operation of multiple microgrids with heat--electricity energy based on graph surrogate model-enabled robust multiagent deep reinforcement learning,'' \textit{IEEE Transactions on Industrial Informatics}, 2024.
+\item C. Gao, F. Xu, X. Chen, X. Wang, X. He, and Y. Li, ``Simulating human society with large language model agents: City, social media, and economic system,'' in \textit{Companion Proceedings of the ACM Web Conference 2024}, 2024, pp. 1290--1293.
+\item M. Papachristou and Y. Yuan, ``Network formation and dynamics among multi-llms,'' \textit{arXiv preprint arXiv:2402.10659}, 2024.
+\item G. Murić, A. Tregubov, J. Blythe, A. Abeliuk, D. Choudhary, K. Lerman, and E. Ferrara, ``Large-scale agent-based simulations of online social networks,'' \textit{Autonomous Agents and Multi-Agent Systems}, vol. 36, no. 2, p. 38, 2022.
+\item C. Gao, X. Lan, Z. Lu, J. Mao, J. Piao, H. Wang, D. Jin, and Y. Li, ``S3: Social-network simulation system with large language model-empowered agents,'' \textit{arXiv preprint arXiv:2307.14984}, 2023.
+\item A. Ferraro, A. Galli, V. La Gatta, M. Postiglione, G. M. Orlando, D. Russo, G. Riccio, A. Romano, and V. Moscato, ``Agent-based modelling meets generative ai in social network simulations,'' in \textit{International Conference on Advances in Social Networks Analysis and Mining}. Springer, 2024, pp. 155--170.
+\item Z. Shu, X. Sun, and H. Cheng, ``When llm meets hypergraph: A sociological analysis on personality via online social networks,'' in \textit{Proceedings of the 33rd ACM International Conference on Information and Knowledge Management}, 2024, pp. 2087--2096.
+\item T. Hu, D. Liakopoulos, X. Wei, R. Marculescu, and N. J. Yadwadkar, ``Simulating rumor spreading in social networks using llm agents,'' \textit{arXiv preprint arXiv:2502.01450}, 2025.
+\item G. Papoudakis, F. Christianos, L. Schäfer, and S. V. Albrecht, ``Benchmarking multi-agent deep reinforcement learning algorithms in cooperative tasks,'' in \textit{Thirty-fifth Conference on Neural Information Processing Systems Datasets and Benchmarks Track (Round 1)}, 2021.
+\item M. Bettini, A. Prorok, and V. Moens, ``Benchmarl: Benchmarking multi-agent reinforcement learning,'' \textit{Journal of Machine Learning Research}, vol. 25, no. 217, pp. 1--10, 2024.
+\item M. Pleines, M. Pallasch, F. Zimmer, and M. Preuss, ``Memory gym: Towards endless tasks to benchmark memory capabilities of agents,'' \textit{Journal of Machine Learning Research}, vol. 26, pp. 1--40, 2025.
+\item M. Li, Y. Zhao, B. Yu, F. Song, H. Li, H. Yu, Z. Li, F. Huang, and Y. Li, ``Api-bank: A comprehensive benchmark for tool-augmented llms,'' in \textit{Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing}, 2023, pp. 3102--3116.
+\item K. Valmeekam, M. Marquez, A. Olmo, S. Sreedharan, and S. Kambhampati, ``Planbench: An extensible benchmark for evaluating large language models on planning and reasoning about change,'' in \textit{Advances in Neural Information Processing Systems}, vol. 36, 2023, pp. 38\,975--38\,987.
+\item X. Liu, H. Yu, H. Zhang, Y. Xu, X. Lei, H. Lai, Y. Gu, H. Ding, K. Men, K. Yang, S. Zhang, X. Deng, A. Zeng, Z. Du, C. Zhang, S. Shen, T. Zhang, Y. Su, H. Sun, M. Huang, Y. Dong, and J. Tang, ``Agentbench: Evaluating LLMs as agents,'' in \textit{The Twelfth International Conference on Learning Representations}, 2024.
+\item Y. Qin, S. Liang, Y. Ye, K. Zhu, L. Yan, Y. Lu, Y. Lin, X. Cong, X. Tang, B. Qian et al., ``Toolllm: Facilitating large language models to master 16000+ real-world apis,'' in \textit{The Twelfth International Conference on Learning Representations}, 2024.
+\item J. Wang, M. Zerun, Y. Li, S. Zhang, C. Chen, K. Chen, and X. Le, ``Gta: a benchmark for general tool agents,'' in \textit{The Thirty-eight Conference on Neural Information Processing Systems Datasets and Benchmarks Track}, 2024.
+\item J. Xie, K. Zhang, J. Chen, T. Zhu, R. Lou, Y. Tian, Y. Xiao, and Y. Su, ``Travelplanner: A benchmark for real-world planning with language agents,'' in \textit{International Conference on Machine Learning}. PMLR, 2024, pp. 54\,590--54\,613.
+\item S. Yao, N. Shinn, P. Razavi, and K. Narasimhan, ``$\tau$-bench: A benchmark for tool-agent-user interaction in real-world domains,'' \textit{arXiv preprint arXiv:2406.12045}, 2024.
+\item J. Lu, T. Holleis, Y. Zhang, B. Aumayer, F. Nan, F. Bai, S. Ma, S. Ma, M. Li, G. Yin et al., ``Toolsandbox: A stateful, conversational, interactive evaluation benchmark for llm tool use capabilities,'' \textit{arXiv preprint arXiv:2408.04682}, 2024.
+\item L. Geng and E. Y. Chang, ``Realm-bench: A real-world planning benchmark for llms and multi-agent systems,'' \textit{arXiv preprint arXiv:2502.18836}, 2025.
+\item Y. Li, P. Wang, X. Zhu, A. Chen, H. Jiang, D. Cai, V. W. Chan, and J. Li, ``Glbench: A comprehensive benchmark for graph with large language models,'' in \textit{Advances in Neural Information Processing Systems}, vol. 37, 2024, pp. 42\,349--42\,368.
+\item X. Li, W. Chen, Q. Chu, H. Li, Z. Sun, R. Li, C. Qian, Y. Wei, C. Shi, Z. Liu et al., ``Can large language models analyze graphs like professionals? a benchmark, datasets and models,'' in \textit{Advances in Neural Information Processing Systems}, vol. 37, 2024, pp. 141\,045--141\,070.
+\item J. Tang, Q. Zhang, Y. Li, N. Chen, and J. Li, ``Grapharena: Evaluating and exploring large language models on graph computation,'' in \textit{The Thirteenth International Conference on Learning Representations}, 2025.
+\item J. Liu, C. Yang, Z. Lu, J. Chen, Y. Li, M. Zhang, T. Bai, Y. Fang, L. Sun, P. S. Yu et al., ``Graph foundation models: Concepts, opportunities and challenges,'' \textit{IEEE Transactions on Pattern Analysis and Machine Intelligence}, 2025.
+\item H. Mao, Z. Chen, W. Tang, J. Zhao, Y. Ma, T. Zhao, N. Shah, M. Galkin, and J. Tang, ``Position: Graph foundation models are already here,'' in \textit{Forty-first International Conference on Machine Learning}, 2024.
+\item Z. Ying, D. Bourgeois, J. You, M. Zitnik, and J. Leskovec, ``Gnnexplainer: Generating explanations for graph neural networks,'' in \textit{Advances in neural information processing systems}, vol. 32, 2019.
+\item H. Yuan, H. Yu, S. Gui, and S. Ji, ``Explainability in graph neural networks: A taxonomic survey,'' \textit{IEEE transactions on pattern analysis and machine intelligence}, vol. 45, no. 5, pp. 5782--5799, 2022.
+\item S. Maliah, G. Shani, and R. Stern, ``Collaborative privacy preserving multi-agent planning: Planners and heuristics,'' \textit{Autonomous agents and multi-agent systems}, vol. 31, pp. 493--530, 2017.
+\item F. He, T. Zhu, D. Ye, B. Liu, W. Zhou, and P. S. Yu, ``The emerged security and privacy of llm agent: A survey with case studies,'' \textit{arXiv preprint arXiv:2407.19354}, 2024.
+\item Y. Li, M. Purcell, T. Rakotoarivelo, D. Smith, T. Ranbaduge, and K. S. Ng, ``Private graph data release: A survey,'' \textit{ACM Computing Surveys}, vol. 55, no. 11, pp. 1--39, 2023.
+\item D. Calvaresi, M. Schumacher, and J.-P. Calbimonte, ``Personal data privacy semantics in multi-agent systems interactions,'' in \textit{Advances in Practical Applications of Agents, Multi-Agent Systems, and Trustworthiness. The PAAMS Collection: 18th International Conference, PAAMS 2020}. Springer, 2020, pp. 55--67.
+\item M. Standen, J. Kim, and C. Szabo, ``Adversarial machine learning attacks and defences in multi-agent reinforcement learning,'' \textit{ACM Computing Surveys}, vol. 57, no. 5, pp. 1--35, 2025.
+\item J. Tu, T. Wang, J. Wang, S. Manivasagam, M. Ren, and R. Urtasun, ``Adversarial attacks on multi-agent communication,'' in \textit{Proceedings of the IEEE/CVF International Conference on Computer Vision}, 2021, pp. 7768--7777.
+\item L. Sun, Y. Dou, C. Yang, K. Zhang, J. Wang, P. S. Yu, L. He, and B. Li, ``Adversarial attack and defense on graph data: A survey,'' \textit{IEEE Transactions on Knowledge and Data Engineering}, vol. 35, no. 8, pp. 7693--7711, 2022.
+\item Z. Liao, L. Mo, C. Xu, M. Kang, J. Zhang, C. Xiao, Y. Tian, B. Li, and H. Sun, ``Eia: Environmental injection attack on generalist web agents for privacy leakage,'' \textit{arXiv preprint arXiv:2409.11295}, 2024.
+\item M. Yu, S. Wang, G. Zhang, J. Mao, C. Yin, Q. Liu, Q. Wen, K. Wang, and Y. Wang, ``Netsafe: Exploring the topological safety of multi-agent networks,'' \textit{arXiv preprint arXiv:2410.15686}, 2024.
+\item S. Wang, G. Zhang, M. Yu, G. Wan, F. Meng, C. Guo, K. Wang, and Y. Wang, ``G-safeguard: A topology-guided security lens and treatment on llm-based multi-agent systems,'' \textit{arXiv preprint arXiv:2502.11127}, 2025.
+\item P. Xu, W. Shao, K. Zhang, P. Gao, S. Liu, M. Lei, F. Meng, S. Huang, Y. Qiao, and P. Luo, ``Lvlm-ehub: A comprehensive evaluation benchmark for large vision-language models,'' \textit{IEEE Transactions on Pattern Analysis and Machine Intelligence}, 2024.
+\item Z. Liang, Y. Xu, Y. Hong, P. Shang, Q. Wang, Q. Fu, and K. Liu, ``A survey of multimodel large language models,'' in \textit{Proceedings of the 3rd International Conference on Computer, Artificial Intelligence and Control Engineering}, 2024, pp. 405--409.
+\item Z. Durante, Q. Huang, N. Wake, R. Gong, J. S. Park, B. Sarkar, R. Taori, Y. Noda, D. Terzopoulos, Y. Choi et al., ``Agent ai: Surveying the horizons of multimodal interaction,'' \textit{arXiv preprint arXiv:2401.03568}, 2024.
+\item J. Xie, Z. Chen, R. Zhang, X. Wan, and G. Li, ``Large multimodal agents: A survey,'' \textit{arXiv preprint arXiv:2402.15116}, 2024.
+\item C. Peng, J. He, and F. Xia, ``Learning on multimodal graphs: A survey,'' \textit{arXiv preprint arXiv:2402.05322}, 2024.
+\item X. Ning, D. Fu, T. Wei, W. Xu, and J. He, ``Graph4MM: Weaving multimodal learning with structural information,'' in \textit{Forty-second International Conference on Machine Learning}, 2025.
+\item X. Hou, Y. Zhao, S. Wang, and H. Wang, ``Model context protocol (mcp): Landscape, security threats, and future research directions,'' \textit{arXiv preprint arXiv:2503.23278}, 2025.
+\item Y. Yang, H. Chai, Y. Song, S. Qi, M. Wen, N. Li, J. Liao, H. Hu, J. Lin, G. Chang et al., ``A survey of ai agent protocols,'' \textit{arXiv preprint arXiv:2504.16736}, 2025.
+\item K.-T. Tran, D. Dao, M.-D. Nguyen, Q.-V. Pham, B. O'Sullivan, and H. D. Nguyen, ``Multi-agent collaboration mechanisms: A survey of llms,'' \textit{arXiv preprint arXiv:2501.06322}, 2025.
+\item S. Willmott, J. Dale, B. Burg, P. Charlton, and P. O'Brien, ``Agentcities: a worldwide open agent network,'' \textit{Agentlink News}, vol. 8, pp. 13--15, 2001.
+\end{enumerate}
+
+\end{document}

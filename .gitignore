@@ -1,0 +1,23 @@
+# macOS
+.DS_Store
+
+# LaTeX 编译产生的临时文件（可由 .tex 重新生成，无需入库）
+*.aux
+*.log
+*.out
+*.toc
+*.fls
+*.fdb_latexmk
+*.xdv
+*.synctex.gz
+*.bbl
+*.blg
+*.lof
+*.lot
+*.nav
+*.snm
+*.vrb
+
+# 运行日志
+curl_err.log
+build.log

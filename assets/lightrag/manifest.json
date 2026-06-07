@@ -1,0 +1,360 @@
+{
+ "pdf": "LightRAG.pdf",
+ "slug": "lightrag",
+ "page_count": 16,
+ "page_size": [
+  612.0,
+  792.0
+ ],
+ "pages": [
+  {
+   "page": 1,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/lightrag/_pages/p01.png"
+  },
+  {
+   "page": 2,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/lightrag/_pages/p02.png"
+  },
+  {
+   "page": 3,
+   "candidates": [
+    {
+     "id": "cand_p03_k00",
+     "kind": "vector",
+     "bbox": [
+      102.0,
+      5.5,
+      546.4,
+      255.5
+     ],
+     "pdf": "cand_p03_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      167.9,
+      164.8,
+      444.1,
+      174.7
+     ],
+     "text": "Figure 1: Overall architecture of the proposed LightRAG framework.",
+     "label": "Figure 1"
+    }
+   ],
+   "overlay": "assets/lightrag/_pages/p03.png"
+  },
+  {
+   "page": 4,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/lightrag/_pages/p04.png"
+  },
+  {
+   "page": 5,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/lightrag/_pages/p05.png"
+  },
+  {
+   "page": 6,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/lightrag/_pages/p06.png"
+  },
+  {
+   "page": 7,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      107.7,
+      82.1,
+      504.0,
+      91.9
+     ],
+     "text": "Table 1: Win rates (%) of baselines v.s. LightRAG across four datasets and four evaluation dimensions.",
+     "label": "Table 1"
+    }
+   ],
+   "overlay": "assets/lightrag/_pages/p07.png"
+  },
+  {
+   "page": 8,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      133.3,
+      82.0,
+      478.4,
+      91.9
+     ],
+     "text": "Table 2: Performance of ablated versions of LightRAG, using NaiveRAG as reference.",
+     "label": "Table 2"
+    }
+   ],
+   "overlay": "assets/lightrag/_pages/p08.png"
+  },
+  {
+   "page": 9,
+   "candidates": [
+    {
+     "id": "cand_p09_k00",
+     "kind": "table",
+     "bbox": [
+      109.9,
+      97.2,
+      502.1,
+      469.0
+     ],
+     "pdf": "cand_p09_k00.pdf"
+    },
+    {
+     "id": "cand_p09_k01",
+     "kind": "table",
+     "bbox": [
+      329.0,
+      577.1,
+      499.0,
+      626.5
+     ],
+     "pdf": "cand_p09_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      121.2,
+      82.0,
+      490.5,
+      91.9
+     ],
+     "text": "Table 3: Case Study: Comparison Between LightRAG and the Baseline Method GraphRAG.",
+     "label": "Table 3"
+    },
+    {
+     "bbox": [
+      325.8,
+      541.5,
+      505.7,
+      551.3
+     ],
+     "text": "Figure 2: Comparison of Cost in Terms of To-",
+     "label": "Figure 2"
+    }
+   ],
+   "overlay": "assets/lightrag/_pages/p09.png"
+  },
+  {
+   "page": 10,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/lightrag/_pages/p10.png"
+  },
+  {
+   "page": 11,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/lightrag/_pages/p11.png"
+  },
+  {
+   "page": 12,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/lightrag/_pages/p12.png"
+  },
+  {
+   "page": 13,
+   "candidates": [
+    {
+     "id": "cand_p13_k00",
+     "kind": "image",
+     "bbox": [
+      108.0,
+      367.1,
+      504.0,
+      663.9
+     ],
+     "pdf": "cand_p13_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      212.8,
+      212.1,
+      398.9,
+      222.0
+     ],
+     "text": "Table 4: Statistical information of the datasets.",
+     "label": "Table 4"
+    },
+    {
+     "bbox": [
+      107.7,
+      292.3,
+      504.0,
+      302.4
+     ],
+     "text": "Table 4 presents statistical information for four datasets: Agriculture, CS, Legal, and Mix. The",
+     "label": "Table 4"
+    },
+    {
+     "bbox": [
+      215.1,
+      674.0,
+      396.9,
+      683.9
+     ],
+     "text": "Figure 3: A retrieval and generation example.",
+     "label": "Figure 3"
+    }
+   ],
+   "overlay": "assets/lightrag/_pages/p13.png"
+  },
+  {
+   "page": 14,
+   "candidates": [
+    {
+     "id": "cand_p14_k00",
+     "kind": "image",
+     "bbox": [
+      108.0,
+      169.2,
+      504.0,
+      389.3
+     ],
+     "pdf": "cand_p14_k00.pdf"
+    },
+    {
+     "id": "cand_p14_k01",
+     "kind": "image",
+     "bbox": [
+      108.0,
+      530.7,
+      504.0,
+      632.0
+     ],
+     "pdf": "cand_p14_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      225.6,
+      399.3,
+      386.4,
+      409.3
+     ],
+     "text": "Figure 4: Prompts for Graph Generation",
+     "label": "Figure 4"
+    },
+    {
+     "bbox": [
+      225.6,
+      642.1,
+      386.4,
+      652.1
+     ],
+     "text": "Figure 5: Prompts for Query Generation",
+     "label": "Figure 5"
+    }
+   ],
+   "overlay": "assets/lightrag/_pages/p14.png"
+  },
+  {
+   "page": 15,
+   "candidates": [
+    {
+     "id": "cand_p15_k00",
+     "kind": "image",
+     "bbox": [
+      108.0,
+      107.6,
+      504.0,
+      327.4
+     ],
+     "pdf": "cand_p15_k00.pdf"
+    },
+    {
+     "id": "cand_p15_k01",
+     "kind": "image",
+     "bbox": [
+      108.0,
+      456.5,
+      504.0,
+      652.2
+     ],
+     "pdf": "cand_p15_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      221.1,
+      337.5,
+      390.9,
+      347.4
+     ],
+     "text": "Figure 6: Prompts for Keyword Extraction",
+     "label": "Figure 6"
+    },
+    {
+     "bbox": [
+      228.4,
+      662.3,
+      383.6,
+      672.3
+     ],
+     "text": "Figure 7: Prompts for RAG Evaluation",
+     "label": "Figure 7"
+    }
+   ],
+   "overlay": "assets/lightrag/_pages/p15.png"
+  },
+  {
+   "page": 16,
+   "candidates": [
+    {
+     "id": "cand_p16_k00",
+     "kind": "table",
+     "bbox": [
+      109.9,
+      97.2,
+      502.1,
+      511.1
+     ],
+     "pdf": "cand_p16_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      138.7,
+      82.0,
+      473.0,
+      91.9
+     ],
+     "text": "Table 5: Case Study: Comparison Between LightRAG and the Baseline NaiveRAG.",
+     "label": "Table 5"
+    },
+    {
+     "bbox": [
+      107.7,
+      626.8,
+      504.0,
+      636.7
+     ],
+     "text": "Table 5. This study addresses a question regarding indigenous perspectives in the context of corporate",
+     "label": "Table 5"
+    }
+   ],
+   "overlay": "assets/lightrag/_pages/p16.png"
+  }
+ ]
+}

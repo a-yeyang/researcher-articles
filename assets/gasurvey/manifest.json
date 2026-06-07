@@ -1,0 +1,315 @@
+{
+ "pdf": "Graph Empowers AI Agents - A Survey.pdf",
+ "slug": "gasurvey",
+ "page_count": 20,
+ "page_size": [
+  612.0,
+  792.0
+ ],
+ "pages": [
+  {
+   "page": 1,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/gasurvey/_pages/p01.png"
+  },
+  {
+   "page": 2,
+   "candidates": [
+    {
+     "id": "cand_p02_k00",
+     "kind": "table",
+     "bbox": [
+      49.0,
+      56.1,
+      563.1,
+      344.9
+     ],
+     "pdf": "cand_p02_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      49.0,
+      351.6,
+      563.0,
+      361.7
+     ],
+     "text": "Fig. 1: An overall illustration of graphs meet AI agents. (1) Graph Methodology: graph data organization and knowledge",
+     "label": "Fig. 1"
+    }
+   ],
+   "overlay": "assets/gasurvey/_pages/p02.png"
+  },
+  {
+   "page": 3,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/gasurvey/_pages/p03.png"
+  },
+  {
+   "page": 4,
+   "candidates": [
+    {
+     "id": "cand_p04_k00",
+     "kind": "vector",
+     "bbox": [
+      51.5,
+      56.3,
+      560.6,
+      377.5
+     ],
+     "pdf": "cand_p04_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      49.0,
+      384.6,
+      563.0,
+      394.5
+     ],
+     "text": "Fig. 2: A taxonomy overview of this survey with representative methods on graph-empowered functionalities of AI agents and",
+     "label": "Fig. 2"
+    }
+   ],
+   "overlay": "assets/gasurvey/_pages/p04.png"
+  },
+  {
+   "page": 5,
+   "candidates": [
+    {
+     "id": "cand_p05_k00",
+     "kind": "table",
+     "bbox": [
+      49.0,
+      55.7,
+      563.0,
+      314.6
+     ],
+     "pdf": "cand_p05_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      199.9,
+      320.1,
+      412.1,
+      330.1
+     ],
+     "text": "Fig. 3: An illustration of graphs for agent planning.",
+     "label": "Fig. 3"
+    }
+   ],
+   "overlay": "assets/gasurvey/_pages/p05.png"
+  },
+  {
+   "page": 6,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/gasurvey/_pages/p06.png"
+  },
+  {
+   "page": 7,
+   "candidates": [
+    {
+     "id": "cand_p07_k00",
+     "kind": "vector",
+     "bbox": [
+      312.0,
+      56.1,
+      564.0,
+      235.3
+     ],
+     "pdf": "cand_p07_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      329.6,
+      242.0,
+      545.4,
+      252.0
+     ],
+     "text": "Fig. 4: An illustration of graphs for agent execution.",
+     "label": "Fig. 4"
+    }
+   ],
+   "overlay": "assets/gasurvey/_pages/p07.png"
+  },
+  {
+   "page": 8,
+   "candidates": [
+    {
+     "id": "cand_p08_k00",
+     "kind": "table",
+     "bbox": [
+      49.0,
+      55.8,
+      563.1,
+      189.1
+     ],
+     "pdf": "cand_p08_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      201.1,
+      195.8,
+      410.9,
+      205.8
+     ],
+     "text": "Fig. 5: An illustration of graphs for agent memory.",
+     "label": "Fig. 5"
+    }
+   ],
+   "overlay": "assets/gasurvey/_pages/p08.png"
+  },
+  {
+   "page": 9,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/gasurvey/_pages/p09.png"
+  },
+  {
+   "page": 10,
+   "candidates": [
+    {
+     "id": "cand_p10_k00",
+     "kind": "vector",
+     "bbox": [
+      49.0,
+      56.1,
+      300.8,
+      240.1
+     ],
+     "pdf": "cand_p10_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      49.0,
+      246.8,
+      300.0,
+      256.7
+     ],
+     "text": "Fig. 6: An illustration of graphs for multi-agent coordination.",
+     "label": "Fig. 6"
+    }
+   ],
+   "overlay": "assets/gasurvey/_pages/p10.png"
+  },
+  {
+   "page": 11,
+   "candidates": [
+    {
+     "id": "cand_p11_k00",
+     "kind": "table",
+     "bbox": [
+      48.7,
+      56.1,
+      300.0,
+      212.8
+     ],
+     "pdf": "cand_p11_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      69.5,
+      219.6,
+      279.5,
+      229.6
+     ],
+     "text": "Fig. 7: An illustration of agents for graph learning.",
+     "label": "Fig. 7"
+    }
+   ],
+   "overlay": "assets/gasurvey/_pages/p11.png"
+  },
+  {
+   "page": 12,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/gasurvey/_pages/p12.png"
+  },
+  {
+   "page": 13,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/gasurvey/_pages/p13.png"
+  },
+  {
+   "page": 14,
+   "candidates": [
+    {
+     "id": "cand_p14_k00",
+     "kind": "table",
+     "bbox": [
+      76.3,
+      70.9,
+      535.9,
+      294.0
+     ],
+     "pdf": "cand_p14_k00.pdf"
+    },
+    {
+     "id": "cand_p14_k01",
+     "kind": "table",
+     "bbox": [
+      76.3,
+      213.2,
+      535.9,
+      294.0
+     ],
+     "pdf": "cand_p14_k01.pdf"
+    }
+   ],
+   "captions": [],
+   "overlay": "assets/gasurvey/_pages/p14.png"
+  },
+  {
+   "page": 15,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/gasurvey/_pages/p15.png"
+  },
+  {
+   "page": 16,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/gasurvey/_pages/p16.png"
+  },
+  {
+   "page": 17,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/gasurvey/_pages/p17.png"
+  },
+  {
+   "page": 18,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/gasurvey/_pages/p18.png"
+  },
+  {
+   "page": 19,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/gasurvey/_pages/p19.png"
+  },
+  {
+   "page": 20,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/gasurvey/_pages/p20.png"
+  }
+ ]
+}

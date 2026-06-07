@@ -1,0 +1,943 @@
+\documentclass[11pt,UTF8,fontset=fandol]{ctexart}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx,float,caption,subcaption}
+\usepackage{booktabs,array,multirow,makecell}
+\usepackage{geometry,enumitem,xcolor}
+\usepackage[hidelinks]{hyperref}
+\usepackage{url}
+\usepackage{tcolorbox}
+\geometry{margin=2.3cm}
+\graphicspath{{/Users/yye/project/论文/assets/hipporag/}}
+\captionsetup{font=small,labelfont=bf}
+\setlength{\parskip}{0.4em}
+
+\newcommand{\vecn}{\overset{\text{\tiny$\rightharpoonup$}}{n}}
+
+\title{\textbf{HippoRAG：受神经生物学启发的大语言模型长期记忆}}
+
+\author{Bernal Jiménez Gutiérrez\textsuperscript{1} \quad Yiheng Shu\textsuperscript{1} \quad Yu Gu\textsuperscript{1} \quad Michihiro Yasunaga\textsuperscript{2} \quad Yu Su\textsuperscript{1}\\[0.3em]
+\textsuperscript{1}俄亥俄州立大学（The Ohio State University）\quad \textsuperscript{2}斯坦福大学（Stanford University）}
+
+\date{}
+\begin{document}
+\maketitle
+
+\begin{abstract}
+为了在充满敌意且瞬息万变的自然环境中生存，哺乳动物的大脑进化出存储海量世界知识的能力，并能在持续整合新信息的同时避免灾难性遗忘（catastrophic forgetting）。尽管大语言模型（large language models, LLMs）取得了令人瞩目的成就，但即便配备了检索增强生成（retrieval-augmented generation, RAG），它们在预训练（pre-training）之后仍然难以高效且有效地整合大量新经验。在本工作中，我们提出 HippoRAG，这是一种新颖的检索框架，其灵感来源于人类长期记忆的海马体索引理论（hippocampal indexing theory），旨在实现对新经验更深入、更高效的知识整合。HippoRAG 协同编排大语言模型、知识图谱（knowledge graphs）以及 Personalized PageRank 算法，以模拟人类记忆中新皮层（neocortex）与海马体（hippocampus）的不同角色。我们在多跳问答（multi-hop question answering, QA）任务上将 HippoRAG 与现有的 RAG 方法进行比较，结果表明我们的方法显著超越了当前最先进的方法，提升幅度高达 20\%。使用 HippoRAG 的单步检索（single-step retrieval）在性能上可与 IRCoT 等迭代式检索方法相当甚至更优，同时成本降低 10--20 倍、速度提升 6--13 倍；而将 HippoRAG 集成到 IRCoT 中还能带来进一步的显著增益。最后，我们证明本方法能够应对现有方法无法触及的新型场景。\footnote{代码和数据可在 \url{https://github.com/OSU-NLP-Group/HippoRAG} 获取。}
+\end{abstract}
+
+\section{引言}
+
+数百万年的进化使哺乳动物的大脑发展出一种关键能力：存储大量世界知识，并在不丢失既有经验的前提下持续整合新经验。正是这一卓越的长期记忆系统，使我们人类能够保有持续更新的庞大知识储备，而这些知识构成了我们推理和决策的基础 [19]。尽管近年来大语言模型（LLMs）取得了长足进步，但这种持续更新的长期记忆在当前的人工智能系统中仍然明显缺失。部分由于其易用性以及模型编辑（model editing）[46] 等其他技术的局限，检索增强生成（RAG）已成为大语言模型长期记忆事实上的解决方案，它允许用户向静态模型提供新知识 [36, 42, 66, 87]。
+
+然而，由于每段新文段（passage）都是被孤立地编码的，当前的 RAG 方法仍然无法帮助大语言模型完成需要跨文段边界整合新知识的任务。许多重要的现实任务，例如科学文献综述、法律案情摘要和医学诊断，都需要跨文段或跨文档的知识整合。尽管复杂度较低，标准的多跳问答（multi-hop question answering, QA）同样需要在检索语料库的文段之间整合信息。为了解决这类任务，当前的 RAG 系统不得不通过多次检索和大语言模型生成步骤进行迭代，以连接彼此分散的文段 [64, 78]。然而，即便是执行得完美无缺的多步 RAG，也常常不足以完成许多知识整合场景，正如我们在图~1 中所称的"路径发现型多跳问题"（path-finding multi-hop questions）所示。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.96\linewidth]{fig1.pdf}
+\caption{\textbf{知识整合与 RAG。} 需要知识整合的任务对当前的 RAG 系统尤其具有挑战性。在上面的示例中，我们希望从描述着可能成千上万名斯坦福教授和阿尔茨海默病研究者的文段池中，找到一位从事阿尔茨海默病研究的斯坦福教授。由于当前方法孤立地编码文段，除非某一文段同时提及这两个特征，否则它们难以识别出 Prof.\ Thomas。相比之下，大多数熟悉这位教授的人都能凭借大脑的联想记忆（associative memory）能力迅速回忆起他；这种能力被认为是由上图中 C 形海马体（蓝色部分）所描绘的索引结构驱动的。受这一机制的启发，HippoRAG 允许大语言模型构建并利用类似的联想图谱来应对知识整合任务。}
+\label{fig:1}
+\end{figure}
+
+相比之下，我们的大脑能够相对轻松地解决这类具有挑战性的知识整合任务。海马体记忆索引理论（hippocampal memory indexing theory）[75] 是一个公认的人类长期记忆理论，它为这种非凡的能力提供了一种合理的解释。Teyler 和 Discenna [75] 提出，我们强大的、基于上下文的、持续更新的记忆依赖于新皮层（neocortex）与 C 形海马体（hippocampus）之间的交互：前者负责处理和存储实际的记忆表征，而后者持有海马体索引（hippocampal index）——一组相互连接的索引，它们指向新皮层上的记忆单元并存储这些单元之间的关联 [19, 76]。
+
+在本工作中，我们提出 HippoRAG，这是一个通过模拟上述人类记忆模型来充当大语言模型长期记忆的 RAG 框架。我们的新颖设计首先模拟新皮层处理感知输入的能力，使用一个大语言模型将语料库转化为一个无模式（schemaless）的知识图谱（knowledge graph, KG），作为我们的人工海马体索引。给定一个新查询，HippoRAG 识别查询中的关键概念，并以这些查询概念为种子（seeds），在知识图谱上运行 Personalized PageRank（PPR）算法 [30]，从而整合跨文段的信息以供检索。PPR 使 HippoRAG 能够探索知识图谱中的路径并识别相关子图，本质上是在单个检索步骤中完成多跳推理。
+
+这种单步多跳检索能力，在两个流行的多跳问答基准 MuSiQue [77] 和 2WikiMultiHopQA [33] 上，相较于当前的 RAG 方法 [10, 35, 53, 70, 71] 带来了约 3 个点和 20 个点的强劲性能提升。此外，HippoRAG 的在线检索过程比 IRCoT [78] 等当前的迭代式检索方法成本低 10 到 30 倍、速度快 6 到 13 倍，同时仍能取得相当的性能。进一步地，我们的方法可以与 IRCoT 结合，在相同数据集上带来高达 4\% 和 20\% 的互补增益，甚至在难度较低的多跳问答数据集 HotpotQA 上也能取得提升。最后，我们提供了一个案例研究，阐明当前方法的局限性以及我们的方法在前文所述的路径发现型多跳问答场景中的潜力。
+
+\section{HippoRAG}
+
+在本节中，我们首先简要概述海马体记忆索引理论，随后说明 HippoRAG 的索引与检索设计如何受到该理论的启发，最后对我们的方法进行更详细的阐述。
+
+\subsection{海马体记忆索引理论}
+
+海马体记忆索引理论 [75] 是一个公认的理论，它对参与人类长期记忆的各组成部分及其神经回路给出了功能性描述。在该理论中，Teyler 和 Discenna [75] 提出人类长期记忆由三个协同工作的组成部分构成，以实现两个主要目标：模式分离（pattern separation），它确保不同感知经验的表征是唯一的；以及模式补全（pattern completion），它能够从部分刺激中检索出完整的记忆 [19, 76]。
+
+该理论认为，模式分离主要在记忆编码（memory encoding）过程中完成。该过程始于新皮层接收感知刺激，并将其处理为更易操作的、可能更高层次的特征，随后这些特征经由海马旁区（parahippocampal regions, PHR）传递，由海马体进行索引。当这些信号到达海马体时，显著的信号会被纳入海马体索引，并彼此关联起来。
+
+在记忆编码过程完成之后，每当海马体从 PHR 通路接收到部分感知信号时，模式补全便驱动记忆检索（memory retrieval）过程。海马体随即利用其依赖于上下文的记忆系统（这一系统被认为是通过 CA3 子区中密集连接的神经元网络实现的 [76]），在海马体索引中识别出完整且相关的记忆，并将它们经由 PHR 路由回新皮层进行模拟。因此，这一复杂的过程使得新信息的整合只需改变海马体索引，而无需更新新皮层的表征。
+
+\subsection{总览}
+
+我们提出的方法 HippoRAG 与上述过程紧密契合。如图~\ref{fig:2} 所示，我们方法的每个组成部分都对应于人类长期记忆的三个组成部分之一。HippoRAG 流程的详细示例可参见附录~A。
+
+\textbf{离线索引（Offline Indexing）。} 我们的离线索引阶段类似于记忆编码，它首先利用一个强大的、经过指令微调（instruction-tuned）的大语言模型（即我们的人工新皮层）来抽取知识图谱（KG）三元组（triple）。该知识图谱是无模式的，这一过程被称为开放信息抽取（open information extraction, OpenIE）[3, 5, 60, 98]。该过程将检索语料库文段中的显著信号抽取为离散的名词短语（noun phrase），而非稠密的向量表征，从而实现更细粒度的模式分离。因此，将我们的人工海马体索引定义为这个开放知识图谱是十分自然的，该图谱是在整个检索语料库上逐段构建的。最后，为了像海马旁区那样连接前述两个组成部分，我们使用了为检索任务微调的现成稠密编码器（dense encoders，即检索编码器，retrieval encoders）。这些检索编码器在该知识图谱中相似但不完全相同的名词短语之间提供额外的边，以辅助下游的模式补全。
+
+\textbf{在线检索（Online Retrieval）。} 随后，这三个相同的组成部分被用于执行在线检索，以镜像人脑的记忆检索过程。正如海马体接收经由新皮层和 PHR 处理过的输入一样，我们基于大语言模型的新皮层从查询中抽取一组显著的命名实体（named entities），我们称之为查询命名实体（query named entities）。这些命名实体随后根据检索编码器确定的相似度被链接到我们知识图谱中的节点；我们将这些被选中的节点称为查询节点（query nodes）。一旦确定了查询节点，它们便成为部分线索（partial cues），我们的合成海马体据此执行模式补全。在海马体中，海马体索引各元素之间的神经通路使得相关的邻域得以被激活并向上游回忆。为了模仿这一高效的图搜索过程，我们利用 Personalized PageRank（PPR）算法 [30]，这是 PageRank 的一个变体，它仅通过一组用户定义的源节点（source nodes）在图上分配概率。这一约束使我们能够将 PPR 的输出仅偏向于查询节点的集合，正如海马体从特定的部分线索中抽取关联信号一样。\footnote{有趣的是，认知科学领域的一些工作也发现了人类词语回忆与 PageRank 算法输出之间的相关性 [25]。}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.96\linewidth]{cand_p04_k00.pdf}
+\caption[HippoRAG 方法细节。]{\textbf{HippoRAG 方法细节。} 我们对人类长期记忆的三个组成部分进行建模，以模拟其模式分离和模式补全功能。在离线索引阶段（中部），我们使用一个大语言模型将文段处理为开放知识图谱三元组，随后将其添加到我们的人工海马体索引中，同时我们的合成海马旁区（PHR）检测同义关系（synonymy）。在上面的示例中，涉及 Professor Thomas 的三元组被抽取并整合进知识图谱。在在线检索阶段（底部），我们的大语言模型新皮层从查询中抽取命名实体，而我们的海马旁检索编码器将它们链接到我们的海马体索引。随后，我们利用 Personalized PageRank 算法实现基于上下文的检索，并抽取出 Professor Thomas。\protect\footnotemark}
+\label{fig:2}
+\end{figure}
+\footnotetext{为简洁起见，本研究略去了海马体记忆索引理论的许多细节。我们鼓励有兴趣的读者参阅第~2.1~节中的参考文献以了解更多。}
+
+最后，正如海马体信号被发送至上游时所做的那样，我们将输出的 PPR 节点概率在先前已索引的各文段上进行聚合，并据此对它们进行排序以供检索。
+
+\subsection{方法细节}
+
+\textbf{离线索引。} 我们的索引过程包括：使用一个经指令微调的大语言模型 $L$ 和一个检索编码器 $M$ 来处理一组文段 $P$。如图~\ref{fig:2} 所示，我们首先使用 $L$ 通过 OpenIE 从 $P$ 中的每个文段抽取一组名词短语节点 $N$ 和关系边 $E$。该过程通过对大语言模型进行 1-shot 提示（prompting）完成，所用提示词见附录~I。具体而言，我们首先从每个文段中抽取一组命名实体，然后将这些命名实体加入 OpenIE 提示词中，以抽取最终的三元组——这些三元组还包含命名实体之外的概念（名词短语）。我们发现这种两步式的提示词配置能够在通用性与对命名实体的偏好之间取得恰当的平衡。最后，当 $N$ 中两个实体表征之间的余弦相似度（cosine similarity）高于阈值 $\tau$ 时，我们使用 $M$ 来添加上文讨论的额外同义关系集合 $E'$。如上所述，这为我们的海马体索引引入了更多的边，从而实现更有效的模式补全。该索引过程定义了一个 $|N| \times |P|$ 矩阵 $\mathbf{P}$，其中包含知识图谱中每个名词短语在每个原始文段中出现的次数。
+
+\textbf{在线检索。} 在检索过程中，我们使用 1-shot 提示词提示 $L$，从查询 $q$ 中抽取一组命名实体，即我们先前定义的查询命名实体 $C_q = \{c_1, ..., c_n\}$（在图~\ref{fig:2} 的示例中即 Stanford 和 Alzheimer's）。这些来自查询的命名实体 $C_q$ 随后由同一个检索编码器 $M$ 进行编码。接着，前述定义的查询节点被选为 $N$ 中与查询命名实体 $C_q$ 余弦相似度最高的节点集合。更形式化地，查询节点定义为 $R_q = \{r_1, ..., r_n\}$，其中 $r_i = e_k$，$k = \arg\max_j \mathrm{cosine\_similarity}(M(c_i), M(e_j))$，在图~\ref{fig:2} 中分别表示为 Stanford 徽标和 Alzheimer's 紫色丝带符号。
+
+在确定查询节点 $R_q$ 之后，我们在海马体索引（即一个具有 $|N|$ 个节点和 $|E| + |E'|$ 条边（基于三元组的边和基于同义关系的边）的知识图谱）上运行 PPR 算法，使用在 $N$ 上定义的个性化概率分布 $\vecn$，其中每个查询节点具有相等的概率，而所有其他节点的概率为零。这使得概率质量（probability mass）能够分配给那些主要位于查询节点（联合）邻域中的节点，例如 Professor Thomas，并对最终的检索产生贡献。在运行 PPR 算法后，我们获得 $N$ 上一个更新后的概率分布 $\vecn'$。最后，为了获得文段得分，我们将 $\vecn'$ 与前述定义的 $\mathbf{P}$ 矩阵相乘，得到 $\overset{\text{\tiny$\rightharpoonup$}}{p}$，即每个文段的排序得分，我们用它来进行检索。
+
+\textbf{节点特异性（Node Specificity）。} 我们引入节点特异性作为一种在神经生物学上合理的方式，以进一步改进检索。众所周知，词语重要性的全局信号（例如逆文档频率，inverse document frequency, IDF）可以改善信息检索。然而，为了让我们的大脑能够利用 IDF 进行检索，编码的"文段"总数需要在记忆检索完成之前与所有节点激活进行聚合。这一过程对普通计算机而言很简单，但每次检索发生时，它都需要激活一个聚合神经元与海马体索引中所有节点之间的连接，这可能引入难以承受的计算开销。鉴于这些限制，我们提出节点特异性作为一种替代性的 IDF 信号，它只需要局部信号，因而在神经生物学上更为合理。我们将节点 $i$ 的节点特异性定义为 $s_i = |P_i|^{-1}$，其中 $P_i$ 是 $P$ 中抽取出节点 $i$ 的文段集合，这一信息在每个节点处已经可得。节点特异性在检索中的使用方式是：在执行 PPR 之前，将每个查询节点的概率 $\vecn$ 乘以 $s_i$；这使我们能够调节每个节点邻域的概率以及节点自身的概率。我们在图~\ref{fig:2} 中通过符号的相对大小来说明节点特异性：Stanford 徽标比 Alzheimer's 符号更大，因为它出现在更少的文档中。
+
+\section{实验设置}
+\subsection{数据集}
+
+我们主要在两个具有挑战性的多跳问答基准上评估本方法的检索能力：MuSiQue（可回答子集）[77] 和 2WikiMultiHopQA [33]。为完整起见，我们也纳入了 HotpotQA [89] 数据集，尽管已有研究发现它由于存在许多虚假信号（spurious signals）而对多跳推理的考验要弱得多 [77]，我们在附录~B 中也展示了这一点。为限制实验成本，我们按照以往工作的做法 [63, 78]，从每个验证集中抽取 1,000 个问题。为了构建更贴近现实的检索设置，我们遵循 IRCoT [78]，从所选问题中收集所有候选文段（包括支持文段和干扰文段），并为每个数据集构建一个检索语料库。这些数据集的详细信息见表~1。
+
+\begin{table}[H]\centering
+\caption{我们各含 1,000 个问题的开发集所对应的检索语料库及抽取的知识图谱统计信息。}
+\label{tab:1}
+\begin{tabular}{lccc}
+\toprule
+ & MuSiQue & 2Wiki & HotpotQA \\
+\midrule
+文段数（$P$） & 11{,}656 & 6{,}119 & 9{,}221 \\
+唯一节点数（$N$） & 91{,}729 & 42{,}694 & 82{,}157 \\
+唯一边数（$E$） & 21{,}714 & 7{,}867 & 17{,}523 \\
+唯一三元组数 & 107{,}448 & 50{,}671 & 98{,}709 \\
+Contriever 同义边数（$E'$） & 145{,}990 & 146{,}020 & 159{,}112 \\
+ColBERTv2 同义边数（$E'$） & 191{,}636 & 82{,}526 & 171{,}856 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{基线方法}
+
+我们与若干强大且广泛使用的检索方法进行比较：BM25 [69]、Contriever [35]、GTR [53] 和 ColBERTv2 [70]。此外，我们还与两个近期的大语言模型增强（LLM-augmented）基线进行比较：Propositionizer [10]（将文段重写为命题，proposition）和 RAPTOR [71]（构建摘要节点以便于从长文档中检索）。除上述单步检索方法外，我们还将多步检索方法 IRCoT [78] 作为基线纳入比较。
+
+\subsection{评价指标}
+
+我们使用 recall@2 和 recall@5（下文记作 R@2 和 R@5）报告检索性能，使用精确匹配（exact match, EM）和 F1 分数报告问答性能。
+
+\begin{table}[H]\centering
+\caption{单步检索性能。HippoRAG 在 MuSiQue 和 2WikiMultiHopQA 上超越所有基线，并在难度较低的 HotpotQA 数据集上取得相当的性能。}
+\label{tab:2}
+\begin{tabular}{lcccccccc}
+\toprule
+ & \multicolumn{2}{c}{MuSiQue} & \multicolumn{2}{c}{2Wiki} & \multicolumn{2}{c}{HotpotQA} & \multicolumn{2}{c}{平均} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}\cmidrule(lr){8-9}
+ & R@2 & R@5 & R@2 & R@5 & R@2 & R@5 & R@2 & R@5 \\
+\midrule
+BM25 [69] & 32.3 & 41.2 & 51.8 & 61.9 & 55.4 & 72.2 & 46.5 & 58.4 \\
+Contriever [35] & 34.8 & 46.6 & 46.6 & 57.5 & 57.2 & 75.5 & 46.2 & 59.9 \\
+GTR [53] & 37.4 & 49.1 & 60.2 & 67.9 & 59.4 & 73.3 & 52.3 & 63.4 \\
+ColBERTv2 [70] & 37.9 & 49.2 & 59.2 & 68.2 & 64.7 & 79.3 & 53.9 & 65.6 \\
+RAPTOR [71] & 35.7 & 45.3 & 46.3 & 53.8 & 58.1 & 71.2 & 46.7 & 56.8 \\
+RAPTOR (ColBERTv2) & 36.9 & 46.5 & 57.3 & 64.7 & 63.1 & 75.6 & 52.4 & 62.3 \\
+Proposition [10] & 37.6 & 49.3 & 56.4 & 63.1 & 58.7 & 71.1 & 50.9 & 61.2 \\
+Proposition (ColBERTv2) & 37.8 & 50.1 & 55.9 & 64.9 & 63.9 & 78.1 & 52.5 & 64.4 \\
+HippoRAG (Contriever) & 41.0 & 52.1 & 71.5 & \textbf{89.5} & 59.0 & 76.2 & 57.2 & 72.6 \\
+HippoRAG (ColBERTv2) & 40.9 & 51.9 & 70.7 & 89.1 & 60.5 & 77.7 & 57.4 & 72.9 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]\centering
+\caption{多步检索性能。将 HippoRAG 与 IRCoT 等标准的多步检索方法相结合，在全部三个数据集上均带来了强劲的互补改进。}
+\label{tab:3}
+\begin{tabular}{lcccccccc}
+\toprule
+ & \multicolumn{2}{c}{MuSiQue} & \multicolumn{2}{c}{2Wiki} & \multicolumn{2}{c}{HotpotQA} & \multicolumn{2}{c}{平均} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}\cmidrule(lr){8-9}
+ & R@2 & R@5 & R@2 & R@5 & R@2 & R@5 & R@2 & R@5 \\
+\midrule
+IRCoT + BM25（默认） & 34.2 & 44.7 & 61.2 & 75.6 & 65.6 & 79.0 & 53.7 & 66.4 \\
+IRCoT + Contriever & 39.1 & 52.2 & 51.6 & 63.8 & 65.9 & 81.6 & 52.2 & 65.9 \\
+IRCoT + ColBERTv2 & 41.7 & 53.7 & 64.1 & 74.4 & 67.9 & 82.0 & 57.9 & 70.0 \\
+IRCoT + HippoRAG (Contriever) & 43.9 & 56.6 & 75.3 & 93.4 & 65.8 & 82.3 & 61.7 & 77.4 \\
+IRCoT + HippoRAG (ColBERTv2) & \textbf{45.3} & \textbf{57.6} & \textbf{75.8} & \textbf{93.9} & 67.0 & 83.0 & \textbf{62.7} & \textbf{78.2} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{实现细节}
+
+默认情况下，我们使用温度（temperature）为 0 的 GPT-3.5-turbo-1106 [55] 作为大语言模型 $L$，并使用 Contriever [35] 或 ColBERTv2 [70] 作为检索器 $M$。我们使用 MuSiQue 训练数据中的 100 个样本来调节 HippoRAG 的两个超参数：同义阈值 $\tau$ 设为 0.8，PPR 阻尼因子（damping factor）设为 0.5——后者决定了 PPR 从查询节点重启随机游走（random walk）而非继续探索图的概率。总体而言，我们发现 HippoRAG 的性能对其超参数相当稳健。更多实现细节见附录~H。
+
+\section{结果}
+
+我们在下文呈现检索和问答的实验结果。鉴于本方法对问答性能的影响是间接的，我们在性能最佳的检索骨干 ColBERTv2 [70] 上报告问答结果。不过，对于检索结果，我们报告了若干强大的单步和多步检索技术。
+
+\textbf{单步检索结果。} 如表~2 所示，在我们的主要数据集 MuSiQue 和 2WikiMultiHopQA 上，HippoRAG 超越了所有其他方法，包括 Propositionizer 和 RAPTOR 等近期的大语言模型增强基线，同时在 HotpotQA 上取得了具有竞争力的性能。我们注意到，在 2WikiMultiHopQA 上 R@2 和 R@5 分别取得了 11\% 和 20\% 的可观提升，在 MuSiQue 上则提升约 3\%。这一差异部分可以由 2WikiMultiHopQA 以实体为中心（entity-centric）的设计来解释，这种设计特别适合 HippoRAG。我们在 HotpotQA 上性能较低，主要是由于其知识整合需求较低（如附录~B 所述），以及一种概念—上下文权衡（concept-context tradeoff）所致——我们通过附录~F.2 中描述的集成（ensembling）技术来缓解这一问题。
+
+\textbf{多步检索结果。} 对于多步或迭代式检索，我们在表~3 中的实验表明 IRCoT [78] 与 HippoRAG 是互补的。将 HippoRAG 作为 IRCoT 的检索器，持续带来约 4\%（MuSiQue）、18\%（2WikiMultiHopQA）的 R@5 提升，并在 HotpotQA 上额外提升 1\%。
+
+\begin{table}[H]\centering
+\caption{问答性能。HippoRAG 的问答改进与其在单步检索（第 1--3 行）和多步检索（第 4--5 行）中的检索改进相关。}
+\label{tab:4}
+\begin{tabular}{lcccccccc}
+\toprule
+ & \multicolumn{2}{c}{MuSiQue} & \multicolumn{2}{c}{2Wiki} & \multicolumn{2}{c}{HotpotQA} & \multicolumn{2}{c}{平均} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}\cmidrule(lr){8-9}
+检索器 & EM & F1 & EM & F1 & EM & F1 & EM & F1 \\
+\midrule
+None & 12.5 & 24.1 & 31.0 & 39.6 & 30.4 & 42.8 & 24.6 & 35.5 \\
+ColBERTv2 & 15.5 & 26.4 & 33.4 & 43.3 & 43.4 & 57.7 & 30.8 & 42.5 \\
+HippoRAG (ColBERTv2) & 19.2 & 29.8 & 46.6 & 59.5 & 41.8 & 55.0 & 35.9 & 48.1 \\
+IRCoT (ColBERTv2) & 19.1 & 30.5 & 35.4 & 45.1 & 45.5 & 58.4 & 33.3 & 44.7 \\
+IRCoT + HippoRAG (ColBERTv2) & \textbf{21.9} & \textbf{33.3} & \textbf{47.7} & \textbf{62.7} & 45.7 & 59.2 & \textbf{38.4} & \textbf{51.7} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{问答结果。} 我们在表~4 中报告了 HippoRAG、最强的检索基线 ColBERTv2 和 IRCoT，以及将 HippoRAG 作为检索器的 IRCoT 的问答结果。正如预期，在单步和多步设置中，检索性能的提升使得使用相同问答阅读器（QA reader）时，在 MuSiQue、2WikiMultiHopQA 和 HotpotQA 上的 F1 分数分别取得了高达 3\%、17\% 和 1\% 的强劲整体提升。值得注意的是，单步 HippoRAG 在性能上与 IRCoT 相当甚至更优，同时在线检索期间成本低 10--30 倍、速度快 6--13 倍（附录~G）。
+
+\section{讨论}
+\subsection{是什么让 HippoRAG 奏效？}
+
+\textbf{OpenIE 的替代方案。} 为了确定使用 GPT-3.5 这样的闭源模型对于保持我们的性能提升是否必不可少，我们将其替换为端到端的 OpenIE 模型 REBEL [34]，以及 Llama-3.1（一类强大的开放权重大语言模型 [1]）的 8B 和 70B 指令微调版本。如表~5 第 2 行所示，使用 REBEL 构建知识图谱会导致大幅的性能下降，这凸显了大语言模型灵活性的重要性。具体而言，GPT-3.5 产生的三元组数量是 REBEL 的两倍，表明 REBEL 对生成包含通用概念的三元组存在偏见，从而遗漏了许多有用的关联。
+
+在开放权重大语言模型方面，表~5（第 3--4 行）表明，Llama-3.1-8B 在除 2Wiki 之外的所有数据集上的性能都与 GPT-3.5 具有竞争力，而在 2Wiki 上性能则大幅下降。尽管如此，更强的 70B 版本在三个数据集中的两个上超越了 GPT-3.5，在 2Wiki 上也仍具竞争力。Llama-3.1-70B 的强劲表现以及即便是 8B 模型也能取得相当的性能令人鼓舞，因为它为在大型语料库上进行索引提供了更经济的替代方案。这些 OpenIE 替代方案的图统计信息见附录~C。
+
+为了更深入地理解 OpenIE 与检索性能之间的关系，我们从 MuSiQue 训练集的 20 个样本中抽取了 239 个黄金三元组（gold triples）。随后我们使用面向 OpenIE 的 CaRB [6] 框架进行了一次小规模的内在评估（intrinsic evaluation）。我们发现 Llama-3.1-Instruct 模型在该内在评估上略逊于 GPT-3.5，但所有大语言模型都大幅超越 REBEL。关于该评估实验的更多细节见附录~D。
+
+\begin{table}[H]\centering
+\caption{剖析 HippoRAG。为了理解是什么让它运作良好，我们用合理的替代方案替换其 OpenIE 模块和 PPR，并对节点特异性和基于同义关系的边进行消融（ablate）。}
+\label{tab:5}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{llcccccccc}
+\toprule
+ & & \multicolumn{2}{c}{MuSiQue} & \multicolumn{2}{c}{2Wiki} & \multicolumn{2}{c}{HotpotQA} & \multicolumn{2}{c}{平均} \\
+\cmidrule(lr){3-4}\cmidrule(lr){5-6}\cmidrule(lr){7-8}\cmidrule(lr){9-10}
+ & & R@2 & R@5 & R@2 & R@5 & R@2 & R@5 & R@2 & R@5 \\
+\midrule
+\multicolumn{2}{l}{HippoRAG} & 40.9 & 51.9 & 70.7 & 89.1 & 60.5 & 77.7 & 57.4 & 72.9 \\
+\midrule
+\multirow{3}{*}{\makecell[l]{OpenIE\\替代方案}} & REBEL [34] & 31.7 & 39.6 & 63.1 & 76.5 & 43.9 & 59.2 & 46.2 & 58.4 \\
+ & Llama-3.1-8B-Instruct [1] & 40.8 & 51.9 & 62.5 & 77.5 & 59.9 & 75.1 & 54.4 & 67.8 \\
+ & Llama-3.1-70B-Instruct [1] & 41.8 & 53.7 & 68.8 & 85.3 & 60.8 & 78.6 & 57.1 & 72.5 \\
+\midrule
+\multirow{2}{*}{\makecell[l]{PPR\\替代方案}} & 仅 $R_q$ 节点 & 37.1 & 41.0 & 59.1 & 61.4 & 55.9 & 66.2 & 50.7 & 56.2 \\
+ & $R_q$ 节点及其邻居 & 25.4 & 38.5 & 53.4 & 74.7 & 47.8 & 64.5 & 42.2 & 59.2 \\
+\midrule
+\multirow{2}{*}{消融} & 去除节点特异性 & 37.6 & 50.2 & 70.1 & 88.8 & 56.3 & 73.7 & 54.7 & 70.9 \\
+ & 去除同义边 & 40.2 & 50.2 & 69.2 & 85.6 & 59.1 & 75.7 & 56.2 & 70.5 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{PPR 的替代方案。} 如表~5（第 5--6 行）所示，为了检验我们的结果在多大程度上归功于 PPR 的强大，我们将 PPR 的输出替换为：查询节点概率 $\vecn$ 乘以节点特异性值（第 5 行），以及在此基础上还将少量概率分配给每个查询节点的直接邻居的一个版本（第 6 行）。首先，我们发现与这两个简单基线相比，PPR 在全部三个数据集上都是一种更有效的、用于将关联纳入检索的方法。值得注意的是，在不使用 PPR 的情况下添加 $R_q$ 节点的邻域，其性能反而比仅使用查询节点本身更差。
+
+\textbf{消融实验。} 如表~5（第 7--8 行）所示，节点特异性在 MuSiQue 和 HotpotQA 上取得了相当可观的改进，而在 2WikiMultiHopQA 上几乎没有变化。这很可能是因为 2WikiMultiHopQA 依赖于命名实体，其在词项加权（term weighting）方面差异很小。相比之下，同义边对 2WikiMultiHopQA 的影响最大，这表明当大多数相关概念都是命名实体时，带噪声的实体标准化（entity standardization）是有用的；而改进同义关系检测有可能在其他数据集上带来更强的性能。
+
+\subsection{HippoRAG 的优势：单步多跳检索}
+
+HippoRAG 在多跳问答中相较于传统 RAG 方法的一个主要优势，是它能够在单个步骤中执行多跳检索。我们通过测量"所有支持文段都被成功检索到"的查询所占百分比来证明这一点，而这一壮举只能通过成功的多跳推理来完成。下方的表~6 显示，在使用 top-5 文段时，我们的方法与 ColBERTv2 之间的差距进一步拉大：在 MuSiQue 上从 3\% 增至 6\%，在 2WikiMultiHopQA 上从 20\% 增至 38\%。这表明，巨大的改进来源于获取全部支持文档，而非在更多问题上实现部分检索。
+
+\begin{table}[H]\centering
+\caption{全召回（All-Recall）指标。我们测量所有支持文段都被成功检索到的查询所占百分比（全召回，记作 AR@2 或 AR@5），并发现 HippoRAG 取得了更大的性能提升。}
+\label{tab:6}
+\begin{tabular}{lcccccccc}
+\toprule
+ & \multicolumn{2}{c}{MuSiQue} & \multicolumn{2}{c}{2Wiki} & \multicolumn{2}{c}{HotpotQA} & \multicolumn{2}{c}{平均} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}\cmidrule(lr){8-9}
+ & AR@2 & AR@5 & AR@2 & AR@5 & AR@2 & AR@5 & AR@2 & AR@5 \\
+\midrule
+ColBERTv2 [70] & 6.8 & 16.1 & 25.1 & 37.1 & 33.3 & 59.0 & 21.7 & 37.4 \\
+HippoRAG & 10.2 & 22.4 & 45.4 & 75.7 & 33.8 & 57.9 & 29.8 & 52.0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+我们通过表~7 中的第一个示例进一步说明 HippoRAG 独特的单步多跳检索能力。在该示例中，尽管 Alhandra 并未在 Vila de Xira 的文段中被提及，HippoRAG 仍能直接利用 Vila de Xira 与 Alhandra 出生地之间的联系来判定其重要性，而这是标准 RAG 方法无法直接做到的。此外，尽管 IRCoT 也能解决这个多跳检索问题（如附录~G 所示），但就在线检索而言，它的成本比我们的方法高 10--30 倍、速度慢 6--13 倍——而在线检索可以说是为终端用户提供服务时最重要的因素。
+
+\begin{table}[H]\centering
+\caption{多跳问题类型。我们展示了不同方法在路径发现型（path-finding）与路径跟随型（path-following）多跳问题上的示例结果。}
+\label{tab:7}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{p{1.6cm}p{3.0cm}p{3.6cm}p{3.6cm}p{3.2cm}}
+\toprule
+ & 问题 & HippoRAG & ColBERTv2 & IRCoT \\
+\midrule
+路径跟随型 & Alhandra 出生于哪个区（district）？ & 1. Alhandra \newline 2. Vila de Xira \newline 3. Portugal & 1. Alhandra \newline 2. Dimuthu Abayakoon \newline 3. Ja'ar & 1. Alhandra \newline 2. Vila de Xira \newline 3. Póvoa de Santa Iria \\
+\midrule
+路径发现型 & 哪位斯坦福教授从事阿尔茨海默病的神经科学研究？ & 1. Thomas Südhof \newline 2. Karl Deisseroth \newline 3. Robert Sapolsky & 1. Brian Knutson \newline 2. Eric Knudsen \newline 3. Lisa Giocomo & 1. Brian Knutson \newline 2. Eric Knudsen \newline 3. Lisa Giocomo \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{HippoRAG 的潜力：路径发现型多跳检索}
+
+表~7 中的第二个示例（同样出现在图~1 中）展示了一类对于了解情况的人来说易如反掌、但对当前未经进一步训练的检索器而言遥不可及的问题。这类问题——我们称之为路径发现型多跳问题——要求在存在多条可探索路径时，从一组实体之间识别出一条路径，而不是像标准多跳问题那样去跟随某一条特定的路径。\footnote{当 Stanford 和 Alzheimer's 这样的搜索实体恰好没有共同出现在某一文段中时，路径发现型问题就需要进行知识整合——而对于新信息而言，这一条件往往是成立的。}
+
+更具体地说，对于第一个问题，一个简单的迭代过程可以通过跟随 Alhandra 唯一出生地所设定的唯一路径来检索到合适的文段，这从 IRCoT 的完美表现中可见一斑。然而，对于第二个问题，鉴于存在许多可能的探索路径——要么通过斯坦福大学的教授，要么通过从事阿尔茨海默病神经科学研究的教授——迭代过程将难以作答。只有通过将关于 Thomas Südhof 的彼此分散的信息关联起来，了解这位教授的人才能轻松回答这个问题。如表~7 所示，ColBERTv2 和 IRCoT 都未能抽取出必要的文段，因为它们无法访问这些关联。另一方面，HippoRAG 利用其海马体索引中的联想网络和图搜索算法，判定 Professor Thomas 与该查询相关，并恰当地检索出他的文段。更多此类路径发现型多跳问题的示例见附录~E 中的案例研究。
+
+\section{相关工作}
+\subsection{大语言模型的长期记忆}
+
+\textbf{参数化长期记忆（Parametric Long-Term Memory）。} 即便在持怀疑态度的研究者中，人们也普遍认同：现代大语言模型的参数编码了数量惊人的世界知识 [2, 12, 23, 28, 31, 39, 62, 79]，并且大语言模型能够以灵活而稳健的方式利用这些知识 [81, 83, 93]。然而，我们更新这一庞大知识库的能力——任何长期记忆系统都不可或缺的一部分——仍然出人意料地有限。尽管存在许多更新大语言模型的技术，例如标准微调、模型编辑 [15, 49, 50, 51, 52, 95]，乃至受人类记忆启发的外部参数化记忆模块 [58, 82, 32]，但尚无任何方法能成为大语言模型持续学习（continual learning）的稳健解决方案 [26, 46, 97]。
+
+\textbf{作为长期记忆的 RAG。} 另一方面，使用 RAG 方法作为长期记忆系统提供了一种随时间更新知识的简便途径 [36, 42, 66, 73]。更复杂的 RAG 方法会执行多步检索和大语言模型生成，它们甚至能够跨越新的或更新后的知识元素整合信息 [38, 64, 72, 78, 88, 90, 92]——这是长期记忆系统的另一个关键方面。然而，如上所述，这种在线信息整合无法解决我们用路径发现型多跳问答示例所阐明的、更为复杂的知识整合任务。
+
+其他一些方法，例如 RAPTOR [71]、MemWalker [9] 和 GraphRAG [18]，与 HippoRAG 类似，在离线索引阶段整合信息，或许能够处理这些更复杂的任务。然而，这些方法通过对知识元素进行摘要来整合信息，这意味着每当添加新数据时，摘要过程都必须重复执行。相比之下，HippoRAG 只需向其知识图谱添加边即可持续整合新知识。
+
+\textbf{作为长期记忆的长上下文（Long Context）。} 在过去一年中，开源和闭源大语言模型的上下文长度都急剧增加 [11, 17, 22, 61, 68]。这一规模扩展趋势似乎表明，未来的大语言模型可以在巨大的上下文窗口内进行长期记忆存储。然而，鉴于其中涉及的诸多工程障碍，以及长上下文大语言模型即便在当前上下文长度内也表现出的明显局限 [41, 45, 96, 21]，这一未来的可行性在很大程度上仍不确定。
+
+\subsection{多跳问答与图}
+
+许多先前的工作也利用图结构来处理多跳问答。这些工作大致可分为两大类：1）图增强的阅读理解（graph-augmented reading comprehension），即从检索到的文档中抽取图，并用于改进模型的推理过程；2）图增强的检索（graph-augmented retrieval），即模型通过遍历图结构来找到相关文档。
+
+\textbf{图增强的阅读理解。} 该类别中较早的工作主要是有监督方法，它们通过图神经网络（graph neural network, GNN）将超链接图或共现图（co-occurrence graph）的信号与语言模型相混合 [20, 67, 65]。较新的工作则使用大语言模型，并将知识图谱三元组直接引入大语言模型的提示词中 [57, 43, 47]。尽管这些工作与 HippoRAG 一样将图用于多跳问答，但它们基于生成（generation-based）的改进与 HippoRAG 完全互补——后者仅基于检索的改进。
+
+\textbf{图增强的检索。} 在第二个类别中，先前的工作训练一个重排序（re-ranking）模块，它可以遍历使用 Wikipedia 超链接构建的图 [16, 100, 54, 14, 4, 44]。相比之下，HippoRAG 使用大语言模型从零开始构建知识图谱，并在没有任何监督的情况下执行多跳检索，这使其适应性强得多。
+
+\subsection{大语言模型与知识图谱}
+
+将语言模型与知识图谱的优势相结合，多年来一直是一个活跃的研究方向，无论是以不同方式用知识图谱增强大语言模型 [48, 80, 84]，还是增强知识图谱本身——后者要么从大语言模型的参数化知识中蒸馏知识 [7, 85]，要么使用大语言模型直接解析文本 [8, 29, 94]。在一篇极其全面的综述中，Pan 等人 [56] 为这一研究方向提出了一份路线图，并强调了协同（synergize）这两项重要技术的工作的重要性 [37, 74, 27, 91, 99]。与这些工作一样，HippoRAG 展示了这两项技术之间协同的潜力，它将大语言模型的知识图谱构建能力与结构化知识的检索优势相结合，以实现更有效的 RAG。
+
+\section{结论与局限}
+
+我们提出的这套遵循神经生物学原理的方法虽然简单，却已显示出克服标准 RAG 系统固有局限的潜力，同时保留了它们相较于参数化记忆的优势。HippoRAG 的知识整合能力（由其在路径跟随型多跳问答上的强劲结果以及在路径发现型多跳问答上的潜力所证明），连同其显著的效率提升和持续更新的特性，使其成为介于标准 RAG 方法与参数化记忆之间的一个强有力的折中框架，并为大语言模型的长期记忆提供了一个引人注目的解决方案。
+
+尽管如此，未来的工作仍可解决若干局限，以使 HippoRAG 更好地实现这一目标。首先，我们注意到 HippoRAG 的所有组成部分目前都是直接现成使用的，未经任何额外训练。因此，通过对特定组件进行微调，本方法的实际可行性还有很大的改进空间。这一点在附录~F 讨论的错误分析中体现得很明显——该分析表明，我们的系统所犯的大多数错误源于 NER 和 OpenIE，因此可以通过直接微调而受益。鉴于其余错误是图搜索错误（同样见附录~F），我们注意到，相较于简单的 PPR，存在若干改进途径，例如允许关系直接引导图遍历。此外，正如附录~F.4 所示，还需开展更多工作，以提升 OpenIE 在长文档相较于短文档上的一致性。最后，也许最重要的是，HippoRAG 的可扩展性仍有待进一步验证。尽管我们证明了 Llama-3.1 能够取得与闭源模型相似的性能，从而大幅降低成本，但当我们的合成海马体索引的规模远超当前基准时，我们尚未通过实验证明其效率和有效性。
+
+\section*{致谢}
+
+作者谨此感谢来自 OSU NLP 研究组的同事们以及 Percy Liang 提出的深思熟虑的意见。本研究部分得到了 NSF OAC 2112606、NIH R01LM014199、ARL W911NF2220144 以及 Cisco 的支持。本文所含的观点和结论仅代表作者本人，不应被解释为代表美国政府的官方政策（无论是明示的还是暗示的）。美国政府有权出于政府目的复制和分发重印本，而不受本文任何版权声明的限制。
+
+\section*{参考文献}
+\begin{enumerate}[leftmargin=2em]
+\item AI@Meta. Llama 3 model card. 2024. URL \url{https://github.com/meta-llama/llama3/blob/main/MODEL_CARD.md}.
+\item B. AlKhamissi, M. Li, A. Celikyilmaz, M. T. Diab, and M. Ghazvininejad. A review on language models as knowledge bases. ArXiv, abs/2204.06031, 2022. URL \url{https://arxiv.org/abs/2204.06031}.
+\item G. Angeli, M. J. Johnson Premkumar, and C. D. Manning. Leveraging linguistic structure for open domain information extraction. In C. Zong and M. Strube, editors, Proceedings of the 53rd Annual Meeting of the Association for Computational Linguistics and the 7th International Joint Conference on Natural Language Processing (Volume 1: Long Papers), pages 344--354, Beijing, China, July 2015. Association for Computational Linguistics. doi: 10.3115/v1/P15-1034. URL \url{https://aclanthology.org/P15-1034}.
+\item A. Asai, K. Hashimoto, H. Hajishirzi, R. Socher, and C. Xiong. Learning to retrieve reasoning paths over wikipedia graph for question answering. In International Conference on Learning Representations, 2020. URL \url{https://openreview.net/forum?id=SJgVHkrYDH}.
+\item M. Banko, M. J. Cafarella, S. Soderland, M. Broadhead, and O. Etzioni. Open information extraction from the web. In Proceedings of the 20th International Joint Conference on Artifical Intelligence, IJCAI'07, page 2670--2676, San Francisco, CA, USA, 2007. Morgan Kaufmann Publishers Inc.
+\item S. Bhardwaj, S. Aggarwal, and Mausam. CaRB: A crowdsourced benchmark for open IE. In K. Inui, J. Jiang, V. Ng, and X. Wan, editors, Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing (EMNLP-IJCNLP), pages 6262--6267, Hong Kong, China, Nov. 2019. Association for Computational Linguistics. doi: 10.18653/v1/D19-1651. URL \url{https://aclanthology.org/D19-1651}.
+\item A. Bosselut, H. Rashkin, M. Sap, C. Malaviya, A. Celikyilmaz, and Y. Choi. COMET: Commonsense transformers for automatic knowledge graph construction. In A. Korhonen, D. Traum, and L. M\`arquez, editors, Proceedings of the 57th Annual Meeting of the Association for Computational Linguistics, pages 4762--4779, Florence, Italy, July 2019. Association for Computational Linguistics. doi: 10.18653/v1/P19-1470. URL \url{https://aclanthology.org/P19-1470}.
+\item B. Chen and A. L. Bertozzi. AutoKG: Efficient Automated Knowledge Graph Generation for Language Models. In 2023 IEEE International Conference on Big Data (BigData), pages 3117--3126, Los Alamitos, CA, USA, dec 2023. IEEE Computer Society. doi: 10.1109/BigData59044.2023.10386454. URL \url{https://doi.ieeecomputersociety.org/10.1109/BigData59044.2023.10386454}.
+\item H. Chen, R. Pasunuru, J. Weston, and A. Celikyilmaz. Walking Down the Memory Maze: Beyond Context Limit through Interactive Reading. CoRR, abs/2310.05029, 2023. doi: 10.48550/ARXIV.2310.05029. URL \url{https://doi.org/10.48550/arXiv.2310.05029}.
+\item T. Chen, H. Wang, S. Chen, W. Yu, K. Ma, X. Zhao, H. Zhang, and D. Yu. Dense x retrieval: What retrieval granularity should we use? arXiv preprint arXiv:2312.06648, 2023. URL \url{https://arxiv.org/abs/2312.06648}.
+\item Y. Chen, S. Qian, H. Tang, X. Lai, Z. Liu, S. Han, and J. Jia. Longlora: Efficient fine-tuning of long-context large language models. arXiv:2309.12307, 2023.
+\item Y. Chen, P. Cao, Y. Chen, K. Liu, and J. Zhao. Journey to the center of the knowledge neurons: Discoveries of language-independent knowledge neurons and degenerate knowledge neurons. Proceedings of the AAAI Conference on Artificial Intelligence, 38(16):17817--17825, Mar. 2024. doi: 10.1609/aaai.v38i16.29735. URL \url{https://ojs.aaai.org/index.php/AAAI/article/view/29735}.
+\item G. Cs\'ardi and T. Nepusz. The igraph software package for complex network research. 2006. URL \url{https://igraph.org/}.
+\item R. Das, A. Godbole, D. Kavarthapu, Z. Gong, A. Singhal, M. Yu, X. Guo, T. Gao, H. Zamani, M. Zaheer, and A. McCallum. Multi-step entity-centric information retrieval for multi-hop question answering. In A. Fisch, A. Talmor, R. Jia, M. Seo, E. Choi, and D. Chen, editors, Proceedings of the 2nd Workshop on Machine Reading for Question Answering, pages 113--118, Hong Kong, China, Nov. 2019. Association for Computational Linguistics. doi: 10.18653/v1/D19-5816. URL \url{https://aclanthology.org/D19-5816}.
+\item N. De Cao, W. Aziz, and I. Titov. Editing factual knowledge in language models. In M.-F. Moens, X. Huang, L. Specia, and S. W.-t. Yih, editors, Proceedings of the 2021 Conference on Empirical Methods in Natural Language Processing, pages 6491--6506, Online and Punta Cana, Dominican Republic, Nov. 2021. Association for Computational Linguistics. doi: 10.18653/v1/2021.emnlp-main.522. URL \url{https://aclanthology.org/2021.emnlp-main.522}.
+\item M. Ding, C. Zhou, Q. Chen, H. Yang, and J. Tang. Cognitive graph for multi-hop reading comprehension at scale. In A. Korhonen, D. Traum, and L. M\`arquez, editors, Proceedings of the 57th Annual Meeting of the Association for Computational Linguistics, pages 2694--2703, Florence, Italy, July 2019. Association for Computational Linguistics. doi: 10.18653/v1/P19-1259. URL \url{https://aclanthology.org/P19-1259}.
+\item Y. Ding, L. L. Zhang, C. Zhang, Y. Xu, N. Shang, J. Xu, F. Yang, and M. Yang. Longrope: Extending llm context window beyond 2 million tokens. ArXiv, abs/2402.13753, 2024. URL \url{https://api.semanticscholar.org/CorpusID:267770308}.
+\item D. Edge, H. Trinh, N. Cheng, J. Bradley, A. Chao, A. Mody, S. Truitt, and J. Larson. From local to global: A graph rag approach to query-focused summarization. 2024. URL \url{https://arxiv.org/abs/2404.16130}.
+\item H. Eichenbaum. A cortical--hippocampal system for declarative memory. Nature Reviews Neuroscience, 1:41--50, 2000. URL \url{https://www.nature.com/articles/35036213}.
+\item Y. Fang, S. Sun, Z. Gan, R. Pillai, S. Wang, and J. Liu. Hierarchical graph network for multi-hop question answering. In B. Webber, T. Cohn, Y. He, and Y. Liu, editors, Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing (EMNLP), pages 8823--8838, Online, Nov. 2020. Association for Computational Linguistics. doi: 10.18653/v1/2020.emnlp-main.710. URL \url{https://aclanthology.org/2020.emnlp-main.710}.
+\item Y. Fu. Challenges in deploying long-context transformers: A theoretical peak performance analysis, 2024. URL \url{https://arxiv.org/abs/2405.08944}.
+\item Y. Fu, R. Panda, X. Niu, X. Yue, H. Hajishirzi, Y. Kim, and H. Peng. Data engineering for scaling language models to 128k context, 2024.
+\item M. Geva, J. Bastings, K. Filippova, and A. Globerson. Dissecting recall of factual associations in auto-regressive language models. In H. Bouamor, J. Pino, and K. Bali, editors, Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing, EMNLP 2023, Singapore, December 6-10, 2023, pages 12216--12235. Association for Computational Linguistics, 2023. doi: 10.18653/V1/2023.EMNLP-MAIN.751. URL \url{https://doi.org/10.18653/v1/2023.emnlp-main.751}.
+\item C. Gormley and Z. J. Tong. Elasticsearch: The definitive guide. 2015. URL \url{https://www.elastic.co/guide/en/elasticsearch/guide/master/index.html}.
+\item T. L. Griffiths, M. Steyvers, and A. J. Firl. Google and the mind. Psychological Science, 18: 1069--1076, 2007. URL \url{https://cocosci.princeton.edu/tom/papers/google.pdf}.
+\item J.-C. Gu, H.-X. Xu, J.-Y. Ma, P. Lu, Z.-H. Ling, K.-W. Chang, and N. Peng. Model Editing Can Hurt General Abilities of Large Language Models, 2024.
+\item Y. Gu, X. Deng, and Y. Su. Don't generate, discriminate: A proposal for grounding language models to real-world environments. In A. Rogers, J. Boyd-Graber, and N. Okazaki, editors, Proceedings of the 61st Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), pages 4928--4949, Toronto, Canada, July 2023. Association for Computational Linguistics. doi: 10.18653/v1/2023.acl-long.270. URL \url{https://aclanthology.org/2023.acl-long.270}.
+\item W. Gurnee and M. Tegmark. Language models represent space and time. In The Twelfth International Conference on Learning Representations, 2024. URL \url{https://openreview.net/forum?id=jE8xbmvFin}.
+\item J. Han, N. Collier, W. Buntine, and E. Shareghi. PiVe: Prompting with Iterative Verification Improving Graph-based Generative Capability of LLMs, 2023.
+\item T. H. Haveliwala. Topic-sensitive pagerank. In D. Lassner, D. D. Roure, and A. Iyengar, editors, Proceedings of the Eleventh International World Wide Web Conference, WWW 2002, May 7-11, 2002, Honolulu, Hawaii, USA, pages 517--526. ACM, 2002. doi: 10.1145/511446.511513. URL \url{https://dl.acm.org/doi/10.1145/511446.511513}.
+\item Q. He, Y. Wang, and W. Wang. Can language models act as knowledge bases at scale?, 2024.
+\item Z. He, L. Karlinsky, D. Kim, J. McAuley, D. Krotov, and R. Feris. CAMELot: Towards large language models with training-free consolidated associative memory. In First Workshop on Long-Context Foundation Models @ ICML 2024, 2024. URL \url{https://openreview.net/forum?id=VLDTzg1a4Y}.
+\item X. Ho, A.-K. Duong Nguyen, S. Sugawara, and A. Aizawa. Constructing a multi-hop QA dataset for comprehensive evaluation of reasoning steps. In D. Scott, N. Bel, and C. Zong, editors, Proceedings of the 28th International Conference on Computational Linguistics, pages 6609--6625, Barcelona, Spain (Online), Dec. 2020. International Committee on Computational Linguistics. doi: 10.18653/v1/2020.coling-main.580. URL \url{https://aclanthology.org/2020.coling-main.580}.
+\item P.-L. Huguet Cabot and R. Navigli. REBEL: Relation extraction by end-to-end language generation. In M.-F. Moens, X. Huang, L. Specia, and S. W.-t. Yih, editors, Findings of the Association for Computational Linguistics: EMNLP 2021, pages 2370--2381, Punta Cana, Dominican Republic, Nov. 2021. Association for Computational Linguistics. doi: 10.18653/v1/2021.findings-emnlp.204. URL \url{https://aclanthology.org/2021.findings-emnlp.204}.
+\item G. Izacard, M. Caron, L. Hosseini, S. Riedel, P. Bojanowski, A. Joulin, and E. Grave. Unsupervised dense information retrieval with contrastive learning, 2021. URL \url{https://arxiv.org/abs/2112.09118}.
+\item G. Izacard, P. Lewis, M. Lomeli, L. Hosseini, F. Petroni, T. Schick, J. A. Yu, A. Joulin, S. Riedel, and E. Grave. Few-shot learning with retrieval augmented language models. ArXiv, abs/2208.03299, 2022. URL \url{https://arxiv.org/abs/2208.03299}.
+\item J. Jiang, K. Zhou, Z. Dong, K. Ye, X. Zhao, and J.-R. Wen. StructGPT: A general framework for large language model to reason over structured data. In H. Bouamor, J. Pino, and K. Bali, editors, Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing, pages 9237--9251, Singapore, Dec. 2023. Association for Computational Linguistics. doi: 10.18653/v1/2023.emnlp-main.574. URL \url{https://aclanthology.org/2023.emnlp-main.574}.
+\item Z. Jiang, F. Xu, L. Gao, Z. Sun, Q. Liu, J. Dwivedi-Yu, Y. Yang, J. Callan, and G. Neubig. Active retrieval augmented generation. In H. Bouamor, J. Pino, and K. Bali, editors, Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing, pages 7969--7992, Singapore, Dec. 2023. Association for Computational Linguistics. doi: 10.18653/v1/2023.emnlp-main.495. URL \url{https://aclanthology.org/2023.emnlp-main.495}.
+\item S. Kambhampati. Can large language models reason and plan? Annals of the New York Academy of Sciences, 2024. URL \url{https://nyaspubs.onlinelibrary.wiley.com/doi/abs/10.1111/nyas.15125}.
+\item W. Kwon, Z. Li, S. Zhuang, Y. Sheng, L. Zheng, C. H. Yu, J. E. Gonzalez, H. Zhang, and I. Stoica. Efficient memory management for large language model serving with pagedattention. In Proceedings of the ACM SIGOPS 29th Symposium on Operating Systems Principles, 2023.
+\item M. Levy, A. Jacoby, and Y. Goldberg. Same task, more tokens: the impact of input length on the reasoning performance of large language models, 2024.
+\item P. Lewis, E. Perez, A. Piktus, F. Petroni, V. Karpukhin, N. Goyal, H. K\"uttler, M. Lewis, W.-t. Yih, T. Rockt\"aschel, S. Riedel, and D. Kiela. Retrieval-augmented generation for knowledge-intensive NLP tasks. In Proceedings of the 34th International Conference on Neural Information Processing Systems, NIPS '20, Red Hook, NY, USA, 2020. Curran Associates Inc. ISBN 9781713829546. URL \url{https://dl.acm.org/doi/abs/10.5555/3495724.3496517}.
+\item R. Li and X. Du. Leveraging structured information for explainable multi-hop question answering and reasoning. In H. Bouamor, J. Pino, and K. Bali, editors, Findings of the Association for Computational Linguistics: EMNLP 2023, pages 6779--6789, Singapore, Dec. 2023. Association for Computational Linguistics. doi: 10.18653/v1/2023.findings-emnlp.452. URL \url{https://aclanthology.org/2023.findings-emnlp.452}.
+\item S. Li, X. Li, L. Shang, X. Jiang, Q. Liu, C. Sun, Z. Ji, and B. Liu. Hopretriever: Retrieve hops over wikipedia to answer complex questions. Proceedings of the AAAI Conference on Artificial Intelligence, 35:13279--13287, 05 2021. doi: 10.1609/aaai.v35i15.17568.
+\item T. Li, G. Zhang, Q. D. Do, X. Yue, and W. Chen. Long-context LLMs Struggle with Long In-context Learning, 2024.
+\item Z. Li, N. Zhang, Y. Yao, M. Wang, X. Chen, and H. Chen. Unveiling the pitfalls of knowledge editing for large language models. In The Twelfth International Conference on Learning Representations, 2024. URL \url{https://openreview.net/forum?id=fNktD3ib16}.
+\item Y. Liu, X. Peng, T. Du, J. Yin, W. Liu, and X. Zhang. ERA-CoT: Improving chain-of-thought through entity relationship analysis. In L.-W. Ku, A. Martins, and V. Srikumar, editors, Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), pages 8780--8794, Bangkok, Thailand, Aug. 2024. Association for Computational Linguistics. doi: 10.18653/v1/2024.acl-long.476. URL \url{https://aclanthology.org/2024.acl-long.476}.
+\item L. LUO, Y.-F. Li, R. Haf, and S. Pan. Reasoning on graphs: Faithful and interpretable large language model reasoning. In The Twelfth International Conference on Learning Representations, 2024. URL \url{https://openreview.net/forum?id=ZGNWW7xZ6Q}.
+\item K. Meng, D. Bau, A. Andonian, and Y. Belinkov. Locating and editing factual associations in gpt. In Neural Information Processing Systems, 2022.
+\item E. Mitchell, C. Lin, A. Bosselut, C. Finn, and C. D. Manning. Fast model editing at scale. ArXiv, abs/2110.11309, 2021.
+\item E. Mitchell, C. Lin, A. Bosselut, C. D. Manning, and C. Finn. Memory-based model editing at scale. ArXiv, abs/2206.06520, 2022.
+\item T. T. Nguyen, T. T. Huynh, P. L. Nguyen, A. W.-C. Liew, H. Yin, and Q. V. H. Nguyen. A survey of machine unlearning. arXiv preprint arXiv:2209.02299, 2022.
+\item J. Ni, C. Qu, J. Lu, Z. Dai, G. Hernandez Abrego, J. Ma, V. Zhao, Y. Luan, K. Hall, M.-W. Chang, and Y. Yang. Large dual encoders are generalizable retrievers. In Y. Goldberg, Z. Kozareva, and Y. Zhang, editors, Proceedings of the 2022 Conference on Empirical Methods in Natural Language Processing, pages 9844--9855, Abu Dhabi, United Arab Emirates, Dec. 2022. Association for Computational Linguistics. doi: 10.18653/v1/2022.emnlp-main.669. URL \url{https://aclanthology.org/2022.emnlp-main.669}.
+\item Y. Nie, S. Wang, and M. Bansal. Revealing the importance of semantic retrieval for machine reading at scale. In K. Inui, J. Jiang, V. Ng, and X. Wan, editors, Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing (EMNLP-IJCNLP), pages 2553--2566, Hong Kong, China, Nov. 2019. Association for Computational Linguistics. doi: 10.18653/v1/D19-1258. URL \url{https://aclanthology.org/D19-1258}.
+\item OpenAI. GPT-3.5 Turbo, 2024. URL \url{https://platform.openai.com/docs/models/gpt-3-5-turbo}.
+\item S. Pan, L. Luo, Y. Wang, C. Chen, J. Wang, and X. Wu. Unifying large language models and knowledge graphs: A roadmap. IEEE Transactions on Knowledge and Data Engineering, pages 1--20, 2024. doi: 10.1109/TKDE.2024.3352100.
+\item J. Park, A. Patel, O. Z. Khan, H. J. Kim, and J.-K. Kim. Graph elicitation for guiding multi-step reasoning in large language models, 2024. URL \url{https://arxiv.org/abs/2311.09762}.
+\item S. Park and J. Bak. Memoria: Resolving fateful forgetting problem through human-inspired memory architecture. In ICML, 2024. URL \url{https://openreview.net/forum?id=yTz0u4B8ug}.
+\item A. Paszke, S. Gross, F. Massa, A. Lerer, J. Bradbury, G. Chanan, T. Killeen, Z. Lin, N. Gimelshein, L. Antiga, A. Desmaison, A. K\"opf, E. Z. Yang, Z. DeVito, M. Raison, A. Tejani, S. Chilamkurthy, B. Steiner, L. Fang, J. Bai, and S. Chintala. Pytorch: An imperative style, high-performance deep learning library. In H. M. Wallach, H. Larochelle, A. Beygelzimer, F. d'Alch\'e-Buc, E. B. Fox, and R. Garnett, editors, Advances in Neural Information Processing Systems 32: Annual Conference on Neural Information Processing Systems 2019, NeurIPS 2019, December 8-14, 2019, Vancouver, BC, Canada, pages 8024--8035, 2019. URL \url{https://dl.acm.org/doi/10.5555/3454287.3455008}.
+\item K. Pei, I. Jindal, K. C.-C. Chang, C. Zhai, and Y. Li. When to use what: An in-depth comparative empirical analysis of OpenIE systems for downstream applications. In A. Rogers, J. Boyd-Graber, and N. Okazaki, editors, Proceedings of the 61st Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), pages 929--949, Toronto, Canada, July 2023. Association for Computational Linguistics. doi: 10.18653/v1/2023.acl-long.53. URL \url{https://aclanthology.org/2023.acl-long.53}.
+\item B. Peng, J. Quesnelle, H. Fan, and E. Shippole. Yarn: Efficient context window extension of large language models, 2023.
+\item F. Petroni, T. Rockt\"aschel, S. Riedel, P. Lewis, A. Bakhtin, Y. Wu, and A. Miller. Language models as knowledge bases? In K. Inui, J. Jiang, V. Ng, and X. Wan, editors, Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing (EMNLP-IJCNLP), pages 2463--2473, Hong Kong, China, Nov. 2019. Association for Computational Linguistics. doi: 10.18653/v1/D19-1250. URL \url{https://aclanthology.org/D19-1250}.
+\item O. Press, M. Zhang, S. Min, L. Schmidt, N. Smith, and M. Lewis. Measuring and narrowing the compositionality gap in language models. In H. Bouamor, J. Pino, and K. Bali, editors, Findings of the Association for Computational Linguistics: EMNLP 2023, pages 5687--5711, Singapore, Dec. 2023. Association for Computational Linguistics. doi: 10.18653/v1/2023.findings-emnlp.378. URL \url{https://aclanthology.org/2023.findings-emnlp.378}.
+\item O. Press, M. Zhang, S. Min, L. Schmidt, N. A. Smith, and M. Lewis. Measuring and narrowing the compositionality gap in language models, 2023. URL \url{https://openreview.net/forum?id=PUwbwZJz9dO}.
+\item L. Qiu, Y. Xiao, Y. Qu, H. Zhou, L. Li, W. Zhang, and Y. Yu. Dynamically fused graph network for multi-hop reasoning. In A. Korhonen, D. Traum, and L. M\`arquez, editors, Proceedings of the 57th Annual Meeting of the Association for Computational Linguistics, pages 6140--6150, Florence, Italy, July 2019. Association for Computational Linguistics. doi: 10.18653/v1/P19-1617. URL \url{https://aclanthology.org/P19-1617}.
+\item O. Ram, Y. Levine, I. Dalmedigos, D. Muhlgay, A. Shashua, K. Leyton-Brown, and Y. Shoham. In-context retrieval-augmented language models. Transactions of the Association for Computational Linguistics, 11:1316--1331, 2023. doi: 10.1162/tacl\_a\_00605. URL \url{https://aclanthology.org/2023.tacl-1.75}.
+\item G. Ramesh, M. N. Sreedhar, and J. Hu. Single sequence prediction over reasoning graphs for multi-hop QA. In A. Rogers, J. Boyd-Graber, and N. Okazaki, editors, Proceedings of the 61st Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), pages 11466--11481, Toronto, Canada, July 2023. Association for Computational Linguistics. doi: 10.18653/v1/2023.acl-long.642. URL \url{https://aclanthology.org/2023.acl-long.642}.
+\item M. Reid, N. Savinov, D. Teplyashin, D. Lepikhin, T. Lillicrap, J.-b. Alayrac, R. Soricut, A. Lazaridou, O. Firat, J. Schrittwieser, et al. Gemini 1.5: Unlocking multimodal understanding across millions of tokens of context. arXiv preprint arXiv:2403.05530, 2024. URL \url{https://arxiv.org/abs/2403.05530}.
+\item S. E. Robertson and S. Walker. Some simple effective approximations to the 2-poisson model for probabilistic weighted retrieval. In W. B. Croft and C. J. van Rijsbergen, editors, Proceedings of the 17th Annual International ACM-SIGIR Conference on Research and Development in Information Retrieval. Dublin, Ireland, 3-6 July 1994 (Special Issue of the SIGIR Forum), pages 232--241. ACM/Springer, 1994. doi: 10.1007/978-1-4471-2099-5\_24. URL \url{https://link.springer.com/chapter/10.1007/978-1-4471-2099-5_24}.
+\item K. Santhanam, O. Khattab, J. Saad-Falcon, C. Potts, and M. Zaharia. ColBERTv2: Effective and efficient retrieval via lightweight late interaction. In M. Carpuat, M.-C. de Marneffe, and I. V. Meza Ruiz, editors, Proceedings of the 2022 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies, pages 3715--3734, Seattle, United States, July 2022. Association for Computational Linguistics. doi: 10.18653/v1/2022.naacl-main.272. URL \url{https://aclanthology.org/2022.naacl-main.272}.
+\item P. Sarthi, S. Abdullah, A. Tuli, S. Khanna, A. Goldie, and C. D. Manning. RAPTOR: recursive abstractive processing for tree-organized retrieval. CoRR, abs/2401.18059, 2024. doi: 10.48550/ARXIV.2401.18059. URL \url{https://arxiv.org/abs/2401.18059}.
+\item Z. Shao, Y. Gong, Y. Shen, M. Huang, N. Duan, and W. Chen. Enhancing retrieval-augmented large language models with iterative retrieval-generation synergy. In H. Bouamor, J. Pino, and K. Bali, editors, Findings of the Association for Computational Linguistics: EMNLP 2023, pages 9248--9274, Singapore, Dec. 2023. Association for Computational Linguistics. doi: 10.18653/v1/2023.findings-emnlp.620. URL \url{https://aclanthology.org/2023.findings-emnlp.620}.
+\item W. Shi, S. Min, M. Yasunaga, M. Seo, R. James, M. Lewis, L. Zettlemoyer, and W. tau Yih. Replug: Retrieval-augmented black-box language models. ArXiv, abs/2301.12652, 2023. URL \url{https://api.semanticscholar.org/CorpusID:256389797}.
+\item J. Sun, C. Xu, L. Tang, S. Wang, C. Lin, Y. Gong, L. Ni, H.-Y. Shum, and J. Guo. Think-on-graph: Deep and responsible reasoning of large language model on knowledge graph. In The Twelfth International Conference on Learning Representations, 2024. URL \url{https://openreview.net/forum?id=nnVO1PvbTv}.
+\item T. J. Teyler and P. Discenna. The hippocampal memory indexing theory. Behavioral neuroscience, 100 2:147--54, 1986. URL \url{https://pubmed.ncbi.nlm.nih.gov/3008780/}.
+\item T. J. Teyler and J. W. Rudy. The hippocampal indexing theory and episodic memory: Updating the index. Hippocampus, 17, 2007. URL \url{https://pubmed.ncbi.nlm.nih.gov/17696170/}.
+\item H. Trivedi, N. Balasubramanian, T. Khot, and A. Sabharwal. MuSiQue: Multihop questions via single-hop question composition. Trans. Assoc. Comput. Linguistics, 10:539--554, 2022. doi: 10.1162/TACL\_A\_00475. URL \url{https://aclanthology.org/2022.tacl-1.31/}.
+\item H. Trivedi, N. Balasubramanian, T. Khot, and A. Sabharwal. Interleaving retrieval with chain-of-thought reasoning for knowledge-intensive multi-step questions. In A. Rogers, J. Boyd-Graber, and N. Okazaki, editors, Proceedings of the 61st Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), pages 10014--10037, Toronto, Canada, July 2023. Association for Computational Linguistics. doi: 10.18653/v1/2023.acl-long.557. URL \url{https://aclanthology.org/2023.acl-long.557}.
+\item C. Wang, X. Liu, Y. Yue, X. Tang, T. Zhang, C. Jiayang, Y. Yao, W. Gao, X. Hu, Z. Qi, Y. Wang, L. Yang, J. Wang, X. Xie, Z. Zhang, and Y. Zhang. Survey on factuality in large language models: Knowledge, retrieval and domain-specificity, 2023.
+\item J. Wang, Q. Sun, N. Chen, X. Li, and M. Gao. Boosting language models reasoning with chain-of-knowledge prompting, 2023.
+\item X. Wang, J. Wei, D. Schuurmans, Q. V. Le, E. H. Chi, S. Narang, A. Chowdhery, and D. Zhou. Self-consistency improves chain of thought reasoning in language models. In The Eleventh International Conference on Learning Representations, 2023. URL \url{https://openreview.net/forum?id=1PL1NIMMrw}.
+\item Y. Wang, Y. Gao, X. Chen, H. Jiang, S. Li, J. Yang, Q. Yin, Z. Li, X. Li, B. Yin, J. Shang, and J. Mcauley. MEMORYLLM: Towards self-updatable large language models. In R. Salakhutdinov, Z. Kolter, K. Heller, A. Weller, N. Oliver, J. Scarlett, and F. Berkenkamp, editors, Proceedings of the 41st International Conference on Machine Learning, volume 235 of Proceedings of Machine Learning Research, pages 50453--50466. PMLR, 21--27 Jul 2024. URL \url{https://proceedings.mlr.press/v235/wang24s.html}.
+\item J. Wei, X. Wang, D. Schuurmans, M. Bosma, brian ichter, F. Xia, E. H. Chi, Q. V. Le, and D. Zhou. Chain of thought prompting elicits reasoning in large language models. In A. H. Oh, A. Agarwal, D. Belgrave, and K. Cho, editors, Advances in Neural Information Processing Systems, 2022. URL \url{https://openreview.net/forum?id=_VjQlMeSB_J}.
+\item Y. Wen, Z. Wang, and J. Sun. Mindmap: Knowledge graph prompting sparks graph of thoughts in large language models. arXiv preprint arXiv:2308.09729, 2023.
+\item P. West, C. Bhagavatula, J. Hessel, J. Hwang, L. Jiang, R. Le Bras, X. Lu, S. Welleck, and Y. Choi. Symbolic knowledge distillation: from general language models to commonsense models. In M. Carpuat, M.-C. de Marneffe, and I. V. Meza Ruiz, editors, Proceedings of the 2022 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies, pages 4602--4625, Seattle, United States, July 2022. Association for Computational Linguistics. doi: 10.18653/v1/2022.naacl-main.341. URL \url{https://aclanthology.org/2022.naacl-main.341}.
+\item T. Wolf, L. Debut, V. Sanh, J. Chaumond, C. Delangue, A. Moi, P. Cistac, T. Rault, R. Louf, M. Funtowicz, J. Davison, S. Shleifer, P. von Platen, C. Ma, Y. Jernite, J. Plu, C. Xu, T. L. Scao, S. Gugger, M. Drame, Q. Lhoest, and A. M. Rush. Huggingface's transformers: State-of-the-art natural language processing. ArXiv, abs/1910.03771, 2019. URL \url{https://arxiv.org/abs/1910.03771}.
+\item J. Xie, K. Zhang, J. Chen, R. Lou, and Y. Su. Adaptive chameleon or stubborn sloth: Revealing the behavior of large language models in knowledge conflicts. In The Twelfth International Conference on Learning Representations, 2024. URL \url{https://openreview.net/forum?id=auKAUJZMO6}.
+\item W. Xiong, X. Li, S. Iyer, J. Du, P. Lewis, W. Y. Wang, Y. Mehdad, S. Yih, S. Riedel, D. Kiela, and B. Oguz. Answering complex open-domain questions with multi-hop dense retrieval. In International Conference on Learning Representations, 2021. URL \url{https://openreview.net/forum?id=EMHoBG0avc1}.
+\item Z. Yang, P. Qi, S. Zhang, Y. Bengio, W. W. Cohen, R. Salakhutdinov, and C. D. Manning. HotpotQA: A dataset for diverse, explainable multi-hop question answering. In E. Riloff, D. Chiang, J. Hockenmaier, and J. Tsujii, editors, Proceedings of the 2018 Conference on Empirical Methods in Natural Language Processing, Brussels, Belgium, October 31 - November 4, 2018, pages 2369--2380. Association for Computational Linguistics, 2018. doi: 10.18653/V1/D18-1259. URL \url{https://aclanthology.org/D18-1259/}.
+\item S. Yao, J. Zhao, D. Yu, N. Du, I. Shafran, K. Narasimhan, and Y. Cao. ReAct: Synergizing reasoning and acting in language models. In International Conference on Learning Representations (ICLR), 2023.
+\item M. Yasunaga, A. Bosselut, H. Ren, X. Zhang, C. D. Manning, P. Liang, and J. Leskovec. Deep bidirectional language-knowledge graph pretraining. In Neural Information Processing Systems (NeurIPS), 2022. URL \url{https://arxiv.org/abs/2210.09338}.
+\item O. Yoran, T. Wolfson, B. Bogin, U. Katz, D. Deutch, and J. Berant. Answering questions by meta-reasoning over multiple chains of thought. In The 2023 Conference on Empirical Methods in Natural Language Processing, 2023. URL \url{https://openreview.net/forum?id=ebSOK1nV2r}.
+\item W. Yu, D. Iter, S. Wang, Y. Xu, M. Ju, S. Sanyal, C. Zhu, M. Zeng, and M. Jiang. Generate rather than retrieve: Large language models are strong context generators. In The Eleventh International Conference on Learning Representations, 2023. URL \url{https://openreview.net/forum?id=fB0hRu9GZUS}.
+\item K. Zhang, B. Jimenez Gutierrez, and Y. Su. Aligning instruction tasks unlocks large language models as zero-shot relation extractors. In A. Rogers, J. Boyd-Graber, and N. Okazaki, editors, Findings of the Association for Computational Linguistics: ACL 2023, pages 794--812, Toronto, Canada, July 2023. Association for Computational Linguistics. doi: 10.18653/v1/2023.findings-acl.50. URL \url{https://aclanthology.org/2023.findings-acl.50}.
+\item N. Zhang, Y. Yao, B. Tian, P. Wang, S. Deng, M. Wang, Z. Xi, S. Mao, J. Zhang, Y. Ni, et al. A comprehensive study of knowledge editing for large language models. arXiv preprint arXiv:2401.01286, 2024.
+\item X. Zhang, Y. Chen, S. Hu, Z. Xu, J. Chen, M. K. Hao, X. Han, Z. L. Thai, S. Wang, Z. Liu, and M. Sun. $\infty$bench: Extending long context evaluation beyond 100k tokens, 2024.
+\item Z. Zhong, Z. Wu, C. D. Manning, C. Potts, and D. Chen. Mquake: Assessing knowledge editing in language models via multi-hop questions. In Conference on Empirical Methods in Natural Language Processing, 2023. URL \url{https://aclanthology.org/2023.emnlp-main.971.pdf}.
+\item S. Zhou, B. Yu, A. Sun, C. Long, J. Li, and J. Sun. A survey on neural open information extraction: Current status and future directions. In L. D. Raedt, editor, Proceedings of the Thirty-First International Joint Conference on Artificial Intelligence, IJCAI-22, pages 5694--5701. International Joint Conferences on Artificial Intelligence Organization, 7 2022. doi: 10.24963/ijcai.2022/793. URL \url{https://doi.org/10.24963/ijcai.2022/793}. Survey Track.
+\item H. Zhu, H. Peng, Z. Lyu, L. Hou, J. Li, and J. Xiao. Pre-training language model incorporating domain-specific heterogeneous knowledge into a unified representation. Expert Systems with Applications, 215:119369, 2023. ISSN 0957-4174. doi: https://doi.org/10.1016/j.eswa.2022.119369. URL \url{https://www.sciencedirect.com/science/article/pii/S0957417422023879}.
+\item Y. Zhu, L. Pang, Y. Lan, H. Shen, and X. Cheng. Adaptive information seeking for open-domain question answering. In M.-F. Moens, X. Huang, L. Specia, and S. W.-t. Yih, editors, Proceedings of the 2021 Conference on Empirical Methods in Natural Language Processing, pages 3615--3626, Online and Punta Cana, Dominican Republic, Nov. 2021. Association for Computational Linguistics. doi: 10.18653/v1/2021.emnlp-main.293. URL \url{https://aclanthology.org/2021.emnlp-main.293}.
+\end{enumerate}
+
+\appendix
+\section*{附录}
+\addcontentsline{toc}{section}{附录}
+
+在本补充材料中，我们详细阐述以下方面：
+\begin{itemize}[leftmargin=2em]
+\item 附录 A：HippoRAG 流程示例（HippoRAG Pipeline Example）
+\item 附录 B：数据集对比（Dataset Comparison）
+\item 附录 C：消融统计（Ablation Statistics）
+\item 附录 D：内在 OpenIE 评估（Intrinsic OpenIE Evaluation）
+\item 附录 E：路径发现型多跳案例研究（Path-Finding Multi-Hop Case Study）
+\item 附录 F：错误分析（Error Analysis）
+\item 附录 G：成本与效率对比（Cost and Efficiency Comparison）
+\item 附录 H：实现细节与计算需求（Implementation Details \& Compute Requirements）
+\item 附录 I：大语言模型提示词（LLM Prompts）
+\end{itemize}
+
+\section{HippoRAG 流程示例}
+
+为了更好地演示我们的 HippoRAG 流程如何运作，我们使用表~7 中所示的来自 MuSiQue 数据集的路径跟随型示例。我们使用 HippoRAG 的索引和检索过程来跟踪这个问题及其相关语料库的一个子集。该问题、其答案以及其支持文段和干扰文段如图~\ref{fig:3} 所示。索引阶段如图~\ref{fig:4} 所示，同时展示了 OpenIE 过程以及我们知识图谱的相关子图。最后，我们在图~\ref{fig:5} 中阐明检索阶段，包括查询 NER、查询节点检索、PPR 算法如何改变节点概率，以及如何计算排名靠前的检索结果。
+
+\begin{figure}[H]\centering
+\begin{tcolorbox}[colback=white,colframe=black!55,boxrule=0.5pt,left=4pt,right=4pt,top=3pt,bottom=3pt,width=\linewidth]
+\begin{center}\textbf{问题与答案（Question \& Answer）}\end{center}
+\textbf{问题} \quad Alhandra 出生于哪个区（district）？\\
+\textbf{答案} \quad Lisbon
+
+\begin{center}\textbf{支持文段（Supporting Passages）}\end{center}
+\textbf{1. Alhandra (footballer)}
+
+Luís Miguel Assunção Joaquim (born 5 March 1979 in Vila Franca de Xira, Lisbon), known as Alhandra, is a Portuguese retired footballer who played mainly as a left back -- he could also appear as a midfielder.
+
+\textbf{2. Vila Franca de Xira}
+
+Vila Franca de Xira is a municipality in the Lisbon District in Portugal. The population in 2011 was 136,886, in an area of 318.19 km². Situated on both banks of the Tagus River, 32 km north-east of the Portuguese capital Lisbon, settlement in the area dates back to neolithic times, as evidenced by findings in the Cave of Pedra Furada. Vila Franca de Xira is said to have been founded by French followers of Portugal's first king, Afonso Henriques, around 1200.
+
+\begin{center}\textbf{干扰文段（摘录）（Distractor Passages, Excerpts）}\end{center}
+\textbf{1. Chirakkalkulam}\\
+Chirakkalkulam is a small residential area near Kannur town of Kannur District, Kerala state, South India. Chirakkalkulam is located between Thayatheru and Kannur City. Chirakkalkulam's significance arises from the birth of the historic Arakkal Kingdom.
+
+\textbf{2. Frank T. and Polly Lewis House}\\
+The Frank T. and Polly Lewis House is located in Lodi, Wisconsin, United States. It was added to the National Register of Historic Places in 2009. The house is located within the Portage Street Historic District.
+
+\textbf{3. Birth certificate}\\
+In the U.S., the issuance of birth certificates is a function of the Vital Records Office of the states, capital district, territories and former territories \ldots
+\end{tcolorbox}
+\caption{\textbf{HippoRAG 流程示例（问题与标注）。}（顶部）我们提供一个示例问题及其答案。（中部与底部）该问题的支持文段和干扰文段。解决此问题需要两个支持文段。干扰文段的摘录与问题中提到的"区（district）"相关。}
+\label{fig:3}
+\end{figure}
+
+\begin{figure}[H]\centering
+\begin{tcolorbox}[colback=white,colframe=black!55,boxrule=0.5pt,left=4pt,right=4pt,top=3pt,bottom=3pt,width=\linewidth]
+\begin{center}\textbf{索引：支持文段的文段 NER 与 OpenIE}\end{center}
+\footnotesize
+\textbf{1. Alhandra (footballer)}\\
+NER:\\
+\texttt{["5 March 1979", "Alhandra", "Lisbon", "Luís Miguel Assunção Joaquim", "Portuguese", "Vila Franca de Xira"]}
+
+OpenIE:\\
+\texttt{[("Alhandra", "is a", "footballer"),\\
+("Alhandra", "born in", "Vila Franca de Xira"),\\
+("Alhandra", "born in", "Lisbon"),\\
+("Alhandra", "born on", "5 March 1979"),\\
+("Alhandra", "is", "Portuguese"),\\
+("Luís Miguel Assunção Joaquim", "is also known as", "Alhandra")]}
+
+\textbf{2. Vila Franca de Xira}\\
+NER:\\
+\texttt{["2011", "Afonso Henriques", "Cave of Pedra Furada", "French", "Lisbon", "Lisbon District", "Portugal", "Tagus River", "Vila Franca de Xira"]}
+
+OpenIE:\\
+\texttt{[("Vila Franca de Xira", "is a municipality in", "Lisbon District"),\\
+("Vila Franca de Xira", "located in", "Portugal"),\\
+("Vila Franca de Xira", "situated on", "Tagus River"),\\
+("Vila Franca de Xira", "is", "founded by French followers of Afonso Henriques"),\\
+("Tagus River", "located near", "Lisbon"),\\
+("Cave of Pedra Furada", "evidenced settlement in", "neolithic times"),\\
+("Afonso Henriques", "was Portugal's first king in", "1200"),\\
+("Vila Franca de Xira", "had population of", "136,886 in 2011"),\\
+("Vila Franca de Xira", "has area of", "318.19 km²")]}
+\end{tcolorbox}
+\includegraphics[width=0.96\linewidth]{fig4sub.pdf}
+\caption{\textbf{HippoRAG 流程示例（索引）。} 对语料库的每个文段依次进行 NER 和 OpenIE。由此，为整个语料库形成一个开放知识图谱。我们仅展示来自该知识图谱的相关子图。}
+\label{fig:4}
+\end{figure}
+
+\begin{figure}[H]\centering
+\begin{tcolorbox}[colback=white,colframe=black!55,boxrule=0.5pt,left=4pt,right=4pt,top=3pt,bottom=3pt,width=\linewidth]
+\begin{center}\textbf{检索：查询 NER 与节点检索}\end{center}
+\footnotesize
+\begin{tabular}{@{}ll@{}}
+\textbf{问题} & In which district was Alhandra born? \\
+\textbf{NER} & \texttt{["Alhandra"]} \\
+\textbf{节点检索} & \texttt{\{"Alhandra": "Alhandra"\}} \\
+\end{tabular}
+
+\vspace{4pt}
+\begin{center}\textbf{检索：PPR}\end{center}
+\textbf{PPR 引起的节点概率变化}
+
+\begin{tabular}{@{}llll@{}}
+Alhandra & $1.000 \Rightarrow 0.533$ & 5 March 1979 & $0.000 \Rightarrow 0.045$ \\
+Vila Franca de Xira & $0.000 \Rightarrow 0.054$ & Luís Miguel Assunção Joaquim & $0.000 \Rightarrow 0.044$ \\
+Lisbon & $0.000 \Rightarrow 0.049$ & Portugal & $0.000 \Rightarrow 0.009$ \\
+footballer & $0.000 \Rightarrow 0.047$ & Tagus River & $0.000 \Rightarrow 0.007$ \\
+Portuguese & $0.000 \Rightarrow 0.046$ & José Pinto Coelho & $0.000 \Rightarrow 0.004$ \\
+\multicolumn{4}{@{}l}{\ldots} \\
+\end{tabular}
+
+\vspace{4pt}
+\begin{center}\textbf{检索：最终结果}\end{center}
+*PPR 排名靠前的节点已高亮显示。
+
+\textbf{1. Alhandra (footballer)}\\
+Luís Miguel Assunção Joaquim (born 5 March 1979 in Vila Franca de Xira, Lisbon), known as Alhandra, is a Portuguese retired footballer who played mainly as a left back -- he could also appear as a midfielder.
+
+\textbf{2. Vila Franca de Xira}\\
+Vila Franca de Xira is a municipality in the Lisbon District in Portugal. The population in 2011 was 136,886, in an area of 318.19 km². Situated on both banks of the Tagus River, 32 km north-east of the Portuguese capital Lisbon, settlement in the area dates back to neolithic times, as evidenced by findings in the Cave of Pedra Furada. Vila Franca de Xira is said to have been founded by French followers of Portugal's first king, Afonso Henriques, around 1200.
+
+\textbf{3. Portugal}\\
+Portuguese is the official language of Portugal. Portuguese is a Romance language that originated in what is now Galicia and Northern Portugal, originating from Galician-Portuguese, which was the common language of the Galician and Portuguese people until the independence of Portugal. \ldots
+
+\textbf{4. Huguenots}\\
+The first Huguenots to leave France sought freedom from persecution in Switzerland and the Netherlands \ldots A fort, named Fort Coligny, was built to protect them from attack from the Portuguese troops and Brazilian Native Americans. \ldots
+
+\textbf{5. East Timor}\\
+Democratic Republic of Timor - Leste \ldots Capital and largest city Dili $8°\,20'$ S $125°\,20'$ E \ldots
+\end{tcolorbox}
+\caption{\textbf{HippoRAG 流程示例（检索）。} 对于检索，首先从问题中抽取查询中的命名实体（顶部），随后使用检索编码器选出查询节点。在本例中，查询命名实体的名称"Alhandra"与其知识图谱节点相同。（中部）随后，我们根据检索到的查询节点为 PPR 设置个性化概率。经过 PPR 之后，查询节点的概率按照图~\ref{fig:4} 中的子图进行分配，使得节点"Vila France de Xira"获得一定的概率质量。（底部）这些节点概率随后在它们所出现的文段上求和，以获得文段级别的排名。PPR 之后排名靠前的节点在排名靠前的文段中被高亮显示。}
+\label{fig:5}
+\end{figure}
+
+\section{数据集对比}
+
+为了分析我们所用三个数据集之间的差异，我们特别关注干扰文段的质量，即它们能否有效地与支持文段相混淆。我们使用 Contriever [35] 计算问题与候选文段之间的匹配得分，并在图~\ref{fig:6} 中展示它们的密度（density）。在理想情况下，干扰文段得分的分布应接近支持文段得分的均值。然而可以看到，与其他两个数据集相比，HotpotQA 中干扰文段得分的分布要更接近支持文段得分的下界。
+
+\begin{figure}[H]\centering
+\includegraphics[width=\linewidth]{fig6.pdf}
+\caption{由 Contriever 获得的候选文段（干扰文段与支持文段）相似度得分的密度。HotpotQA 干扰文段的相似度得分并不显著大于相似度最低的支持文段，这意味着这些干扰文段的效果不佳。}
+\label{fig:6}
+\end{figure}
+
+\section{消融统计}
+
+我们使用 GPT-3.5 Turbo、REBEL [34] 和 Llama-3.1（8B 和 70B）[1] 进行 OpenIE 消融实验。如表~\ref{tab:8} 所示，与 GPT-3.5 Turbo 和两个 Llama 模型相比，REBEL 生成的节点和边的数量大约只有一半。这表明，相较于同时使用开源和闭源大语言模型，REBEL 在开放信息抽取方面缺乏灵活性。与此同时，两个 Llama-3.1 版本产生的 OpenIE 三元组数量与 GPT-3.5 Turbo 相近。
+
+\begin{table}[H]\centering
+\caption{使用不同 OpenIE 方法的知识图谱统计信息。}
+\label{tab:8}
+\begin{tabular}{llccc}
+\toprule
+模型 & 统计量 & MuSiQue & 2Wiki & HotpotQA \\
+\midrule
+\multirow{4}{*}{\makecell[l]{GPT-3.5 Turbo (1106)\\\relax [55]（默认）}}
+ & 唯一节点数（$N$） & 91{,}729 & 42{,}694 & 82{,}157 \\
+ & 唯一边数（$E$） & 21{,}714 & 7{,}867 & 17{,}523 \\
+ & 唯一三元组数 & 107{,}448 & 50{,}671 & 98{,}709 \\
+ & ColBERTv2 同义边数（$E'$） & 191{,}636 & 82{,}526 & 171{,}856 \\
+\midrule
+\multirow{4}{*}{\makecell[l]{REBEL-large\\\relax [34]}}
+ & 唯一节点数（$N$） & 36{,}653 & 22{,}146 & 30{,}426 \\
+ & 唯一边数（$E$） & 269 & 211 & 262 \\
+ & 唯一三元组数 & 52{,}102 & 30{,}428 & 42{,}038 \\
+ & ColBERTv2 同义边数（$E'$） & 48{,}213 & 33{,}072 & 39{,}053 \\
+\midrule
+\multirow{4}{*}{\makecell[l]{Llama-3.1-8B-Instruct\\\relax [1]}}
+ & 唯一节点数（$N$） & 86{,}864 & 37{,}875 & 76{,}311 \\
+ & 唯一边数（$E$） & 22{,}807 & 6{,}729 & 18{,}109 \\
+ & 唯一三元组数 & 118{,}430 & 47{,}420 & 104{,}981 \\
+ & ColBERTv2 同义边数（$E'$） & 155{,}889 & 72{,}963 & 139{,}181 \\
+\midrule
+\multirow{4}{*}{\makecell[l]{Llama-3.1-70B-Instruct\\\relax [1]}}
+ & 唯一节点数（$N$） & 80{,}634 & 39{,}845 & 70{,}304 \\
+ & 唯一边数（$E$） & 22{,}120 & 6{,}996 & 16{,}404 \\
+ & 唯一三元组数 & 120{,}514 & 55{,}940 & 105{,}281 \\
+ & ColBERTv2 同义边数（$E'$） & 140{,}328 & 69{,}125 & 119{,}948 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{内在 OpenIE 评估}
+
+为了更好地理解 OpenIE 与检索如何相互作用，我们从 MuSiQue 训练数据集的 20 篇文档中抽取了黄金三元组，总共抽取了 239 个黄金三元组。从表~\ref{tab:9} 的结果中，我们首先注意到，像 REBEL 这样的端到端信息抽取系统与大语言模型之间存在巨大差异。此外，我们注意到 OpenIE 与检索性能之间存在一定相关性，因为 8B 的 Llama-3.1-Instruct 版本在检索和内在指标上都逊于其 70B 版本。更具体地说，我们看到这个更大的模型仅在召回率（recall）指标上带来内在改进，而召回率似乎对提升检索性能尤为重要。最后，我们注意到这一评估与检索性能并非完全相关，因为 GPT-3.5 的内在性能远强于 Llama-3.1-70B-Instruct，而其检索得分仅略高一些。
+
+\begin{table}[H]\centering
+\caption{在 20 个带标注文段上使用 CaRB [6] 框架进行的内在 OpenIE 评估。}
+\label{tab:9}
+\begin{tabular}{lcccc}
+\toprule
+ & AUC & Precision & Recall & F1 \\
+\midrule
+GPT-3.5 Turbo (1106) [55]（默认） & 46.5 & 68.4 & 55.2 & 61.1 \\
+Llama-3.1-8B-Instruct [1] & 40.0 & 66.4 & 48.1 & 55.8 \\
+Llama-3.1-70B-Instruct [1] & 42.3 & 66.3 & 50.9 & 57.6 \\
+REBEL [34] & 1.0 & 8.0 & 1.8 & 2.9 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{路径发现型多跳问答案例研究}
+
+如上所述，跨文段的路径发现型多跳问题对于 ColBERTv2 和 IRCoT 等单步和多步 RAG 方法而言极具挑战性。这类问题需要跨多个文段整合信息，以在众多可能的候选项中找到相关实体，例如找出所有从事阿尔茨海默病神经科学研究的斯坦福教授。
+
+\subsection{路径发现型多跳问题的构建过程}
+
+这些问题及其周边经过精选的语料库是通过以下流程构建的。前两个问题所遵循的流程与第三个问题以及正文中的引导性示例略有不同。对于前两个问题，我们首先确定一本书或一部电影，然后找到该书的作者或该电影的导演。接着，我们会找出 1）该书/电影的一个特征，以及 2）该作者/导演的另一个特征。随后，这两个特征被用于从 Wikipedia 中为每个问题抽取干扰项。
+
+对于第三个问题和我们的引导性示例，我们首先随机选择一位教授或一种药物作为每个问题的答案。然后，我们获取该教授所任职的大学或该药物所治疗的疾病，以及该教授或药物的另一个特征（在这些问题中，分别选取了研究主题和作用机制）。在这些问题中，干扰项一方面使用大学或疾病、另一方面使用研究主题或作用机制从 Wikipedia 中抽取。这一过程尽管相当繁琐，但使我们能够精心构建这些具有挑战性但又贴近现实的路径发现型多跳问题。
+
+\subsection{定性分析}
+
+在表~\ref{tab:10} 中，我们展示了来自三个不同领域的另外三个示例，以阐明 HippoRAG 在解决需要此类跨文段知识整合的检索任务方面的潜力。
+
+在表~\ref{tab:10} 的第一个问题中，我们希望找到一本由一位获得特定奖项的英国作者于 2012 年出版的书。与 HippoRAG 不同，ColBERTv2 和 IRCoT 都无法将 Mark Haddon 识别为这样一位作者。ColBERTv2 专注于与奖项相关的文段，而 IRCoT 则错误地判定 Kate Atkinson 是该问题的答案，因为她凭借一本于 1995 年出版的书获得了同一奖项。对于第二个问题，我们希望找到一部由以科幻片和犯罪片闻名的人执导、改编自一本非虚构书籍的战争片。HippoRAG 能够在前四个文段内找到我们的答案 Ridley Scott 执导的 Black Hawk Down，而 ColBERTv2 则完全错过了答案，检索出了其他影片和影片合集。在这个例子中，尽管 IRCoT 能够检索到 Ridley Scott，但它主要是通过参数化知识做到的。其链式思维（chain-of-thought）输出讨论了他和 Denis Villeneuve 的声望以及他们在科幻和犯罪领域的经历。鉴于这里使用的三步迭代限制以及需要探索两位导演的情况，特定的战争片 Black Hawk Down 并未被识别出来。尽管有些曲折，人们经常会问这前两类问题，以便仅凭少数零散的细节回忆起自己看过或听说过的某部特定电影或某本书。
+
+最后，第三个问题与正文中的引导性示例更为相似，它表明了这类问题在现实世界领域中的重要性。在这个问题中，我们询问一种通过特定机制（与胞质 p53 相互作用，cytosolic p53 interaction）来治疗淋巴细胞白血病的药物。HippoRAG 能够利用支持文段内的关联将 Chlorambucil 文段识别为最重要的文段，而 ColBERTv2 和 IRCoT 只能抽取与淋巴细胞白血病相关的文段。有趣的是，IRCoT 利用其参数化知识猜测 Venetoclax（它同样治疗白血病）会通过相关机制起作用，尽管精选数据集中没有任何文段明确陈述这一点。
+
+\begin{table}[H]\centering
+\caption{不同方法在若干路径发现型多跳问题上的排名结果示例。}
+\label{tab:10}
+\renewcommand{\arraystretch}{1.15}
+\footnotesize
+\begin{tabular}{p{3.7cm}p{3.0cm}p{3.2cm}p{3.0cm}}
+\toprule
+问题 & HippoRAG & ColBERTv2 & IRCoT \\
+\midrule
+哪本书是由一位获得 Whitbread 奖的英国作者于 2012 年出版的？ &
+1. Oranges Are Not the Only Fruit \newline 2. William Trevor Legacies \newline 3. Mark Haddon &
+1. World Book Club Prize winners \newline 2. Leon Garfield Awards \newline 3. Twelve Bar Blues (novel) &
+1. Kate Atkinson \newline 2. Leon Garfield Awards \newline 3. Twelve Bar Blues (novel) \\
+\midrule
+哪部改编自非虚构书籍的战争片是由一位在科幻和犯罪题材中享有盛名的人执导的？ &
+1. War Film \newline 2. Time de Zarn \newline 3. Outline of Sci-Fi \newline 4. Black Hawk Down &
+1. Paul Greengrass \newline 2. List of book-based war films \newline 3. Korean War Films \newline 4. All the King's Men Book &
+1. Ridley Scott \newline 2. Peter Hyams \newline 3. Paul Greengrass \newline 4. List of book-based war films \\
+\midrule
+哪种药物通过与胞质 p53 相互作用来治疗慢性淋巴细胞白血病？ &
+1. Chlorambucil \newline 2. Lymphocytic leukemia \newline 3. Mosquito bite allergy &
+1. Lymphocytic leukemia \newline 2. Obinutuzumab \newline 3. Venetoclax &
+1. Venetoclax \newline 2. Lymphocytic leukemia \newline 3. Idelalisib \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{错误分析}
+\subsection{总览}
+
+在本节中，我们对 HippoRAG 在 MuSiQue 数据集上所犯的 100 个错误进行了详细的错误分析。如表~\ref{tab:11} 所示，这些错误可以归为三种主要类型：NER、OpenIE 和 PPR。
+
+主要的错误类型源于我们基于 NER 的设计的局限，约占所有错误样本的一半。正如第~F.2~节进一步讨论的，我们的 NER 设计未能从查询中抽取足够的信息以供检索。例如，在问题"When was one internet browser's version of Windows 8 made accessible?"中，只有短语"Windows 8"被抽取出来，而任何关于"browsers"或"accessibility"的信号都被遗留给后续的图搜索。OpenIE 错误是第二常见的类型，在第~F.3~节中有更详细的讨论。
+
+我们将第三种错误类别定义为：NER 和 OpenIE 都正常运作，但 PPR 算法仍然无法识别相关子图的情形，这通常是由于混淆信号所致。例如，考虑查询"How many refugees emigrated to the European country where Huguenots felt a kinship for emigration?"。尽管"Huguenots"一词从问题和支持文段中都被准确抽取出来，且 PPR 算法以标记为"European"和"Huguenots"的节点为起点，但 PPR 算法难以在它们周围找到界定最相关文段的合适子图。当语料库中存在多个讨论非常相似主题的文段时，就会出现这种情况，因为 PPR 算法无法直接利用查询的上下文。
+
+\begin{table}[H]\centering
+\caption{MuSiQue 上的错误分析。}
+\label{tab:11}
+\begin{tabular}{lc}
+\toprule
+错误类型 & 错误百分比（\%） \\
+\midrule
+NER 局限 & 48 \\
+错误/缺失的 OpenIE & 28 \\
+PPR & 24 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{概念与上下文的权衡}
+
+鉴于本方法在抽取和索引中以实体为中心的特性，它对概念有强烈的偏好，这使得许多上下文信号未被利用。这种设计实现了单步多跳检索，同时也使上下文线索避免对更显著的实体造成干扰。如表~\ref{tab:12} 中的第一个示例所示，ColBERTv2 利用上下文检索出与著名西班牙航海家相关、但与身为拳击手的"Sergio Villanueva"无关的文段。相比之下，HippoRAG 能够聚焦于"Sergio"并检索出一个相关文段。
+
+不幸的是，这种设计也是本方法最大的局限之一，因为忽略上下文线索在我们的小规模错误分析中约占 48\% 的错误。这一问题在第二个示例中更为明显，因为其中的概念较为通用，使得上下文更加重要。由于 HippoRAG 标记的唯一概念是"protons"，它抽取出了与"Uranium"和"nuclear weapons"相关的文段，而 ColBERTv2 则利用上下文抽取出与原子序数（atomic numbers）的发现相关的、更为相关的文段。
+
+\begin{table}[H]\centering
+\caption{展示 MuSiQue 上概念—上下文权衡的示例。}
+\label{tab:12}
+\footnotesize
+\begin{tabular}{p{6.0cm}p{4.0cm}p{4.0cm}}
+\toprule
+问题 & HippoRAG & ColBERTv2 \\
+\midrule
+谁的父亲是一位航海家，曾探索 Sergio Villanueva 日后出生的那片大陆地区的东海岸？ &
+Sergio Villanueva \newline César Gaytan \newline Faustino Reyes &
+Francisco de Eliza (navigator) \newline Exploration of N. America \newline Vicente Pinzón (navigator) \\
+\midrule
+哪项事业涉及了发现每种元素原子中质子数是唯一的那个人？ &
+Uranium \newline Chemical element \newline History of nuclear weapons &
+Atomic number \newline Atomic theory \newline Atomic nucleus \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]\centering
+\caption{单步检索性能。HippoRAG 在 MuSiQue 和 2WikiMultiHopQA 上的表现大幅优于所有基线，并在难度较低的 HotpotQA 数据集上取得相当的性能。}
+\label{tab:13}
+\begin{tabular}{llcccccccc}
+\toprule
+模型 & 检索器 & \multicolumn{2}{c}{MuSiQue} & \multicolumn{2}{c}{2Wiki} & \multicolumn{2}{c}{HotpotQA} & \multicolumn{2}{c}{平均} \\
+\cmidrule(lr){3-4}\cmidrule(lr){5-6}\cmidrule(lr){7-8}\cmidrule(lr){9-10}
+ & & R@2 & R@5 & R@2 & R@5 & R@2 & R@5 & R@2 & R@5 \\
+\midrule
+\multirow{2}{*}{基线}
+ & Contriever & 34.8 & 46.6 & 46.6 & 57.5 & 57.2 & 75.5 & 46.2 & 59.9 \\
+ & ColBERTv2 & 37.9 & 49.2 & 59.2 & 68.2 & 64.7 & 79.3 & 53.9 & 65.6 \\
+\multirow{2}{*}{HippoRAG}
+ & Contriever & 41.0 & 52.1 & 71.5 & 89.5 & 59.0 & 76.2 & 57.2 & 72.6 \\
+ & ColBERTv2 & 40.9 & 51.9 & 70.7 & 89.1 & 60.5 & 77.7 & 57.4 & 72.9 \\
+\multirow{2}{*}{\makecell[l]{HippoRAG 加\\不确定性集成}}
+ & Contriever & 42.3 & 54.5 & 71.3 & 87.2 & 60.6 & 79.1 & 58.1 & 73.6 \\
+ & ColBERTv2 & 42.5 & 54.8 & 71.9 & 89.0 & 62.5 & 80.0 & 59.0 & 74.6 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+为了在概念与上下文之间取得更好的权衡，我们引入一种集成（ensembling）设置：当我们的海马旁区对查询与知识图谱实体之间的链接表现出不确定性时，将 HippoRAG 得分与稠密检索器（dense retrievers）的得分进行集成。这一过程代表了如下情形：上游海马旁信号未能完全激活任何海马体索引，因此必须更多地依赖新皮层。仅当某个查询—知识图谱实体的得分 $\mathrm{cosine\_similarity}(M(c_i), M(e_j))$ 低于阈值 $\theta$ 时，我们才使用不确定性集成（uncertainty ensembling）。例如，如果知识图谱中没有 Stanford 节点，而图中最接近的节点是某个与 Stanford 的余弦相似度低于 $\theta$ 的东西（如 Stanford Medical Center），就会触发集成。不确定性集成的最终文段得分是 HippoRAG 得分与使用模型 $M$ 的标准文段检索得分的平均值，二者均先在所有文段上归一化（normalized）到 0 到 1 之间。
+
+如表~\ref{tab:13} 所示，当 HippoRAG 在"不确定性集成"下与 $M$ 集成时，它在 MuSiQue 上进一步提升，并在 HotpotQA 的 R@5 上超越了我们的基线。如表~\ref{tab:14} 所示，当与 IRCoT 结合使用时，ColBERTv2 集成在 HotpotQA 上的 R@2 和 R@5 两项指标上均超越了之前所有的基线。尽管这种方法的简单性颇具前景，但仍需开展更多工作来解决这一上下文—上下文权衡，因为简单的集成在某些情况下确实会降低性能，尤其是对于 2WikiMultiHopQA 数据集。
+
+\begin{table}[H]\centering
+\caption{多步检索性能。将 HippoRAG 与 IRCoT 等标准的多步检索方法相结合，在全部三个数据集上均带来了显著的改进。}
+\label{tab:14}
+\begin{tabular}{llcccccccc}
+\toprule
+模型 & 检索器 & \multicolumn{2}{c}{MuSiQue} & \multicolumn{2}{c}{2Wiki} & \multicolumn{2}{c}{HotpotQA} & \multicolumn{2}{c}{平均} \\
+\cmidrule(lr){3-4}\cmidrule(lr){5-6}\cmidrule(lr){7-8}\cmidrule(lr){9-10}
+ & & R@2 & R@5 & R@2 & R@5 & R@2 & R@5 & R@2 & R@5 \\
+\midrule
+\multirow{2}{*}{IRCoT}
+ & Contriever & 39.1 & 52.2 & 51.6 & 63.8 & 65.9 & 81.6 & 52.2 & 65.9 \\
+ & ColBERTv2 & 41.7 & 53.7 & 64.1 & 74.4 & 67.9 & 82.0 & 57.9 & 70.0 \\
+\multirow{2}{*}{IRCoT + HippoRAG}
+ & Contriever & 43.9 & 56.6 & 75.3 & 93.4 & 65.8 & 82.3 & 61.7 & 77.4 \\
+ & ColBERTv2 & 45.3 & 57.6 & 75.8 & 93.9 & 67.0 & 83.0 & 62.7 & 78.2 \\
+\multirow{2}{*}{\makecell[l]{IRCoT + HippoRAG\\加不确定性集成}}
+ & Contriever & 44.4 & 58.5 & 75.3 & 91.5 & 66.9 & 85.0 & 62.2 & 78.3 \\
+ & ColBERTv2 & 40.2 & 53.4 & 74.5 & 91.2 & 68.2 & 85.3 & 61.0 & 76.6 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{OpenIE 的局限}
+
+OpenIE 是从非结构化文本中抽取结构化知识的关键步骤。然而，它的不足可能导致知识缺口，进而损害检索和问答能力。如表~\ref{tab:15} 所示，GPT-3.5 Turbo 在 OpenIE 过程中忽略了关键的歌曲标题"Don't Let Me Wait Too Long"。该标题是文段中最重要的元素。一个可能的原因是模型对如此长的实体不敏感。此外，模型未能准确捕捉战争的起止年份，而这些信息对查询至关重要。这是模型经常忽略时间属性（temporal properties）的一个例子。总体而言，这些失败凸显了改进关键信息抽取的必要性。
+
+\begin{table}[H]\centering
+\caption{MuSiQue 上的开放信息抽取错误示例。}
+\label{tab:15}
+\footnotesize
+\begin{tabular}{p{3.6cm}p{6.0cm}p{4.2cm}}
+\toprule
+问题 & 文段 & 遗漏的三元组 \\
+\midrule
+What company is the label responsible for ``Don't Let Me Wait Too Long'' a part of? &
+``Don't Let Me Wait Too Long'' was sequenced on side one of the LP, between the ballads ``The Light That Has Lighted the World'' and ``Who Can See It'' ... &
+(Don't Let Me Wait Too Long, sequenced on, side one of the LP) \\
+\midrule
+When did the president of the Confederate States of America end his fight in the Mexican-American war? &
+Jefferson Davis fought in the Mexican--American War (1846--1848), as the colonel of a volunteer regiment ... &
+(Mexican-American War, starts, 1846), (Mexican-American War, ends, 1848) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{OpenIE 文档长度分析}
+
+最后，我们进行一项小规模的内在实验，以帮助我们理解 OpenIE 方法对文段长度增加的稳健性。表~\ref{tab:16} 中依文段长度划分的评估结果表明，当从较长而非较短的文段中抽取时，GPT-3.5-Turbo 的 OpenIE 结果会大幅恶化。这很可能是由于较长文段具有更高的句子和段落复杂度，从而导致抽取质量下降。由于句子之间存在相互依赖关系，进一步的分块（chunking）只会引发其他问题，因此还需开展更多工作来解决这一局限。
+
+\begin{table}[H]\centering
+\caption{使用 CaRB [6] 框架进行的内在 OpenIE 评估。使用我们默认的 GPT-3.5 Turbo (1106) 模型时，10 个最长与 10 个最短带标注文段之间的性能差异。}
+\label{tab:16}
+\begin{tabular}{lcccc}
+\toprule
+ & AUC & Precision & Recall & F1 \\
+\midrule
+10 个最短文段 & 58.9 & 79.2 & 65.7 & 71.8 \\
+10 个最长文段 & 39.0 & 60.7 & 48.5 & 53.9 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{成本与效率对比}
+
+HippoRAG 相较于迭代式检索方法的主要优势之一，是其单步多跳检索能力在成本和时间两方面带来的显著在线检索效率提升。具体而言，如表~\ref{tab:17} 所示，IRCoT 的检索成本是 HippoRAG 的 10 到 30 倍，因为 HippoRAG 只需从查询中抽取相关的命名实体，而无需处理所有检索到的文档。在使用量极高的系统中，像这样一个数量级的成本差异可能极为重要。在延迟（latency）方面，与 IRCoT 的差异也很显著，尽管更难以精确测量。同样如表~\ref{tab:17} 所示，HippoRAG 的速度可以比 IRCoT 快 6 到 13 倍，具体取决于需要执行的检索轮数（在我们的实验中为 2--4 轮）。\footnote{在 IRCoT 和 HippoRAG 中，我们都使用单线程查询 OpenAI API 进行在线检索。由于 IRCoT 是一个迭代过程，每次迭代都必须顺序执行，因此这些速度比较是恰当的。}
+
+\begin{table}[H]\centering
+\caption{在 1,000 个查询上使用 GPT-3.5 Turbo 进行在线检索的平均成本和效率测量。}
+\label{tab:17}
+\begin{tabular}{lccc}
+\toprule
+ & ColBERTv2 & IRCoT & HippoRAG \\
+\midrule
+API 成本（\$） & 0 & 1--3 & 0.1 \\
+时间（分钟） & 1 & 20--40 & 3 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+尽管 HippoRAG 的离线索引时间和成本高于 IRCoT——每 10,000 个文段大约慢 10 倍、贵 15 美元\footnote{为加快索引速度，我们使用 10 个线程通过 OpenAI API 并行查询 gpt-3.5-turbo-1106。在撰写本文时，该 API 的成本为每百万输入 token 1 美元、每百万输出 token 2 美元。}——但通过利用开源大语言模型，这些成本可以大幅降低。正如我们在表~5 的消融研究中所示，Llama-3.1-70B-Instruct [1] 的性能与 GPT-3.5 Turbo 相近，尽管它可以使用 vLLM [40] 和 4 块 H100 GPU 在本地部署，约 4 小时即可索引 10,000 个文档（如表~\ref{tab:18} 所示）。此外，由于通过本地部署该模型，这些成本还可以进一步降低，因此大规模使用 HippoRAG 的门槛很可能完全在许多机构的计算预算之内。最后，我们注意到，即使大语言模型的生成成本下降，上文讨论的在线检索效率提升依然有效，因为 IRCoT 与 HippoRAG 所需的 token 数量保持不变，且大语言模型的使用很可能仍是系统的主要计算瓶颈。
+
+\begin{table}[H]\centering
+\caption{使用 GPT-3.5 Turbo 以及在本地通过 vLLM 部署的 Llama-3.1（8B 和 70B），在 10,000 个文段上进行离线索引的平均成本和延迟测量。}
+\label{tab:18}
+\begin{tabular}{llccc}
+\toprule
+模型 & 指标 & ColBERTv2 & IRCoT & HippoRAG \\
+\midrule
+\multirow{2}{*}{GPT-3.5 Turbo-1106（主要结果）}
+ & API 成本（\$） & 0 & 0 & 15 \\
+ & 时间（分钟） & 7 & 7 & 60 \\
+\multirow{2}{*}{GPT-3.5 Turbo-0125}
+ & API 成本（\$） & 0 & 0 & 8 \\
+ & 时间（分钟） & 7 & 7 & 60 \\
+\multirow{2}{*}{Llama-3.1-8B-Instruct}
+ & API 成本（\$） & 0 & 0 & 0 \\
+ & 时间（分钟） & 7 & 7 & 120 \\
+\multirow{2}{*}{Llama-3.1-70B-Instruct}
+ & API 成本（\$） & 0 & 0 & 0 \\
+ & 时间（分钟） & 7 & 7 & 250 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{实现细节与计算需求}
+
+除第~3.4~节中包含的细节外，对于 Contriever [35] 和 ColBERTv2 [70]，我们均使用基于 PyTorch [59] 和 HuggingFace [86] 的实现。我们使用 PPR 算法的 python-igraph [13] 实现。对于 BM25，我们采用 Elastic Search [24]。对于多步检索，我们使用与 IRCoT [78] 相同的提示词实现，并在每一步检索 top-10 文段。鉴于 HotpotQA 和 2WikiMultiHopQA 以及 MuSiQue 各自的最大推理链长度，我们将 HotpotQA 和 2WikiMultiHopQA 的最大推理步数设为 2，将 MuSiQue 的设为 4。我们通过将 IRCoT 的基础检索器 BM25 替换为各种检索方法（包括 HippoRAG）来将 IRCoT 与不同的检索器相结合，下文记作"IRCoT + HippoRAG"。\footnote{由于原始的 IRCoT 不为每个检索到的文段提供得分，我们对迭代式检索过程采用束搜索（beam search）。每个候选文段在束搜索过程中保持其历史最高得分。}对于问答阅读器，我们使用 top-5 检索文段作为上下文，并采用 1-shot 问答演示和 CoT 提示策略 [78]。
+
+在计算需求方面，遗憾的是，我们的大部分计算需求并未由 OpenAI 公开。对于使用 ColBERTv2 和 Contriever 进行索引和检索，我们使用 4 块具有 48GB 显存的 NVIDIA RTX A6000 GPU。对于使用 Llama-3.1 模型进行索引，我们使用 4 块具有 80GB 显存的 NVIDIA H100 GPU。最后，我们使用 2 颗 AMD EPYC 7513 32 核处理器来运行 Personalized PageRank 算法。
+
+\section{大语言模型提示词}
+
+我们用于索引和查询 NER 的提示词分别如图~\ref{fig:7} 和图~\ref{fig:8} 所示，而 OpenIE 提示词如图~\ref{fig:9} 所示。
+
+\begin{figure}[H]\centering
+\begin{tcolorbox}[colback=white,colframe=black!55,boxrule=0.5pt,left=4pt,right=4pt,top=3pt,bottom=3pt,width=\linewidth]
+\begin{center}\textbf{文段 NER（索引）（Passage NER, Indexing）}\end{center}
+\small
+\textbf{Instruction:}
+
+Your task is to extract named entities from the given paragraph. Respond with a JSON list of entities.
+
+\textbf{One-Shot Demonstration:}
+
+Paragraph:\\
+\texttt{```}\\
+\texttt{Radio City}\\
+\texttt{Radio City is India's first private FM radio station and was started on 3 July 2001. It plays Hindi, English and regional songs. Radio City recently forayed into New Media in May 2008 with the launch of a music portal - PlanetRadiocity.com that offers music related news, videos, songs, and other music-related features.}\\
+\texttt{```}
+
+\texttt{\{"named\_entities": ["Radio City", "India", "3 July 2001", "Hindi","English", "May 2008", "PlanetRadiocity.com"]\}}
+
+\textbf{Input:}
+
+Paragraph:\\
+\texttt{```}\\
+\texttt{PASSAGE TO INDEX}\\
+\texttt{```}
+\end{tcolorbox}
+\caption{用于索引阶段文段 NER 的提示词。}
+\label{fig:7}
+\end{figure}
+
+\begin{figure}[H]\centering
+\begin{tcolorbox}[colback=white,colframe=black!55,boxrule=0.5pt,left=4pt,right=4pt,top=3pt,bottom=3pt,width=\linewidth]
+\begin{center}\textbf{查询 NER（检索）（Query NER, Retrieval）}\end{center}
+\small
+\textbf{Instruction:}
+
+You're a very effective entity extraction system. Please extract all named entities that are important for solving the questions below. Place the named entities in JSON format.
+
+\textbf{One-Shot Demonstration:}
+
+Question: Which magazine was started first Arthur's Magazine or First for Women?
+
+\texttt{\{"named\_entities": ["First for Women", "Arthur's Magazine"]\}}
+
+\textbf{Input:}
+
+Question: QUERY TO INDEX
+\end{tcolorbox}
+\caption{用于检索阶段查询 NER 的提示词。}
+\label{fig:8}
+\end{figure}
+
+\begin{figure}[H]\centering
+\begin{tcolorbox}[colback=white,colframe=black!55,boxrule=0.5pt,left=4pt,right=4pt,top=3pt,bottom=3pt,width=\linewidth]
+\begin{center}\textbf{开放信息抽取（Open Information Extraction）}\end{center}
+\small
+\textbf{Instruction:}
+
+Your task is to construct an RDF (Resource Description Framework) graph from the given passages and named entity lists. Respond with a JSON list of triples, with each triple representing a relationship in the RDF graph.\\
+Pay attention to the following requirements:\\
+- Each triple should contain at least one, but preferably two, of the named entities in the list for each passage.\\
+- Clearly resolve pronouns to their specific names to maintain clarity.
+
+Convert the paragraph into a JSON dict, it has a named entity list and a triple list.
+
+\textbf{One-Shot Demonstration:}
+
+Paragraph:\\
+\texttt{```}\\
+\texttt{Radio City}\\
+\texttt{Radio City is India's first private FM radio station and was started on 3 July 2001. It plays Hindi, English and regional songs. Radio City recently forayed into New Media in May 2008 with the launch of a music portal - PlanetRadiocity.com that offers music related news, videos, songs, and other music-related features.}\\
+\texttt{```}\\
+\texttt{\{"named\_entities": ["Radio City", "India", "3 July 2001", "Hindi","English", "May 2008", "PlanetRadiocity.com"]\}}
+
+\texttt{\{"triples":}\\
+\texttt{~~[}\\
+\texttt{~~~~["Radio City", "located in", "India"],}\\
+\texttt{~~~~["Radio City", "is", "private FM radio station"],}\\
+\texttt{~~~~["Radio City", "started on", "3 July 2001"],}\\
+\texttt{~~~~["Radio City", "plays songs in", "Hindi"],}\\
+\texttt{~~~~["Radio City", "plays songs in", "English"],}\\
+\texttt{~~~~["Radio City", "forayed into", "New Media"],}\\
+\texttt{~~~~["Radio City", "launched", "PlanetRadiocity.com"],}\\
+\texttt{~~~~["PlanetRadiocity.com", "launched in", "May 2008"],}\\
+\texttt{~~~~["PlanetRadiocity.com", "is", "music portal"],}\\
+\texttt{~~~~["PlanetRadiocity.com", "offers", "news"],}\\
+\texttt{~~~~["PlanetRadiocity.com", "offers", "videos"],}\\
+\texttt{~~~~["PlanetRadiocity.com", "offers", "songs"]}\\
+\texttt{~~]}\\
+\texttt{\}}
+
+\textbf{Input:}
+
+Convert the paragraph into a JSON dict, it has a named entity list and a triple list.\\
+Paragraph:\\
+\texttt{```}\\
+\texttt{PASSAGE TO INDEX}\\
+\texttt{```}\\
+\texttt{\{"named\_entities": [NER LIST]\}}
+\end{tcolorbox}
+\caption{用于索引阶段 OpenIE 的提示词。}
+\label{fig:9}
+\end{figure}
+
+\end{document}

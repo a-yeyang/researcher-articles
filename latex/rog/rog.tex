@@ -1,0 +1,876 @@
+\documentclass[11pt,UTF8,fontset=fandol]{ctexart}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx,float,caption,subcaption}
+\usepackage{booktabs,array,multirow,makecell}
+\usepackage{geometry,enumitem,xcolor}
+\usepackage[hidelinks]{hyperref}
+\usepackage{url}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\geometry{margin=2.3cm}
+\graphicspath{{/Users/yye/project/论文/assets/rog/}}
+\captionsetup{font=small,labelfont=bf}
+\setlength{\parskip}{0.4em}
+
+% 用于呈现提示模板的灰底框
+\usepackage{tcolorbox}
+\newtcolorbox{promptbox}[1][]{
+  colback=gray!8, colframe=gray!55, boxrule=0.6pt, arc=2pt,
+  left=6pt, right=6pt, top=4pt, bottom=4pt, #1}
+
+\renewcommand{\arraystretch}{1.15}
+
+\title{\textbf{在图上推理：忠实且可解释的大语言模型推理}}
+
+\author{Linhao Luo,\quad Yuan-Fang Li,\quad Gholamreza Haffari\\
+莫纳什大学（Monash University），澳大利亚\\
+\texttt{\{linhao.luo,yuanfang.li,Gholamreza.Haffari\}@monash.edu}\\[0.6em]
+Shirui Pan\thanks{通讯作者。}\\
+格里菲斯大学（Griffith University），澳大利亚\\
+\texttt{s.pan@griffith.edu.au}}
+
+\date{发表于国际学习表征会议（ICLR 2024）}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+大语言模型（large language models, LLMs）在复杂任务中展现出令人印象深刻的推理能力。然而，它们缺乏最新知识，并且在推理过程中会出现幻觉（hallucination），这可能导致错误的推理过程，并削弱其性能与可信度。知识图谱（knowledge graphs, KGs）以结构化的形式捕获了海量事实，为推理提供了可靠的知识来源。然而，现有的基于知识图谱的大语言模型推理方法仅把知识图谱当作事实知识库，忽视了其结构信息对推理的重要性。本文提出一种新颖的方法，称为\textbf{在图上推理}（reasoning on graphs, RoG），它将大语言模型与知识图谱相协同，以实现忠实且可解释的推理。具体而言，我们提出一个\emph{规划—检索—推理}（planning-retrieval-reasoning）框架：RoG 首先生成以知识图谱为依据（grounded by KGs）的关系路径（relation paths），作为忠实的规划（plan）；随后利用这些规划从知识图谱中检索有效的推理路径（reasoning paths），供大语言模型进行忠实推理。此外，RoG 不仅通过训练从知识图谱中蒸馏知识以提升大语言模型的推理能力，还允许在推理（inference）阶段与任意大语言模型无缝集成。在两个基准知识图谱问答（KGQA）数据集上的大量实验表明，RoG 在知识图谱推理任务上取得了最先进（state-of-the-art）的性能，并能生成忠实且可解释的推理结果\footnote{代码与数据见：\url{https://github.com/RManLuo/reasoning-on-graphs}}。
+\end{abstract}
+
+\section{引言}
+
+大语言模型（LLMs）在许多自然语言处理（NLP）任务中表现出色（Brown et al., 2020；Bang et al., 2023）。尤为引人注目的是它们通过推理处理复杂任务的能力（Wei et al., 2022；Huang \& Chang, 2023）。为了进一步释放大语言模型的推理能力，研究者提出了\emph{规划并求解}（plan-and-solve）范式（Wang et al., 2023c），即提示（prompt）大语言模型生成一个规划，并执行每一个推理步骤。通过这种方式，大语言模型将复杂的推理任务分解为一系列子任务，并逐步求解（Khot et al., 2022）。
+
+尽管取得了成功，大语言模型仍然受到知识缺乏的限制，并且在推理过程中容易产生幻觉，这可能导致推理过程中的错误（Hong et al., 2023；Wang et al., 2023b）。例如，如图~\ref{fig:1} 所示，大语言模型没有最新的知识，并幻觉出一个错误的推理步骤：“有一个女儿”（has a daughter）。这些问题在很大程度上削弱了大语言模型在高风险场景中的性能与可信度，例如法律判决和医疗诊断。
+
+为了解决这些问题，研究者引入知识图谱（KGs）来提升大语言模型的推理能力（Pan et al., 2024；Luo et al., 2023a）。知识图谱以结构化的形式捕获了丰富的事实知识，为推理提供了忠实的知识来源。作为一项典型的推理任务，知识图谱问答（knowledge graph question answering, KGQA）旨在基于来自知识图谱的知识获得答案（Sun et al., 2019）。以往联合使用知识图谱和大语言模型进行 KGQA 推理的工作大致可分为两类：1) 语义解析方法（semantic parsing methods）（Lan \& Jiang, 2020；Ye et al., 2022），它们使用大语言模型将问题转换为逻辑查询，并在知识图谱上执行该查询以获得答案；2) 检索增强方法（retrieval-augmented methods）（Li et al., 2023；Jiang et al., 2023），它们从知识图谱中检索三元组（triple）作为知识上下文，并使用大语言模型获得最终答案。
+
+虽然语义解析方法能够利用在知识图谱上的推理生成更准确、更可解释的结果，但由于语法和语义上的限制，所生成的逻辑查询往往无法执行，从而得不到答案（Yu et al., 2022a）。检索增强方法更为灵活，并发挥了大语言模型的推理能力。然而，它们仅把知识图谱当作事实知识库，忽视了其结构信息对推理的重要性（Jiang et al., 2022）。例如，如图~\ref{fig:1} 所示，关系路径（即一个关系序列）“child of $\rightarrow$ has son”可用于求解问题“Who is the brother of Justin Bieber?”（谁是 Justin Bieber 的兄弟？）的答案。因此，使大语言模型能够直接在知识图谱上推理，以实现忠实且可解释的推理，是十分必要的。
+
+本文提出一种新颖的方法，称为\textbf{在图上推理}（reasoning on graphs, RoG），它将大语言模型与知识图谱相协同，以进行忠实且可解释的推理。为缓解幻觉与知识缺乏的问题，我们提出一个\emph{规划—检索—推理}框架：RoG 首先通过规划模块（planning module）生成以知识图谱为依据的关系路径，作为忠实的规划；随后，这些规划被检索—推理模块（retrieval-reasoning module）用于从知识图谱中检索有效的推理路径，以进行忠实推理。通过这种方式，我们不仅从知识图谱中检索到最新的知识，还在推理与解释时考虑了知识图谱结构的引导。此外，RoG 的规划模块在推理阶段可以即插即用（plug-and-play）地与不同的大语言模型配合，以提升它们的性能。基于该框架，RoG 通过两个任务进行优化：1) \emph{规划优化}（planning optimization），即从知识图谱中向大语言模型蒸馏知识，以生成忠实的关系路径作为规划；2) \emph{检索—推理优化}（retrieval-reasoning optimization），即使大语言模型能够基于检索到的路径进行忠实推理并生成可解释的结果。我们在两个基准 KGQA 数据集上进行了大量实验，结果表明 RoG 在知识图谱推理任务上取得了最先进的性能，并能生成忠实且可解释的推理结果。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{cand_p02_k00.pdf}
+\caption{大语言模型推理中知识缺乏与幻觉的问题，以及如何利用来自知识图谱的三元组与关系路径加以解决。}
+\label{fig:1}
+\end{figure}
+
+\section{相关工作}
+
+\paragraph{大语言模型推理提示（LLM Reasoning Prompt）。}
+已有许多研究通过提示来发挥大语言模型的推理能力，以处理复杂任务（Wei et al., 2022；Wang et al., 2022；Yao et al., 2023；Besta et al., 2023）。规划并求解（Plan-and-solve）（Wang et al., 2023c）提示大语言模型生成一个规划并据此进行推理。DecomP（He et al., 2021）提示大语言模型将推理任务分解为一系列子任务并逐步求解。然而，幻觉与知识缺乏的问题影响了大语言模型推理的忠实性。ReACT（Yao et al., 2022）把大语言模型当作智能体（agent），通过与环境交互来获取用于推理的最新知识。为探索忠实推理，FAME（Hong et al., 2023）引入蒙特卡洛规划（Monte-Carlo planning）来生成忠实的推理步骤。RR（He et al., 2022）和 KD-CoT（Wang et al., 2023b）则进一步从知识图谱中检索相关知识，为大语言模型生成忠实的推理规划。
+
+\paragraph{知识图谱问答（Knowledge Graph Question Answering, KGQA）。}
+传统的基于嵌入（embedding）的方法在嵌入空间中表示实体（entity）和关系（relation），并设计特殊的模型架构（例如键值记忆网络（Key-Value memory networks）、序列模型和图神经网络（graph neural networks））来推理答案（Miller et al., 2016；He et al., 2021；Yasunaga et al., 2021）。为将大语言模型用于 KGQA，检索增强方法旨在从知识图谱中检索相关事实以提升推理性能（Li et al., 2023；Karpukhin et al., 2020）。近来，UniKGQA（Jiang et al., 2022）将图检索与推理过程统一到一个带大语言模型的单一模型中，取得了最先进（state-of-the-art, SOTA）的性能。语义解析方法通过大语言模型将问题转换为结构化查询（例如 SPARQL），并可由查询引擎执行该查询以在知识图谱上推理答案（Sun et al., 2020；Lan \& Jiang, 2020）。然而，这些方法严重依赖所生成查询的质量。如果查询不可执行，则无法生成任何答案。DECAF（Yu et al., 2022a）将语义解析与大语言模型推理相结合，联合生成答案，同样在 KGQA 任务上取得了显著的性能。
+
+\section{预备知识}
+
+\paragraph{知识图谱（Knowledge Graphs, KGs）}
+以三元组集合的形式包含丰富的事实知识：$\mathcal{G} = \{(e, r, e') \mid e, e' \in \mathcal{E}, r \in \mathcal{R}\}$，其中 $\mathcal{E}$ 和 $\mathcal{R}$ 分别表示实体集合与关系集合。
+
+\paragraph{关系路径（Relation Paths）}
+是一个关系序列：$z = \{r_1, r_2, \ldots, r_l\}$，其中 $r_i \in \mathcal{R}$ 表示路径中的第 $i$ 个关系，$l$ 表示路径的长度。
+
+\paragraph{推理路径（Reasoning Paths）}
+是关系路径 $z$ 在知识图谱中的实例：$w_z = e_0 \xrightarrow{r_1} e_1 \xrightarrow{r_2} \cdots \xrightarrow{r_l} e_l$，其中 $e_i \in \mathcal{E}$ 表示第 $i$ 个实体，$r_i$ 表示关系路径 $z$ 中的第 $i$ 个关系。
+
+\textbf{例 1.} 给定一条关系路径 $z = \text{marry\_to} \rightarrow \text{father\_of}$，一个推理路径实例可以是 $w_z = \text{Alice} \xrightarrow{\text{marry\_to}} \text{Bob} \xrightarrow{\text{father\_of}} \text{Charlie}$，它表示“Alice”嫁给了“Bob”，且“Bob”是“Charlie”的父亲。
+
+\paragraph{知识图谱问答（Knowledge Graph Question Answering, KGQA）}
+是一项基于知识图谱的典型推理任务。给定一个自然语言问题 $q$ 和一个知识图谱 $\mathcal{G}$，该任务旨在设计一个函数 $f$，基于来自 $\mathcal{G}$ 的知识预测答案 $a \in \mathcal{A}_q$，即 $a = f(q, \mathcal{G})$。遵循以往工作（Sun et al., 2019；Jiang et al., 2022），我们假设问题 $q$ 中提及的实体 $e_q \in \mathcal{T}_q$ 与答案 $a \in \mathcal{A}_q$ 均已被标注，并链接到 $\mathcal{G}$ 中相应的实体，即 $\mathcal{T}_q, \mathcal{A}_q \subseteq \mathcal{E}$。
+
+\section{方法}
+
+本节介绍我们的方法\emph{在图上推理}（RoG），它包含两个组件：1) 规划模块，生成以知识图谱为依据的关系路径作为忠实的规划；2) 检索—推理模块，先根据规划从知识图谱中检索有效的推理路径，然后基于检索到的推理路径进行忠实推理，并生成带有可解释解释的答案。RoG 的总体框架如图~\ref{fig:2} 所示。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.98\linewidth]{cand_p03_k00.pdf}
+\caption{在图上推理（RoG）的总体框架。1) 给定一个问题，我们首先提示大语言模型生成若干以知识图谱为依据的关系路径作为规划；2) 然后，我们利用这些规划从知识图谱中检索推理路径；3) 最后，我们基于检索到的推理路径进行忠实推理，并生成带有可解释解释的答案。橙色和红色矩形分别表示问题和答案中提及的实体。}
+\label{fig:2}
+\end{figure}
+
+\subsection{在图上推理：规划—检索—推理}
+
+近来，研究者探索了许多通过规划来提升大语言模型推理能力的技术，即先提示大语言模型生成一个推理规划，然后基于该规划进行推理（Wang et al., 2023c）。然而，大语言模型以存在幻觉问题而著称，容易生成错误的规划并导致错误的答案（Ji et al., 2023）。为解决这一问题，我们提出一个新颖的\emph{规划—检索—推理}框架，它使推理规划以知识图谱为依据，然后检索忠实的推理路径供大语言模型推理。
+
+关系路径捕获了实体之间的语义关系，已被应用于知识图谱上的许多推理任务（Wang et al., 2021；Xu et al., 2022）。此外，与动态更新的实体相比，知识图谱中的关系更为稳定（Wang et al., 2023a）。通过使用关系路径，我们总能从知识图谱中检索到最新的知识用于推理。因此，关系路径可以作为推理 KGQA 任务答案的忠实规划。
+
+\textbf{例 2.} 给定一个问题“Who is the child of Alice”（谁是 Alice 的孩子），我们可以生成一条关系路径作为规划：$z = \text{marry\_to} \rightarrow \text{father\_of}$。这条关系路径表达了如下规划：1) 找到“Alice”所嫁的人；2) 找到那个人的孩子。我们可以通过从知识图谱中检索推理路径来执行该规划（关系路径）：$w_z = \text{Alice} \xrightarrow{\text{marry\_to}} \text{Bob} \xrightarrow{\text{father\_of}} \text{Charlie}$。最后，我们可以基于该推理路径回答问题，即“Charlie”。
+
+通过将关系路径视为规划，我们可以确保规划以知识图谱为依据，从而使大语言模型能够在图上进行忠实且可解释的推理。简而言之，我们将 RoG 形式化为一个优化问题，其目标是：通过生成关系路径 $z$ 作为规划，最大化针对问题 $q$ 从知识图谱 $\mathcal{G}$ 中推理出答案的概率：
+\begin{equation}
+P_\theta(a \mid q, \mathcal{G}) = \sum_{z \in \mathcal{Z}} P_\theta(a \mid q, z, \mathcal{G}) P_\theta(z \mid q),
+\end{equation}
+其中 $\theta$ 表示大语言模型的参数，$z$ 表示大语言模型生成的关系路径（规划），$\mathcal{Z}$ 表示可能的关系路径集合。后一项 $P_\theta(z \mid q)$ 是在给定问题 $q$ 时，生成以知识图谱为依据的忠实关系路径 $z$ 的概率，由规划模块实现。前一项 $P_\theta(a \mid q, z, \mathcal{G})$ 是在给定问题 $q$、关系路径 $z$ 和知识图谱 $\mathcal{G}$ 时，推理出答案 $a$ 的概率，由检索—推理模块计算。
+
+\subsection{优化框架}
+
+尽管生成关系路径作为规划具有优势，但大语言模型对知识图谱中所包含的关系一无所知。因此，大语言模型无法直接生成以知识图谱为依据的关系路径作为忠实的规划。此外，大语言模型可能无法正确理解推理路径并据此进行推理。为解决这些问题，我们设计了两个指令微调（instruction tuning）任务：1) 规划优化，将知识图谱中的知识蒸馏到大语言模型中，以生成忠实的关系路径作为规划；2) 检索—推理优化，使大语言模型能够基于检索到的推理路径进行推理。
+
+公式~(1) 中的目标函数可以通过最大化证据下界（evidence lower bound, ELBO）（Jordan et al., 1999）来优化，其形式化表示为
+\begin{equation}
+\log P(a \mid q, \mathcal{G}) \geq \mathbb{E}_{z \sim Q(z)} \left[ \log P_\theta(a \mid q, z, \mathcal{G}) \right] - D_{\mathrm{KL}}\!\left( Q(z) \,\|\, P_\theta(z \mid q) \right),
+\end{equation}
+其中 $Q(z)$ 表示以知识图谱为依据的忠实关系路径的后验分布（posterior distribution）。后一项最小化后验与先验之间的 KL 散度（KL divergence），从而鼓励大语言模型生成忠实的关系路径（规划优化）。前一项最大化检索—推理模块基于关系路径和知识图谱生成正确答案的期望（检索—推理优化）。
+
+\paragraph{规划优化（Planning optimization）。}
+在规划优化中，我们旨在将知识图谱中的知识蒸馏到大语言模型中，以生成忠实的关系路径作为规划。这可以通过最小化与忠实关系路径后验分布 $Q(z)$ 之间的 KL 散度来实现，而该后验分布可由知识图谱中的有效关系路径近似。
+
+给定一个问题 $q$ 和一个答案 $a$，我们可以在知识图谱中找到连接 $e_q$ 和 $e_a$ 的路径实例 $w_z(e_q, e_a) = e_q \xrightarrow{r_1} e_1 \xrightarrow{r_2} \cdots \xrightarrow{r_l} e_a$。相应的关系路径 $z = \{r_1, r_2, \ldots, r_l\}$ 可以被视为有效，并作为回答问题 $q$ 的忠实规划。后验分布 $Q(z)$ 可形式化地近似为
+\begin{equation}
+Q(z) \simeq Q(z \mid a, q, \mathcal{G}) =
+\begin{cases}
+\dfrac{1}{|\mathcal{Z}|}, & \exists\, w_z(e_q, e_a) \in \mathcal{G}, \\[1.2ex]
+0, & \text{其他},
+\end{cases}
+\end{equation}
+其中我们假设在所有有效关系路径 $\mathcal{Z}$ 上服从均匀分布，$\exists\, w_z(e_q, e_a) \in \mathcal{G}$ 表示在 $\mathcal{G}$ 中存在一条连接问题实体 $e_q$ 与答案实体 $e_a$ 的路径实例。因此，KL 散度可计算为
+\begin{equation}
+\mathcal{L}_{\text{plan}} = D_{\mathrm{KL}}\!\left( Q(z) \,\|\, P_\theta(z \mid q) \right) = D_{\mathrm{KL}}\!\left( Q(z \mid a, q, \mathcal{G}) \,\|\, P_\theta(z \mid q) \right) \simeq -\frac{1}{|\mathcal{Z}^*|} \sum_{z \in \mathcal{Z}^*} \log P_\theta(z \mid q),
+\end{equation}
+其中我们使用知识图谱中 $e_q$ 与 $e_a$ 之间的最短路径 $\mathcal{Z}^* \subseteq \mathcal{Z}$ 作为监督信号（Zhang et al., 2022）。详细推导见附录~A.1。通过优化公式~(4)，我们经由从知识图谱蒸馏知识，最大化大语言模型生成忠实关系路径的概率。
+
+\paragraph{检索—推理优化（Retrieval-reasoning optimization）。}
+在检索—推理优化中，我们旨在使大语言模型能够基于检索到的推理路径进行推理。对于检索—推理模块，我们遵循 FiD 框架（Izacard \& Grave, 2021；Singh et al., 2021），它允许在多条检索到的推理路径上进行推理\footnote{FiD 框架假设每个 $z \in \mathcal{Z}$ 独立地作出贡献，其中概率 $P_\theta(a \mid q, \mathcal{Z}, \mathcal{G})$ 可近似为每个 $P_\theta(a \mid q, z, \mathcal{G})$ 的乘积。}，形式化为
+\begin{equation}
+P_\theta(a \mid q, \mathcal{Z}, \mathcal{G}) = \prod_{z \in \mathcal{Z}} P_\theta(a \mid q, z, \mathcal{G}).
+\end{equation}
+通过用 $K$ 个采样得到的规划 $\mathcal{Z}_K^* \subseteq \mathcal{Z}^*$ 来近似该期望，推理优化的目标函数可写为
+\begin{equation}
+\mathcal{L}_{\text{reason}} = \mathbb{E}_{z \sim Q(z \mid a, q, \mathcal{G})} \left[ \log P_\theta(a \mid q, z, \mathcal{G}) \right] = \sum_{z \in \mathcal{Z}_K^*} \log P_\theta(a \mid q, z, \mathcal{G}) = \log P_\theta(a \mid q, \mathcal{Z}_K^*, \mathcal{G}).
+\end{equation}
+这最大化了大语言模型基于检索到的推理路径生成正确答案的概率。
+
+RoG 的最终目标函数是规划优化与检索—推理优化的组合，可形式化为
+\begin{equation}
+\mathcal{L} = \underbrace{\log P_\theta(a \mid q, \mathcal{Z}_K^*, \mathcal{G})}_{\text{检索—推理}} + \underbrace{\frac{1}{|\mathcal{Z}^*|} \sum_{z \in \mathcal{Z}^*} \log P_\theta(z \mid q)}_{\text{规划}}.
+\end{equation}
+从公式~(7) 可以看出，我们对规划与推理采用同一个大语言模型，二者在两个指令微调任务（即规划与检索—推理）上联合训练。我们将在以下小节中讨论这两个任务的实现细节。
+
+\subsection{规划模块}
+
+规划模块旨在生成忠实的关系路径作为回答问题的规划。为利用大语言模型的指令遵循（instruction-following）能力（Wei et al., 2021），我们设计了一个简单的指令模板，提示大语言模型生成关系路径：
+
+\begin{promptbox}
+Please generate a valid relation path that can be helpful for answering the following question: <Question>
+\end{promptbox}
+
+其中 \texttt{<Question>} 表示问题 $q$。问题连同指令模板被输入到大语言模型中以生成关系路径，这些关系路径被结构化地格式化为一个句子：
+\[
+z = \texttt{<PATH>}\; r_1\; \texttt{<SEP>}\; r_2\; \texttt{<SEP>}\; \ldots\; \texttt{<SEP>}\; r_l\; \texttt{</PATH>}
+\]
+其中 \texttt{<PATH>}、\texttt{<SEP>}、\texttt{</PATH>} 是分别表示关系路径的起始、分隔与结束的特殊标记（token）\footnote{关系名 $r_*$ 可能会被切分为多个 token。例如，“born in”可能被分词器切分为“born”和“ in”。通过这种方式，我们可以充分利用关系名中的语义信息，并泛化到不同的知识图谱。}。
+
+因此，$\mathcal{L}_{\text{plan}}$ 的优化可以实现为
+\begin{equation}
+\arg\max_\theta \frac{1}{|\mathcal{Z}^*|} \sum_{z \in \mathcal{Z}^*} \log P_\theta(z \mid q) = \frac{1}{|\mathcal{Z}^*|} \sum_{z \in \mathcal{Z}^*} \log \prod_{i=1}^{|z|} P_\theta(r_i \mid r_{<i}, q),
+\end{equation}
+其中 $P_\theta(z \mid q)$ 表示生成忠实关系路径 $z$ 的先验分布，$P_\theta(r_i \mid r_{<i}, q)$ 表示 $z$ 中每个 token 由大语言模型生成的概率。
+
+\subsection{检索—推理模块}
+
+\paragraph{检索（Retrieval）。}
+给定一个问题 $q$ 和一条作为规划的关系路径 $z$，检索模块旨在从知识图谱 $\mathcal{G}$ 中检索推理路径 $w_z$。检索过程可通过在 $\mathcal{G}$ 中查找从问题实体 $e_q$ 出发并遵循关系路径 $z$ 的路径来完成，形式化为
+\begin{equation}
+\mathcal{W}_z = \left\{ w_z(e_q, e_*) \;\middle|\; w_z(e_q, e_*) = e_q \xrightarrow{r_1} e_1 \xrightarrow{r_2} \cdots \xrightarrow{r_l} e_{a*},\; w_z(e_q, e_*) \in \mathcal{G} \right\}.
+\end{equation}
+我们采用一种受约束的广度优先搜索（constrained breadth-first search）从知识图谱中检索推理路径 $w_z$。在实验中，所有检索到的路径都用于推理。详细的检索算法见附录~A.3。
+
+尽管我们可以利用检索到的推理路径并通过多数投票（majority voting）直接得到答案，但检索到的推理路径可能含有噪声且与问题无关，从而导致错误的答案（He et al., 2021；Zhang et al., 2022）。因此，我们提出一个推理模块，以探索大语言模型识别重要推理路径并据此回答问题的能力。
+
+\paragraph{推理（Reasoning）。}
+推理模块接收问题 $q$ 和一组推理路径 $\mathcal{W}_z$，以生成答案 $a$。类似地，我们设计了一个推理指令提示，引导大语言模型基于检索到的推理路径 $\mathcal{W}_z$ 进行推理。$\mathcal{W}_z$ 同样被格式化为一系列结构化句子。详细的提示见附录~A.10。
+
+$\mathcal{L}_{\text{reason}}$ 的优化可写为
+\begin{equation}
+\arg\max_\theta \log P_\theta(a \mid q, \mathcal{Z}_K^*, \mathcal{G}) = \log \sum_{z \in \mathcal{Z}_K^*} \sum_{w_z \in \mathcal{W}_z} \prod_{i=1}^{|a|} P_\theta(t_i \mid t_{<i}, q, w_z),
+\end{equation}
+其中 $P_\theta(a \mid q, \mathcal{Z}_K, \mathcal{G})$ 表示基于 $K$ 条关系路径 $\mathcal{Z}_K$ 推理出正确答案 $a$ 的概率，$t_*$ 表示答案 $a$ 的 token。
+
+\section{实验}
+
+在实验中，我们旨在回答以下研究问题：\textbf{RQ1}：RoG 能否在 KGQA 任务上取得最先进的性能？\textbf{RQ2}：RoG 的规划模块能否与其他大语言模型集成以提升它们的性能？\textbf{RQ3}：RoG 能否进行忠实推理并生成可解释的推理结果？
+
+\subsection{实验设置}
+
+\paragraph{数据集（Datasets）。}
+我们在两个基准 KGQA 数据集上评估 RoG 的推理能力：WebQuestionSP（WebQSP）（Yih et al., 2016）和 Complex WebQuestions（CWQ）（Talmor \& Berant, 2018），它们包含最多 4 跳（hop）的问题。Freebase（Bollacker et al., 2008）是两个数据集的背景知识图谱，包含约 8800 万个实体、2 万种关系和 1.26 亿条三元组。数据集的细节见附录~A.4。
+
+\paragraph{基线（Baselines）。}
+我们将 RoG 与 21 个基线进行比较，这些基线归为 5 类：1) 基于嵌入的方法，2) 检索增强方法，3) 语义解析方法，4) 大语言模型，以及 5) 大语言模型+知识图谱（LLMs+KGs）方法。各基线的细节见附录~A.5。
+
+\paragraph{评估指标（Evaluation Metrics）。}
+遵循以往工作，我们使用 Hits@1 和 F1 作为评估指标。Hits@1 衡量 top-1 预测答案正确的问题所占比例。由于一个问题可能对应多个答案，F1 考虑了对所有答案的覆盖，平衡了所预测答案的精确率（precision）与召回率（recall）。
+
+\paragraph{实现（Implementations）。}
+对于 RoG，我们使用 LLaMA2-Chat-7B（Touvron et al., 2023）作为大语言模型骨干（backbone），并在 WebQSP 和 CWQ 的训练划分以及 Freebase 上进行 3 个轮次（epoch）的指令微调。我们使用束搜索（beam-search）为每个问题生成 top-3 关系路径。由于 UniKGQA（Jiang et al., 2022）和 DECAF（Yu et al., 2022a）是最先进的方法，我们直接引用其论文中报告的结果以及其他基线的结果进行比较。对于大语言模型，我们使用零样本（zero-shot）提示进行 KGQA。详细设置见附录~A.6。
+
+\subsection{RQ1：KGQA 性能比较}
+
+\paragraph{主要结果（Main Results）。}
+本节中，我们在 KGQA 任务上将 RoG 与其他基线进行比较。结果如表~\ref{tab:1} 所示。我们的方法在两个数据集上的大多数指标上都取得了最佳性能。具体而言，在 WebQSP 上，与 SOTA 方法 DECAF（Yu et al., 2022a）相比，我们的方法将 Hits@1 提升了 4.4\%。在因多跳问题而更具挑战性的 CWQ 数据集上，与 SOTA 模型 UniKGQA（Jiang et al., 2022）相比，我们的方法将 Hits@1 和 F1 分别提升了 22.3\% 和 14.4\%。这些结果表明我们的方法在 KGQA 中具有卓越的推理能力。
+
+在其他方法中，检索增强方法通过从知识图谱中检索相关子图（subgraph）降低了推理复杂度，其性能优于传统的基于嵌入的方法。此外，SR+NSM 和 SR+NSM+E2E 采用基于关系路径的检索，取得了更好的性能，凸显了关系路径的重要性。语义解析方法在 WebQSP 上的表现优于检索方法，但在 CWQ 上较差，这是由于为 CWQ 中的复杂问题生成逻辑查询的复杂性所致。虽然基于大语言模型的方法取得了可比的性能，但如第~5.4~节所示，它们受到幻觉和知识缺乏的限制。大语言模型+知识图谱方法取得了第二好的性能，这表明统一知识图谱与大语言模型进行推理是有效的。
+
+\begin{table}[H]
+\centering
+\caption{在两个 KGQA 数据集上与不同基线的性能比较。}
+\label{tab:1}
+\begin{tabular}{llcccc}
+\toprule
+\multirow{2}{*}{类型} & \multirow{2}{*}{方法} & \multicolumn{2}{c}{WebQSP} & \multicolumn{2}{c}{CWQ} \\
+\cmidrule(lr){3-4} \cmidrule(lr){5-6}
+ & & Hits@1 & F1 & Hits@1 & F1 \\
+\midrule
+\multirow{5}{*}{Embedding}
+ & KV-Mem (Miller et al., 2016)        & 46.7 & 34.5 & 18.4 & 15.7 \\
+ & EmbedKGQA (Saxena et al., 2020)     & 66.6 & -    & 45.9 & -    \\
+ & NSM (He et al., 2021)               & 68.7 & 62.8 & 47.6 & 42.4 \\
+ & TransferNet (Shi et al., 2021)      & 71.4 & -    & 48.6 & -    \\
+ & KGT5 (Saxena et al., 2022)          & 56.1 & -    & 36.5 & -    \\
+\midrule
+\multirow{4}{*}{Retrieval}
+ & GraftNet (Sun et al., 2018)         & 66.4 & 60.4 & 36.8 & 32.7 \\
+ & PullNet (Sun et al., 2019)          & 68.1 & -    & 45.9 & -    \\
+ & SR+NSM (Zhang et al., 2022)         & 68.9 & 64.1 & 50.2 & 47.1 \\
+ & SR+NSM+E2E (Zhang et al., 2022)     & 69.5 & 64.1 & 49.3 & 46.3 \\
+\midrule
+\multirow{4}{*}{Semantic Parsing}
+ & SPARQL (Sun et al., 2020)           & -    & -    & 31.6 & -    \\
+ & QGG (Lan \& Jiang, 2020)            & 73.0 & 73.8 & 36.9 & 37.4 \\
+ & ArcaneQA (Gu \& Su, 2022)           & -    & 75.3 & -    & -    \\
+ & RnG-KBQA (Ye et al., 2022)          & -    & 76.2 & -    & -    \\
+\midrule
+\multirow{5}{*}{LLMs}
+ & Flan-T5-xl (Chung et al., 2022)        & 31.0 & - & 14.7 & - \\
+ & Alpaca-7B (Taori et al., 2023)         & 51.8 & - & 27.4 & - \\
+ & LLaMA2-Chat-7B (Touvron et al., 2023)  & 64.4 & - & 34.6 & - \\
+ & ChatGPT                                & 66.8 & - & 39.9 & - \\
+ & ChatGPT+CoT                            & 75.6 & - & 48.9 & - \\
+\midrule
+\multirow{4}{*}{LLMs+KGs}
+ & KD-CoT (Wang et al., 2023b)            & 68.6 & 52.5 & 55.7 & - \\
+ & UniKGQA (Jiang et al., 2022)           & 77.2 & 72.2 & 51.2 & 49.1 \\
+ & DECAF (DPR+FiD-3B) (Yu et al., 2022a)  & 82.1 & \textbf{78.8} & - & - \\
+ & RoG                                    & \textbf{85.7} & 70.8 & \textbf{62.6} & \textbf{56.2} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{消融研究（Ablation Study）。}
+我们进行消融研究以分析我们方法（RoG）中规划模块与推理模块的有效性。我们比较了四个变体：1) \emph{w/o planning}（去除规划），即去除规划模块，并在没有检索到的推理路径的情况下进行推理；2) \emph{w/o reasoning}（去除推理），即去除推理模块，并使用检索到的推理路径中的所有答案作为结果；3) \emph{w/ random plans}（随机规划），即从知识图谱中随机检索推理路径并输入到推理模块；4) \emph{w/ vote reasoning}（投票推理），即采用多数投票从检索到的推理路径中选出 top-5 答案。结果如表~\ref{tab:2} 所示。
+
+从结果中可以明显看出，在没有规划模块的情况下，我们的方法退化为仅依赖问题作为输入的传统大语言模型，从而受到知识缺乏问题的困扰。虽然去除推理模块会因答案数量增加而带来高召回率，但由于检索到的路径中的噪声，精确率显著下降。这表明推理模块在识别重要推理路径并过滤噪声方面是有效的。此外，使用随机规划的性能比去除规划模块更差，凸显了生成忠实推理规划的规划模块的重要性。使用简单的多数投票推理可以提升结果，这也表明了推理模块的必要性。
+
+\begin{table}[H]
+\centering
+\caption{RoG 的消融研究。}
+\label{tab:2}
+\begin{tabular}{lcccccc}
+\toprule
+\multirow{2}{*}{方法} & \multicolumn{3}{c}{WebQSP} & \multicolumn{3}{c}{CWQ} \\
+\cmidrule(lr){2-4} \cmidrule(lr){5-7}
+ & Precision & Recall & F1 & Precision & Recall & F1 \\
+\midrule
+RoG                   & 74.77 & 75.84 & 70.81 & 57.69 & 58.19 & 56.17 \\
+RoG w/o planning      & 57.26 & 50.16 & 49.69 & 35.35 & 34.77 & 33.76 \\
+RoG w/o reasoning     & 46.90 & 79.85 & 49.56 & 18.88 & 67.89 & 22.26 \\
+RoG w/ random plans   & 38.66 & 38.31 & 35.24 & 38.99 & 39.29 & 37.64 \\
+RoG w/ vote reasoning & 54.80 & 60.44 & 47.96 & 22.92 & 47.98 & 26.52 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{RQ2：即插即用的 RoG 规划模块}
+
+本节中，我们评估在推理阶段将 RoG 的规划模块与不同大语言模型集成以提升其性能的有效性。具体而言，我们首先采用 RoG 的规划模块生成关系路径，并将检索到的推理路径作为上下文输入到不同的大语言模型中进行推理。结果如表~\ref{tab:3} 所示。考虑到难以从大语言模型的输出中提取答案数量这一事实，我们仅报告 Hits@1 和 Recall 指标。
+
+从结果中我们可以注意到，通过集成 RoG 的规划模块，所有大语言模型的性能都得到了显著提升。具体而言，ChatGPT、Alpaca、LLaMA2 和 Flan-T5 的 Hits@1 分别提升了 8.5\%、15.3\% 和 119.3\%。这表明 RoG 的规划模块可以无缝地与其他大语言模型集成以提升其性能，而无需重新训练。
+
+\begin{table}[H]
+\centering
+\caption{将 RoG 的规划模块与不同大语言模型集成以进行推理的效果。}
+\label{tab:3}
+\begin{tabular}{lcccc}
+\toprule
+\multirow{2}{*}{方法} & \multicolumn{2}{c}{WebQSP} & \multicolumn{2}{c}{CWQ} \\
+\cmidrule(lr){2-3} \cmidrule(lr){4-5}
+ & Hits@1 & Recall & Hits@1 & Recall \\
+\midrule
+ChatGPT                          & 66.77 & 49.27 & 39.90 & 35.07 \\
+ChatGPT + RoG Planning           & 81.51 & 71.60 & 52.68 & 48.51 \\
+Alpaca-7B                        & 51.78 & 33.65 & 27.44 & 23.62 \\
+Alpaca-7B + RoG Planning         & 56.16 & 74.20 & 44.04 & 38.46 \\
+LLaMA2-Chat-7B                   & 64.37 & 44.61 & 34.60 & 29.91 \\
+LLaMA2-Chat-7B + RoG Planning    & 74.20 & 56.16 & 56.41 & 51.99 \\
+Flan-T5-xl                       & 30.95 & 17.08 & 14.69 & 12.25 \\
+Flan-T5-xl + RoG Planning        & 67.87 & 44.93 & 37.81 & 32.57 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{RQ3：忠实推理与可解释结果}
+
+\paragraph{定量结果（Quantitative Results）。}
+为评估关系路径的忠实性，我们在图~\ref{fig:3} 中展示定量结果。在实验中，我们扫描（sweep）RoG 生成的 top-K 关系路径的数量。从结果中我们可以看出，检索到的推理路径数量随 $K$ 增加而增加，这也使更多答案被覆盖（召回）。这通过检索到答案表明了关系路径的忠实性。然而，更多的检索推理路径也会带来更多噪声和检索时间（见附录~A.7.4），从而降低精确率，并对最终结果（reasoning-f1）贡献甚微。因此，我们在实验中设置 $K = 3$。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{cand_p08_k01.pdf}
+\caption{top-K 生成关系路径的忠实性。绿色柱表示检索到的推理路径的平均数量，实线表示检索到的路径的答案覆盖率，虚线表示推理模块基于检索到的推理路径所达到的答案覆盖率。}
+\label{fig:3}
+\end{figure}
+
+\paragraph{案例研究（Case studies）。}
+我们还在表~\ref{tab:4} 和表~\ref{tab:5} 中展示了两个案例研究。在表~\ref{tab:4} 中，我们可以发现 ChatGPT+CoT 受到知识缺乏问题的困扰，无法回答问题。相反，RoG 能够生成忠实的关系路径，并从知识图谱中检索有效的推理路径用于推理。此外，RoG 还能基于推理路径提供可解释的解释。在表~\ref{tab:5} 中，我们可以看到 ChatGPT+CoT 受到幻觉的困扰并生成了错误的答案。相比之下，尽管检索到的推理路径包含噪声，推理模块仍能识别正确的推理路径并进行忠实推理。这些结果表明 RoG 在进行忠实推理和生成可解释结果方面是有效的。更多案例见附录~A.8 和 A.9。
+
+\begin{table}[H]
+\centering
+\caption{ChatGPT-CoT 知识缺乏与 RoG 可解释预测的示例。}
+\label{tab:4}
+\includegraphics[width=0.96\linewidth]{cand_p09_k00.pdf}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{ChatGPT-CoT 幻觉与 RoG 忠实推理的示例。}
+\label{tab:5}
+\includegraphics[width=0.96\linewidth]{cand_p09_k01.pdf}
+\end{table}
+
+\section{结论}
+
+本文提出一种新颖的方法，称为\textbf{在图上推理}（RoG），它将大语言模型与知识图谱相协同，以进行忠实且可解释的推理。为缓解幻觉与知识缺乏的问题，我们提出一个\emph{规划—检索—推理}框架，它允许大语言模型在基于图上忠实规划进行推理的同时访问最新知识。RoG 不仅通过训练从知识图谱中蒸馏知识来增强大语言模型的推理能力，还能在推理阶段与任意大语言模型无缝集成。在两个基准 KGQA 数据集上的大量实验表明了 RoG 在推理能力与可解释性方面的优越性。
+
+\section*{致谢}
+
+本研究部分得到 DARPA“可靠神经符号学习与推理”（Assured Neuro Symbolic Learning and Reasoning, ANSR）计划（资助编号 FA8750-23-2-1016）和 DARPA“大规模高速知识管理”（Knowledge Management at Scale and Speed, KMASS）计划（资助编号 HR00112220047）的资助。本研究部分得到授予 G.H. 的 ARC Future Fellowship（FT190100039）的支持。S. Pan 部分得到澳大利亚研究理事会（Australian Research Council, ARC）资助（FT210100097 和 DP240101547）以及 CSIRO–美国国家科学基金会（National Science Foundation, US）人工智能研究合作计划的支持。
+
+\section*{伦理声明}
+
+我们的工作完全致力于解决科学问题，不涉及任何人类受试者、动物或环境敏感材料。因此，我们预期本研究不会存在任何潜在的伦理风险或利益冲突。我们的研究在整个过程中力求遵循最高标准的科学诚信与伦理操守，以保证研究结果的有效性与可靠性。
+
+\section*{可复现性声明}
+
+我们的模型已在正文中得到细致的形式化，以确保清晰并便于全面理解。此外，我们在附录~A.4 至 A.6 中提供了详细的实现讨论，涵盖数据集信息、基线、实验设置和模型配置。代码与预训练模型权重已公开。
+
+\section*{参考文献}
+\begin{enumerate}[leftmargin=2em]
+\item Yejin Bang, Samuel Cahyawijaya, Nayeon Lee, Wenliang Dai, Dan Su, Bryan Wilie, Holy Lovenia, Ziwei Ji, Tiezheng Yu, Willy Chung, et al. A multitask, multilingual, multimodal evaluation of chatgpt on reasoning, hallucination, and interactivity. arXiv preprint arXiv:2302.04023, 2023.
+\item Maciej Besta, Nils Blach, Ales Kubicek, Robert Gerstenberger, Lukas Gianinazzi, Joanna Gajda, Tomasz Lehmann, Michal Podstawski, Hubert Niewiadomski, Piotr Nyczyk, et al. Graph of thoughts: Solving elaborate problems with large language models. arXiv preprint arXiv:2308.09687, 2023.
+\item Kurt Bollacker, Colin Evans, Praveen Paritosh, Tim Sturge, and Jamie Taylor. Freebase: a collaboratively created graph database for structuring human knowledge. In Proceedings of the 2008 ACM SIGMOD international conference on Management of data, pp. 1247--1250, 2008.
+\item Tom Brown, Benjamin Mann, Nick Ryder, Melanie Subbiah, Jared D Kaplan, Prafulla Dhariwal, Arvind Neelakantan, Pranav Shyam, Girish Sastry, Amanda Askell, et al. Language models are few-shot learners. Advances in neural information processing systems, 33:1877--1901, 2020.
+\item Hyung Won Chung, Le Hou, Shayne Longpre, Barret Zoph, Yi Tay, William Fedus, Eric Li, Xuezhi Wang, Mostafa Dehghani, Siddhartha Brahma, et al. Scaling instruction-finetuned language models. arXiv preprint arXiv:2210.11416, 2022.
+\item Antonia Creswell and Murray Shanahan. Faithful reasoning using large language models. arXiv preprint arXiv:2208.14271, 2022.
+\item Yu Gu and Yu Su. Arcaneqa: Dynamic program induction and contextualized encoding for knowledge base question answering. In Proceedings of the 29th International Conference on Computational Linguistics, pp. 1718--1731, 2022.
+\item Gaole He, Yunshi Lan, Jing Jiang, Wayne Xin Zhao, and Ji-Rong Wen. Improving multi-hop knowledge base question answering by learning intermediate supervision signals. In Proceedings of the 14th ACM international conference on web search and data mining, pp. 553--561, 2021.
+\item Hangfeng He, Hongming Zhang, and Dan Roth. Rethinking with retrieval: Faithful large language model inference. arXiv preprint arXiv:2301.00303, 2022.
+\item Ruixin Hong, Hongming Zhang, Hong Zhao, Dong Yu, and Changshui Zhang. Faithful question answering with monte-carlo planning. ACL2023, 2023.
+\item Jie Huang and Kevin Chen-Chuan Chang. Towards reasoning in large language models: A survey. ACL 2023, 2023.
+\item Gautier Izacard and \'Edouard Grave. Leveraging passage retrieval with generative models for open domain question answering. In Proceedings of the 16th Conference of the European Chapter of the Association for Computational Linguistics: Main Volume, pp. 874--880, 2021.
+\item Ziwei Ji, Nayeon Lee, Rita Frieske, Tiezheng Yu, Dan Su, Yan Xu, Etsuko Ishii, Ye Jin Bang, Andrea Madotto, and Pascale Fung. Survey of hallucination in natural language generation. ACM Computing Surveys, 55(12):1--38, 2023.
+\item Jinhao Jiang, Kun Zhou, Xin Zhao, and Ji-Rong Wen. Unikgqa: Unified retrieval and reasoning for solving multi-hop question answering over knowledge graph. In The Eleventh International Conference on Learning Representations, 2022.
+\item Jinhao Jiang, Kun Zhou, Wayne Xin Zhao, Yaliang Li, and Ji-Rong Wen. Reasoninglm: Enabling structural subgraph reasoning in pre-trained language models for question answering over knowledge graph. In Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing, pp. 3721--3735, 2023.
+\item Jinhao Jiang, Kun Zhou, Wayne Xin Zhao, Yang Song, Chen Zhu, Hengshu Zhu, and Ji-Rong Wen. Kg-agent: An efficient autonomous agent framework for complex reasoning over knowledge graph. arXiv preprint arXiv:2402.11163, 2024.
+\item Ming Jin, Shiyu Wang, Lintao Ma, Zhixuan Chu, James Y Zhang, Xiaoming Shi, Pin-Yu Chen, Yuxuan Liang, Yuan-Fang Li, Shirui Pan, and Qingsong Wen. Time-llm: Time series forecasting by reprogramming large language models. In International Conference on Learning Representations, 2024a.
+\item Ming Jin, Yifan Zhang, Wei Chen, Kexin Zhang, Yuxuan Liang, Bin Yang, Jindong Wang, Shirui Pan, and Qingsong Wen. Position paper: What can large language models tell us about time series analysis. arXiv preprint arXiv:2402.02713, 2024b.
+\item Michael I Jordan, Zoubin Ghahramani, Tommi S Jaakkola, and Lawrence K Saul. An introduction to variational methods for graphical models. Machine learning, 37:183--233, 1999.
+\item Vladimir Karpukhin, Barlas Oguz, Sewon Min, Patrick Lewis, Ledell Wu, Sergey Edunov, Danqi Chen, and Wen-tau Yih. Dense passage retrieval for open-domain question answering. In Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing (EMNLP), pp. 6769--6781, 2020.
+\item Tushar Khot, Harsh Trivedi, Matthew Finlayson, Yao Fu, Kyle Richardson, Peter Clark, and Ashish Sabharwal. Decomposed prompting: A modular approach for solving complex tasks. In The Eleventh International Conference on Learning Representations, 2022.
+\item Yunshi Lan and Jing Jiang. Query graph generation for answering multi-hop complex questions from knowledge bases. Association for Computational Linguistics, 2020.
+\item Shiyang Li, Yifan Gao, Haoming Jiang, Qingyu Yin, Zheng Li, Xifeng Yan, Chao Zhang, and Bing Yin. Graph reasoning for question answering with triplet retrieval. In Findings of the Association for Computational Linguistics: ACL 2023, 2023.
+\item Ke Liang, Lingyuan Meng, Meng Liu, Yue Liu, Wenxuan Tu, Siwei Wang, Sihang Zhou, Xinwang Liu, and Fuchun Sun. Reasoning over different types of knowledge graphs: Static, temporal and multi-modal. arXiv preprint arXiv:2212.05767, 2022.
+\item Ke Liang, Yue Liu, Sihang Zhou, Wenxuan Tu, Yi Wen, Xihong Yang, Xiangjun Dong, and Xinwang Liu. Knowledge graph contrastive learning based on relation-symmetrical structure. IEEE Transactions on Knowledge and Data Engineering, pp. 1--12, 2023. doi: 10.1109/TKDE.2023.3282989.
+\item Yixin Liu, Kaize Ding, Qinghua Lu, Fuyi Li, Leo Yu Zhang, and Shirui Pan. Towards self-interpretable graph-level anomaly detection. Advances in Neural Information Processing Systems, 36, 2023a.
+\item Yixin Liu, Kaize Ding, Jianling Wang, Vincent Lee, Huan Liu, and Shirui Pan. Learning strong graph neural networks with weak information. In ACM SIGKDD International Conference on Knowledge Discovery and Data Mining (KDD), 2023b.
+\item Linhao Luo, Jiaxin Ju, Bo Xiong, Yuan-Fang Li, Gholamreza Haffari, and Shirui Pan. Chatrule: Mining logical rules with large language models for knowledge graph reasoning. arXiv preprint arXiv:2309.01538, 2023a.
+\item Linhao Luo, Yuan-Fang Li, Gholamreza Haffari, and Shirui Pan. Normalizing flow-based neural process for few-shot knowledge graph completion. In The 46th International ACM SIGIR Conference on Research and Development in Information Retrieval, 2023b.
+\item Alexander Miller, Adam Fisch, Jesse Dodge, Amir-Hossein Karimi, Antoine Bordes, and Jason Weston. Key-value memory networks for directly reading documents. In Proceedings of the 2016 Conference on Empirical Methods in Natural Language Processing, pp. 1400--1409, 2016.
+\item Shirui Pan, Yizhen Zheng, and Yixin Liu. Integrating graphs with large language models: Methods and prospects. arXiv preprint arXiv:2310.05499, 2023.
+\item Shirui Pan, Linhao Luo, Yufei Wang, Chen Chen, Jiapu Wang, and Xindong Wu. Unifying large language models and knowledge graphs: A roadmap. IEEE Transactions on Knowledge and Data Engineering (TKDE), 2024.
+\item Apoorv Saxena, Aditay Tripathi, and Partha Talukdar. Improving multi-hop question answering over knowledge graphs using knowledge base embeddings. In Proceedings of the 58th annual meeting of the association for computational linguistics, pp. 4498--4507, 2020.
+\item Apoorv Saxena, Adrian Kochsiek, and Rainer Gemulla. Sequence-to-sequence knowledge graph completion and question answering. In Proceedings of the 60th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), pp. 2814--2828, 2022.
+\item Jiaxin Shi, Shulin Cao, Lei Hou, Juanzi Li, and Hanwang Zhang. Transfernet: An effective and transparent framework for multi-hop question answering over relation graph. In Proceedings of the 2021 Conference on Empirical Methods in Natural Language Processing, pp. 4149--4158, 2021.
+\item Devendra Singh, Siva Reddy, Will Hamilton, Chris Dyer, and Dani Yogatama. End-to-end training of multi-document reader and retriever for open-domain question answering. Advances in Neural Information Processing Systems, 34:25968--25981, 2021.
+\item Haitian Sun, Bhuwan Dhingra, Manzil Zaheer, Kathryn Mazaitis, Ruslan Salakhutdinov, and William Cohen. Open domain question answering using early fusion of knowledge bases and text. In Proceedings of the 2018 Conference on Empirical Methods in Natural Language Processing, pp. 4231--4242, 2018.
+\item Haitian Sun, Tania Bedrax-Weiss, and William Cohen. Pullnet: Open domain question answering with iterative retrieval on knowledge bases and text. In Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing (EMNLP-IJCNLP), pp. 2380--2390, 2019.
+\item Jiashuo Sun, Chengjin Xu, Lumingyuan Tang, Saizhuo Wang, Chen Lin, Yeyun Gong, Lionel Ni, Heung-Yeung Shum, and Jian Guo. Think-on-graph: Deep and responsible reasoning of large language model on knowledge graph. In The Twelfth International Conference on Learning Representations, 2024. URL \url{https://openreview.net/forum?id=nnVO1PvbTv}.
+\item Yawei Sun, Lingling Zhang, Gong Cheng, and Yuzhong Qu. Sparqa: skeleton-based semantic parsing for complex questions over knowledge bases. In Proceedings of the AAAI conference on artificial intelligence, volume 34, pp. 8952--8959, 2020.
+\item Oyvind Tafjord, Bhavana Dalvi, and Peter Clark. Entailer: Answering questions with faithful and truthful chains of reasoning. In Proceedings of the 2022 Conference on Empirical Methods in Natural Language Processing, pp. 2078--2093, 2022.
+\item Alon Talmor and Jonathan Berant. The web as a knowledge-base for answering complex questions. In Proceedings of the 2018 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies, Volume 1 (Long Papers), pp. 641--651, 2018.
+\item Rohan Taori, Ishaan Gulrajani, Tianyi Zhang, Yann Dubois, Xuechen Li, Carlos Guestrin, Percy Liang, and Tatsunori B Hashimoto. Stanford alpaca: an instruction-following llama model. \url{https://github.com/tatsu-lab/stanford_alpaca}, 2023.
+\item Hugo Touvron, Louis Martin, Kevin Stone, Peter Albert, Amjad Almahairi, Yasmine Babaei, Nikolay Bashlykov, Soumya Batra, Prajjwal Bhargava, Shruti Bhosale, et al. Llama 2: Open foundation and fine-tuned chat models. arXiv preprint arXiv:2307.09288, 2023.
+\item Hongwei Wang, Hongyu Ren, and Jure Leskovec. Relational message passing for knowledge graph completion. In Proceedings of the 27th ACM SIGKDD Conference on Knowledge Discovery \& Data Mining, pp. 1697--1707, 2021.
+\item Jiapu Wang, Boyue Wang, Meikang Qiu, Shirui Pan, Bo Xiong, Heng Liu, Linhao Luo, Tengfei Liu, Yongli Hu, Baocai Yin, et al. A survey on temporal knowledge graph completion: Taxonomy, progress, and prospects. arXiv preprint arXiv:2308.02457, 2023a.
+\item Keheng Wang, Feiyu Duan, Sirui Wang, Peiguang Li, Yunsen Xian, Chuantao Yin, Wenge Rong, and Zhang Xiong. Knowledge-driven cot: Exploring faithful reasoning in llms for knowledge-intensive question answering. arXiv preprint arXiv:2308.13259, 2023b.
+\item Lei Wang, Wanyu Xu, Yihuai Lan, Zhiqiang Hu, Yunshi Lan, Roy Ka-Wei Lee, and Ee-Peng Lim. Plan-and-solve prompting: Improving zero-shot chain-of-thought reasoning by large language models. arXiv preprint arXiv:2305.04091, 2023c.
+\item Xuezhi Wang, Jason Wei, Dale Schuurmans, Quoc V Le, Ed H Chi, Sharan Narang, Aakanksha Chowdhery, and Denny Zhou. Self-consistency improves chain of thought reasoning in language models. In The Eleventh International Conference on Learning Representations, 2022.
+\item Jason Wei, Maarten Bosma, Vincent Zhao, Kelvin Guu, Adams Wei Yu, Brian Lester, Nan Du, Andrew M Dai, and Quoc V Le. Finetuned language models are zero-shot learners. In International Conference on Learning Representations, 2021.
+\item Jason Wei, Xuezhi Wang, Dale Schuurmans, Maarten Bosma, Fei Xia, Ed Chi, Quoc V Le, Denny Zhou, et al. Chain-of-thought prompting elicits reasoning in large language models. Advances in Neural Information Processing Systems, 35:24824--24837, 2022.
+\item Xiaohan Xu, Peng Zhang, Yongquan He, Chengpeng Chao, and Chaoyang Yan. Subgraph neighboring relations infomax for inductive link prediction on knowledge graphs. In Proceedings of the Thirty-First International Joint Conference on Artificial Intelligence, 2022.
+\item Shunyu Yao, Jeffrey Zhao, Dian Yu, Nan Du, Izhak Shafran, Karthik R Narasimhan, and Yuan Cao. React: Synergizing reasoning and acting in language models. In The Eleventh International Conference on Learning Representations, 2022.
+\item Shunyu Yao, Dian Yu, Jeffrey Zhao, Izhak Shafran, Thomas L Griffiths, Yuan Cao, and Karthik Narasimhan. Tree of thoughts: Deliberate problem solving with large language models. arXiv preprint arXiv:2305.10601, 2023.
+\item Michihiro Yasunaga, Hongyu Ren, Antoine Bosselut, Percy Liang, and Jure Leskovec. Qa-gnn: Reasoning with language models and knowledge graphs for question answering. In Proceedings of the 2021 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies, pp. 535--546, 2021.
+\item Xi Ye, Semih Yavuz, Kazuma Hashimoto, Yingbo Zhou, and Caiming Xiong. Rng-kbqa: Generation augmented iterative ranking for knowledge base question answering. In Proceedings of the 60th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), pp. 6032--6043, 2022.
+\item Wen-tau Yih, Matthew Richardson, Christopher Meek, Ming-Wei Chang, and Jina Suh. The value of semantic parse labeling for knowledge base question answering. In Proceedings of the 54th Annual Meeting of the Association for Computational Linguistics (Volume 2: Short Papers), pp. 201--206, 2016.
+\item Donghan Yu, Sheng Zhang, Patrick Ng, Henghui Zhu, Alexander Hanbo Li, Jun Wang, Yiqun Hu, William Yang Wang, Zhiguo Wang, and Bing Xiang. Decaf: Joint decoding of answers and logical forms for question answering over knowledge bases. In The Eleventh International Conference on Learning Representations, 2022a.
+\item Donghan Yu, Chenguang Zhu, Yuwei Fang, Wenhao Yu, Shuohang Wang, Yichong Xu, Xiang Ren, Yiming Yang, and Michael Zeng. Kg-fid: Infusing knowledge graph in fusion-in-decoder for open-domain question answering. In Proceedings of the 60th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), pp. 4961--4974, 2022b.
+\item Jing Zhang, Xiaokang Zhang, Jifan Yu, Jian Tang, Jie Tang, Cuiping Li, and Hong Chen. Subgraph retrieval enhanced model for multi-hop knowledge base question answering. In Proceedings of the 60th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), pp. 5773--5784, 2022.
+\item Xikun Zhang, Antoine Bosselut, Michihiro Yasunaga, Hongyu Ren, Percy Liang, Christopher D Manning, and Jure Leskovec. Greaselm: Graph reasoning enhanced language models. In International conference on learning representations, 2021.
+\item Yuyu Zhang, Hanjun Dai, Zornitsa Kozareva, Alexander Smola, and Le Song. Variational reasoning for question answering with knowledge graph. In Proceedings of the AAAI conference on artificial intelligence, volume 32, 2018.
+\item Zicheng Zhao, Linhao Luo, Shirui Pan, Quoc Viet Hung Nguyen, and Chen Gong. Towards few-shot inductive link prediction on knowledge graphs: A relational anonymous walk-guided neural process approach. In Joint European Conference on Machine Learning and Knowledge Discovery in Databases, pp. 515--532, 2023.
+\item Xin Zheng, Miao Zhang, Chunyang Chen, Chaojie Li, Chuan Zhou, and Shirui Pan. Multi-relational graph neural architecture search with fine-grained message passing. In 2022 IEEE International Conference on Data Mining (ICDM), pp. 783--792. IEEE, 2022a.
+\item Xin Zheng, Yixin Liu, Zhifeng Bao, Meng Fang, Xia Hu, Alan Wee-Chung Liew, and Shirui Pan. Towards data-centric graph machine learning: Review and outlook. arXiv preprint arXiv:2309.10979, 2023a.
+\item Xin Zheng, Miao Zhang, Chunyang Chen, Soheila Molaei, Chuan Zhou, and Shirui Pan. Gnnevaluator: Evaluating gnn performance on unseen graphs without labels. In Advances in Neural Information Processing Systems (NeurIPS), 2023b.
+\item Xin Zheng, Miao Zhang, Chunyang Chen, Quoc Viet Hung Nguyen, Xingquan Zhu, and Shirui Pan. Structure-free graph condensation: From large-scale graphs to condensed graph-free data. In Advances in Neural Information Processing Systems (NeurIPS), 2023c.
+\item Yizhen Zheng, Shirui Pan, Vincent Lee, Yu Zheng, and Philip S Yu. Rethinking and scaling up graph contrastive learning: An extremely efficient approach with group discrimination. Advances in Neural Information Processing Systems, 35:10809--10820, 2022b.
+\item Yizhen Zheng, Huan Yee Koh, Jiaxin Ju, Anh TN Nguyen, Lauren T May, Geoffrey I Webb, and Shirui Pan. Large language models for scientific synthesis, inference and explanation. arXiv preprint arXiv:2310.07984, 2023d.
+\item Yizhen Zheng, He Zhang, Vincent Lee, Yu Zheng, Xiao Wang, and Shirui Pan. Finding the missing-half: Graph complementary learning for homophily-prone and heterophily-prone graphs. International Conference on Machine Learning, 2023e.
+\end{enumerate}
+
+\appendix
+\section{附录}
+
+\subsection{规划模块的详细推导}
+\label{app:a1}
+
+本节中，我们提供规划模块的详细推导。通过用 $Q(z \mid a, q, \mathcal{G})$ 近似 $Q(z)$，KL 散度可计算为
+\begin{align}
+\mathcal{L}_{\text{plan}} &= D_{\mathrm{KL}}\!\left( Q(z) \,\|\, P_\theta(z \mid q) \right) = D_{\mathrm{KL}}\!\left( Q(z \mid a, q, \mathcal{G}) \,\|\, P_\theta(z \mid q) \right), \notag \\
+&= \mathbb{E}_{z \sim Q(z \mid a, q, \mathcal{G})} \left[ \log Q(z \mid a, q, \mathcal{G}) - \log P_\theta(z \mid q) \right], \\
+&= -\mathbb{E}_{z \sim Q(z \mid a, q, \mathcal{G})} \log P_\theta(z \mid q) + \mathrm{CONST}, \notag
+\end{align}
+其中由于有效关系路径 $\mathcal{Z}$ 的数量庞大，期望无法精确计算，因此我们使用知识图谱中 $e_q$ 与 $e_a$ 之间的最短路径 $z \in \mathcal{Z}^* \subset \mathcal{Z}$ 来近似它（Zhang et al., 2022）。这可形式化为
+\begin{equation}
+\mathcal{L}_{\text{plan}} = -\sum_{z \in \mathcal{Z}^*} Q(z \mid a, q, \mathcal{G}) \log P_\theta(z \mid q) + \mathrm{CONST}.
+\end{equation}
+基于公式~(3)，通过假设在最短路径集合 $\mathcal{Z}^*$ 上服从均匀分布，我们可以将公式~(12) 改写为
+\begin{equation}
+\mathcal{L}_{\text{plan}} = -\frac{1}{|\mathcal{Z}^*|} \sum_{z \in \mathcal{Z}^*} \log P_\theta(z \mid q) + \mathrm{CONST},
+\end{equation}
+其中 $\mathrm{CONST}$ 在最终优化中被省略，因为它对损失没有贡献。
+
+\subsection{详细的相关工作}
+
+\subsubsection{大语言模型推理提示}
+
+已有许多研究通过提示来发挥大语言模型的推理能力，以处理复杂任务（Wei et al., 2022；Wang et al., 2022；Yao et al., 2023；Besta et al., 2023；Pan et al., 2023；Zheng et al., 2023d；Jin et al., 2024a;b）。链式思维（Chain-of-Thought）（Wei et al., 2022）使大语言模型能够生成一条可能有助于推理的推理链（reasoning chain）。思维树（Tree of thoughts）（Yao et al., 2023）将推理链扩展为树结构，以探索更多的推理路径。思维图（Graph of thoughts）（Besta et al., 2023）进一步将推理链建模为带聚合操作的图，以协同各推理路径。规划并求解（Plan-and-solve）（Wang et al., 2023c）提示大语言模型生成一个规划并据此执行。DecomP（He et al., 2021）提示大语言模型将推理任务分解为一系列子任务并逐步求解。然而，幻觉与知识缺乏的问题影响了推理的忠实性。ReACT（Yao et al., 2022）把大语言模型当作智能体，通过与环境交互来获取用于推理的最新知识。为探索忠实推理，Entailer（Tafjord et al., 2022）引入一个验证器（verifier）来验证大语言模型生成的推理步骤。Creswell \& Shanahan（2022）提出一个包含两个大语言模型的框架，分别用于选择和生成推理步骤。FAME（Hong et al., 2023）引入蒙特卡洛规划来生成忠实的推理步骤。RR（He et al., 2022）和 KD-CoT（Wang et al., 2023b）旨在从知识图谱中检索相关知识，为大语言模型生成忠实的推理规划。Think-on-Graph（Sun et al., 2024）和 KG-Agent（Jiang et al., 2024）把大语言模型当作智能体，通过提示与知识图谱交互，以获取用于推理的最新知识。
+
+\subsubsection{知识图谱问答}
+
+知识图谱以结构化的形式包含丰富的事实知识，已引起研究者的极大关注（Zheng et al., 2022a；2023a；Pan et al., 2023；Liang et al., 2023）。知识图谱推理旨在基于现有的图结构和事实推导出新的洞见（Liang et al., 2022；Wang et al., 2023a；Luo et al., 2023b；Zhao et al., 2023）。能够有效捕获结构信息的图神经网络也被广泛用于知识图谱推理（Zheng et al., 2022b; 2023e;b;c；Liu et al., 2023b;a）。作为一项典型的推理任务，知识图谱问答（KGQA）旨在基于来自知识图谱的知识获得答案，一般可分为三类：1) 基于嵌入的方法，2) 检索增强方法，3) 语义解析方法。
+
+\paragraph{基于嵌入的方法（Embedding-based methods）}
+在嵌入空间中建模实体和关系，并设计特殊的模型架构来推理答案。KV-Mem（Miller et al., 2016）采用键值记忆网络来存储三元组以进行推理。EmbedKGQA（Saxena et al., 2020）和 NSM（He et al., 2021）利用序列模型来模拟多跳推理过程。QA-GNN（Yasunaga et al., 2021）和 Greaselm（Zhang et al., 2021）进一步采用图神经网络来捕获图结构以进行推理。然而，这些方法需要设计不同的模型架构，缺乏灵活性和泛化能力。
+
+\paragraph{检索增强方法（Retrieval-augmented methods）}
+旨在从知识图谱中检索相关事实以提升推理性能。早期工作采用 page rank 或随机游走（random walk）算法从知识图谱中检索子图以进行推理（Sun et al., 2018; 2019）。然而，它们忽略了问题中的语义信息，导致检索结果含有噪声。Zhang et al.（2022）提出一种基于关系路径的子图检索，取得了更好的检索与问答性能。其他研究路线通过 BM25（Li et al., 2023）或 DPR（Karpukhin et al., 2020；Yu et al., 2022b）从知识图谱中检索三元组，以提升大语言模型的性能。它们丢弃了知识图谱中的结构信息，导致次优结果。近来，UniKGQA（Jiang et al., 2022）将图检索与推理过程统一到一个带大语言模型的单一模型中，在 KGQA 任务上取得了最先进的性能。
+
+\paragraph{语义解析方法（Semantic parsing methods）}
+将问题解析为结构化查询（例如 SPARQL），并可由查询引擎执行以获得答案（Sun et al., 2020；Lan \& Jiang, 2020）。ArcaneQA（Gu \& Su, 2022）根据前序步骤的结果动态生成查询。RnG-KBQA（Ye et al., 2022）首先枚举所有可能的查询，然后对它们进行排序以得到最终输出。这些方法严重依赖所生成查询的质量。如果查询不可执行，则无法生成任何答案。DECAF（Yu et al., 2022a）将语义解析与大语言模型推理相结合，联合生成答案，同样在 KGQA 任务上取得了显著的性能。
+
+\subsection{检索算法}
+\label{app:a3}
+
+给定一个问题 $q$ 和一条作为规划的关系路径 $z$，我们采用一种受约束的广度优先搜索来检索推理路径。伪代码见算法~\ref{alg:1}。
+
+我们首先用问题中的实体 $\mathcal{T}_q$ 初始化一个当前推理路径队列 $\mathcal{Q}$（第 3--5 行）。然后，我们迭代地扩展 $\mathcal{Q}$ 中的每条推理路径，方法是按照关系路径中的关系，添加与队列中实体相连的三元组（第 11--19 行）。推理路径不断扩展，直到其长度等于关系路径的长度。扩展后的推理路径被添加到集合 $\mathcal{W}_z$ 中作为最终结果（第 8--10 行）。
+
+\begin{algorithm}[H]
+\caption{基于关系路径检索推理路径}
+\label{alg:1}
+\begin{algorithmic}[1]
+\State \textbf{输入：} 问题 $q$，关系路径 $z = \{r_1, r_2, \ldots, r_l\}$，知识图谱 $\mathcal{G}$。
+\State \textbf{输出：} 推理路径 $\mathcal{W}_z$。
+\State $\mathcal{W}_z \leftarrow \emptyset$;
+\State $\mathcal{Q} \leftarrow \text{Queue}()$;
+\ForAll{$e_q \in \mathcal{T}_q$}
+    \State $\mathcal{Q}.\text{append}((e_q, []))$; \Comment{用问题实体初始化队列。}
+\EndFor
+\While{$\mathcal{Q} \neq \emptyset$}
+    \State $(s, w_z) \leftarrow \mathcal{Q}.\text{pop}()$;
+    \If{$\text{len}(w_z) = \text{len}(z)$}
+        \State $\mathcal{W}_z.\text{append}(w_z)$;
+    \EndIf
+    \If{$\text{len}(w_z) < \text{len}(z)$}
+        \State $r \leftarrow z[\text{len}(w_z) + 1]$; \Comment{获取下一步的关系。}
+        \ForAll{$(s, r', t) \in \mathcal{G}$}
+            \If{$r' = r$}
+                \State $w_z'.\text{append}((s, r, t))$; \Comment{扩展推理路径。}
+                \State $\mathcal{Q}.\text{append}((t, w_z'))$;
+            \EndIf
+        \EndFor
+    \EndIf
+\EndWhile
+\State \textbf{return} $\mathcal{W}_z$;
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{数据集}
+\label{app:a4}
+
+本工作中，我们采用两个基准 KGQA 数据集：WebQuestionSP（WebQSP）\footnote{\url{https://www.microsoft.com/en-us/download/details.aspx?id=52763}}（Yih et al., 2016）和 Complex WebQuestions（CWQ）\footnote{\url{https://www.tau-nlp.sites.tau.ac.il/compwebq}}（Talmor \& Berant, 2018）。我们遵循以往工作（Sun et al., 2018；Jiang et al., 2022），使用相同的训练和测试划分以进行公平比较。数据集的统计信息见表~\ref{tab:6}。答案数量和推理跳数的统计信息分别见表~\ref{tab:7} 和表~\ref{tab:8}。
+
+\begin{table}[H]
+\centering
+\caption{数据集统计信息。}
+\label{tab:6}
+\begin{tabular}{lccc}
+\toprule
+数据集 & \#Train & \#Test & Max \#hop \\
+\midrule
+WebQSP & 2,826  & 1,628 & 2 \\
+CWQ    & 27,639 & 3,531 & 4 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{WebQSP 和 CWQ 中问题答案数量的统计信息。}
+\label{tab:7}
+\begin{tabular}{lcccc}
+\toprule
+数据集 & \#Ans = 1 & $2 \geq$ \#Ans $\leq 4$ & $5 \geq$ \#Ans $\leq 9$ & \#Ans $\geq 10$ \\
+\midrule
+WebQSP & 51.2\% & 27.4\% & 8.3\% & 12.1\% \\
+CWQ    & 70.6\% & 19.4\% & 6\%   & 4\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{WebQSP 和 CWQ 中问题跳数的统计信息。}
+\label{tab:8}
+\begin{tabular}{lccc}
+\toprule
+数据集 & 1 hop & 2 hop & $\geq 3$ hop \\
+\midrule
+WebQSP & 65.49\% & 34.51\% & 0.00\% \\
+CWQ    & 40.91\% & 38.34\% & 20.75\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{MetaQA-3hop 数据集统计信息。}
+\label{tab:9}
+\begin{tabular}{lccc}
+\toprule
+数据集 & \#Train & \#Test & \#hop \\
+\midrule
+MetaQA-3hop & 1,000 & 1,4274 & 3 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+为评估 RoG 向其他知识图谱的可迁移性，我们进一步选择基于 Wiki-Movies 知识图谱\footnote{\url{https://research.fb.com/downloads/babi}} 的 MetaQA-3hop 数据集（Zhang et al., 2018）。我们从训练划分中选取 1000 个样本。该数据集的统计信息见表~\ref{tab:9}。
+
+WebQSP 和 CWQ 都可以基于 Freebase 知识图谱\footnote{\url{https://github.com/microsoft/FastRDFStore}}（Bollacker et al., 2008）进行推理。为减小知识图谱的规模，遵循以往工作（He et al., 2021；Jiang et al., 2022），我们通过提取 WebQSP 和 CWQ 中问题实体在最大推理跳数内所包含的所有三元组，构建了 Freebase 的一个子图。类似地，我们为 MetaQA-3hop 构建了 Wiki-Movies 知识图谱的一个子图。所构建知识图谱的统计信息见表~\ref{tab:10}。
+
+我们使用 WebQSP 和 CWQ 数据集的训练划分构建指令微调数据集。对于规划优化，我们通过提取连接问题与答案的最短路径来生成数据，这些路径作为监督信号。在检索—推理优化阶段，我们将提取的最短路径连同问题一起输入，以预测答案。为增强可解释性，我们从每个数据集中随机选取 1000 个样本，连同其推理路径和答案，输入到 ChatGPT 中以生成解释性回复，这有助于增强我们的方法生成具有良好可解释性的结果的能力。最终训练数据集的统计信息见表~\ref{tab:11}。
+
+\begin{table}[H]
+\centering
+\caption{所构建知识图谱的统计信息。}
+\label{tab:10}
+\begin{tabular}{lccc}
+\toprule
+KG & \#Entities & \#Relations & \#Triples \\
+\midrule
+Freebase    & 2,566,291 & 7,058 & 8,309,195 \\
+Wiki-Movie  & 43,234    & 9     & 133,582 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{指令微调数据集中实例的统计信息。}
+\label{tab:11}
+\begin{tabular}{ccc}
+\toprule
+规划数据（Planing Data） & 检索—推理数据（Retrieval-reasoning Data） & 可解释性数据（Interpretability Data） \\
+\midrule
+216,006 & 30,465 & 2,000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{基线}
+\label{app:a5}
+
+我们将 RoG 与 21 个基线进行比较，这些基线归为 5 类：1) 基于嵌入的方法，2) 检索增强方法，3) 语义解析方法，4) 大语言模型，以及 5) 大语言模型+知识图谱方法。各基线的细节如下。
+
+\paragraph{基于嵌入的方法。}
+\begin{itemize}[leftmargin=2em]
+\item \textbf{KV-Mem}（Miller et al., 2016）采用键值记忆网络来存储三元组，并通过对记忆的迭代操作进行多跳推理。
+\item \textbf{EmbedKGQA}（Saxena et al., 2020）利用实体和问题的嵌入，将知识图谱上的推理建模为一个序列链路预测（sequential link prediction）问题。
+\item \textbf{NSM}（He et al., 2021）利用序列模型来模拟多跳推理过程。
+\item \textbf{TransferNet}（Shi et al., 2021）采用图神经网络来捕获实体与问题之间的相关性以进行推理。
+\item \textbf{KGT5}（Saxena et al., 2022）在知识图谱上微调一个序列到序列（sequence-to-sequence）框架，并基于输入问题生成答案。
+\end{itemize}
+
+\paragraph{检索增强方法。}
+\begin{itemize}[leftmargin=2em]
+\item \textbf{GraftNet}（Sun et al., 2018）通过实体链接从知识图谱中检索相关子图。
+\item \textbf{PullNet}（Sun et al., 2019）训练一个由 LSTM 和图神经网络组成的检索模型，以检索问题特定的子图。
+\item \textbf{SR+NSM}（Zhang et al., 2022）提出一种关系路径检索，以检索子图进行多跳推理。
+\item \textbf{SR+NSM+E2E}（Zhang et al., 2022）进一步采用端到端（end-to-end）训练策略，联合训练 SR+NSM 的检索与推理模块。
+\end{itemize}
+
+\paragraph{语义解析方法。}
+\begin{itemize}[leftmargin=2em]
+\item \textbf{SPARQL}（Sun et al., 2020）提出一种新颖的骨架语法（skeleton grammar），用语言模型表示复杂问题的高层结构。
+\item \textbf{QGG}（Lan \& Jiang, 2020）通过同时添加约束和扩展关系路径，为问题生成查询图（query graph）。
+\item \textbf{ArcaneQA}（Gu \& Su, 2022）根据前序步骤的结果动态生成查询。
+\item \textbf{RnG-KBQA}（Ye et al., 2022）首先枚举所有可能的查询，然后对它们进行排序以得到最终输出。
+\end{itemize}
+
+\paragraph{大语言模型（LLMs）。}
+\begin{itemize}[leftmargin=2em]
+\item \textbf{Flan-T5}（Chung et al., 2022）是 T5 模型的增强版本，在混合任务上进行了指令微调。
+\item \textbf{Alpaca}（Taori et al., 2023）基于 LLaMA，并在一个指令遵循数据集上进行了微调。
+\item \textbf{LLaMA2-Chat}（Touvron et al., 2023）是一个针对对话目的优化的大语言模型。
+\item \textbf{ChatGPT}\footnote{\url{https://openai.com/blog/chatgpt}} 是一个强大的闭源大语言模型，能够遵循指令完成复杂任务\footnote{实验使用 2023 年 7 月至 9 月期间发布的 ChatGPT 模型进行。}。
+\item \textbf{ChatGPT+CoT}（Wei et al., 2022）使用链式思维提示来提升 ChatGPT 的推理能力。
+\end{itemize}
+
+\paragraph{大语言模型+知识图谱方法。}
+\begin{itemize}[leftmargin=2em]
+\item \textbf{KD-CoT}（Wang et al., 2023b）从知识图谱中检索相关知识，为大语言模型生成忠实的推理规划。
+\item \textbf{UniKGQA}（Jiang et al., 2022）将图检索与推理过程统一到一个带大语言模型的单一模型中，在 KGQA 任务上取得了最先进的性能。
+\item \textbf{DECAF}（Yu et al., 2022a）将语义解析与大语言模型推理相结合，联合生成答案，同样在 KGQA 任务上取得了显著的性能。
+\end{itemize}
+
+\subsection{实现设置}
+\label{app:a6}
+
+对于 RoG，我们使用 LLaMA2-Chat-7B（Touvron et al., 2023）作为大语言模型骨干，并在 WebQSP 和 CWQ 的训练划分以及 Freebase 上进行 3 个轮次的指令微调。批大小（batch size）设为 4，学习率（learning rate）设为 2e-5。我们使用余弦学习率调度器（cosine learning rate scheduler）策略，预热比例（warmup ratio）设为 0.03。训练在 2 块 A100-80G GPU 上进行，耗时 38 小时。在推理阶段，我们首先采用大语言模型生成具有最高概率的 top-K 关系路径作为规划。然后，我们采用算法~\ref{alg:1} 检索推理路径，并将其输入到大语言模型中以推理最终答案。
+
+对于大语言模型基线，我们使用零样本提示进行 KGQA，即直接要求大语言模型回答问题。对于其他基线，我们直接复制其在 UniKGQA（Jiang et al., 2022）和 DECAF（Yu et al., 2022a）中报告的结果以进行比较。
+
+对于将 RoG 的规划模块与不同大语言模型相结合，我们使用规划模块生成规划（关系路径），并在知识图谱上执行以检索推理路径。检索到的路径在推理阶段被输入到不同的大语言模型中，所用的推理提示模板见附录~A.10。
+
+\subsection{额外的实验结果}
+
+\subsubsection{向其他知识图谱的可迁移性}
+
+我们评估 RoG 向其他知识图谱的可迁移性。我们选择基于 Wiki-Movies 知识图谱的 MetaQA-3hop 数据集（Zhang et al., 2018）。我们从训练划分中选取 1000 个样本，并采用两种训练策略来微调 RoG：1) 从头训练（training from scratch），即直接用 1000 个样本从 LLaMA2-Chat 训练 RoG；2) 从 Freebase 迁移（transfer from Freebase），即基于为 Freebase 训练的 RoG 进行进一步微调。结果如表~\ref{tab:12} 所示。从结果中我们可以看出，从 Freebase 迁移取得了比从头训练更好的性能，这表明了 RoG 向其他知识图谱的可迁移性。
+
+我们还比较了在 Freebase 上训练和向 Wiki-Movies 知识图谱迁移的训练时间。从表~\ref{tab:13} 所示的结果中我们可以看出，在 Freebase 上的训练时间为 38 小时，而迁移时间仅为 2 小时。这表明了将 RoG 迁移到其他知识图谱的高效性。
+
+\begin{table}[H]
+\centering
+\caption{RoG 在 MetaQA-3hop 上的性能。}
+\label{tab:12}
+\begin{tabular}{lcc}
+\toprule
+\multirow{2}{*}{策略} & \multicolumn{2}{c}{MetaQA-3hop} \\
+\cmidrule(lr){2-3}
+ & Hits@1 & F1 \\
+\midrule
+RoG (train from scratch)     & 84.81 & 41.32 \\
+RoG (transfer from Freebase) & 88.98 & 50.68 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{训练时间比较。}
+\label{tab:13}
+\begin{tabular}{lcc}
+\toprule
+方法 & Training on Freebase & Transferring to Wiki-Movies \\
+\midrule
+RoG & 38 hours & 2 hours \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{使用不同训练数据的性能}
+
+在我们的实验中，我们在 WebQSP 和 CWQ 两个数据集的训练集上联合微调 RoG，以最大化 RoG 在 Freebase 上的推理能力。为了与仅在单一数据集上训练的其他方法（例如 UniKGQA（Jiang et al., 2022））进行公平比较，我们提供了在单一数据集上训练的 RoG 的额外结果。从表~\ref{tab:14} 和表~\ref{tab:15} 所示的结果中我们可以看出，在单一数据集上训练的 RoG 仍然优于 SOTA 基线（UniKGQA）。此外，我们还可以发现，在多个数据集上联合训练 RoG 可以进一步提升性能。未来，我们将尝试从 Freebase 中生成更多问答数据集，以进一步提升 RoG 的推理能力。
+
+\begin{table}[H]
+\centering
+\caption{在 WebQSP 上使用不同训练数据的性能。}
+\label{tab:14}
+\begin{tabular}{lccc}
+\toprule
+方法 & Training Data & Hits@1 & F1 \\
+\midrule
+UniKGQA & WebQSP       & 77.2 & 72.2 \\
+RoG     & WebQSP       & 81.5 & 61.8 \\
+RoG     & WebQSP+CWQ   & 85.7 & 70.8 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{在 CWQ 上使用不同训练数据的性能。}
+\label{tab:15}
+\begin{tabular}{lccc}
+\toprule
+方法 & Training Data & Hits@1 & F1 \\
+\midrule
+UniKGQA & CWQ          & 51.2 & 49.1 \\
+RoG     & CWQ          & 59.1 & 52.9 \\
+RoG     & WebQSP+CWQ   & 62.6 & 56.2 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{与不同微调大语言模型的性能比较}
+
+在表~\ref{tab:1} 中，我们报告了不同大语言模型的零样本性能。然而，RoG 是在问答数据集的训练划分上进行微调的。为进行公平比较，我们在表~\ref{tab:16} 中进一步报告了在问答数据集训练划分上微调的大语言模型的性能。从结果中我们可以看出，RoG 仍然优于微调后的大语言模型。
+
+\begin{table}[H]
+\centering
+\caption{与不同微调大语言模型的性能比较（Hits@1）。}
+\label{tab:16}
+\begin{tabular}{lcc}
+\toprule
+方法 & WebQSP & CWQ \\
+\midrule
+Alpaca-7B (Zero Shot)        & 51.78 & 27.44 \\
+LLaMA2-Chat-7B (Zero Shot)   & 64.37 & 34.60 \\
+Alpaca-7B (Finetuned)        & 74.57 & 55.98 \\
+LLaMA2-Chat-7B (Finetuned)   & 73.89 & 53.49 \\
+RoG                          & 85.75 & 62.65 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{检索开销}
+
+我们在图~\ref{fig:4} 中展示了检索时间和检索到的推理路径数量。从结果中我们可以看出，检索时间随 top-K 关系路径数量的增加而增加。因此，我们应选择一个合适的 $K$，以平衡检索时间与检索到的推理路径数量。在实验中，我们设置 $K = 3$。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{cand_p21_k00.pdf}
+\caption{相对于 top-K 关系路径数量的平均检索时间与平均检索推理路径数量。}
+\label{fig:4}
+\end{figure}
+
+\subsubsection{不同跳数上的性能}
+
+我们在表~\ref{tab:17} 中展示了 RoG 及其变体在不同跳数问题上的性能。从结果中我们可以看出，RoG 在不同跳数问题上取得了比其变体更好的性能，尤其是在跳数超过 3 的问题上。这表明了关系路径对于提升大语言模型在复杂问题上推理性能的重要性。
+
+\begin{table}[H]
+\centering
+\caption{RoG 及其变体在不同跳数问题上的 F1 分数。}
+\label{tab:17}
+\begin{tabular}{lcccccc}
+\toprule
+\multirow{2}{*}{方法} & \multicolumn{3}{c}{WebQSP} & \multicolumn{3}{c}{CWQ} \\
+\cmidrule(lr){2-4} \cmidrule(lr){5-7}
+ & 1 hop & 2 hop & $\geq 3$ hop & 1 hop & 2 hop & $\geq 3$ hop \\
+\midrule
+RoG                & 77.03 & 64.86 & - & 62.88 & 58.46 & 37.82 \\
+RoG w/o reasoning  & 57.06 & 25.49 & - & 17.06 & 34.25 & 17.07 \\
+RoG w/o planning   & 50.33 & 51.66 & - & 31.04 & 33.93 & 23.29 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{不同答案数量上的性能}
+
+我们还在表~\ref{tab:18} 中展示了 RoG 及其变体在具有不同答案数量的问题上的性能。从结果中我们可以看出，RoG 在具有不同答案数量的问题上取得了比其变体更好的性能。具体而言，随着答案数量的增加，RoG w/o planning 的性能因缺乏来自知识图谱的知识而显著下降。尽管 RoG w/o reasoning 可以检索更多答案以提升性能，但由于缺乏去除噪声的推理能力，它仍然逊于 RoG。
+
+\begin{table}[H]
+\centering
+\caption{RoG 及其变体在具有不同答案数量问题上的 F1 分数。}
+\label{tab:18}
+\setlength{\tabcolsep}{4pt}
+\small
+\begin{tabular}{lcccccccc}
+\toprule
+\multirow{2}{*}{方法} & \multicolumn{4}{c}{WebQSP} & \multicolumn{4}{c}{CWQ} \\
+\cmidrule(lr){2-5} \cmidrule(lr){6-9}
+ & \#Ans=1 & $2 \geq$\#Ans$\leq 4$ & $5 \geq$\#Ans$\leq 9$ & \#Ans$\geq 10$ & \#Ans=1 & $2 \geq$\#Ans$\leq 4$ & $5 \geq$\#Ans$\leq 9$ & \#Ans$\geq 10$ \\
+\midrule
+RoG                & 67.89 & 79.39 & 75.04 & 58.33 & 56.90 & 53.73 & 58.36 & 43.62 \\
+RoG w/o reasoning  & 33.49 & 52.80 & 58.05 & 66.01 & 16.61 & 27.06 & 40.10 & 34.45 \\
+RoG w/o planning   & 55.03 & 51.08 & 44.81 & 27.00 & 34.08 & 34.16 & 31.67 & 25.21 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{案例研究：关系路径}
+
+我们在表~\ref{tab:19} 中展示了 RoG 生成的若干关系路径示例。
+
+\begin{table}[H]
+\centering
+\caption{所生成关系路径的示例。}
+\label{tab:19}
+\includegraphics[width=0.98\linewidth]{cand_p23_k00.pdf}
+\end{table}
+
+\subsection{案例研究：可解释结果}
+
+我们在表~\ref{tab:20} 中展示了 RoG 生成的若干可解释推理结果示例。
+
+\begin{table}[H]
+\centering
+\caption{RoG 忠实且可解释推理的示例。}
+\label{tab:20}
+\includegraphics[width=0.92\linewidth]{cand_p24_k00.pdf}
+\end{table}
+
+\subsection{提示}
+\label{app:a10}
+
+规划模块旨在生成忠实的关系路径作为回答问题的规划。指令模板如下：
+
+\begin{promptbox}
+\textbf{规划提示模板（Planning Prompt Template）}\\[2pt]
+Please generate a valid relation path that can be helpful for answering the following question: <Question>
+\end{promptbox}
+
+其中 \texttt{<Question>} 表示问题。
+
+推理模块接收问题 $q$ 和一组推理路径 $\mathcal{W}_z$，以生成答案 $a$。指令模板如下：
+
+\begin{promptbox}
+\textbf{推理提示模板（Reasoning Prompt Template）}\\[2pt]
+Based on the reasoning paths, please answer the given question. Please keep the answer as simple as possible and return all the possible answers as a list.\\[4pt]
+Reasoning Paths:\\
+<Reasoning Paths>\\[4pt]
+Question:\\
+<Question>
+\end{promptbox}
+
+其中 \texttt{<Reasoning Paths>} 表示检索到的推理路径 $\mathcal{W}_z$，它们被格式化为一系列结构化句子：
+\[
+\begin{aligned}
+& e_0 \rightarrow r_1 \rightarrow e_1 \rightarrow \cdots \rightarrow r_l \rightarrow e_l \\
+& \qquad\qquad \ldots \\
+& e_0 \rightarrow r_1 \rightarrow e_1 \rightarrow \cdots \rightarrow r_l \rightarrow e_l.
+\end{aligned}
+\]
+
+为发挥 RoG 的解释能力，我们为推理模块设计了一个新的指令模板，以生成可解释的结果。指令模板如下：
+
+\begin{promptbox}
+\textbf{解释提示模板（Explanation Prompt Template）}\\[2pt]
+Based on the reasoning paths, please answer the given question and explain why.\\[4pt]
+Here are some examples:\\
+<Examples>\\[4pt]
+Reasoning Paths:\\
+<Reasoning Paths>\\[4pt]
+Question:\\
+<Question>
+\end{promptbox}
+
+其中 \texttt{Examples} 表示少量人工标注的示例，用于演示解释过程。
+
+\end{document}

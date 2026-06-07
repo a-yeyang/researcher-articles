@@ -1,0 +1,649 @@
+{
+ "pdf": "Reasoning on Graphs (RoG).pdf",
+ "slug": "rog",
+ "page_count": 24,
+ "page_size": [
+  612.0,
+  792.0
+ ],
+ "pages": [
+  {
+   "page": 1,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/rog/_pages/p01.png"
+  },
+  {
+   "page": 2,
+   "candidates": [
+    {
+     "id": "cand_p02_k00",
+     "kind": "vector",
+     "bbox": [
+      148.5,
+      82.7,
+      463.0,
+      179.1
+     ],
+     "pdf": "cand_p02_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      185.4,
+      504.0,
+      195.3
+     ],
+     "text": "Figure 1: The issues of lack of knowledge and hallucination in LLMs reasoning and how they can",
+     "label": "Figure 1"
+    }
+   ],
+   "overlay": "assets/rog/_pages/p02.png"
+  },
+  {
+   "page": 3,
+   "candidates": [
+    {
+     "id": "cand_p03_k00",
+     "kind": "vector",
+     "bbox": [
+      137.1,
+      75.5,
+      484.2,
+      278.8
+     ],
+     "pdf": "cand_p03_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      277.9,
+      504.0,
+      288.4
+     ],
+     "text": "Figure 2: The overall framework of reasoning on graphs (RoG). 1) given a question, we first prompt",
+     "label": "Figure 2"
+    }
+   ],
+   "overlay": "assets/rog/_pages/p03.png"
+  },
+  {
+   "page": 4,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/rog/_pages/p04.png"
+  },
+  {
+   "page": 5,
+   "candidates": [
+    {
+     "id": "cand_p05_k00",
+     "kind": "vector",
+     "bbox": [
+      108.0,
+      620.9,
+      500.0,
+      658.0
+     ],
+     "pdf": "cand_p05_k00.pdf"
+    }
+   ],
+   "captions": [],
+   "overlay": "assets/rog/_pages/p05.png"
+  },
+  {
+   "page": 6,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/rog/_pages/p06.png"
+  },
+  {
+   "page": 7,
+   "candidates": [
+    {
+     "id": "cand_p07_k00",
+     "kind": "table",
+     "bbox": [
+      166.1,
+      94.6,
+      441.6,
+      306.1
+     ],
+     "pdf": "cand_p07_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      134.5,
+      82.0,
+      477.5,
+      91.9
+     ],
+     "text": "Table 1: Performance comparison with different baselines on the two KGQA datasets.",
+     "label": "Table 1"
+    }
+   ],
+   "overlay": "assets/rog/_pages/p07.png"
+  },
+  {
+   "page": 8,
+   "candidates": [
+    {
+     "id": "cand_p08_k00",
+     "kind": "table",
+     "bbox": [
+      266.4,
+      295.0,
+      504.0,
+      367.5
+     ],
+     "pdf": "cand_p08_k00.pdf"
+    },
+    {
+     "id": "cand_p08_k01",
+     "kind": "vector",
+     "bbox": [
+      167.4,
+      81.9,
+      444.6,
+      208.7
+     ],
+     "pdf": "cand_p08_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      208.1,
+      504.0,
+      218.3
+     ],
+     "text": "Figure 3: Faithfulness of top-K generated relation paths. Green bars denote the average number of",
+     "label": "Figure 3"
+    },
+    {
+     "bbox": [
+      318.2,
+      281.9,
+      452.2,
+      292.4
+     ],
+     "text": "Table 2: Ablation studies of RoG.",
+     "label": "Table 2"
+    },
+    {
+     "bbox": [
+      306.0,
+      474.4,
+      504.0,
+      484.3
+     ],
+     "text": "Table 3: Effects of integrating the planning mod-",
+     "label": "Table 3"
+    }
+   ],
+   "overlay": "assets/rog/_pages/p08.png"
+  },
+  {
+   "page": 9,
+   "candidates": [
+    {
+     "id": "cand_p09_k00",
+     "kind": "table",
+     "bbox": [
+      166.1,
+      94.5,
+      443.4,
+      249.1
+     ],
+     "pdf": "cand_p09_k00.pdf"
+    },
+    {
+     "id": "cand_p09_k01",
+     "kind": "table",
+     "bbox": [
+      166.1,
+      265.5,
+      443.4,
+      454.8
+     ],
+     "pdf": "cand_p09_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      116.0,
+      81.5,
+      496.0,
+      91.9
+     ],
+     "text": "Table 4: Example of lack of knowledge for ChatGPT-CoT and interpretable predictions of RoG.",
+     "label": "Table 4"
+    },
+    {
+     "bbox": [
+      132.9,
+      252.5,
+      479.1,
+      262.9
+     ],
+     "text": "Table 5: Example of the hallucination of ChatGPT-CoT and faithful reasoning of RoG.",
+     "label": "Table 5"
+    }
+   ],
+   "overlay": "assets/rog/_pages/p09.png"
+  },
+  {
+   "page": 10,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/rog/_pages/p10.png"
+  },
+  {
+   "page": 11,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/rog/_pages/p11.png"
+  },
+  {
+   "page": 12,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/rog/_pages/p12.png"
+  },
+  {
+   "page": 13,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/rog/_pages/p13.png"
+  },
+  {
+   "page": 14,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/rog/_pages/p14.png"
+  },
+  {
+   "page": 15,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/rog/_pages/p15.png"
+  },
+  {
+   "page": 16,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/rog/_pages/p16.png"
+  },
+  {
+   "page": 17,
+   "candidates": [
+    {
+     "id": "cand_p17_k00",
+     "kind": "vector",
+     "bbox": [
+      224.5,
+      418.2,
+      387.5,
+      461.4
+     ],
+     "pdf": "cand_p17_k00.pdf"
+    },
+    {
+     "id": "cand_p17_k01",
+     "kind": "vector",
+     "bbox": [
+      222.1,
+      688.6,
+      390.0,
+      720.8
+     ],
+     "pdf": "cand_p17_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      95.5,
+      357.7,
+      105.5
+     ],
+     "text": "Algorithm 1: Retrieve reasoning paths based on relation paths",
+     "label": "Algorithm 1"
+    },
+    {
+     "bbox": [
+      246.7,
+      397.0,
+      365.3,
+      407.0
+     ],
+     "text": "Table 6: Statistics of datasets.",
+     "label": "Table 6"
+    },
+    {
+     "bbox": [
+      144.3,
+      487.2,
+      467.7,
+      497.1
+     ],
+     "text": "Table 7: Statistics of the number of answers for questions in WebQSP and CWQ.",
+     "label": "Table 7"
+    },
+    {
+     "bbox": [
+      181.8,
+      577.3,
+      430.2,
+      587.2
+     ],
+     "text": "Table 8: Statistics of the question hops in WebQSP and CWQ.",
+     "label": "Table 8"
+    },
+    {
+     "bbox": [
+      216.4,
+      667.4,
+      395.6,
+      677.4
+     ],
+     "text": "Table 9: Statistics of MetaQA-3hop datasets.",
+     "label": "Table 9"
+    }
+   ],
+   "overlay": "assets/rog/_pages/p17.png"
+  },
+  {
+   "page": 18,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      199.6,
+      82.0,
+      412.4,
+      91.9
+     ],
+     "text": "Table 10: Statistics of constructed knowledge graphs.",
+     "label": "Table 10"
+    },
+    {
+     "bbox": [
+      159.9,
+      158.2,
+      452.1,
+      168.1
+     ],
+     "text": "Table 11: The statistics of the instances in the instruction-tuning datasets.",
+     "label": "Table 11"
+    }
+   ],
+   "overlay": "assets/rog/_pages/p18.png"
+  },
+  {
+   "page": 19,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/rog/_pages/p19.png"
+  },
+  {
+   "page": 20,
+   "candidates": [
+    {
+     "id": "cand_p20_k00",
+     "kind": "vector",
+     "bbox": [
+      208.6,
+      103.2,
+      403.4,
+      162.1
+     ],
+     "pdf": "cand_p20_k00.pdf"
+    },
+    {
+     "id": "cand_p20_k01",
+     "kind": "vector",
+     "bbox": [
+      177.6,
+      201.5,
+      431.9,
+      233.7
+     ],
+     "pdf": "cand_p20_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      207.1,
+      81.5,
+      404.9,
+      91.9
+     ],
+     "text": "Table 12: Performance of RoG on MetaQA-3hop.",
+     "label": "Table 12"
+    },
+    {
+     "bbox": [
+      233.1,
+      189.2,
+      378.9,
+      199.2
+     ],
+     "text": "Table 13: Training time comparison.",
+     "label": "Table 13"
+    },
+    {
+     "bbox": [
+      178.9,
+      654.1,
+      433.1,
+      664.1
+     ],
+     "text": "Table 14: Performance on WebQSP with different training data.",
+     "label": "Table 14"
+    }
+   ],
+   "overlay": "assets/rog/_pages/p20.png"
+  },
+  {
+   "page": 21,
+   "candidates": [
+    {
+     "id": "cand_p21_k00",
+     "kind": "vector",
+     "bbox": [
+      147.6,
+      546.3,
+      464.4,
+      693.0
+     ],
+     "pdf": "cand_p21_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      185.5,
+      82.0,
+      426.5,
+      91.9
+     ],
+     "text": "Table 15: Performance on CWQ with different training data.",
+     "label": "Table 15"
+    },
+    {
+     "bbox": [
+      152.9,
+      172.6,
+      459.1,
+      182.5
+     ],
+     "text": "Table 16: Performance comparison with different finetuned LLMs (Hits@1).",
+     "label": "Table 16"
+    },
+    {
+     "bbox": [
+      108.0,
+      708.1,
+      504.0,
+      718.0
+     ],
+     "text": "Figure 4: Average retrieval time and average number of retrieved reasoning paths w.r.t. the number",
+     "label": "Figure 4"
+    }
+   ],
+   "overlay": "assets/rog/_pages/p21.png"
+  },
+  {
+   "page": 22,
+   "candidates": [
+    {
+     "id": "cand_p22_k00",
+     "kind": "table",
+     "bbox": [
+      166.5,
+      103.1,
+      442.4,
+      166.3
+     ],
+     "pdf": "cand_p22_k00.pdf"
+    },
+    {
+     "id": "cand_p22_k01",
+     "kind": "table",
+     "bbox": [
+      108.0,
+      201.2,
+      502.3,
+      250.4
+     ],
+     "pdf": "cand_p22_k01.pdf"
+    },
+    {
+     "id": "cand_p22_k02",
+     "kind": "vector",
+     "bbox": [
+      108.0,
+      455.9,
+      500.0,
+      509.1
+     ],
+     "pdf": "cand_p22_k02.pdf"
+    },
+    {
+     "id": "cand_p22_k03",
+     "kind": "vector",
+     "bbox": [
+      108.0,
+      562.2,
+      500.0,
+      675.2
+     ],
+     "pdf": "cand_p22_k03.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      157.4,
+      81.5,
+      454.6,
+      91.9
+     ],
+     "text": "Table 17: F1 scores of RoG and its variants for different hops of questions.",
+     "label": "Table 17"
+    },
+    {
+     "bbox": [
+      124.2,
+      179.6,
+      487.8,
+      190.1
+     ],
+     "text": "Table 18: F1 scores of RoG and its variants for questions with varying numbers of answers.",
+     "label": "Table 18"
+    }
+   ],
+   "overlay": "assets/rog/_pages/p22.png"
+  },
+  {
+   "page": 23,
+   "candidates": [
+    {
+     "id": "cand_p23_k00",
+     "kind": "table",
+     "bbox": [
+      113.9,
+      304.8,
+      499.2,
+      660.5
+     ],
+     "pdf": "cand_p23_k00.pdf"
+    },
+    {
+     "id": "cand_p23_k01",
+     "kind": "vector",
+     "bbox": [
+      108.0,
+      111.9,
+      500.0,
+      244.8
+     ],
+     "pdf": "cand_p23_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      203.5,
+      283.8,
+      408.6,
+      293.7
+     ],
+     "text": "Table 19: Examples of the generated relation paths.",
+     "label": "Table 19"
+    }
+   ],
+   "overlay": "assets/rog/_pages/p23.png"
+  },
+  {
+   "page": 24,
+   "candidates": [
+    {
+     "id": "cand_p24_k00",
+     "kind": "table",
+     "bbox": [
+      108.0,
+      94.6,
+      504.0,
+      738.9
+     ],
+     "pdf": "cand_p24_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      172.7,
+      81.5,
+      439.3,
+      91.9
+     ],
+     "text": "Table 20: Examples of faithful and interpretable reasoning of RoG.",
+     "label": "Table 20"
+    }
+   ],
+   "overlay": "assets/rog/_pages/p24.png"
+  }
+ ]
+}

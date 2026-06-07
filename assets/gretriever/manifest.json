@@ -1,0 +1,669 @@
+{
+ "pdf": "G-Retriever.pdf",
+ "slug": "gretriever",
+ "page_count": 23,
+ "page_size": [
+  612.0,
+  792.0
+ ],
+ "pages": [
+  {
+   "page": 1,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/gretriever/_pages/p01.png"
+  },
+  {
+   "page": 2,
+   "candidates": [
+    {
+     "id": "cand_p02_k00",
+     "kind": "vector",
+     "bbox": [
+      110.4,
+      72.1,
+      501.8,
+      202.6
+     ],
+     "pdf": "cand_p02_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      210.7,
+      505.6,
+      220.6
+     ],
+     "text": "Figure 1: We develop a flexible question-answering framework targeting real-world textual graph ap-",
+     "label": "Figure 1"
+    }
+   ],
+   "overlay": "assets/gretriever/_pages/p02.png"
+  },
+  {
+   "page": 3,
+   "candidates": [
+    {
+     "id": "cand_p03_k00",
+     "kind": "vector",
+     "bbox": [
+      109.8,
+      97.5,
+      502.2,
+      146.6
+     ],
+     "pdf": "cand_p03_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      168.6,
+      79.1,
+      443.1,
+      89.0
+     ],
+     "text": "Table 1: Observation and mitigation of hallucination in graph LLMs.",
+     "label": "Table 1"
+    }
+   ],
+   "overlay": "assets/gretriever/_pages/p03.png"
+  },
+  {
+   "page": 4,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/gretriever/_pages/p04.png"
+  },
+  {
+   "page": 5,
+   "candidates": [
+    {
+     "id": "cand_p05_k00",
+     "kind": "vector",
+     "bbox": [
+      123.8,
+      187.8,
+      488.3,
+      314.9
+     ],
+     "pdf": "cand_p05_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      185.4,
+      79.1,
+      426.2,
+      89.0
+     ],
+     "text": "Table 2: Summary of datasets used in GraphQA benchmark.",
+     "label": "Table 2"
+    },
+    {
+     "bbox": [
+      164.2,
+      326.2,
+      447.8,
+      336.2
+     ],
+     "text": "Figure 2: Illustrative examples from the GraphQA benchmark datasets.",
+     "label": "Figure 2"
+    }
+   ],
+   "overlay": "assets/gretriever/_pages/p05.png"
+  },
+  {
+   "page": 6,
+   "candidates": [
+    {
+     "id": "cand_p06_k00",
+     "kind": "vector",
+     "bbox": [
+      110.3,
+      72.1,
+      501.7,
+      208.6
+     ],
+     "pdf": "cand_p06_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      216.5,
+      504.3,
+      226.6
+     ],
+     "text": "Figure 3: Overview of the proposed G-Retriever: 1) Indexing: Graphs are indexed for efficient query",
+     "label": "Figure 3"
+    }
+   ],
+   "overlay": "assets/gretriever/_pages/p06.png"
+  },
+  {
+   "page": 7,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/gretriever/_pages/p07.png"
+  },
+  {
+   "page": 8,
+   "candidates": [
+    {
+     "id": "cand_p08_k00",
+     "kind": "table",
+     "bbox": [
+      110.2,
+      494.8,
+      482.4,
+      635.4
+     ],
+     "pdf": "cand_p08_k00.pdf"
+    },
+    {
+     "id": "cand_p08_k01",
+     "kind": "table",
+     "bbox": [
+      110.2,
+      558.3,
+      482.4,
+      600.2
+     ],
+     "pdf": "cand_p08_k01.pdf"
+    },
+    {
+     "id": "cand_p08_k02",
+     "kind": "table",
+     "bbox": [
+      110.2,
+      603.3,
+      482.4,
+      635.4
+     ],
+     "pdf": "cand_p08_k02.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      107.7,
+      443.8,
+      504.2,
+      454.0
+     ],
+     "text": "Table 3: Performance comparison across ExplaGraphs, SceneGraphs, and WebQSP datasets for",
+     "label": "Table 3"
+    },
+    {
+     "bbox": [
+      107.7,
+      647.0,
+      505.7,
+      656.9
+     ],
+     "text": "Table 3 demonstrates the effectiveness of our method across three datasets in various configurations.",
+     "label": "Table 3"
+    }
+   ],
+   "overlay": "assets/gretriever/_pages/p08.png"
+  },
+  {
+   "page": 9,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      182.4,
+      79.1,
+      429.3,
+      89.0
+     ],
+     "text": "Table 4: Retrieval on graphs significantly improves efficiency.",
+     "label": "Table 4"
+    },
+    {
+     "bbox": [
+      107.7,
+      173.7,
+      287.9,
+      183.8
+     ],
+     "text": "Table 5: Quantitative comparison of halluci-",
+     "label": "Table 5"
+    },
+    {
+     "bbox": [
+      303.0,
+      173.8,
+      490.8,
+      184.0
+     ],
+     "text": "Table 6: Ablation study on the WebQSP dataset.",
+     "label": "Table 6"
+    }
+   ],
+   "overlay": "assets/gretriever/_pages/p09.png"
+  },
+  {
+   "page": 10,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/gretriever/_pages/p10.png"
+  },
+  {
+   "page": 11,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/gretriever/_pages/p11.png"
+  },
+  {
+   "page": 12,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/gretriever/_pages/p12.png"
+  },
+  {
+   "page": 13,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/gretriever/_pages/p13.png"
+  },
+  {
+   "page": 14,
+   "candidates": [
+    {
+     "id": "cand_p14_k00",
+     "kind": "vector",
+     "bbox": [
+      199.7,
+      556.3,
+      412.3,
+      644.1
+     ],
+     "pdf": "cand_p14_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      208.8,
+      652.9,
+      403.2,
+      663.0
+     ],
+     "text": "Figure 4: Model configuration 1) Inference-only.",
+     "label": "Figure 4"
+    }
+   ],
+   "overlay": "assets/gretriever/_pages/p14.png"
+  },
+  {
+   "page": 15,
+   "candidates": [
+    {
+     "id": "cand_p15_k00",
+     "kind": "table",
+     "bbox": [
+      114.9,
+      255.3,
+      497.1,
+      333.7
+     ],
+     "pdf": "cand_p15_k00.pdf"
+    },
+    {
+     "id": "cand_p15_k01",
+     "kind": "table",
+     "bbox": [
+      352.4,
+      291.5,
+      426.5,
+      318.8
+     ],
+     "pdf": "cand_p15_k01.pdf"
+    },
+    {
+     "id": "cand_p15_k02",
+     "kind": "table",
+     "bbox": [
+      114.9,
+      425.2,
+      497.1,
+      503.8
+     ],
+     "pdf": "cand_p15_k02.pdf"
+    },
+    {
+     "id": "cand_p15_k03",
+     "kind": "table",
+     "bbox": [
+      352.4,
+      461.6,
+      426.5,
+      489.3
+     ],
+     "pdf": "cand_p15_k03.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      177.7,
+      357.5,
+      434.3,
+      367.7
+     ],
+     "text": "Figure 5: Model configuration 2) Frozen LLM w/ prompt tuning.",
+     "label": "Figure 5"
+    },
+    {
+     "bbox": [
+      214.5,
+      528.0,
+      397.5,
+      538.1
+     ],
+     "text": "Figure 6: Model configuration 3) Tuned LLM.",
+     "label": "Figure 6"
+    }
+   ],
+   "overlay": "assets/gretriever/_pages/p15.png"
+  },
+  {
+   "page": 16,
+   "candidates": [
+    {
+     "id": "cand_p16_k00",
+     "kind": "table",
+     "bbox": [
+      108.2,
+      72.2,
+      234.5,
+      124.3
+     ],
+     "pdf": "cand_p16_k00.pdf"
+    },
+    {
+     "id": "cand_p16_k01",
+     "kind": "table",
+     "bbox": [
+      242.8,
+      72.2,
+      369.2,
+      124.3
+     ],
+     "pdf": "cand_p16_k01.pdf"
+    },
+    {
+     "id": "cand_p16_k02",
+     "kind": "table",
+     "bbox": [
+      377.4,
+      72.2,
+      503.8,
+      124.3
+     ],
+     "pdf": "cand_p16_k02.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      225.9,
+      148.2,
+      386.1,
+      158.2
+     ],
+     "text": "Figure 7: Ablation study configurations.",
+     "label": "Figure 7"
+    },
+    {
+     "bbox": [
+      120.4,
+      252.1,
+      491.3,
+      262.3
+     ],
+     "text": "Table 7: Performance of different graph encoders on the WebQSP and ExplaGraphs datasets.",
+     "label": "Table 7"
+    },
+    {
+     "bbox": [
+      178.6,
+      506.2,
+      433.1,
+      516.4
+     ],
+     "text": "Table 8: Performance of different LLMs on the WebQSP dataset.",
+     "label": "Table 8"
+    }
+   ],
+   "overlay": "assets/gretriever/_pages/p16.png"
+  },
+  {
+   "page": 17,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      132.7,
+      79.1,
+      479.0,
+      89.0
+     ],
+     "text": "Table 9: Comparison of text formats in original datasets and our GraphQA benchmark.",
+     "label": "Table 9"
+    }
+   ],
+   "overlay": "assets/gretriever/_pages/p17.png"
+  },
+  {
+   "page": 18,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      207.2,
+      325.9,
+      404.4,
+      336.1
+     ],
+     "text": "Table 10: The impact of k on the webqsp dataset.",
+     "label": "Table 10"
+    },
+    {
+     "bbox": [
+      175.0,
+      594.1,
+      436.7,
+      604.3
+     ],
+     "text": "Table 11: The quality of retrieval methods on the WebQSP dataset.",
+     "label": "Table 11"
+    }
+   ],
+   "overlay": "assets/gretriever/_pages/p18.png"
+  },
+  {
+   "page": 19,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      143.0,
+      312.1,
+      468.7,
+      322.3
+     ],
+     "text": "Table 12: Performance and Efficiency of Various Methods on the WebQSP dataset.",
+     "label": "Table 12"
+    }
+   ],
+   "overlay": "assets/gretriever/_pages/p19.png"
+  },
+  {
+   "page": 20,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/gretriever/_pages/p20.png"
+  },
+  {
+   "page": 21,
+   "candidates": [
+    {
+     "id": "cand_p21_k00",
+     "kind": "table",
+     "bbox": [
+      108.0,
+      101.7,
+      504.0,
+      715.4
+     ],
+     "pdf": "cand_p21_k00.pdf"
+    },
+    {
+     "id": "cand_p21_k01",
+     "kind": "table",
+     "bbox": [
+      108.0,
+      304.7,
+      504.0,
+      715.4
+     ],
+     "pdf": "cand_p21_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      198.8,
+      83.3,
+      412.9,
+      93.5
+     ],
+     "text": "Table 13: Example of creative chat on ExplaGraphs.",
+     "label": "Table 13"
+    }
+   ],
+   "overlay": "assets/gretriever/_pages/p21.png"
+  },
+  {
+   "page": 22,
+   "candidates": [
+    {
+     "id": "cand_p22_k00",
+     "kind": "table",
+     "bbox": [
+      108.0,
+      167.2,
+      504.0,
+      660.8
+     ],
+     "pdf": "cand_p22_k00.pdf"
+    },
+    {
+     "id": "cand_p22_k01",
+     "kind": "table",
+     "bbox": [
+      108.0,
+      404.9,
+      504.0,
+      560.5
+     ],
+     "pdf": "cand_p22_k01.pdf"
+    },
+    {
+     "id": "cand_p22_k02",
+     "kind": "table",
+     "bbox": [
+      108.0,
+      563.7,
+      504.0,
+      585.7
+     ],
+     "pdf": "cand_p22_k02.pdf"
+    },
+    {
+     "id": "cand_p22_k03",
+     "kind": "table",
+     "bbox": [
+      108.0,
+      588.8,
+      504.0,
+      660.8
+     ],
+     "pdf": "cand_p22_k03.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      107.7,
+      137.9,
+      504.0,
+      148.1
+     ],
+     "text": "Table 14: Example of creative chat on SceneGraphs. We utilize GPT-4 to generate an image from",
+     "label": "Table 14"
+    }
+   ],
+   "overlay": "assets/gretriever/_pages/p22.png"
+  },
+  {
+   "page": 23,
+   "candidates": [
+    {
+     "id": "cand_p23_k00",
+     "kind": "table",
+     "bbox": [
+      53.0,
+      101.7,
+      554.3,
+      715.4
+     ],
+     "pdf": "cand_p23_k00.pdf"
+    },
+    {
+     "id": "cand_p23_k01",
+     "kind": "table",
+     "bbox": [
+      53.0,
+      369.3,
+      554.3,
+      391.2
+     ],
+     "pdf": "cand_p23_k01.pdf"
+    },
+    {
+     "id": "cand_p23_k02",
+     "kind": "table",
+     "bbox": [
+      53.0,
+      394.4,
+      554.3,
+      715.4
+     ],
+     "pdf": "cand_p23_k02.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      172.6,
+      83.3,
+      439.1,
+      93.5
+     ],
+     "text": "Table 15: Example of creative conversation on the WebQSP dataset.",
+     "label": "Table 15"
+    }
+   ],
+   "overlay": "assets/gretriever/_pages/p23.png"
+  }
+ ]
+}

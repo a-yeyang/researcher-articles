@@ -1,0 +1,1156 @@
+\documentclass[11pt,UTF8,fontset=fandol]{ctexart}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx,float,caption,subcaption}
+\usepackage{booktabs,array,multirow,makecell}
+\usepackage{geometry,enumitem,xcolor}
+\usepackage[hidelinks]{hyperref}
+\usepackage{url}
+\usepackage{algorithm}
+\usepackage[noend]{algpseudocode}
+\geometry{margin=2.3cm}
+\graphicspath{{/Users/yye/project/论文/assets/tog/}}
+\captionsetup{font=small,labelfont=bf}
+\setlength{\parskip}{0.4em}
+
+% 颜色定义（用于案例研究表中标注对错答案）
+\definecolor{wrongred}{RGB}{200,30,30}
+\definecolor{rightblue}{RGB}{30,80,200}
+\newcommand{\wrong}[1]{\textcolor{wrongred}{#1}}
+\newcommand{\correct}[1]{\textcolor{rightblue}{#1}}
+
+% LLM 与 KG 之间的运算符
+\newcommand{\oxkg}{\ensuremath{\otimes}}
+\newcommand{\opkg}{\ensuremath{\oplus}}
+
+\title{\textbf{图上思考：大语言模型在知识图谱上的\\深度且负责任的推理}}
+
+\author{Jiashuo Sun\textsuperscript{2,1}$^{*\dagger}$\quad Chengjin Xu\textsuperscript{1}$^{*}$\quad Lumingyuan Tang\textsuperscript{3,1}$^{*\dagger}$\quad Saizhuo Wang\textsuperscript{4,1}$^{*\dagger}$\\
+Chen Lin\textsuperscript{2}\quad Yeyun Gong\textsuperscript{6}\quad Lionel M. Ni\textsuperscript{5}\quad Heung-Yeung Shum\textsuperscript{1,4}\quad Jian Guo\textsuperscript{1}$^{\ddagger}$\\[0.4em]
+\textsuperscript{1}\,IDEA Research，国际数字经济研究院（International Digital Economy Academy）\\
+\textsuperscript{2}\,厦门大学（Xiamen University）\quad
+\textsuperscript{3}\,南加州大学（University of Southern California）\\
+\textsuperscript{4}\,香港科技大学（The Hong Kong University of Science and Technology）\\
+\textsuperscript{5}\,香港科技大学（广州）（The Hong Kong University of Science and Technology, Guangzhou）\\
+\textsuperscript{6}\,微软亚洲研究院（Microsoft Research Asia）}
+
+\date{}
+
+\begin{document}
+\maketitle
+
+\renewcommand{\thefootnote}{\fnsymbol{footnote}}
+\footnotetext[1]{同等贡献。}
+\footnotetext[2]{在 IDEA Research 实习期间完成的工作。}
+\footnotetext[3]{通讯作者。}
+\renewcommand{\thefootnote}{\arabic{footnote}}
+\setcounter{footnote}{0}
+
+\begin{abstract}
+尽管大语言模型（large language models, LLMs）已在各类任务中取得显著成功，但它们经常受到幻觉（hallucination）问题的困扰，尤其是在需要深度且负责任推理的场景中。通过在大语言模型推理过程中引入外部知识图谱（knowledge graph, KG），这些问题可以得到部分缓解。本文提出一种新的 LLM-KG 融合范式——“LLM \oxkg{} KG”，它将大语言模型视为一个智能体（agent），在知识图谱上交互式地探索相关的实体（entity）与关系（relation），并基于检索到的知识进行推理。我们进一步通过引入一种名为 Think-on-Graph（ToG）的新方法来实现该范式：在该方法中，大语言模型智能体在知识图谱上迭代地执行束搜索（beam search），发现最有希望的推理路径，并返回最可能的推理结果。我们通过一系列精心设计的实验来检验并阐明 ToG 的以下优势：1）与大语言模型相比，ToG 具有更强的深度推理能力；2）ToG 通过利用大语言模型的推理能力和专家反馈，具备知识可溯源性（knowledge traceability）与知识可纠正性（knowledge correctability）；3）ToG 为不同的大语言模型、知识图谱和提示策略提供了一个灵活的即插即用（plug-and-play）框架，且无需任何额外的训练成本；4）在某些场景中，搭载小型大语言模型的 ToG 性能可以超越 GPT-4 等大型大语言模型，从而降低大语言模型部署和应用的成本。作为一种计算成本更低、通用性更好的免训练（training-free）方法，ToG 在 9 个数据集中的 6 个上取得了总体最先进（SOTA）的表现，而此前大多数 SOTA 方法都依赖额外的训练。我们的代码已公开发布于 \url{https://github.com/IDEA-FinAI/ToG}。
+\end{abstract}
+
+\section{引言}
+
+大语言模型（LLMs）（Ouyang 等，2022；OpenAI，2023；Thoppilan 等，2022；Brown 等，2020a；Chowdhery 等，2022；Touvron 等，2023）已在各类自然语言处理任务中展现出卓越的性能。这些模型利用在海量文本语料库上进行的预训练（pre-training）技术，生成连贯且符合上下文的回复。尽管表现令人印象深刻，但在面对需要深度且负责任推理的复杂知识推理任务时（Petroni 等，2021；Talmor 等，2019；Talmor \& Berant，2018；Zhang 等，2023），大语言模型存在明显的局限性。第一，对于需要超出预训练阶段所包含知识的专门知识的问题（如图~1a 中的过时知识），或需要长逻辑链和多跳（multi-hop）知识推理的问题，大语言模型通常无法给出准确答案。第二，大语言模型缺乏责任性（responsibility）、可解释性（explainability）和透明性（transparency），引发了人们对幻觉或有害文本风险的担忧。第三，大语言模型的训练过程往往昂贵且耗时，因此难以使其知识保持最新。
+
+认识到这些挑战后，一个自然且有前景的解决方案是引入诸如知识图谱（KGs）之类的外部知识来帮助改进大语言模型的推理。知识图谱提供了结构化、显式且可编辑的知识表示，是缓解大语言模型局限性的一种互补策略（Pan 等，2023）。研究者们（Li 等，2023c；Xie 等，2022；Baek 等，2023b；Yang 等，2023；Wang 等，2023a；Jiang 等，2023）已经探索了将知识图谱用作外部知识源以缓解大语言模型幻觉的方法。这些方法遵循一个固定流程：从知识图谱中检索信息，相应地增强提示（prompt），再将扩充后的提示输入大语言模型（如图~1b 所示）。本文将这一范式称为“LLM \opkg{} KG”。尽管该范式旨在整合大语言模型与知识图谱的能力，但其中大语言模型只扮演翻译器的角色——将输入问题转换为机器可理解的命令以供知识图谱搜索和推理，而并不直接参与图推理过程。遗憾的是，这种松耦合（loose-coupling）的 LLM \opkg{} KG 范式有其自身的局限性，其成功在很大程度上依赖于知识图谱的完整性和高质量。例如在图~1b 中，尽管大语言模型成功识别出了回答该问题所需的关系类型，但由于缺少“多数党”（majority party）这一关系，导致无法检索到正确答案。
+
+基于这些考虑，我们提出一种新的紧耦合（tight-coupling）“LLM \oxkg{} KG”范式，其中知识图谱和大语言模型协同工作，在图推理的每一步中相互补充能力。图~1c 给出了一个示例，说明 LLM \oxkg{} KG 的优势。在该示例中，图~1b 中因缺失“多数党”关系而导致的失败，可以通过具备动态推理能力（Yao 等，2022）的大语言模型智能体发现的一个参考三元组（Australia, prime minister, Anthony Albanese）加以弥补，再结合来自大语言模型自身知识的 Anthony Albanese 的所属政党信息。如此一来，大语言模型便能借助从知识图谱检索到的可靠知识，成功生成正确答案。作为该范式的一种实现，我们提出了一个名为“Think-on-Graph”（含义为：大语言模型沿着知识“图”（graph）“上”（on）的推理路径逐步“思考”（Think），下文简称 ToG）的算法框架，用于实现深度、负责任且高效的大语言模型推理。借助束搜索算法（Jurafsky \& Martin，2009）在知识图谱/大语言模型推理中的应用（Atif 等，2023；Sun 等，2023a；Xie 等，2023；Liu 等，2024），ToG 使大语言模型能够在知识图谱上动态地探索多条推理路径并据此做出决策。给定一个输入问题，ToG 首先识别初始实体，然后迭代地调用大语言模型，通过探索（exploration，在“on graph”步骤中寻找知识图谱中的相关三元组）和推理（reasoning，在“think”步骤中决定最相关的三元组），从知识图谱中检索相关三元组，直到束搜索中 top-N 推理路径所收集的信息足以回答问题（由大语言模型在“Think”步骤中判断），或者达到预定义的最大搜索深度。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.96\linewidth]{fig1.pdf}
+\caption{三种大语言模型推理范式的代表性工作流程：(a) 仅大语言模型（LLM-only，例如链式思维提示）；(b) LLM \opkg{} KG（例如通过大语言模型生成 SPARQL 查询的 KBQA）；(c) LLM \oxkg{} KG（例如 Think-on-Graph）。}
+\label{fig:1}
+\end{figure}
+
+ToG 的优势可以概括为：(1) \textbf{深度推理}：ToG 从知识图谱中提取多样化的多跳推理路径，作为大语言模型推理的依据，从而增强大语言模型在知识密集型任务上的深度推理能力。(2) \textbf{负责任推理}：显式且可编辑的推理路径提高了大语言模型推理过程的可解释性，并能够对模型输出的来源进行追溯和纠正。(3) \textbf{灵活性与高效性}：a) ToG 是一个即插即用的框架，可以无缝应用于各种大语言模型和知识图谱；b) 在 ToG 框架下，知识可以通过知识图谱频繁更新，而无需更新大语言模型——后者的知识更新既昂贵又缓慢；c) ToG 能够增强小型大语言模型（例如 LLAMA2-70B）的推理能力，使其足以与大型大语言模型（例如 GPT-4）相竞争。
+
+\section{方法}
+
+ToG 通过让大语言模型在知识图谱上执行束搜索来实现“LLM \oxkg{} KG”范式。具体而言，它提示大语言模型在知识图谱上迭代地探索多条可能的推理路径，直到大语言模型判定可以基于当前推理路径回答问题为止。对于问题 $x$，ToG 在每次迭代后不断更新并维护 top-N 推理路径 $P = \{p_1, p_2, \dots, p_N\}$，其中 $N$ 表示束搜索的宽度。ToG 的整个推理过程包含以下 3 个阶段：初始化（initialization）、探索（exploration）和推理（reasoning）。
+
+\subsection{Think-on-Graph}
+
+\subsubsection{图搜索的初始化}
+
+给定一个问题，ToG 利用底层大语言模型来定位知识图谱上推理路径的初始实体。这一阶段可以看作 top-N 推理路径 $P$ 的初始化。ToG 首先提示大语言模型自动抽取问题中的主题实体（topic entity），并得到问题对应的 top-N 主题实体 $E^0 = \{e_1^0, e_2^0, \dots, e_N^0\}$。注意，主题实体的数量可能少于 $N$。
+
+\subsubsection{探索}
+
+在第 $D$ 次迭代开始时，每条路径 $p_n$ 由 $D-1$ 个三元组构成，即 $p_n = \{(e_{s,n}^d, r_{j,n}^d, e_{o,n}^d)\}_{d=1}^{D-1}$，其中 $e_{s,n}^d$ 和 $e_{o,n}^d$ 分别表示主语实体和宾语实体，$r_{j,n}^d$ 是二者之间的某个特定关系，$(e_{s,n}^d, r_{j,n}^d, e_{o,n}^d)$ 与 $(e_{s,n}^{d+1}, r_{j,n}^{d+1}, e_{o,n}^{d+1})$ 彼此相连。$P$ 中尾实体集合与关系集合分别记为 $E^{D-1} = \{e_1^{D-1}, e_2^{D-1}, \dots, e_N^{D-1}\}$ 和 $R^{D-1} = \{r_1^{D-1}, r_2^{D-1}, \dots, r_N^{D-1}\}$。
+
+第 $D$ 次迭代中的探索阶段旨在利用大语言模型，基于问题 $x$，从当前 top-N 实体集合 $E^{D-1}$ 的邻居实体中识别出最相关的 top-N 实体 $E^D$，并用 $E^D$ 扩展 top-N 推理路径 $P$。为了应对用大语言模型处理大量邻居实体的复杂性，我们采用一种两步式探索策略：首先探索重要的关系，然后利用选出的关系来引导实体探索。
+
+\paragraph{关系探索（Relation Exploration）}
+关系探索是一个深度为 1、宽度为 $N$ 的束搜索过程，从 $E^{D-1}$ 到 $R^D$。整个过程可以分解为两个步骤：搜索（Search）和剪枝（Prune）。大语言模型作为智能体自动完成这一过程。
+
+\begin{itemize}[leftmargin=1.4em]
+\item \textbf{搜索（Search）} 在第 $D$ 次迭代开始时，关系探索阶段首先为每条推理路径 $p_n$ 搜索出与尾实体 $e_n^{D-1}$ 相连的关系 $R_{cand,n}^D$。这些关系被聚合到 $R_{cand}^D$ 中。在图~2 的示例中，$E^1 = \{\text{Canberra}\}$，$R_{cand}^1$ 表示与 Canberra 相连（指向内或指向外）的所有关系的集合。值得注意的是，搜索过程可以通过执行附录 E.1 和 E.2 中所示的两个简单的预定义形式化查询轻松完成，这使得 ToG 能够很好地适配不同的知识图谱，且无需任何训练成本。
+\item \textbf{剪枝（Prune）} 一旦从关系搜索中获得了候选关系集合 $R_{cand}^D$ 和扩展后的候选推理路径 $P_{cand}$，我们就可以利用大语言模型，基于问题 $x$ 的字面信息和候选关系 $R_{cand}^D$，从 $P_{cand}$ 中选出以尾关系 $R^D$ 结尾的新的 top-N 推理路径 $P$。此处使用的提示见附录 E.3.1。如图~2 所示，在第一次迭代中，大语言模型从与实体 Canberra 相连的所有关系中选出 top-3 关系 \{capital of, country, territory\}。由于 Canberra 是唯一的主题实体，top-3 候选推理路径被更新为 \{(Canberra, capital of), (Canberra, country), (Canberra, territory)\}。
+\end{itemize}
+
+\paragraph{实体探索（Entity Exploration）}
+与关系探索类似，实体探索也是由大语言模型从 $R^D$ 到 $E^D$ 执行的束搜索过程，同样包含搜索（Search）和剪枝（Prune）两个步骤。
+
+\begin{itemize}[leftmargin=1.4em]
+\item \textbf{搜索（Search）} 一旦从关系探索中获得了新的 top-N 推理路径 $P$ 和新尾关系集合 $R^D$，对于每条关系路径 $p_n \in P$，我们都可以通过查询 $(e_n^{D-1}, r_n^D, ?)$ 或 $(?, r_n^D, e_n^{D-1})$ 来探索一个候选实体集合 $E_{cand,n}^D$，其中 $e_n^{D-1}$、$r_n^D$ 表示 $p_n$ 的尾实体和关系。我们可以将 $\{E_{cand,1}^D, E_{cand,2}^D, \dots, E_{cand,N}^D\}$ 聚合为 $E_{cand}^D$，并用尾实体 $E_{cand}^D$ 将 top-N 推理路径 $P$ 扩展为 $P_{cand}$。对于所示案例，$E_{cand}^1$ 可以表示为 \{Australia, Australia, Australian Capital Territory\}。
+\item \textbf{剪枝（Prune）} 由于每个候选集合 $E_{cand}^D$ 中的实体都用自然语言表达，我们可以利用大语言模型从 $P_{cand}$ 中选出以尾实体 $E^D$ 结尾的新的 top-N 推理路径 $P$。此处使用的提示见附录 E.3.2。如图~2 所示，由于关系 capital of、country 和 territory 各自仅与一个尾实体相连，Australia 和 Australian Capital Territory 的评分均为 1，当前推理路径 $p$ 被更新为 \{(Canberra, capital of, Australia), (Canberra, country, Australia), (Canberra, territory, Australian Capital Territory)\}。
+\end{itemize}
+
+在执行完上述两次探索后，我们重构出新的 top-N 推理路径 $P$，其中每条路径的长度增加 1。每个剪枝步骤最多需要 $N$ 次大语言模型调用。
+
+\subsubsection{推理}
+
+通过探索过程获得当前推理路径 $P$ 后，我们提示大语言模型评估当前推理路径是否足以生成答案。如果评估结果为肯定，我们就提示大语言模型以推理路径和问题作为输入来生成答案，如图~2 所示。用于评估和生成的提示见附录 E.3.3 和 E.3.4。相反，如果评估结果为否定，我们就重复探索（Exploration）和推理（Reasoning）步骤，直到评估为肯定或达到最大搜索深度 $D_{max}$。如果算法仍未结束，则表明即使达到 $D_{max}$，ToG 仍无法探索出能够解决该问题的推理路径。在这种情况下，ToG 仅基于大语言模型的固有知识生成答案。ToG 的整个推理过程包含 $D$ 个探索阶段和 $D$ 个评估步骤以及一个生成步骤，最多需要 $2ND + D + 1$ 次大语言模型调用。
+
+\subsection{基于关系的 Think-on-Graph}
+
+以往的 KBQA 方法，尤其是基于语义解析（semantic parsing）的方法，主要依赖问题中的关系信息来生成形式化查询（Lan 等，2022）。受此启发，我们提出了基于关系的 ToG（ToG-R），它探索以主题实体 $\{e_n^0\}_{n=1}^N$ 为起点的 top-N 关系链 $\{p_n = (e_n^0, r_n^1, r_n^2, \dots, r_n^D)\}_{n=1}^N$，而非基于三元组的推理路径。ToG-R 在每次迭代中依次执行关系搜索、关系剪枝和实体搜索，这与 ToG 相同。随后，ToG-R 基于实体搜索得到的所有以 $E_{cand}^D$ 结尾的候选推理路径执行推理步骤。如果大语言模型判定检索到的候选推理路径不包含足以让其回答问题的信息，我们就从候选实体 $E_{cand}^D$ 中随机采样 $N$ 个实体并继续进行下一次迭代。假设每个实体集合 $E_{cand,n}^D$ 中的实体很可能属于同一实体类别且具有相似的邻居关系，那么对实体集合 $\{E_{cand,n}^D\}_{n=1}^N$ 进行剪枝的结果对后续的关系探索可能影响甚微。因此，在实体剪枝时，我们使用随机束搜索（random beam search）来取代 ToG 中受大语言模型约束的束搜索，称之为随机剪枝（random prune）。算法 1 和算法 2 展示了 ToG 和 ToG-R 的实现细节。ToG-R 最多需要 $ND + D + 1$ 次大语言模型调用。
+
+与 ToG 相比，ToG-R 提供了两个关键优势：1) 它消除了用大语言模型对实体进行剪枝的过程，从而降低了总体成本和推理时间。2) ToG-R 主要强调关系的字面信息，从而在中间实体的字面信息缺失或大语言模型不熟悉时，减轻了误导性推理的风险。
+
+\section{实验}
+\subsection{实验设计}
+
+\subsubsection{数据集与评测指标}
+
+为了测试 ToG 在多跳知识密集型推理任务上的能力，我们在五个 KBQA 数据集（4 个多跳数据集和 1 个单跳数据集）上评估 ToG：CWQ（Talmor \& Berant，2018）、WebQSP（Yih 等，2016）、GrailQA（Gu 等，2021）、QALD10-en（Perevalov 等，2022）、Simple Questions（Bordes 等，2015）。此外，为了在更通用的任务上检验 ToG，我们还准备了一个开放域问答（open-domain QA）数据集 WebQuestions（Berant 等，2013）；两个槽位填充（slot filling）数据集 T-REx（ElSahar 等，2018）和 Zero-Shot RE（Petroni 等，2021）；以及一个事实核查（fact-checking）数据集 Creak（Onoe 等，2021）。注意，对于 GrailQA 和 Simple Questions 这两个大型数据集，为节省计算成本，我们各自仅随机选取 1{,}000 个样本进行测试。对于所有数据集，遵循以往工作（Li 等，2023c；Baek 等，2023b；Jiang 等，2023；Li 等，2023a），我们采用精确匹配准确率（exact match accuracy, Hits@1）作为评测指标。
+
+\subsubsection{用于比较的方法}
+
+我们与标准提示（IO prompt）（Brown 等，2020b）、链式思维提示（CoT prompt）（Wei 等，2022）以及带有 6 个上下文示例（in-context exemplars）和“逐步”（step-by-step）推理链的自一致性（Self-Consistency）（Wang 等，2023c）进行比较。此外，对于每个数据集，我们都选取此前的最先进（state-of-the-art, SOTA）工作进行比较。我们注意到，专门在被评测数据集上训练的微调（fine-tuning）方法，由于其本质，通常比无需训练的基于提示的方法具有天然优势，但代价是牺牲了在其他数据上的灵活性和泛化能力。因此，为了公平比较，我们分别与所有基于提示的方法中的此前 SOTA 以及所有方法中的此前 SOTA 进行比较。注意，Tan 等（2023）的论文未参与比较，因为其结果并非基于标准精确匹配，因而不可比。
+
+\subsubsection{实验细节}
+
+鉴于 ToG 即插即用的便利性，我们在实验中尝试了三种大语言模型：ChatGPT、GPT-4 和 Llama-2。我们使用 OpenAI API 调用 ChatGPT（GPT-3.5-turbo）和 GPT-4\footnote{GPT-3.5-turbo 和 GPT-4 均来自 \url{https://openai.com/}}。Llama-2-70B-Chat（Touvron 等，2023）在 8 块 A100-40G 上运行且不进行量化，其中探索过程的温度（temperature）参数设为 0.4（以增加多样性），推理过程的温度参数设为 0（以保证可复现性）。生成的最大词元（token）长度设为 256。在所有实验中，我们将束搜索的宽度 $N$ 和深度 $D_{max}$ 均设为 3。Freebase（Bollacker 等，2008）用作 CWQ、WebQSP、GrailQA、Simple Questions 和 WebQuestions 的知识图谱，Wikidata（Vrande\v{c}i\'{c} \& Kr\"{o}tzsch，2014）用作 QALD10-en、T-REx、Zero-Shot RE 和 Creak 的知识图谱。对于所有数据集，我们在 ToG 推理提示中使用 5 个示例（5 shots）。
+
+\subsection{主要结果}
+
+\subsubsection{与其他方法的比较}
+
+由于 CoT 使用外部知识图谱来增强大语言模型，我们首先将其与同样利用外部知识的方法进行比较。如表~\ref{tab:1} 所示，即使 ToG 是一种免训练的基于提示的方法，与用评测数据训练的微调方法相比天生处于劣势，搭载 GPT-4 的 ToG 仍在 9 个数据集中的 6 个上取得了新的 SOTA 性能，包括 WebQSP、GrailQA、QALD10-en、WebQuestions、Zero-Shot RE 和 Creak。即使对于某些没有 SOTA 的数据集（例如 CWQ），ToG 的性能也已经接近 SOTA（69.5\% 对 70.4\%）。如果与所有基于提示的方法比较，搭载 GPT-4 的 ToG 及其较弱版本搭载 ChatGPT 的 ToG 都能在所有数据集上胜出。特别地，在开放域问答数据集 WebQuestions 上 1.6\% 的提升，证明了 ToG 在开放域问答任务上的通用性。我们还注意到，ToG 在单跳 KBQA 数据集上的表现不如其在其他数据集上的表现。这些结果表明，ToG 总体上在多跳数据集上更为有效，这支持了我们的论点，即 ToG 增强了大语言模型的深度推理能力。
+
+我们还从表~\ref{tab:1} 中看到，与那些不利用外部知识的方法（例如 IO、CoT 和 SC 提示方法）相比，ToG 的优势更为显著。例如，在 GrailQA 和 Zero-Shot RE 上性能分别提升了 51.8\% 和 42.9\%。可见，外部知识图谱在推理中带来的收益不容忽视。
+
+ToG 在大多数数据集上优于 ToG-R，因为与 ToG-R 检索到的关系链相比，基于三元组的推理路径提供了额外的中间实体信息。关于 ToG 生成答案的更详细分析见附录 B.2。为便于比较，各数据集上以往方法的结果报告于附录 C。
+
+\begin{table}[H]\centering
+\caption{ToG 在不同数据集上的结果。此前的 FT（微调，Fine-tuned）和提示 SOTA 包含已知最佳结果：$\alpha$：Das 等（2021）；$\beta$：Yu 等（2023）；$\gamma$：Gu 等（2023）；$\delta$：Santana 等（2022）；$\epsilon$：Baek 等（2023a）；$\zeta$：Kedia 等（2022）；$\eta$：Glass 等（2022）；$\theta$：Petroni 等（2021）；$\iota$：Yu 等（2022）；$\kappa$：Li 等（2023a）。}
+\label{tab:1}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{lccccccccc}
+\toprule
+& \multicolumn{4}{c}{多跳 KBQA} & 单跳 KBQA & 开放域 QA & \multicolumn{2}{c}{槽位填充} & 事实核查 \\
+\cmidrule(lr){2-5}\cmidrule(lr){6-6}\cmidrule(lr){7-7}\cmidrule(lr){8-9}\cmidrule(lr){10-10}
+方法 & CWQ & WebQSP & GrailQA & QALD10-en & Simple Questions & WebQuestions & T-REx & Zero-Shot RE & Creak \\
+\midrule
+\multicolumn{10}{c}{\textit{不使用外部知识}} \\
+IO prompt w/ChatGPT & 37.6 & 63.3 & 29.4 & 42.0 & 20.0 & 48.7 & 33.6 & 27.7 & 89.7 \\
+CoT w/ChatGPT & 38.8 & 62.2 & 28.1 & 42.9 & 20.3 & 48.5 & 32.0 & 28.8 & 90.1 \\
+SC w/ChatGPT & 45.4 & 61.1 & 29.6 & 45.3 & 18.9 & 50.3 & 41.8 & 45.4 & 90.8 \\
+\midrule
+\multicolumn{10}{c}{\textit{使用外部知识}} \\
+Prior FT SOTA & 70.4$\alpha$ & 82.1$\beta$ & 75.4$\gamma$ & 45.4$\delta$ & 85.8$\epsilon$ & 56.3$\zeta$ & 87.7$\eta$ & 74.6$\theta$ & 88.2$\iota$ \\
+Prior Prompting SOTA & - & 74.4$\kappa$ & 53.2$\kappa$ & - & - & - & - & - & - \\
+ToG-R (Ours) w/ChatGPT & 58.9 & 75.8 & 56.4 & 48.6 & 45.4 & 53.2 & 75.3 & 86.5 & 93.8 \\
+ToG (Ours) w/ChatGPT & 57.1 & 76.2 & 68.7 & 50.2 & 53.6 & 54.5 & 76.8 & 88.0 & 91.2 \\
+ToG-R (Ours) w/GPT-4 & 69.5 & 81.9 & 80.3 & 54.7 & 58.6 & 57.1 & 75.5 & 86.9 & 95.4 \\
+ToG (Ours) w/GPT-4 & 67.6 & 82.6 & 81.4 & 53.8 & 66.7 & 57.9 & 77.1 & 88.3 & 95.6 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{使用不同骨干模型的性能}
+
+鉴于 ToG 即插即用的灵活性，我们在 CWQ 和 WebQSP 两个数据集上评估不同骨干模型（backbone model）对其性能的影响。表~\ref{tab:2} 显示，正如我们所预期的，CoT 的性能随骨干模型规模（也部分反映了推理能力）的增大而提升（GPT-4 > ChatGPT > Llama-2）。此外，我们看到，骨干模型越大，CoT 与 ToG 之间的差距也越大（在 CWQ 上，增益从 Llama-2 的 18.5\% 提升到 GPT-4 的 23.5\%；在 WebQSP 上，从 Llama-2 的 11.5\% 提升到 GPT-4 的 15.3\%），这表明使用更强大的大语言模型可以挖掘出知识图谱更多的潜力。
+
+此外，即使使用最小的模型 Llama-2（70B 参数），ToG 的表现也优于搭载 GPT-4 的 CoT。这意味着一条成本低得多的大语言模型部署和应用技术路线，即搭载廉价小型大语言模型的 ToG 可能成为替代昂贵大型大语言模型的候选方案，尤其是在外部知识图谱能够覆盖的垂直场景中。
+
+\begin{table}[H]\centering
+\caption{ToG 在 CWQ 和 WebQSP 上使用不同骨干模型的性能。}
+\label{tab:2}
+\small
+\begin{tabular}{llcc}
+\toprule
+& 方法 & CWQ & WebQSP \\
+\midrule
+\multirow{5}{*}{Fine-tuned} & NSM (He 等，2021) & 53.9 & 74.3 \\
+& CBR-KBQA (Das 等，2021) & 67.1 & - \\
+& TIARA (Shu 等，2022) & - & 75.2 \\
+& DeCAF (Yu 等，2023) & 70.4 & 82.1 \\
+\midrule
+\multirow{3}{*}{Prompting} & KD-CoT (Wang 等，2023b) & 50.5 & 73.7 \\
+& StructGPT (Jiang 等，2023) & - & 72.6 \\
+& KB-BINDER (Li 等，2023a) & - & 74.4 \\
+\midrule
+\multirow{4}{*}{LLama2-70B-Chat} & CoT & 39.1 & 57.4 \\
+& ToG-R & 57.6 & 68.9 \\
+& ToG & 53.6 & 63.7 \\
+& Gain & (+18.5) & (+11.5) \\
+\midrule
+\multirow{4}{*}{ChatGPT} & CoT & 38.8 & 62.2 \\
+& ToG-R & 57.1 & 75.8 \\
+& ToG & 58.9 & 76.2 \\
+& Gain & (+20.1) & (+14.0) \\
+\midrule
+\multirow{4}{*}{GPT-4} & CoT & 46.0 & 67.3 \\
+& ToG-R & 67.6 & 81.9 \\
+& ToG & 69.5 & 82.6 \\
+& Gain & (+23.5) & (+15.3) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{消融研究}
+
+我们进行各种消融研究（ablation study），以理解 ToG 中不同因素的重要性。我们在 CWQ 和 WebQSP 测试集的两个子集上开展消融研究，每个子集包含 1{,}000 个随机采样的问题。
+
+\paragraph{搜索深度和宽度对 ToG 是否重要？}
+为了探究搜索深度 $D_{max}$ 和束宽 $N$ 对 ToG 性能的影响，我们在深度从 1 到 4、宽度从 1 到 4 的设置下进行实验。如图~\ref{fig:3} 所示，ToG 的性能随搜索深度和宽度的增加而提升。这也意味着，随着探索深度和广度的增加，ToG 的性能有可能进一步提升。然而，考虑到计算成本（其随深度线性增长），我们将深度和宽度均设为 3 作为默认实验设置。另一方面，当深度超过 3 时，性能增长会减弱。这主要是因为只有一小部分问题的推理深度（基于 SPARQL 中的关系数量，参见附录中的图~12）大于 3。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.98\linewidth]{fig3.pdf}
+\caption{ToG 在不同搜索深度和宽度下的性能。}
+\label{fig:3}
+\end{figure}
+
+\begin{table}[H]\centering
+\caption{ToG 在 CWQ 和 WebQSP 上使用不同来源知识图谱的性能。}
+\label{tab:3}
+\small
+\begin{tabular}{llcc}
+\toprule
+& 方法 & CWQ & WebQSP \\
+\midrule
+& CoT & 37.6 & 62.0 \\
+\midrule
+\multirow{2}{*}{ToG} & w/ Freebase & 58.8 & 76.2 \\
+& w/ WikiData & 54.9 & 68.6 \\
+\midrule
+\multirow{2}{*}{ToG-R} & w/ Freebase & 59.2 & 75.1 \\
+& w/ WikiData & 51.9 & 66.7 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{不同知识图谱是否影响 ToG 的性能？}
+ToG 的主要优势之一是其即插即用能力。如表~\ref{tab:3} 所示，与 CoT 相比，ToG 在 CWQ 和 WebQSP 上使用不同来源知识图谱时均取得了显著提升。另一方面，不同来源的知识图谱对 ToG 性能的影响可能不同。值得注意的是，Freebase 在 CWQ 和 WebQSP 上带来的提升比 Wikidata 更显著，因为这两个数据集都是基于 Freebase 构建的。此外，在像 Wikidata 这样非常庞大的知识图谱中，搜索和剪枝过程相对更具挑战性。
+
+\paragraph{不同的提示设计如何影响 ToG？}
+我们进行额外实验，以确定哪种类型的提示表示形式对我们的方法效果良好。结果如表~\ref{tab:4} 所示。“Triples”表示使用三元组格式作为提示来表示多条路径，例如“(Canberra, capital of, Australia), (Australia, prime minister, Anthony Albanese)”。“Sequences”指使用序列格式，如图~2 所示。“Sentences”指将三元组转换为自然语言句子。例如，“(Canberra, capital of, Australia)”可以转换为“The capital of Canberra is Australia.”。结果表明，对推理路径采用基于三元组的表示形式可获得最高的效率和最优的性能。相反，对于 ToG-R，每条推理路径都是一条从主题实体出发的关系链，因而与基于三元组的提示表示形式不兼容。于是，将 ToG-R 转换为自然语言形式会导致提示过于冗长，从而使性能显著下降。
+
+\begin{table}[H]\centering
+\caption{ToG 使用不同提示设计的性能。}
+\label{tab:4}
+\small
+\begin{tabular}{llcc}
+\toprule
+& 方法 & CWQ & WebQSP \\
+\midrule
+\multirow{3}{*}{ToG} & w/ Triples & 58.8 & 76.2 \\
+& w/ Sequences & 57.2 & 73.2 \\
+& w/ Sentences & 58.6 & 73 \\
+\midrule
+\multirow{2}{*}{ToG-R} & w/ Sequences & 59.2 & 75.1 \\
+& w/ Sentences & 50.1 & 67.3 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{比较不同剪枝工具的影响。}
+除大语言模型之外，能够度量文本相似度的轻量级模型（如 BM25 和 SentenceBERT）也可以在探索阶段用作剪枝工具。我们可以根据实体和关系与问题的字面相似度来选出 top-N 实体和关系。我们考察了不同剪枝工具对 ToG 性能的影响，如表~\ref{tab:5} 所示。用 BM25 或 SentenceBERT 替换大语言模型会导致我们方法的性能显著下降。具体而言，CWQ 上的结果平均下降 8.4\%，WebQSP 上的结果平均下降 15.1\%。结果表明，就有效性而言，大语言模型作为剪枝工具表现最佳。另一方面，在使用 BM25 或 SentenceBERT 后，我们只需 $D + 1$ 次大语言模型调用，而非第 2.1.3 节中讨论的 $2ND + D + 1$ 次，这提高了 ToG 的效率。
+
+\begin{table}[H]\centering
+\caption{ToG 使用不同剪枝工具的性能。}
+\label{tab:5}
+\small
+\begin{tabular}{llcc}
+\toprule
+& 方法 & CWQ & WebQSP \\
+\midrule
+\multirow{3}{*}{ToG} & w/BM25 & 51.4 & 58.7 \\
+& w/SentenceBERT & 51.7 & 66.3 \\
+& w/ChatGPT & 58.8 & 76.2 \\
+\midrule
+\multirow{3}{*}{ToG-R} & w/BM25 & 49.4 & 57.3 \\
+& w/SentenceBERT & 50.1 & 60.1 \\
+& w/ChatGPT & 59.2 & 75.1 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+我们还就种子示例（seed exemplar）数量的影响，以及 ToG 与在知识图谱上进行朴素束搜索之间的差异，开展了额外的消融研究，相关内容见附录 B.1。
+
+\subsection{ToG 中的知识可溯源性与可纠正性}
+
+知识图谱的质量对于 ToG 进行正确推理至关重要。ToG 的一个有趣特性是大语言模型推理过程中的知识可溯源性（knowledge traceability）与知识可纠正性（knowledge correctability），它提供了一种利用 ToG 自身来改进知识图谱质量、并降低知识图谱构建和纠错成本的途径。如图~\ref{fig:4} 所示，ToG 的显式推理路径可以展示给用户。如果人类用户/专家或其他大语言模型发现了 ToG 答案中潜在的错误或不确定性，ToG 便能够回溯并检查推理路径，找出存在错误的可疑三元组并加以纠正。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{fig4.pdf}
+\caption{ToG 知识可溯源性与可纠正性的示意图。}
+\label{fig:4}
+\end{figure}
+
+以图~\ref{fig:4} 中的案例为例。给定输入问题“What is mascot Phillie Phanatic's team's spring training stadium?”（吉祥物 Phillie Phanatic 所属球队的春训球场是什么？），ToG 在第一轮输出了错误答案“Bright House Field”。随后 ToG 回溯所有推理路径，将错误的成因定位到第二条推理路径（Phillie Phanatic $\xrightarrow{\text{Team}}$ Philadelphia Phillies $\xrightarrow{\text{Arena Stadium}}$ Bright House Field），并分析出错误来自过时三元组（Philadelphia Phillies, Arena Stadium, Bright House Field）中“Bright House Field”的旧名“Specturm Field”。根据 ToG 给出的提示，用户可以要求大语言模型纠正这一错误，并以正确信息回答同一问题。这个例子揭示了 ToG 不仅用知识图谱增强了大语言模型，还用大语言模型改进了知识图谱的质量，这被称为知识注入（knowledge infusion）（Moiseev 等，2022）。
+
+\section{相关工作}
+
+\paragraph{基于大语言模型提示的推理（Reasoning with LLM Prompting）}
+链式思维（Chain-of-Thought, CoT）（Wei 等，2022）已被证明能有效增强大语言模型的推理能力。它在少样本学习（few-shot learning）范式下，根据推理逻辑创建一系列提示实例，以提升大语言模型在复杂任务上的性能。CoT 的思想已沿不同维度得到改进，包括 Auto-CoT（Zhang 等，2022）、Complex-CoT（Fu 等，2023）、Self-Consistency（Wang 等，2023c）、Zero-Shot-CoT（Kojima 等，2022）、Iter-CoT（Sun 等，2023b）、ToT（Yao 等，2023）、GoT（Besta 等，2023）等。鉴于所有这些工作都只使用训练数据中的知识这一局限性，近期的一些工作（例如 ReAct（Yao 等，2022））尝试利用来自 Wiki 文档等外部来源的信息来进一步提升推理性能。
+
+\paragraph{知识图谱增强的大语言模型（KG-enhanced LLM）}
+知识图谱在动态、显式和结构化的知识表示方面具有优势（Pan 等，2023），将大语言模型与知识图谱相结合的技术已被研究。早期研究（Peters 等，2019；Huang 等，2024；Luo 等，2024；Zhang 等，2021；Li 等，2023b；Liu 等，2020）在预训练或微调过程中将知识图谱中的结构化知识嵌入底层神经网络。然而，嵌入大语言模型中的知识图谱牺牲了其自身在知识推理中的可解释性以及在知识更新中的高效性（Hu 等，2023）。近期的工作转而通过将知识图谱中相关的结构化知识转换为面向大语言模型的文本提示，来将大语言模型与知识图谱相结合。所有这些方法都遵循一个固定流程：从知识图谱中检索额外信息以增强大语言模型的提示，它们都属于我们在引言部分定义的 LLM \opkg{} KG 范式。另一方面，Jiang 等（2023）让大语言模型探索知识图谱，因此可以看作 ToG 的一个特例，属于 LLM \oxkg{} KG 范式。
+
+\section{结论}
+
+我们引入了 LLM \oxkg{} KG 范式，以紧耦合方式整合大语言模型与知识图谱，并提出了 Think-on-Graph（ToG）算法框架，它利用大语言模型作为参与知识图谱推理的智能体，以实现更好的决策。实验结果表明，ToG 在无需额外训练成本的情况下优于现有的基于微调的方法和基于提示的方法，并缓解了大语言模型的幻觉问题。
+
+\section{致谢}
+
+我们向各位尊敬的审稿人致以诚挚的谢意，感谢他们宝贵的反馈和建设性的意见，这些意见为本文的改进和完善作出了重要贡献。他们富有洞见的建议和对细节一丝不苟的关注，在提升本研究工作的质量和清晰度方面发挥了关键作用。
+
+\section*{参考文献}
+\begin{enumerate}[leftmargin=2em]
+\small
+\item Farah Atif, Ola El Khatib, and Djellel Eddine Difallah. Beamqa: Multi-hop knowledge graph question answering with sequence-to-sequence prediction and beam search. In Hsin-Hsi Chen, Wei-Jou (Edward) Duh, Hen-Hsen Huang, Makoto P. Kato, Josiane Mothe, and Barbara Poblete (eds.), Proceedings of the 46th International ACM SIGIR Conference on Research and Development in Information Retrieval, SIGIR 2023, Taipei, Taiwan, July 23-27, 2023, pp. 781--790. ACM, 2023. doi: 10.1145/3539618.3591698. URL \url{https://doi.org/10.1145/3539618.3591698}.
+\item Jinheon Baek, Alham Fikri Aji, Jens Lehmann, and Sung Ju Hwang. Direct fact retrieval from knowledge graphs without entity linking. In Anna Rogers, Jordan L. Boyd-Graber, and Naoaki Okazaki (eds.), Proceedings of the 61st Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), ACL 2023, Toronto, Canada, July 9-14, 2023, pp. 10038--10055. Association for Computational Linguistics, 2023a. doi: 10.18653/v1/2023.acl-long.558. URL \url{https://doi.org/10.18653/v1/2023.acl-long.558}.
+\item Jinheon Baek, Alham Fikri Aji, and Amir Saffari. Knowledge-augmented language model prompting for zero-shot knowledge graph question answering, 2023b.
+\item Debayan Banerjee, Pranav Ajit Nair, Ricardo Usbeck, and Chris Biemann. Gett-qa: Graph embedding based t2t transformer for knowledge graph question answering, 2023.
+\item Jonathan Berant, Andrew Chou, Roy Frostig, and Percy Liang. Semantic parsing on freebase from question-answer pairs. In Proceedings of the 2013 Conference on Empirical Methods in Natural Language Processing, EMNLP 2013, 18-21 October 2013, Grand Hyatt Seattle, Seattle, Washington, USA, A meeting of SIGDAT, a Special Interest Group of the ACL, pp. 1533--1544. ACL, 2013. URL \url{https://aclanthology.org/D13-1160/}.
+\item Maciej Besta, Nils Blach, Ales Kubicek, Robert Gerstenberger, Lukas Gianinazzi, Joanna Gajda, Tomasz Lehmann, Michal Podstawski, Hubert Niewiadomski, Piotr Nyczyk, and Torsten Hoefler. Graph of thoughts: Solving elaborate problems with large language models, 2023.
+\item Kurt D. Bollacker, Colin Evans, Praveen K. Paritosh, Tim Sturge, and Jamie Taylor. Freebase: a collaboratively created graph database for structuring human knowledge. In SIGMOD Conference, 2008.
+\item Antoine Bordes, Nicolas Usunier, Sumit Chopra, and Jason Weston. Large-scale simple question answering with memory networks. CoRR, abs/1506.02075, 2015. URL \url{http://arxiv.org/abs/1506.02075}.
+\item Tom B. Brown, Benjamin Mann, Nick Ryder, Melanie Subbiah, Jared Kaplan, Prafulla Dhariwal, Arvind Neelakantan, Pranav Shyam, Girish Sastry, Amanda Askell, Sandhini Agarwal, Ariel Herbert-Voss, Gretchen Krueger, Tom Henighan, Rewon Child, Aditya Ramesh, Daniel M. Ziegler, Jeffrey Wu, Clemens Winter, Christopher Hesse, Mark Chen, Eric Sigler, Mateusz Litwin, Scott Gray, Benjamin Chess, Jack Clark, Christopher Berner, Sam McCandlish, Alec Radford, Ilya Sutskever, and Dario Amodei. Language models are few-shot learners. In Hugo Larochelle, Marc'Aurelio Ranzato, Raia Hadsell, Maria-Florina Balcan, and Hsuan-Tien Lin (eds.), Advances in Neural Information Processing Systems 33: Annual Conference on Neural Information Processing Systems 2020, NeurIPS 2020, December 6-12, 2020, virtual, 2020a. URL \url{https://proceedings.neurips.cc/paper/2020/hash/1457c0d6bfcb4967418bfb8ac142f64a-Abstract.html}.
+\item Tom B. Brown, Benjamin Mann, Nick Ryder, Melanie Subbiah, Jared Kaplan, Prafulla Dhariwal, Arvind Neelakantan, Pranav Shyam, Girish Sastry, Amanda Askell, Sandhini Agarwal, Ariel Herbert-Voss, Gretchen Krueger, Tom Henighan, Rewon Child, Aditya Ramesh, Daniel M. Ziegler, Jeffrey Wu, Clemens Winter, Christopher Hesse, Mark Chen, Eric Sigler, Mateusz Litwin, Scott Gray, Benjamin Chess, Jack Clark, Christopher Berner, Sam McCandlish, Alec Radford, Ilya Sutskever, and Dario Amodei. Language models are few-shot learners. In Hugo Larochelle, Marc'Aurelio Ranzato, Raia Hadsell, Maria-Florina Balcan, and Hsuan-Tien Lin (eds.), Advances in Neural Information Processing Systems 33: Annual Conference on Neural Information Processing Systems 2020, NeurIPS 2020, December 6-12, 2020, virtual, 2020b. URL \url{https://proceedings.neurips.cc/paper/2020/hash/1457c0d6bfcb4967418bfb8ac142f64a-Abstract.html}.
+\item Shulin Cao, Jiaxin Shi, Zijun Yao, Xin Lv, Jifan Yu, Lei Hou, Juanzi Li, Zhiyuan Liu, and Jinghui Xiao. Program transfer for answering complex questions over knowledge bases. In Smaranda Muresan, Preslav Nakov, and Aline Villavicencio (eds.), Proceedings of the 60th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), ACL 2022, Dublin, Ireland, May 22-27, 2022, pp. 8128--8140. Association for Computational Linguistics, 2022. doi: 10.18653/v1/2022.acl-long.559. URL \url{https://doi.org/10.18653/v1/2022.acl-long.559}.
+\item Aakanksha Chowdhery, Sharan Narang, Jacob Devlin, Maarten Bosma, Gaurav Mishra, Adam Roberts, Paul Barham, Hyung Won Chung, Charles Sutton, Sebastian Gehrmann, Parker Schuh, Kensen Shi, Sasha Tsvyashchenko, Joshua Maynez, Abhishek Rao, Parker Barnes, Yi Tay, Noam Shazeer, Vinodkumar Prabhakaran, Emily Reif, Nan Du, Ben Hutchinson, Reiner Pope, James Bradbury, Jacob Austin, Michael Isard, Guy Gur-Ari, Pengcheng Yin, Toju Duke, Anselm Levskaya, Sanjay Ghemawat, Sunipa Dev, Henryk Michalewski, Xavier Garcia, Vedant Misra, Kevin Robinson, Liam Fedus, Denny Zhou, Daphne Ippolito, David Luan, Hyeontaek Lim, Barret Zoph, Alexander Spiridonov, Ryan Sepassi, David Dohan, Shivani Agrawal, Mark Omernick, Andrew M. Dai, Thanumalayan Sankaranarayana Pillai, Marie Pellat, Aitor Lewkowycz, Erica Moreira, Rewon Child, Oleksandr Polozov, Katherine Lee, Zongwei Zhou, Xuezhi Wang, Brennan Saeta, Mark Diaz, Orhan Firat, Michele Catasta, Jason Wei, Kathy Meier-Hellstern, Douglas Eck, Jeff Dean, Slav Petrov, and Noah Fiedel. Palm: Scaling language modeling with pathways, 2022.
+\item Rajarshi Das, Manzil Zaheer, Dung Thai, Ameya Godbole, Ethan Perez, Jay-Yoon Lee, Lizhen Tan, Lazaros Polymenakos, and Andrew McCallum. Case-based reasoning for natural language queries over knowledge bases, 2021.
+\item Michiel de Jong, Yury Zemlyanskiy, Joshua Ainslie, Nicholas FitzGerald, Sumit Sanghai, Fei Sha, and William Cohen. Fido: Fusion-in-decoder optimized for stronger performance and faster inference. arXiv preprint arXiv:2212.08153, 2022.
+\item Cicero Nogueira dos Santos, Zhe Dong, Daniel Cer, John Nham, Siamak Shakeri, Jianmo Ni, and Yun hsuan Sung. Knowledge prompts: Injecting world knowledge into language models through soft prompts, 2022.
+\item Hady ElSahar, Pavlos Vougiouklis, Arslen Remaci, Christophe Gravier, Jonathon S. Hare, Fr\'{e}d\'{e}rique Laforest, and Elena Simperl. T-rex: A large scale alignment of natural language with knowledge base triples. In Nicoletta Calzolari, Khalid Choukri, Christopher Cieri, Thierry Declerck, Sara Goggi, K\^{o}iti Hasida, Hitoshi Isahara, Bente Maegaard, Joseph Mariani, H\'{e}l\`{e}ne Mazo, Asunci\'{o}n Moreno, Jan Odijk, Stelios Piperidis, and Takenobu Tokunaga (eds.), Proceedings of the Eleventh International Conference on Language Resources and Evaluation, LREC 2018, Miyazaki, Japan, May 7-12, 2018. European Language Resources Association (ELRA), 2018. URL \url{http://www.lrec-conf.org/proceedings/lrec2018/summaries/632.html}.
+\item Yao Fu, Hao Peng, Ashish Sabharwal, Peter Clark, and Tushar Khot. Complexity-based prompting for multi-step reasoning. In The Eleventh International Conference on Learning Representations, ICLR 2023, Kigali, Rwanda, May 1-5, 2023. OpenReview.net, 2023. URL \url{https://openreview.net/pdf?id=yf1icZHC-l9}.
+\item Michael Glass, Gaetano Rossiello, Md Faisal Mahbub Chowdhury, Ankita Naik, Pengshan Cai, and Alfio Gliozzo. Re2G: Retrieve, rerank, generate. In Proceedings of the 2022 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies, pp. 2701--2715, Seattle, United States, July 2022. Association for Computational Linguistics. doi: 10.18653/v1/2022.naacl-main.194. URL \url{https://aclanthology.org/2022.naacl-main.194}.
+\item Yu Gu, Sue Kase, Michelle Vanni, Brian M. Sadler, Percy Liang, Xifeng Yan, and Yu Su. Beyond I.I.D.: three levels of generalization for question answering on knowledge bases. In Jure Leskovec, Marko Grobelnik, Marc Najork, Jie Tang, and Leila Zia (eds.), WWW '21: The Web Conference 2021, Virtual Event / Ljubljana, Slovenia, April 19-23, 2021, pp. 3477--3488. ACM / IW3C2, 2021. doi: 10.1145/3442381.3449992. URL \url{https://doi.org/10.1145/3442381.3449992}.
+\item Yu Gu, Xiang Deng, and Yu Su. Don't generate, discriminate: A proposal for grounding language models to real-world environments, 2023.
+\item Gaole He, Yunshi Lan, Jing Jiang, Wayne Xin Zhao, and Ji-Rong Wen. Improving multi-hop knowledge base question answering by learning intermediate supervision signals. In Liane Lewin-Eytan, David Carmel, Elad Yom-Tov, Eugene Agichtein, and Evgeniy Gabrilovich (eds.), WSDM '21, The Fourteenth ACM International Conference on Web Search and Data Mining, Virtual Event, Israel, March 8-12, 2021, pp. 553--561. ACM, 2021. doi: 10.1145/3437963.3441753. URL \url{https://doi.org/10.1145/3437963.3441753}.
+\item Linmei Hu, Zeyi Liu, Ziwang Zhao, Lei Hou, Liqiang Nie, and Juanzi Li. A survey of knowledge enhanced pre-trained language models. IEEE Transactions on Knowledge and Data Engineering, 2023.
+\item Rikui Huang, Wei Wei, Xiaoye Qu, Wenfeng Xie, Xianling Mao, and Dangyang Chen. Joint multi-facts reasoning network for complex temporal question answering over knowledge graph. arXiv preprint arXiv:2401.02212, 2024.
+\item Jinhao Jiang, Kun Zhou, Zican Dong, Keming Ye, Wayne Xin Zhao, and Ji-Rong Wen. Structgpt: A general framework for large language model to reason over structured data, 2023.
+\item Dan Jurafsky and James H. Martin. Speech and language processing: an introduction to natural language processing, computational linguistics, and speech recognition, 2nd Edition. Prentice Hall series in artificial intelligence. Prentice Hall, Pearson Education International, 2009. ISBN 9780135041963. URL \url{https://www.worldcat.org/oclc/315913020}.
+\item Akhil Kedia, Mohd Abbas Zaidi, and Haejun Lee. Fie: Building a global probability space by leveraging early fusion in encoder for open-domain question answering. In Yoav Goldberg, Zornitsa Kozareva, and Yue Zhang (eds.), Proceedings of the 2022 Conference on Empirical Methods in Natural Language Processing, EMNLP 2022, Abu Dhabi, United Arab Emirates, December 7-11, 2022, pp. 4246--4260. Association for Computational Linguistics, 2022. doi: 10.18653/v1/2022.emnlp-main.285. URL \url{https://doi.org/10.18653/v1/2022.emnlp-main.285}.
+\item Takeshi Kojima, Shixiang Shane Gu, Machel Reid, Yutaka Matsuo, and Yusuke Iwasawa. Large language models are zero-shot reasoners. In NeurIPS, 2022. URL \url{http://papers.nips.cc/paper_files/paper/2022/hash/8bb0d291acd4acf06ef112099c16f326-Abstract-Conference.html}.
+\item Yunshi Lan and Jing Jiang. Query graph generation for answering multi-hop complex questions from knowledge bases. Association for Computational Linguistics, 2020.
+\item Yunshi Lan, Gaole He, Jinhao Jiang, Jing Jiang, Wayne Xin Zhao, and Ji-Rong Wen. Complex knowledge base question answering: A survey. IEEE Transactions on Knowledge and Data Engineering, 2022.
+\item Patrick Lewis, Ethan Perez, Aleksandra Piktus, Fabio Petroni, Vladimir Karpukhin, Naman Goyal, Heinrich K\"{u}ttler, Mike Lewis, Wen tau Yih, Tim Rockt\"{a}schel, Sebastian Riedel, and Douwe Kiela. Retrieval-augmented generation for knowledge-intensive nlp tasks, 2021.
+\item Tianle Li, Xueguang Ma, Alex Zhuang, Yu Gu, Yu Su, and Wenhu Chen. Few-shot in-context learning on knowledge base question answering. In Anna Rogers, Jordan L. Boyd-Graber, and Naoaki Okazaki (eds.), Proceedings of the 61st Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), ACL 2023, Toronto, Canada, July 9-14, 2023, pp. 6966--6980. Association for Computational Linguistics, 2023a. doi: 10.18653/v1/2023.acl-long.385. URL \url{https://doi.org/10.18653/v1/2023.acl-long.385}.
+\item Wendi Li, Wei Wei, Xiaoye Qu, Xian-Ling Mao, Ye Yuan, Wenfeng Xie, and Dangyang Chen. Trea: Tree-structure reasoning schema for conversational recommendation. In Proceedings of the 61st Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), pp. 2970--2982, 2023b.
+\item Xingxuan Li, Ruochen Zhao, Yew Ken Chia, Bosheng Ding, Lidong Bing, Shafiq Joty, and Soujanya Poria. Chain of knowledge: A framework for grounding large language models with structured knowledge bases, 2023c.
+\item Daizong Liu, Xiaoye Qu, Jianfeng Dong, and Pan Zhou. Reasoning step-by-step: Temporal sentence localization in videos via deep rectification-modulation network. In Proceedings of the 28th International Conference on Computational Linguistics, pp. 1841--1851, 2020.
+\item Wei Liu, Weihao Zeng, Keqing He, Yong Jiang, and Junxian He. What makes good data for alignment? a comprehensive study of automatic data selection in instruction tuning. In The Twelfth International Conference on Learning Representations, 2024. URL \url{https://openreview.net/forum?id=BTKAeLqLMw}.
+\item Ye Liu, Semih Yavuz, Rui Meng, Dragomir Radev, Caiming Xiong, and Yingbo Zhou. Uni-parser: Unified semantic parser for question answering on knowledge base and database. arXiv preprint arXiv:2211.05165, 2022.
+\item Yinhan Liu, Myle Ott, Naman Goyal, Jingfei Du, Mandar Joshi, Danqi Chen, Omer Levy, Mike Lewis, Luke Zettlemoyer, and Veselin Stoyanov. Roberta: A robustly optimized bert pretraining approach, 2019.
+\item Linhao Luo, Yuan-Fang Li, Gholamreza Haffari, and Shirui Pan. Reasoning on graphs: Faithful and interpretable large language model reasoning. In International Conference on Learning Representations, 2024.
+\item Fedor Moiseev, Zhe Dong, Enrique Alfonseca, and Martin Jaggi. SKILL: structured knowledge infusion for large language models. In Marine Carpuat, Marie-Catherine de Marneffe, and Iv\'{a}n Vladimir Meza Ru\'{i}z (eds.), Proceedings of the 2022 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies, NAACL 2022, Seattle, WA, United States, July 10-15, 2022, pp. 1581--1588. Association for Computational Linguistics, 2022. doi: 10.18653/v1/2022.naacl-main.113. URL \url{https://doi.org/10.18653/v1/2022.naacl-main.113}.
+\item Yasumasa Onoe, Michael J. Q. Zhang, Eunsol Choi, and Greg Durrett. CREAK: A dataset for commonsense reasoning over entity knowledge. In Joaquin Vanschoren and Sai-Kit Yeung (eds.), Proceedings of the Neural Information Processing Systems Track on Datasets and Benchmarks 1, NeurIPS Datasets and Benchmarks 2021, December 2021, virtual, 2021. URL \url{https://datasets-benchmarks-proceedings.neurips.cc/paper/2021/hash/5737c6ec2e0716f3d8a7a5c4e0de0d9a-Abstract-round2.html}.
+\item OpenAI. Gpt-4 technical report, 2023.
+\item Long Ouyang, Jeff Wu, Xu Jiang, Diogo Almeida, Carroll L. Wainwright, Pamela Mishkin, Chong Zhang, Sandhini Agarwal, Katarina Slama, Alex Ray, John Schulman, Jacob Hilton, Fraser Kelton, Luke Miller, Maddie Simens, Amanda Askell, Peter Welinder, Paul F. Christiano, Jan Leike, and Ryan Lowe. Training language models to follow instructions with human feedback. arXiv Preprint, 2022. doi: 10.48550/arXiv.2203.02155. URL \url{https://doi.org/10.48550/arXiv.2203.02155}.
+\item Shirui Pan, Linhao Luo, Yufei Wang, Chen Chen, Jiapu Wang, and Xindong Wu. Unifying large language models and knowledge graphs: A roadmap. arXiv preprint arXiv:2306.08302, 2023.
+\item A. Perevalov, D. Diefenbach, R. Usbeck, and A. Both. Qald-9-plus: A multilingual dataset for question answering over dbpedia and wikidata translated by native speakers. In 2022 IEEE 16th International Conference on Semantic Computing (ICSC), pp. 229--234, Los Alamitos, CA, USA, jan 2022. IEEE Computer Society. doi: 10.1109/ICSC52841.2022.00045. URL \url{https://doi.ieeecomputersociety.org/10.1109/ICSC52841.2022.00045}.
+\item Matthew E. Peters, Mark Neumann, Robert Logan, Roy Schwartz, Vidur Joshi, Sameer Singh, and Noah A. Smith. Knowledge enhanced contextual word representations. In Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing (EMNLP-IJCNLP), pp. 43--54, Hong Kong, China, November 2019. Association for Computational Linguistics. doi: 10.18653/v1/D19-1005. URL \url{https://aclanthology.org/D19-1005}.
+\item Fabio Petroni, Aleksandra Piktus, Angela Fan, Patrick Lewis, Majid Yazdani, Nicola De Cao, James Thorne, Yacine Jernite, Vladimir Karpukhin, Jean Maillard, Vassilis Plachouras, Tim Rockt\"{a}schel, and Sebastian Riedel. Kilt: a benchmark for knowledge intensive language tasks, 2021.
+\item Colin Raffel, Noam Shazeer, Adam Roberts, Katherine Lee, Sharan Narang, Michael Matena, Yanqi Zhou, Wei Li, and Peter J Liu. Exploring the limits of transfer learning with a unified text-to-text transformer. The Journal of Machine Learning Research, 21(1):5485--5551, 2020.
+\item Manuel Alejandro Borroto Santana, Bernardo Cuteri, Francesco Ricca, and Vito Barbara. SPARQL-QA enters the QALD challenge. In Xi Yan, Meriem Beloucif, and Ricardo Usbeck (eds.), Proceedings of the 7th Natural Language Interfaces for the Web of Data (NLIWoD) co-located with the 19th European Semantic Web Conference (ESWC 2022), Hersonissos, Greece, May 29th, 2022, volume 3196 of CEUR Workshop Proceedings, pp. 25--31. CEUR-WS.org, 2022. URL \url{https://ceur-ws.org/Vol-3196/paper3.pdf}.
+\item Yiheng Shu, Zhiwei Yu, Yuhan Li, B\"{o}rje Karlsson, Tingting Ma, Yuzhong Qu, and Chin-Yew Lin. TIARA: Multi-grained retrieval for robust question answering over large knowledge base. In Proceedings of the 2022 Conference on Empirical Methods in Natural Language Processing, pp. 8108--8121, Abu Dhabi, United Arab Emirates, December 2022. Association for Computational Linguistics. doi: 10.18653/v1/2022.emnlp-main.555. URL \url{https://aclanthology.org/2022.emnlp-main.555}.
+\item Haitian Sun, Tania Bedrax-Weiss, and William W. Cohen. Pullnet: Open domain question answering with iterative retrieval on knowledge bases and text, 2019.
+\item Hao Sun, Xiao Liu, Yeyun Gong, Anlei Dong, Jingwen Lu, Yan Zhang, Daxin Jiang, Linjun Yang, Rangan Majumder, and Nan Duan. Beamsearchqa: Large language models are strong zero-shot QA solver. CoRR, abs/2305.14766, 2023a. doi: 10.48550/arXiv.2305.14766. URL \url{https://doi.org/10.48550/arXiv.2305.14766}.
+\item Jiashuo Sun, Yi Luo, Yeyun Gong, Chen Lin, Yelong Shen, Jian Guo, and Nan Duan. Enhancing chain-of-thoughts prompting with iterative bootstrapping in large language models, 2023b.
+\item Alon Talmor and Jonathan Berant. The web as a knowledge-base for answering complex questions. In Marilyn A. Walker, Heng Ji, and Amanda Stent (eds.), Proceedings of the 2018 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies, NAACL-HLT 2018, New Orleans, Louisiana, USA, June 1-6, 2018, Volume 1 (Long Papers), pp. 641--651. Association for Computational Linguistics, 2018. doi: 10.18653/v1/n18-1059. URL \url{https://doi.org/10.18653/v1/n18-1059}.
+\item Alon Talmor, Jonathan Herzig, Nicholas Lourie, and Jonathan Berant. Commonsenseqa: A question answering challenge targeting commonsense knowledge. In Jill Burstein, Christy Doran, and Thamar Solorio (eds.), Proceedings of the 2019 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies, NAACL-HLT 2019, Minneapolis, MN, USA, June 2-7, 2019, Volume 1 (Long and Short Papers), pp. 4149--4158, 2019. doi: 10.18653/v1/n19-1421. URL \url{https://doi.org/10.18653/v1/n19-1421}.
+\item Yiming Tan, Dehai Min, Yu Li, Wenbo Li, Nan Hu, Yongrui Chen, and Guilin Qi. Evaluation of chatgpt as a question answering system for answering complex questions. arXiv preprint arXiv:2303.07992, 2023.
+\item Romal Thoppilan, Daniel De Freitas, Jamie Hall, Noam Shazeer, Apoorv Kulshreshtha, Heng-Tze Cheng, Alicia Jin, Taylor Bos, Leslie Baker, Yu Du, YaGuang Li, Hongrae Lee, Huaixiu Steven Zheng, Amin Ghafouri, Marcelo Menegali, Yanping Huang, Maxim Krikun, Dmitry Lepikhin, James Qin, Dehao Chen, Yuanzhong Xu, Zhifeng Chen, Adam Roberts, Maarten Bosma, Yanqi Zhou, Chung-Ching Chang, Igor Krivokon, Will Rusch, Marc Pickett, Kathleen S. Meier-Hellstern, Meredith Ringel Morris, Tulsee Doshi, Renelito Delos Santos, Toju Duke, Johnny Soraker, Ben Zevenbergen, Vinodkumar Prabhakaran, Mark Diaz, Ben Hutchinson, Kristen Olson, Alejandra Molina, Erin Hoffman-John, Josh Lee, Lora Aroyo, Ravi Rajakumar, Alena Butryna, Matthew Lamm, Viktoriya Kuzmina, Joe Fenton, Aaron Cohen, Rachel Bernstein, Ray Kurzweil, Blaise Ag\"{u}era y Arcas, Claire Cui, Marian Croak, Ed H. Chi, and Quoc Le. Lamda: Language models for dialog applications. CoRR, 2022. URL \url{https://arxiv.org/abs/2201.08239}.
+\item Hugo Touvron, Louis Martin, Kevin Stone, Peter Albert, Amjad Almahairi, Yasmine Babaei, Nikolay Bashlykov, Soumya Batra, Prajjwal Bhargava, Shruti Bhosale, Dan Bikel, Lukas Blecher, Cristian Canton Ferrer, Moya Chen, Guillem Cucurull, David Esiobu, Jude Fernandes, Jeremy Fu, Wenyin Fu, Brian Fuller, Cynthia Gao, Vedanuj Goswami, Naman Goyal, Anthony Hartshorn, Saghar Hosseini, Rui Hou, Hakan Inan, Marcin Kardas, Viktor Kerkez, Madian Khabsa, Isabel Kloumann, Artem Korenev, Punit Singh Koura, Marie-Anne Lachaux, Thibaut Lavril, Jenya Lee, Diana Liskovich, Yinghai Lu, Yuning Mao, Xavier Martinet, Todor Mihaylov, Pushkar Mishra, Igor Molybog, Yixin Nie, Andrew Poulton, Jeremy Reizenstein, Rashi Rungta, Kalyan Saladi, Alan Schelten, Ruan Silva, Eric Michael Smith, Ranjan Subramanian, Xiaoqing Ellen Tan, Binh Tang, Ross Taylor, Adina Williams, Jian Xiang Kuan, Puxin Xu, Zheng Yan, Iliyan Zarov, Yuchen Zhang, Angela Fan, Melanie Kambadur, Sharan Narang, Aurelien Rodriguez, Robert Stojnic, Sergey Edunov, and Thomas Scialom. Llama 2: Open foundation and fine-tuned chat models, 2023.
+\item Denny Vrande\v{c}i\'{c} and Markus Kr\"{o}tzsch. Wikidata: A free collaborative knowledgebase. Commun. ACM, 57(10):78--85, sep 2014. ISSN 0001-0782. doi: 10.1145/2629489. URL \url{https://doi.org/10.1145/2629489}.
+\item Jianing Wang, Qiushi Sun, Nuo Chen, Xiang Li, and Ming Gao. Boosting language models reasoning with chain-of-knowledge prompting, 2023a.
+\item Keheng Wang, Feiyu Duan, Sirui Wang, Peiguang Li, Yunsen Xian, Chuantao Yin, Wenge Rong, and Zhang Xiong. Knowledge-driven cot: Exploring faithful reasoning in llms for knowledge-intensive question answering, 2023b.
+\item Xuezhi Wang, Jason Wei, Dale Schuurmans, Quoc V. Le, Ed H. Chi, Sharan Narang, Aakanksha Chowdhery, and Denny Zhou. Self-consistency improves chain of thought reasoning in language models. In The Eleventh International Conference on Learning Representations, ICLR 2023, Kigali, Rwanda, May 1-5, 2023. OpenReview.net, 2023c. URL \url{https://openreview.net/pdf?id=1PL1NIMMrw}.
+\item Jason Wei, Xuezhi Wang, Dale Schuurmans, Maarten Bosma, Ed H. Chi, Quoc Le, and Denny Zhou. Chain of thought prompting elicits reasoning in large language models. arXiv Preprint, 2022. URL \url{https://arxiv.org/abs/2201.11903}.
+\item Tianbao Xie, Chen Henry Wu, Peng Shi, Ruiqi Zhong, Torsten Scholak, Michihiro Yasunaga, Chien-Sheng Wu, Ming Zhong, Pengcheng Yin, Sida I. Wang, Victor Zhong, Bailin Wang, Chengzu Li, Connor Boyle, Ansong Ni, Ziyu Yao, Dragomir Radev, Caiming Xiong, Lingpeng Kong, Rui Zhang, Noah A. Smith, Luke Zettlemoyer, and Tao Yu. UnifiedSKG: Unifying and multi-tasking structured knowledge grounding with text-to-text language models. In Proceedings of the 2022 Conference on Empirical Methods in Natural Language Processing, pp. 602--631, Abu Dhabi, United Arab Emirates, December 2022. Association for Computational Linguistics. URL \url{https://aclanthology.org/2022.emnlp-main.39}.
+\item Yuxi Xie, Kenji Kawaguchi, Yiran Zhao, Xu Zhao, Min-Yen Kan, Junxian He, and Qizhe Xie. Decomposition enhances reasoning via self-evaluation guided decoding, 2023.
+\item Linyao Yang, Hongyang Chen, Zhao Li, Xiao Ding, and Xindong Wu. Chatgpt is not enough: Enhancing large language models with knowledge graphs for fact-aware language modeling, 2023.
+\item Shunyu Yao, Jeffrey Zhao, Dian Yu, Nan Du, Izhak Shafran, Karthik Narasimhan, and Yuan Cao. React: Synergizing reasoning and acting in language models. arXiv preprint arXiv:2210.03629, 2022.
+\item Shunyu Yao, Dian Yu, Jeffrey Zhao, Izhak Shafran, Thomas L. Griffiths, Yuan Cao, and Karthik Narasimhan. Tree of thoughts: Deliberate problem solving with large language models, 2023.
+\item Wen-tau Yih, Matthew Richardson, Christopher Meek, Ming-Wei Chang, and Jina Suh. The value of semantic parse labeling for knowledge base question answering. In Proceedings of the 54th Annual Meeting of the Association for Computational Linguistics, ACL 2016, August 7-12, 2016, Berlin, Germany, Volume 2: Short Papers. The Association for Computer Linguistics, 2016. doi: 10.18653/v1/p16-2033. URL \url{https://doi.org/10.18653/v1/p16-2033}.
+\item Donghan Yu, Sheng Zhang, Patrick Ng, Henghui Zhu, Alexander Hanbo Li, Jun Wang, Yiqun Hu, William Wang, Zhiguo Wang, and Bing Xiang. Decaf: Joint decoding of answers and logical forms for question answering over knowledge bases, 2023.
+\item Wenhao Yu, Chenguang Zhu, Zhihan Zhang, Shuohang Wang, Zhuosheng Zhang, Yuwei Fang, and Meng Jiang. Retrieval augmentation for commonsense reasoning: A unified approach. In Proceedings of the 2022 Conference on Empirical Methods in Natural Language Processing, pp. 4364--4377, Abu Dhabi, United Arab Emirates, December 2022. Association for Computational Linguistics. doi: 10.18653/v1/2022.emnlp-main.294. URL \url{https://aclanthology.org/2022.emnlp-main.294}.
+\item Hang Zhang, Yeyun Gong, Yelong Shen, Weisheng Li, Jiancheng Lv, Nan Duan, and Weizhu Chen. Poolingformer: Long document modeling with pooling attention. In International Conference on Machine Learning, pp. 12437--12446. PMLR, 2021.
+\item Hang Zhang, Yeyun Gong, Xingwei He, Dayiheng Liu, Daya Guo, Jiancheng Lv, and Jian Guo. Noisy pair corrector for dense retrieval. arXiv preprint arXiv:2311.03798, 2023.
+\item Zhuosheng Zhang, Aston Zhang, Mu Li, and Alex Smola. Automatic chain of thought prompting in large language models. arXiv Preprint, 2022. doi: 10.48550/arXiv.2210.03493. URL \url{https://doi.org/10.48550/arXiv.2210.03493}.
+\end{enumerate}
+
+\appendix
+
+\section{ToG 的算法}
+
+我们总结了 ToG 和 ToG-R 完整的算法流程，如算法 1 和算法 2 所示。
+
+\begin{figure}[H]
+\centering
+\begin{minipage}[t]{0.49\textwidth}
+\begin{algorithm}[H]
+\caption{ToG}
+\begin{algorithmic}[1]
+\Require 输入 $x$，大语言模型 $\pi$，深度上限 $D_{max}$，采样上限 $N$。
+\State 初始化 $E^0 \leftarrow$ 抽取 $x$ 上的实体，$P \leftarrow [\,]$，$M \leftarrow 0$。
+\While{$D \leq D_{max}$}
+  \State $R_{cand}^D, P_{cand} \leftarrow \text{Search}(x, E^{D-1}, P)$
+  \State $R^D, P \leftarrow \text{Prune}(\pi, x, R_{cand}^D, P_{cand})$
+  \State $E_{cand}^D, P_{cand} \leftarrow \text{Search}(x, E^{D-1}, R^D, P)$
+  \State $E^D, P \leftarrow \text{Prune}(\pi, x, E_{cand}^D, P_{cand})$
+  \If{$\text{Reasoning}(\pi, x, P)$}
+    \State $\text{Generate}(\pi, x, P)$
+    \State \textbf{break}
+  \EndIf
+  \State $D$ 自增 1。
+\EndWhile
+\If{$D > D_{max}$}
+  \State $\text{Generate}(\pi, x)$
+\EndIf
+\end{algorithmic}
+\end{algorithm}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.49\textwidth}
+\begin{algorithm}[H]
+\caption{ToG-R}
+\begin{algorithmic}[1]
+\Require 输入 $x$，大语言模型 $\pi$，深度上限 $D_{max}$，采样上限 $N$。
+\State 初始化 $E^0 \leftarrow$ 抽取 $x$ 上的实体，$P \leftarrow [\,]$，$M \leftarrow 0$。
+\While{$D \leq D_{max}$}
+  \State $R_{cand}^D, P_{cand} \leftarrow \text{Search}(x, E^{D-1}, P)$
+  \State $R^D, P \leftarrow \text{Prune}(\pi, x, R_{cand}^D, P_{cand})$
+  \State $E_{cand}^D, P_{cand} \leftarrow \text{Search}(x, E^{D-1}, R^D, P)$
+  \If{$\text{Reasoning}(\pi, x, P, E_{cand}^D)$}
+    \State $\text{Generate}(\pi, x, P, E_{cand}^D)$
+    \State \textbf{break}
+  \EndIf
+  \State $E^D, P \leftarrow \text{Random\_Prune}(E_{cand}^D, P_{cand})$
+  \State $D$ 自增 1。
+\EndWhile
+\If{$D > D_{max}$}
+  \State $\text{Generate}(\pi, x)$
+\EndIf
+\end{algorithmic}
+\end{algorithm}
+\end{minipage}
+\end{figure}
+
+\section{额外的消融研究与实验分析}
+
+在本节中，除第 3.2.3 节之外，我们进行更多消融研究实验，并详细分析 ToG 的实验结果。
+
+\subsection{额外的消融研究}
+
+\paragraph{对种子示例数量的敏感性}
+为了更好地理解 ToG 对种子示例数量的敏感程度，我们采用图~\ref{fig:5} 所示的敏感性分析。我们进行零样本（zero-shot）实验，并从训练集中选取 1\,--\,6 个示例作为少样本（few-shot）设置。在少样本测试中，我们从 $\{1, 2, 3, 4, 6\}$ 中随机选取 $M$ 个示例作为演示样例（demonstration），并将实验重复三次。随着演示样例中示例数量的增加，整体性能通常也随之提升。然而，ToG 和 ToG-R 的性能峰值有所不同（ToG 在 5-shot 时性能最佳，而 ToG-R 在 4-shot 时性能最佳）。此外，ToG 的零样本性能优于 ToG-R。这可以归因于 ToG 拥有完全充分探索的路径，从而即使在零样本设置下也能确保出色的性能。相比之下，ToG-R 省略了路径中的实体，但它在有演示样例时的平均性能优于 ToG。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\linewidth]{fig5.pdf}
+\caption{ToG 在 CWQ 和 WebQSP 上针对示例数量的敏感性分析，其中“0”表示零样本，“k”表示 k-shot。}
+\label{fig:5}
+\end{figure}
+
+\paragraph{与朴素束搜索的差异}
+ToG 与束搜索略有不同。ToG 将 top-N 推理路径作为证据，而朴素束搜索（naive beam search）则选择最可信的一条路径作为唯一的推理路径。我们在 CWQ 和 WebQSP 上对 ToG 进行朴素 top-1 束搜索方法的实验。对于 ToG 的每个深度，我们选取可信度最高的推理路径，以评估当前推理路径是否足以回答问题。实验结果如表~\ref{tab:6} 所示。在朴素束搜索中，校准误差（calibration error）沿推理过程不断累积，导致最终结果的不稳定。我们认为，ToG 通过考虑 top-N 推理路径，可以部分缓解这一问题。
+
+\begin{table}[H]\centering
+\caption{朴素束搜索、ToG 方法在 CWQ 和 WebQSP 上的结果。}
+\label{tab:6}
+\small
+\begin{tabular}{llc}
+\toprule
+搜索算法 & 数据集 & EM \\
+\midrule
+\multirow{2}{*}{Naive Beam Search} & CWQ & 30.1 \\
+& WebQSP & 46.1 \\
+\midrule
+\multirow{2}{*}{ToG-R} & CWQ & 59.2 \\
+& WebQSP & 75.1 \\
+\midrule
+\multirow{2}{*}{ToG} & CWQ & 58.8 \\
+& WebQSP & 76.2 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{结果分析}
+
+我们对 ToG 和 ToG-R 生成的答案进行详细分析。
+
+\paragraph{错误分析}
+我们考虑了三类错误：(1) 幻觉错误（hallucination error）；(2) 拒答错误（refuse error）\footnote{大语言模型会因信息不足而拒绝回答。}；(3) 格式错误（format error）。其分布如图~\ref{fig:6} 所示。我们的方法显著减少了 IO 和 CoT 中的幻觉错误和拒答错误类型。对于 GrailQA，ToG 甚至将这两类错误分别减少了 50\% 和 60\%。此外，在 ToG 的错误样本中，仍然存在许多幻觉错误和拒答错误的实例。这是因为当前的搜索深度和宽度均设为 3。通过增大搜索深度和宽度，这些错误实例将进一步减少（参见第 3.2.3 节）。此外，我们目前将所有错误答案笼统地归为幻觉，但幻觉内部还有多种类别，本文不作讨论。另外，应用 ToG 后，格式错误的样本略有增加。这一结果表明，被探索的路径会使词元数量明显增多，有时甚至超过最大输出限制。然而，由此问题导致的错误率可以忽略不计（小于 3\%）。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\linewidth]{fig6.pdf}
+\caption{IO、CoT 和 ToG 在 CWQ、WebQSP 和 GrailQA 上的错误实例及类别。}
+\label{fig:6}
+\end{figure}
+
+\paragraph{答案的证据来源}
+我们对三个数据集中正确回答的样本进行了分析，以考察大语言模型生成答案的证据来源，如图~\ref{fig:7} 所示。显然，相当一部分答案来源于 ToG 探索到的路径，而大约 20\% 的答案则完全依赖于大语言模型参数中蕴含的内在知识来生成回复。值得注意的是，约有 7\% 的正确回答样本需要结合探索路径和大语言模型固有知识两方面的知识（详见附录表 21）。这一特点使我们的方法区别于传统的基于图的搜索方法，因为它并不要求路径必须完整地包含含有正确答案的节点。相反，探索到的路径是对大语言模型固有知识的补充和参考。ToG-R 的答案类型分布与 ToG 几乎无法区分，这证明了我们方法的鲁棒性。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\linewidth]{fig7.pdf}
+\caption{ToG 在 CWQ、WebQSP 和 GrailQA 数据集上答案证据来源的占比。}
+\label{fig:7}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\linewidth]{fig8.pdf}
+\caption{ToG-R 在 CWQ、WebQSP 和 GrailQA 数据集上探索路径的重叠比例。}
+\label{fig:8}
+\end{figure}
+
+\paragraph{探索路径与真实路径之间的重叠比例}
+我们还对三个数据集中正确回答的样本进行了分析，以考察 ToG 探索到的路径与 SPARQL 中真实路径之间的重叠比例。重叠比例定义为重叠路径数与真实 SPARQL 中关系总数之比：
+\[
+\frac{\text{Count}(\text{Rel}(\text{Paths}) \cap \text{Rel}(\text{SPARQL}))}{\text{Count}(\text{Rel}(\text{SPARQL}))}
+\]
+其中 $\text{Rel}(*)$ 表示“$*$”中所有不重复的关系，$\text{Count}(*)$ 表示“$*$”的数量\footnote{我们通过统计真实 SPARQL 中的关系数量来近似计算路径的长度。}。图~\ref{fig:9} 是一个路径示意图，以表 22 所示的案例为例。从图~\ref{fig:10} 可以观察到，ToG 探索到的路径与黄金路径（golden path）完全相同的正确样本平均占 30\%，而平均有 21\% 的正确样本所探索的路径与黄金路径完全不同。这表明 ToG 成功地在知识图谱空间中探索出了一条完整且近乎全新的路径，从而到达最终的答案实体。对于 ToG-R，两者之间的差异主要体现在 CWQ 数据集上，其中 ToG 结果中 (25,50] 区间的占比相当显著（接近 40\%），而 ToG-R 的结果则趋于更均匀的分布，如图~\ref{fig:11} 所示。我们认为这种差异源于对实体的忽略，从而增强了探索关系的多样性。这代表了知识图谱推理在学术研究中的一项重要应用。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\linewidth]{fig9.pdf}
+\caption{用于计算重叠比例的路径示意图。}
+\label{fig:9}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\linewidth]{fig10.pdf}
+\caption{ToG 在 CWQ、WebQSP 和 GrailQA 数据集上探索路径的重叠比例。}
+\label{fig:10}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\linewidth]{fig11.pdf}
+\caption{ToG-R 在 CWQ、WebQSP 和 GrailQA 数据集上路径的重叠比例。}
+\label{fig:11}
+\end{figure}
+
+\paragraph{问题的推理深度}
+我们基于 CWQ 和 WebQSP 上真实 SPARQL 查询中的关系数量来计算测试问题的推理深度。不同推理深度的问题数量如图~\ref{fig:12} 所示。我们分析了 ToG、ToG-R 和 CoT 在两个数据集中不同推理深度测试问题上的性能。如图~\ref{fig:13} 所示，随着测试问题推理深度的增加，CoT 在两个数据集上的性能大致呈下降趋势。相反，ToG 和 ToG-R 能够部分抵消由问题推理深度增加而导致的性能下降，尤其是在 CWQ 上。总体而言，在更深的问题上，ToG 与 CoT 之间的性能差异变得更加显著。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\linewidth]{fig12.pdf}
+\caption{CWQ 和 WebQSP 数据集中真实 SPARQL 查询的长度，基于关系数量计算得到。}
+\label{fig:12}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\linewidth]{fig13.pdf}
+\caption{ToG、ToG-R 和 CoT 在 CWQ 和 WebQSP 数据集上的性能。}
+\label{fig:13}
+\end{figure}
+
+\subsubsection{ToG 的效率}
+
+有许多方案可以提升 ToG 的效率并降低其计算复杂度（与调用大语言模型的次数成正比），将其从原本的 $O(ND)$ 降至 $O(D)$，其中 $D$ 是推理路径的深度（或等价地说是长度），$N$ 是束搜索的宽度（即每次迭代中保留在候选池中的路径数量）。
+
+\paragraph{方案 1}
+通过在剪枝中使用轻量级模型，将计算复杂度从 $O(ND)$ 降至 $O(D)$。计算的瓶颈在于剪枝步骤，它贡献了 $N * D$ 次调用，因此优化它对计算效率很重要。一条技术路线是在剪枝步骤中用 BM25 和 Sentence-BERT 等小模型替换大语言模型，因为小模型比调用大语言模型快得多。通过这种方式，我们可以将大语言模型的调用次数从 $2ND + D + 1$ 减少到 $D + 1$。例如，当 $D=3$ 时，只需 4 次大语言模型调用。然而，由于剪枝中的评分模型较弱，这种优化牺牲了准确率。例如，如正文表~\ref{tab:5} 所示，在用 SentenceBERT 替换 ChatGPT 进行剪枝后，ToG 在 WebQSP 上的性能从 76.2\% 下降到 66.3\%。为缓解这一性能下降问题，我们可以适当增大搜索宽度来补偿损失，因为增大搜索宽度可以提高最优路径被选入候选池的机会，且不影响大语言模型的调用次数。为了实证验证这一点，我们将搜索宽度从 3 增大到 5，并在 WebQSP 上重新评估以 SentenceBERT 作为剪枝模型的 ToG。准确率从 66.3\% 上升到 68.5\%，并且由于更大的宽度不会导致大语言模型调用次数的增加，性能还可以随宽度的进一步增大而继续提升。
+
+\paragraph{方案 2}
+通过在同一剪枝步骤中统一提示，将计算复杂度从 $O(ND)$ 降至 $O(D)$。加速剪枝步骤的另一个方案是一次性使用大语言模型对 $N$ 个候选集合的所有组成部分进行评分以获得 top-N 候选，而不是调用大语言模型 $N$ 次来分别对 $N$ 个候选集合评分。通过该方案，无论是实体剪枝步骤还是关系剪枝步骤，每次迭代都只需 1 次大语言模型调用。因此，ToG 和 ToG-R 每个问题所需的最大大语言模型调用次数将分别降至 $2D + D + 1$ 和 $D + D + 1$。
+
+\paragraph{方案 3}
+优化剪枝步骤，使大语言模型的实际调用次数远少于先前估计的 $2ND + D + 1$，并更接近 CoT-SC 等一些常见的提示方法。对于 ToG 和其他基于大语言模型的方法，推理阶段的计算时间（成本或复杂度）主要取决于调用大语言模型的次数。对于每个问题，ToG 最多需要 $2ND + D + 1$ 次。同时，如第 2 节所述，ToG-R 最多需要 $ND + D + 1$ 次。给定束搜索宽度 $N$ 和最大推理深度 $D$，ToG 从与问题中关键词最匹配的实体开始搜索。在推理路径的每个迭代步骤中，ToG 从 $N$ 个实体/关系（知识图谱上的节点/边）中的每一个出发，搜索其所有邻居关系/实体。给定搜索宽度 $N$，ToG 始终在候选池中保留 $N$ 条“最可能”的候选推理路径，因此总是有 $N$ 个候选实体集合 $E_{cand,n}^D$ 和 $N$ 个候选关系集合 $R_{cand,n}^D$。因此，实体剪枝需要 $N$ 次大语言模型调用，关系剪枝需要 $N$ 次大语言模型调用，再加上一次额外的大语言模型调用用于推理（评估当前候选路径中的信息是否足够）。我们必须指出，对于 $N$ 个起始实体中的每一个，其所有邻居实体/关系并非被逐一评分。相反，其所有邻居实体/关系被一并“翻译”为“一个”提示并发送给大语言模型，由其一次性输出 top-N 候选。因此，每个起始实体只调用一次大语言模型进行剪枝，于是 $N$ 个起始实体在一个迭代步骤中调用大语言模型 $N$ 次。因此，在推理 $D$ 步之后，总共有 $2ND + D$ 次调用。最后，还有一次额外调用，将最终路径“翻译”为用户可理解的语言并回答用户。因此，ToG 总共需要 $2ND + D + 1$ 次大语言模型调用。由于大多数问题可以在 3 跳内回答（即推理路径深度为 3），并且如我们在图~\ref{fig:3} 中所测试的，当搜索宽度 $N=3$ 时性能通常已足够好，所以大语言模型调用的总次数为 $2 \times 3 \times 3 + 3 + 1 = 22$。因此其计算时间约为仅大语言模型方式的 21 倍。在性能与 ToG 相近的情况下，其变体 ToG-R 通过使用随机实体剪枝而非基于大语言模型的实体剪枝，只调用大语言模型 $ND + D + 1$ 次，节省了近一半的计算时间。
+
+$2ND + D + 1$ 是最大计算复杂度。在大多数情况下，ToG 并不需要 $2ND + D + 1$ 次大语言模型调用来回答一个问题，因为如果大语言模型判定已检索到足够信息，整个推理过程可能在达到最大推理深度 $D$ 之前就提前停止。同样，在大多数情况下，ToG-R 实际上也不需要 $ND + D + 1$ 次大语言模型调用。作为示例，表~\ref{tab:7} 和表~\ref{tab:8} 给出了 ToG 在不同数据集上每个问题所需的平均大语言模型调用次数。可以看到，在四个多跳 KBQA 数据集中，平均大语言模型调用次数（在 10 到 15 之间）显著小于 22——后者是当 $N=3$ 且 $D=3$ 时由 $2ND + D + 1$ 计算得出的理论最大大语言模型调用次数。我们还可以看到，对于单跳推理数据集（例如 SimpleQuestion 和 T-REx），这一平均值变得更小（$< 10$）。
+
+\begin{table}[H]\centering
+\caption{每个问题的平均大语言模型调用次数（第 1 部分）。}
+\label{tab:7}
+\small
+\begin{tabular}{lccccc}
+\toprule
+数据集 & CWQ & WebQSP & GrailQA & QALD10-EN & SimpleQuestion \\
+\midrule
+平均大语言模型调用次数 & 14.3 & 11.2 & 10.4 & 11.4 & 8.7 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]\centering
+\caption{每个问题的平均大语言模型调用次数（第 2 部分）。}
+\label{tab:8}
+\small
+\begin{tabular}{lcccc}
+\toprule
+数据集 & WebQuestion & T-REx & Zero-Shot RE & Creak \\
+\midrule
+平均大语言模型调用次数 & 10.5 & 7.7 & 7.6 & 8.0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{数据集}
+
+本文所用数据集的统计信息如表~\ref{tab:9} 所示。我们还为每个数据集提供了详细的结果表，如表~\ref{tab:10} 至表~\ref{tab:18} 所示，展示了 ToG 相较于此前基于微调和基于提示的相关工作的提升。对于 QALD10-en、WebQuestions、Zero-Shot RE 和 Creak，基于 ChatGPT 的 ToG 达到了新的最先进水平。此外，基于 GPT-4 的 ToG 在几乎所有多跳 KBQA 数据集上都超越了基于微调的方法，其中在 CWQ 上，ToG 接近最先进水平（69.5\%）。
+
+\begin{table}[H]\centering
+\caption{本文所用数据集的统计信息。* 表示由于测试样本数量众多，我们从 GrailQA 和 Simple Questions 测试集中随机选取了 1{,}000 个样本来构成测试集。}
+\label{tab:9}
+\small
+\begin{tabular}{lcccc}
+\toprule
+数据集 & 答案格式 & 训练集 & 测试集 & 许可证 \\
+\midrule
+ComplexWebQuestions & Entity & 27,734 & 3,531 & - \\
+WebQSP & Entity/Number & 3,098 & 1,639 & CC License \\
+GrailQA* & Entity/Number & 44,337 & 1,000 & - \\
+QALD-10 & Entity/Number & - & 333 & MIT License \\
+Simple Quesiton* & Entity/Number & 14,894 & 1,000 & CC License \\
+WebQuestions & Entity/Number & 3,778 & 2,032 & - \\
+T-REx & Entity & 2,284,168 & 5,000 & MIT License \\
+Zero-Shot RE & Entity & 147,909 & 3,724 & MIT License \\
+Creak & Bool & 10,176 & 1,371 & MIT License \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]\centering
+\caption{ComplexWebQuestions 数据集上基于微调和基于提示方法的统计数据。}
+\label{tab:10}
+\small
+\begin{tabular}{llc}
+\toprule
+模型 & 方法 & EM \\
+\midrule
+\multirow{5}{*}{Fine-Tuning} & QGG (Query Graph Generator) (Lan \& Jiang，2020) & 44.1 \\
+& PullNet (Sun 等，2019) & 45.9 \\
+& NSM+h (He 等，2021) & 53.9 \\
+& CBR-KBQA (Das 等，2021) & 67.1 \\
+& DecAF (Yu 等，2023) & 70.4 \\
+\midrule
+\multirow{3}{*}{ChatGPT} & KD-CoT (Wang 等，2023b) & 49.2 \\
+& ToG & 57.1 \\
+& ToG-R & 58.9 \\
+\midrule
+\multirow{2}{*}{Llama2-70B-Chat} & ToG & 53.6 \\
+& ToG-R & 57.6 \\
+\midrule
+\multirow{2}{*}{GPT-4} & ToG & 67.6 \\
+& ToG-R & 69.5 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]\centering
+\caption{WebQSP 数据集上基于微调和基于提示方法的统计数据。}
+\label{tab:11}
+\small
+\begin{tabular}{llc}
+\toprule
+模型 & 方法 & EM \\
+\midrule
+\multirow{5}{*}{Fine-Tuning} & KD-CoT (Wang 等，2023b) & 73.7 \\
+& NSM (He 等，2021) & 74.3 \\
+& Program Transfer (Cao 等，2022) & 74.6 \\
+& TIARA (Shu 等，2022) & 75.2 \\
+& DecAF (Yu 等，2023) & 82.1 \\
+\midrule
+\multirow{2}{*}{Code-davinci-002} & KB-BINDER (Li 等，2023a) & 74.4 \\
+& StructGPT (Jiang 等，2023) & 72.6 \\
+\midrule
+\multirow{2}{*}{ChatGPT} & ToG-R & 75.8 \\
+& ToG & 76.2 \\
+\midrule
+\multirow{2}{*}{Llama2-70B-Chat} & ToG-R & 69.4 \\
+& ToG & 64.1 \\
+\midrule
+\multirow{2}{*}{GPT-4} & ToG-R & 81.9 \\
+& ToG & 82.6 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]\centering
+\caption{GrailQA 数据集上基于微调和基于提示方法的统计数据。}
+\label{tab:12}
+\small
+\begin{tabular}{llc}
+\toprule
+模型 & 方法 & EM \\
+\midrule
+\multirow{4}{*}{Fine-Tuning} & DecAF (Yu 等，2023) & 68.4 \\
+& UniParser (Liu 等，2022) & 69.5 \\
+& TIARA (Shu 等，2022) & 73.0 \\
+& Pangu (Gu 等，2023) & 75.4 \\
+\midrule
+Code-davinci-002 & KB-BINDER (Li 等，2023a) & 53.2 \\
+\midrule
+\multirow{2}{*}{ChatGPT} & ToG-R & 66.4 \\
+& ToG & 68.7 \\
+\midrule
+\multirow{2}{*}{GPT-4} & ToG-R & 80.3 \\
+& ToG & 81.4 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]\centering
+\caption{QALD10-en 数据集上基于微调和基于提示方法的统计数据。}
+\label{tab:13}
+\small
+\begin{tabular}{llc}
+\toprule
+模型 & 方法 & Acc \\
+\midrule
+Fine-Tuning & SPARQL-QA (Santana 等，2022) & 45.4 \\
+\midrule
+\multirow{2}{*}{ChatGPT} & ToG-R & 48.6 \\
+& ToG & 50.2 \\
+\midrule
+\multirow{2}{*}{GPT-4} & ToG & 53.8 \\
+& ToG-R & 54.7 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]\centering
+\caption{SimpleQuestions 数据集上基于微调和基于提示方法的统计数据。}
+\label{tab:14}
+\small
+\begin{tabular}{llc}
+\toprule
+模型 & 方法 & EM \\
+\midrule
+\multirow{4}{*}{Fine-Tuning} & T5-LARGE+KPs (dos Santos 等，2022) & 58.3 \\
+& Memory Networks (Bordes 等，2015) & 63.9 \\
+& GETT-QA (Banerjee 等，2023) & 76.1 \\
+& DiFaR (Baek 等，2023a) & 85.8 \\
+\midrule
+\multirow{2}{*}{ChatGPT} & ToG-R & 45.4 \\
+& ToG & 53.6 \\
+\midrule
+\multirow{2}{*}{GPT-4} & ToG-R & 58.6 \\
+& ToG & 66.7 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]\centering
+\caption{WebQuestions 数据集上基于微调和基于提示方法的统计数据。}
+\label{tab:15}
+\small
+\begin{tabular}{llc}
+\toprule
+模型 & 方法 & EM \\
+\midrule
+\multirow{5}{*}{Fine-Tuning} & T5.1.1-XXL+SSM (Raffel 等，2020) & 43.5 \\
+& PaLM (Chowdhery 等，2022) & 43.5 \\
+& RAG (Lewis 等，2021) & 45.2 \\
+& FiDO (de Jong 等，2022) & 51.1 \\
+& FiE+PAQ (Kedia 等，2022) & 56.3 \\
+\midrule
+\multirow{2}{*}{PALM2} & Few-shot (Li 等，2023a) & 28.2 \\
+& BeamSearchQA Fine-tuned Retriever (Sun 等，2023a) & 27.3 \\
+\midrule
+\multirow{2}{*}{ChatGPT} & ToG-R & 53.2 \\
+& ToG & 54.5 \\
+\midrule
+\multirow{2}{*}{GPT-4} & ToG-R & 57.1 \\
+& ToG & 57.9 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]\centering
+\begin{minipage}[t]{0.49\textwidth}\centering
+\caption{T-REx 数据集上基于微调和基于提示方法的统计数据，数据来自排行榜。}
+\label{tab:16}
+\small
+\begin{tabular}{llc}
+\toprule
+模型 & 方法 & EM \\
+\midrule
+\multirow{5}{*}{Fine-Tuning} & MetaRAG & 78.7 \\
+& Wikipedia & 81.3 \\
+& single ngram & 83.7 \\
+& KGI\_1 & 84.4 \\
+& Re2G (Glass 等，2022) & 87.7 \\
+\midrule
+\multirow{2}{*}{ChatGPT} & ToG-R & 75.3 \\
+& ToG & 76.8 \\
+\midrule
+\multirow{2}{*}{GPT-4} & ToG-R & 75.5 \\
+& ToG & 77.1 \\
+\bottomrule
+\end{tabular}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.49\textwidth}\centering
+\caption{Zero-Shot RE 数据集上基于微调和基于提示方法的统计数据，数据来自排行榜。}
+\label{tab:17}
+\small
+\begin{tabular}{llc}
+\toprule
+模型 & 方法 & EM \\
+\midrule
+\multirow{5}{*}{Fine-Tuning} & Multitask DPR + BART & 58.0 \\
+& MetaRAG & 71.6 \\
+& KGI\_1 & 72.6 \\
+& Wikipedia & 74.0 \\
+& single ngram & 74.6 \\
+\midrule
+\multirow{2}{*}{ChatGPT} & ToG-R & 86.5 \\
+& ToG & 88.0 \\
+\midrule
+\multirow{2}{*}{GPT-4} & ToG-R & 86.9 \\
+& ToG & 88.3 \\
+\bottomrule
+\end{tabular}
+\end{minipage}
+\end{table}
+
+\begin{table}[H]\centering
+\caption{Creak 数据集上基于微调和基于提示方法的统计数据。}
+\label{tab:18}
+\small
+\begin{tabular}{llc}
+\toprule
+模型 & 方法 & EM \\
+\midrule
+\multirow{3}{*}{Fine-Tuning} & RoBERTa-Large (Liu 等，2019) & 80.6 \\
+& T5-3B (Raffel 等，2020) & 85.6 \\
+& RACo-Large (Yu 等，2022) & 88.2 \\
+\midrule
+\multirow{2}{*}{ChatGPT} & ToG-R & 93.8 \\
+& ToG & 91.2 \\
+\midrule
+\multirow{2}{*}{GPT-4} & ToG-R & 95.4 \\
+& ToG & 95.6 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{案例研究}
+
+在本节中，我们对 CWQ 数据集进行案例分析，以评估 ToG 的效用和局限性。我们将 ToG 与 IO、CoT 和 New Bing 搜索引擎\footnote{访问版本为 2023 年 7 月。}进行比较。我们选取了四个示例进行分析，每个示例都附有 top-3 推理路径和归一化分数。
+
+在表~\ref{tab:19} 的第一个示例中，ToG 首先识别出问题中的“Arthur Miller”和“Lucian”，随后通过探索和推理过程扩展其推理路径。在进行两次迭代搜索后，ToG 成功得出了正确答案，因为它用推理路径连接了这两个实体，这代表了定位解的完美路线。此外，推理路径中间步骤中出现的 UnName\_Entity 反映了知识图谱的不完整性（即某些实体缺少“name”关系）。然而，ToG 仍然能够执行下一步推理，因为所有可用的关系都包含相关信息。我们观察到 IO 和 CoT 由于缺乏相应知识而未能正确回答查询，而 New Bing 在检索过程中没有检索到合适的信息。
+
+在表~\ref{tab:20} 所示的第二个示例中，IO 提示、CoT 甚至 New Bing 都受到幻觉问题的困扰，给出了错误答案“Florida”，因为“Renegade”是“Florida State Seminoles”的吉祥物（mascot），而非其“战歌”（fight song）。ToG 得到了推理路径“Renegade” $\rightarrow$ “sports.fight\_song.sports\_team” $\rightarrow$ “Pittsburgh Steeler”。然而，这条推理路径并未直接导向最终答案，但结合大语言模型自身的知识，ToG 能够回答出正确答案“Pennsylvania”。
+
+表~\ref{tab:21} 中的第三个示例展示了 ToG-R 的一个例子，其中 ToG 忽略中间实体，转而关注关系中的信息。在两跳推理到“Harvard College”后，结合大语言模型自身的知识，ToG 给出了最终结果：“Massachusetts”。可以观察到，IO 和 CoT 缺乏背景知识，而 New Bing 由于检索到了正确信息而正确回答了问题。
+
+最后一个示例如表~\ref{tab:22} 所示。其中 ToG 生成了一条通向最终问题答案的推理路径（路径 1）。值得注意的是，该答案的真实推理路径是 sports.\allowbreak sports\_team.\allowbreak team\_mascot $\rightarrow$ base.\allowbreak schemastaging.\allowbreak team\_training\_ground\_relationship.\allowbreak facility $\rightarrow$ base.\allowbreak schemastaging.\allowbreak sports\_team\_extra.\allowbreak training\_ground（可从 SPARQL 中检索得到），它比 ToG 的路径跳数更多。ToG 能够探索新的推理路径以到达正确答案，这代表了知识图谱推理的一项重要应用。然而，知识库中当前问题的答案是“Bright House Field”，这是错误的，因为“Philadelphia Phillies”现在的训练球场是“Spectrum Field”。这个例子体现了 ToG 的一个约束，即它依赖于知识库的正确性，错误的知识库会对 ToG 的推理准确率产生负面影响。然而，如图~\ref{fig:4} 所示，ToG 提出了一个新颖的框架，用于构建面向知识图谱的自动化知识注入。
+
+\begin{table}[H]\centering
+\caption{ToG 的案例。错误答案用\wrong{红色}标出，正确答案用\correct{蓝色}标出。}
+\label{tab:19}
+\small
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{p{0.16\textwidth}p{0.76\textwidth}}
+\toprule
+\textbf{Question} & Who influenced Arthur Miller that was influenced by Lucian? \\
+\midrule
+\multirow{6}{*}{\parbox{0.16\textwidth}{\textbf{Reasoning Paths}}}
+& Arthur Miller $\rightarrow$ influence.influence\_node.influenced\_by $\rightarrow$ William Shakespeare $\rightarrow$ influence.influence\_node.influenced\_by $\rightarrow$ Lucian. (Path 1, Score: 0.75) \\
+& Lucian $\rightarrow$ influence.influence\_node.influenced\_by $\rightarrow$ Socrates $\rightarrow$ influence.influence\_node.influenced\_by $\rightarrow$ Parmenides. (Path 2, Score: 0.2) \\
+& Arthur Miller $\rightarrow$ people.person.education $\rightarrow$ UnName\_Entity $\rightarrow$ education.education.student $\rightarrow$ Arthur Miller. (Path 3, Score: 0.05) \\
+\midrule
+\multirow{5}{*}{\textbf{Outputs}}
+& IO: \wrong{Edmund Wilson.} \\
+& CoT: Arthur Miller was influenced by the playwright and director \wrong{Thornton Wilder}, who in turn was influenced by Lucian of Samosata. \\
+& New Bing: I'm not sure about Lucian's influence on Arthur Miller. However, Arthur Miller was influenced by \wrong{Henrik lbsen and Eugene O'Neill}. He was also influenced by the events of the McCarthy era and the Salem witch trials. \\
+& ToG: Based on the given knowledge triples, we can infer that Arthur Miller was influenced by \correct{William Shakespeare}, who was directly influenced by Lucian. \\
+\midrule
+\textbf{Ground Truth} & William Shakespeare. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]\centering
+\caption{ToG 的案例。错误答案用\wrong{红色}标出，正确答案用\correct{蓝色}标出。}
+\label{tab:20}
+\small
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{p{0.16\textwidth}p{0.76\textwidth}}
+\toprule
+\textbf{Question} & What is the state where the team whose fight song is "Renegade" is from? \\
+\midrule
+\multirow{4}{*}{\parbox{0.16\textwidth}{\textbf{Reasoning Paths}}}
+& Renegade $\rightarrow$ sports.fight\_song.sports\_team $\rightarrow$ Pittsburgh Steelers. (Path 1, Score: 0.67) \\
+& Renegade $\rightarrow$ sports.sports\_team.fight\_song $\rightarrow$ UnName\_Entity. (Path 2, Score: 0.33) \\
+\midrule
+\multirow{4}{*}{\textbf{Outputs}}
+& IO: \wrong{Florida.} \\
+& CoT: The team whose fight song is "Renegade" is the Florida State Seminoles, and they are from the state of \wrong{Florida} in the United States. \\
+& New Bing: The team whose fight song is "Renegade" is the Florida State Seminoles. They are from the state of \wrong{Florida} in the United States. \\
+& ToG: Based on the given knowledge triples, the team with the fight song "Renegade" is the Pittsburgh Steelers. The Pittsburgh Steelers are a professional American football team, and they are from the state of \correct{Pennsylvania}. \\
+\midrule
+\textbf{Ground Truth} & Pittsburgh Pennsylvania. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]\centering
+\caption{ToG-R 的案例。“Unknown”表示大语言模型无法生成有效回复。错误答案用\wrong{红色}标出，正确答案用\correct{蓝色}标出。}
+\label{tab:21}
+\small
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{p{0.16\textwidth}p{0.76\textwidth}}
+\toprule
+\textbf{Question} & What state is the college that Sampson Salter Blowers is a grad student of located? \\
+\midrule
+\multirow{6}{*}{\parbox{0.16\textwidth}{\textbf{Reasoning Paths}}}
+& Sampson Salter Blowers $\rightarrow$ education.education.student $\rightarrow$ education.education.institution $\rightarrow$ \{Harvard College\}. (Path 1, Score: 0.75) \\
+& Sampson Salter Blowers $\rightarrow$ education.education.student $\rightarrow$ education.educational\_institution.students\_graduates $\rightarrow$ \{\}. (Path 2, Score: 0.2) \\
+& Sampson Salter Blowers $\rightarrow$ education.education.student $\rightarrow$ people.person.education $\rightarrow$ \{\}. (Path 3, Score: 0.05) \\
+\midrule
+\multirow{6}{*}{\textbf{Outputs}}
+& IO: \wrong{Unknown.} \\
+& CoT: \wrong{I'm sorry, but I do not have enough information to answer your question.} Can you please provide more context or details about Sampson Salter Blowers and the college he attended? \\
+& New Bing: I'm sorry but I couldn't find any information about Sampson Salter Blowers being a grad student. However, he was a noted North American lawyer, Lovalist and jurist from Nova Scotia who graduated from \correct{Harvard College} with a ba in 1763 and an ma in 1765. He was admitted as an attorney in the Suffolk lnferior Court in 1766. \\
+& ToG: Based on the given relations chains, Sampson Salter Blowers is a grad student of Harvard College. Therefore, the answer to the question is Harvard College, which is located in \correct{Massachusetts}. \\
+\midrule
+\textbf{Ground Truth} & Massachusetts. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]\centering
+\caption{ToG 的案例。错误答案用\wrong{红色}标出，正确答案用\correct{蓝色}标出。}
+\label{tab:22}
+\small
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{p{0.16\textwidth}p{0.76\textwidth}}
+\toprule
+\textbf{Question} & What is mascot Phillie Phanatic's team's spring training stadium? \\
+\midrule
+\multirow{5}{*}{\parbox{0.16\textwidth}{\textbf{Reasoning Paths}}}
+& Phillie Phanatic $\rightarrow$ sports.sports\_team.team\_mascot $\rightarrow$ Philadelphia Phillies $\rightarrow$ sports.sports\_team.arena\_stadium $\rightarrow$ Bright House Field. (Path 1, Score: 0.8) \\
+& Phillie Phanatic $\rightarrow$ sports.sports\_team.team\_mascot $\rightarrow$ Philadelphia Phillies $\rightarrow$ ports.sports\_team\_location.teams $\rightarrow$ Philadelphia. (Path 2, Score: 0.15) \\
+& Phillie Phanatic $\rightarrow$ sports.sports\_team.team\_mascot $\rightarrow$ Philadelphia Phillies $\rightarrow$ sports.sports\_team.team $\rightarrow$ Phillie Phanatic. (Path 3, Score: 0.05) \\
+\midrule
+\multirow{5}{*}{\textbf{Outputs}}
+& IO: \wrong{Spectrum Field.} \\
+& CoT: First, the mascot Phillie Phanatic represents the Philadelphia Phillies baseball team. Second, the Philadelphia Phillies' spring training stadium is located in Clearwater, Florida and is known as \wrong{Spectrum Field}. The answer is Spectrum Field. \\
+& New Bing: The Philadelphia Phillies' spring training stadium is called \wrong{BayCare Ballpark}. \\
+& ToG: The spring training stadium for Phillie Phanatic's team, the Philadelphia Phillies, is \correct{Bright House Field}. \\
+\midrule
+\textbf{Ground Truth} & Bright House Field (KB), Spectrum Field (Actual). \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{SPARQL 与提示}
+
+在本节中，我们展示主要实验中需要使用的所有提示。首先，我们为 Freebase 查询预定义了 SPARQL，只需填入相应的 mid 和 relation 即可执行。对于 Wikidata，我们不使用可执行的 SPARQL，而是直接通过九个预定义的服务 API 进行查询。
+
+\subsection{预定义的 SPARQL}
+
+\subsubsection{关系搜索（Relation Search）}
+\begin{verbatim}
+PREFIX ns: <http://rdf.freebase.com/ns/>
+SELECT ?relation
+WHERE {
+    ns:mid ?relation ?x .
+}
+
+PREFIX ns: <http://rdf.freebase.com/ns/>
+SELECT ?relation
+WHERE {
+    ?x ?relation ns:mid .
+}
+\end{verbatim}
+
+\subsubsection{实体搜索（Entity Search）}
+\begin{verbatim}
+PREFIX ns: <http://rdf.freebase.com/ns/>
+SELECT ?tailEntity
+WHERE {
+    ns:mid ns:relation ?tailEntity .
+}
+
+PREFIX ns: <http://rdf.freebase.com/ns/>
+SELECT ?tailEntity
+WHERE {
+    ?tailEntity ns:mid ns:relation .
+}
+\end{verbatim}
+
+\subsubsection{将 Mid 转换为标签（Convert Mid to Label）}
+\begin{verbatim}
+PREFIX ns: <http://rdf.freebase.com/ns/>
+SELECT DISTINCT ?tailEntity
+WHERE {
+{
+    ?entity ns:type.object.name ?tailEntity .
+    FILTER(?entity = ns:mid)
+}
+UNION
+{
+    ?entity <http://www.w3.org/2002/07/owlsameAs> ?tailEntity .
+    FILTER(?entity = ns:mid)
+}
+}
+\end{verbatim}
+
+\subsection{预定义的 API}
+\begin{verbatim}
+def label2qid(self, label: str) -> str:
+
+def label2pid(self, label: str) -> str:
+
+def pid2label(self, pid: str) -> str:
+
+def qid2label(self, qid: str) -> str:
+
+def get_all_relations_of_an_entity(self, entity_qid: str)
+    -> tp.Dict[str, tp.List]:
+
+def get_tail_entities_given_head_and_relation(self, head_qid: str,
+    relation_pid: str)
+    -> tp.Dict[str, tp.List]:
+
+def get_tail_values_given_head_and_relation(self, head_qid: str,
+    relation_pid: str) -> tp.List[str]:
+
+def get_external_id_given_head_and_relation(self, head_qid: str,
+    relation_pid: str) -> tp.List[str]:
+
+def mid2qid(self, mid: str) -> str:
+\end{verbatim}
+
+\subsection{ToG}
+
+\subsubsection{关系剪枝（Relation Prune）}
+\begin{verbatim}
+Please retrieve k relations (separated by semicolon) that contribute to
+the question and rate their contribution on a scale from 0 to 1 (the sum
+of the scores of k relations is 1).
+In-Context Few-shot
+Q: {Query}
+Topic Entity: {Topic Entity}
+Relations: {list of relations}
+A:
+\end{verbatim}
+
+\subsubsection{实体剪枝（Entity Prune）}
+\begin{verbatim}
+Please score the entities' contribution to the question on a scale from
+0 to 1 (the sum of the scores of all entities is 1).
+In-Context Few-shot
+Q: {Query}
+Relation: {Current Relation}
+Entites: {list of entities}
+Score:
+\end{verbatim}
+
+\subsubsection{推理（Reasoning）}
+\begin{verbatim}
+Given a question and the associated retrieved knowledge graph triples
+(entity, relation, entity), you are asked to answer whether it's
+sufficient for you to answer the question with these triples and your
+knowledge (Yes or No).
+In-Context Few-shot
+Q: {Query}
+Knowledge triples: {Explored Paths}
+A:
+\end{verbatim}
+
+\subsubsection{生成（Generate）}
+\begin{verbatim}
+Given a question and the associated retrieved knowledge graph triples
+(entity, relation, entity), you are asked to answer the question with
+these triples and your own knowledge.
+In-Context Few-shot
+Q: {Query}
+Knowledge triples: {Explored Paths}
+A:
+\end{verbatim}
+
+\subsection{ToG-R}
+
+\subsubsection{推理（Reasoning）}
+\begin{verbatim}
+Please answer the question using Topic Entity, Relations Chains and their
+Candidate Entities that contribute to the question, you are asked to
+answer whether it's sufficient for you to answer the question with these
+triples and your knowledge (Yes or No).
+In-Context Few-shot
+Q: {Query}
+Topic Entity, with relations chains, and their candidate entities:
+{Explored Relation Chains}
+A:
+\end{verbatim}
+
+\subsection{CoT 与 IO}
+
+\subsubsection{CoT 提示（CoT Prompt）}
+\begin{verbatim}
+Q: What state is home to the university that is represented in sports by
+George Washington Colonials men's basketball?
+A: First, the education institution has a sports team named George
+Washington Colonials men's basketball in is George Washington University,
+Second, George Washington University is in Washington D.C. The answer is
+Washington, D.C.
+Q: Who lists Pramatha Chaudhuri as an influence and wrote Jana Gana Mana?
+A: First, Bharoto Bhagyo Bidhata wrote Jana Gana Mana. Second, Bharoto
+Bhagyo Bidhata lists Pramatha Chaudhuri as an influence. The answer is
+Bharoto Bhagyo Bidhata.
+Q: Who was the artist nominated for an award for You Drive Me Crazy?
+A: First, the artist nominated for an award for You Drive Me Crazy is
+Britney Spears. The answer is Jason Allen Alexander.
+Q: What person born in Siegen influenced the work of Vincent Van Gogh?
+A: First, Peter Paul Rubens, Claude Monet and etc. influenced the work of
+Vincent Van Gogh. Second, Peter Paul Rubens born in Siegen. The answer is
+Peter Paul Rubens.
+Q: What is the country close to Russia where Mikheil Saakashvii holds a
+government position?
+A: First, China, Norway, Finland, Estonia and Georgia is close to Russia.
+Second, Mikheil Saakashvii holds a government position at Georgia. The
+answer is Georgia.
+Q: What drug did the actor who portrayed the character Urethane Wheels Guy
+overdosed on?
+A: First, Mitchell Lee Hedberg portrayed character Urethane Wheels Guy.
+Second, Mitchell Lee Hedberg overdose Heroin. The answer is Heroin.
+Q: {Query}
+A:
+\end{verbatim}
+
+\subsubsection{IO 提示（IO Prompt）}
+\begin{verbatim}
+Q: What state is home to the university that is represented in sports by
+George Washington Colonials men's basketball?
+A: Washington, D.C.
+Q: Who lists Pramatha Chaudhuri as an influence and wrote Jana Gana Mana?
+A: Bharoto Bhagyo Bidhata.
+Q: Who was the artist nominated for an award for You Drive Me Crazy?
+A: Jason Allen Alexander.
+Q: What person born in Siegen influenced the work of Vincent Van Gogh?
+A: Peter Paul Rubens.
+Q: What is the country close to Russia where Mikheil Saakashvii holds a
+government position?
+A: Georgia.
+Q: What drug did the actor who portrayed the character Urethane Wheels Guy
+overdosed on?
+A: Heroin.
+Q: {Query}
+A:
+\end{verbatim}
+
+\end{document}

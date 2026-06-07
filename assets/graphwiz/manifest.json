@@ -1,0 +1,801 @@
+{
+ "pdf": "graphwiz.pdf",
+ "slug": "graphwiz",
+ "page_count": 19,
+ "page_size": [
+  612.0,
+  792.0
+ ],
+ "pages": [
+  {
+   "page": 1,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/graphwiz/_pages/p01.png"
+  },
+  {
+   "page": 2,
+   "candidates": [
+    {
+     "id": "cand_p02_k00",
+     "kind": "vector",
+     "bbox": [
+      403.7,
+      85.2,
+      556.4,
+      159.4
+     ],
+     "pdf": "cand_p02_k00.pdf"
+    },
+    {
+     "id": "cand_p02_k01",
+     "kind": "vector",
+     "bbox": [
+      54.2,
+      83.8,
+      378.9,
+      162.0
+     ],
+     "pdf": "cand_p02_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      105.8,
+      176.1,
+      506.2,
+      185.0
+     ],
+     "text": "Figure 1: An example of solving the Connectivity task explicitly within natural language via LLMs.",
+     "label": "Figure 1"
+    }
+   ],
+   "overlay": "assets/graphwiz/_pages/p02.png"
+  },
+  {
+   "page": 3,
+   "candidates": [
+    {
+     "id": "cand_p03_k00",
+     "kind": "vector",
+     "bbox": [
+      319.4,
+      86.0,
+      556.5,
+      196.4
+     ],
+     "pdf": "cand_p03_k00.pdf"
+    },
+    {
+     "id": "cand_p03_k01",
+     "kind": "vector",
+     "bbox": [
+      53.8,
+      202.0,
+      294.0,
+      263.0
+     ],
+     "pdf": "cand_p03_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      318.1,
+      209.4,
+      558.0,
+      218.4
+     ],
+     "text": "Figure 2: The overview of GraphInstruct collection process.",
+     "label": "Figure 2"
+    }
+   ],
+   "overlay": "assets/graphwiz/_pages/p03.png"
+  },
+  {
+   "page": 4,
+   "candidates": [
+    {
+     "id": "cand_p04_k00",
+     "kind": "table",
+     "bbox": [
+      77.9,
+      386.1,
+      531.9,
+      478.9
+     ],
+     "pdf": "cand_p04_k00.pdf"
+    },
+    {
+     "id": "cand_p04_k01",
+     "kind": "table",
+     "bbox": [
+      58.7,
+      517.4,
+      286.9,
+      578.1
+     ],
+     "pdf": "cand_p04_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      53.5,
+      87.0,
+      558.2,
+      96.0
+     ],
+     "text": "Table 1: Overview of nine tasks in our GraphInstruct benchmark with problem definition, time complexity of representative",
+     "label": "Table 1"
+    },
+    {
+     "bbox": [
+      80.6,
+      361.7,
+      531.1,
+      372.7
+     ],
+     "text": "Table 2: Statistics of our GraphInstruct corpus, including total samples (G-𝑄), nodes (V) and reasoning paths R.",
+     "label": "Table 2"
+    },
+    {
+     "bbox": [
+      53.5,
+      495.2,
+      294.0,
+      504.0
+     ],
+     "text": "Table 3: Comparison between ours and other typical datasets.",
+     "label": "Table 3"
+    }
+   ],
+   "overlay": "assets/graphwiz/_pages/p04.png"
+  },
+  {
+   "page": 5,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/graphwiz/_pages/p05.png"
+  },
+  {
+   "page": 6,
+   "candidates": [
+    {
+     "id": "cand_p06_k00",
+     "kind": "vector",
+     "bbox": [
+      54.4,
+      86.2,
+      564.8,
+      194.2
+     ],
+     "pdf": "cand_p06_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      224.0,
+      206.9,
+      388.0,
+      216.2
+     ],
+     "text": "Figure 3: Training pipelines of GraphWiz.",
+     "label": "Figure 3"
+    }
+   ],
+   "overlay": "assets/graphwiz/_pages/p06.png"
+  },
+  {
+   "page": 7,
+   "candidates": [
+    {
+     "id": "cand_p07_k00",
+     "kind": "table",
+     "bbox": [
+      53.8,
+      109.4,
+      558.2,
+      138.0
+     ],
+     "pdf": "cand_p07_k00.pdf"
+    },
+    {
+     "id": "cand_p07_k01",
+     "kind": "table",
+     "bbox": [
+      53.8,
+      222.2,
+      378.5,
+      243.7
+     ],
+     "pdf": "cand_p07_k01.pdf"
+    },
+    {
+     "id": "cand_p07_k02",
+     "kind": "table",
+     "bbox": [
+      53.8,
+      260.1,
+      557.5,
+      281.7
+     ],
+     "pdf": "cand_p07_k02.pdf"
+    },
+    {
+     "id": "cand_p07_k03",
+     "kind": "table",
+     "bbox": [
+      53.8,
+      298.0,
+      557.5,
+      320.0
+     ],
+     "pdf": "cand_p07_k03.pdf"
+    },
+    {
+     "id": "cand_p07_k04",
+     "kind": "table",
+     "bbox": [
+      63.0,
+      402.7,
+      284.8,
+      537.1
+     ],
+     "pdf": "cand_p07_k04.pdf"
+    },
+    {
+     "id": "cand_p07_k05",
+     "kind": "vector",
+     "bbox": [
+      318.0,
+      346.6,
+      558.2,
+      463.7
+     ],
+     "pdf": "cand_p07_k05.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      142.9,
+      86.7,
+      468.8,
+      96.0
+     ],
+     "text": "Table 4: Performances of GraphWiz and other baselines on GraphInstruct test set.",
+     "label": "Table 4"
+    },
+    {
+     "bbox": [
+      53.5,
+      347.1,
+      294.0,
+      356.4
+     ],
+     "text": "Table 5: GraphWiz performances with increasing ratios of the",
+     "label": "Table 5"
+    },
+    {
+     "bbox": [
+      318.0,
+      476.2,
+      558.2,
+      485.5
+     ],
+     "text": "Figure 4: Performance of GraphWiz (Mistral) on NLGraph test",
+     "label": "Figure 4"
+    }
+   ],
+   "overlay": "assets/graphwiz/_pages/p07.png"
+  },
+  {
+   "page": 8,
+   "candidates": [
+    {
+     "id": "cand_p08_k00",
+     "kind": "table",
+     "bbox": [
+      318.0,
+      42.8,
+      558.2,
+      246.0
+     ],
+     "pdf": "cand_p08_k00.pdf"
+    },
+    {
+     "id": "cand_p08_k01",
+     "kind": "vector",
+     "bbox": [
+      64.0,
+      89.5,
+      169.8,
+      171.1
+     ],
+     "pdf": "cand_p08_k01.pdf"
+    },
+    {
+     "id": "cand_p08_k02",
+     "kind": "vector",
+     "bbox": [
+      187.2,
+      89.4,
+      293.0,
+      171.1
+     ],
+     "pdf": "cand_p08_k02.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      53.8,
+      204.2,
+      294.3,
+      213.3
+     ],
+     "text": "Figure 5: (a) Model performance in two high-complexity",
+     "label": "Figure 5"
+    },
+    {
+     "bbox": [
+      53.5,
+      494.8,
+      294.0,
+      503.8
+     ],
+     "text": "Table 5 illustrates the average performance of two variants of",
+     "label": "Table 5"
+    },
+    {
+     "bbox": [
+      318.0,
+      215.8,
+      558.2,
+      225.1
+     ],
+     "text": "Figure 6: Performance of GPT-4 (2 shot) and GraphWiz based",
+     "label": "Figure 6"
+    }
+   ],
+   "overlay": "assets/graphwiz/_pages/p08.png"
+  },
+  {
+   "page": 9,
+   "candidates": [
+    {
+     "id": "cand_p09_k00",
+     "kind": "table",
+     "bbox": [
+      53.8,
+      35.2,
+      294.0,
+      303.2
+     ],
+     "pdf": "cand_p09_k00.pdf"
+    },
+    {
+     "id": "cand_p09_k01",
+     "kind": "vector",
+     "bbox": [
+      318.9,
+      87.9,
+      557.1,
+      249.8
+     ],
+     "pdf": "cand_p09_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      98.9,
+      215.1,
+      248.9,
+      226.1
+     ],
+     "text": "Figure 7: Hyperparameter study of 𝛽.",
+     "label": "Figure 7"
+    },
+    {
+     "bbox": [
+      53.8,
+      681.1,
+      294.0,
+      690.1
+     ],
+     "text": "Figure 8, a scale that poses substantial challenges even for human",
+     "label": "Figure 8"
+    },
+    {
+     "bbox": [
+      343.4,
+      264.1,
+      532.8,
+      273.4
+     ],
+     "text": "Figure 8: A typical case of GraphWiz and GPT-4.",
+     "label": "Figure 8"
+    }
+   ],
+   "overlay": "assets/graphwiz/_pages/p09.png"
+  },
+  {
+   "page": 10,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/graphwiz/_pages/p10.png"
+  },
+  {
+   "page": 11,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      317.7,
+      325.5,
+      559.6,
+      334.6
+     ],
+     "text": "Table 6 shows the detailed statistics of our DPO training corpus.",
+     "label": "Table 6"
+    },
+    {
+     "bbox": [
+      317.7,
+      336.5,
+      559.6,
+      345.6
+     ],
+     "text": "Table 7 shows the training and testing instruction of our model.",
+     "label": "Table 7"
+    }
+   ],
+   "overlay": "assets/graphwiz/_pages/p11.png"
+  },
+  {
+   "page": 12,
+   "candidates": [
+    {
+     "id": "cand_p12_k00",
+     "kind": "table",
+     "bbox": [
+      77.9,
+      109.4,
+      531.9,
+      166.2
+     ],
+     "pdf": "cand_p12_k00.pdf"
+    },
+    {
+     "id": "cand_p12_k01",
+     "kind": "table",
+     "bbox": [
+      65.7,
+      201.8,
+      544.3,
+      226.6
+     ],
+     "pdf": "cand_p12_k01.pdf"
+    },
+    {
+     "id": "cand_p12_k02",
+     "kind": "table",
+     "bbox": [
+      91.6,
+      273.2,
+      520.4,
+      306.1
+     ],
+     "pdf": "cand_p12_k02.pdf"
+    },
+    {
+     "id": "cand_p12_k03",
+     "kind": "table",
+     "bbox": [
+      91.6,
+      322.6,
+      520.4,
+      384.5
+     ],
+     "pdf": "cand_p12_k03.pdf"
+    },
+    {
+     "id": "cand_p12_k04",
+     "kind": "table",
+     "bbox": [
+      91.6,
+      359.8,
+      520.4,
+      383.1
+     ],
+     "pdf": "cand_p12_k04.pdf"
+    },
+    {
+     "id": "cand_p12_k05",
+     "kind": "table",
+     "bbox": [
+      91.6,
+      401.0,
+      520.4,
+      463.0
+     ],
+     "pdf": "cand_p12_k05.pdf"
+    },
+    {
+     "id": "cand_p12_k06",
+     "kind": "table",
+     "bbox": [
+      91.6,
+      438.1,
+      520.4,
+      461.9
+     ],
+     "pdf": "cand_p12_k06.pdf"
+    },
+    {
+     "id": "cand_p12_k07",
+     "kind": "table",
+     "bbox": [
+      161.9,
+      510.0,
+      450.9,
+      585.1
+     ],
+     "pdf": "cand_p12_k07.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      100.3,
+      85.1,
+      511.4,
+      96.0
+     ],
+     "text": "Table 6: Statistics of our DPO corpus, including total samples (G-𝑄), nodes (V) and reasoning paths R.",
+     "label": "Table 6"
+    },
+    {
+     "bbox": [
+      163.6,
+      179.1,
+      448.1,
+      188.4
+     ],
+     "text": "Table 7: Training and testing prompts of GraphWiz in our experiments.",
+     "label": "Table 7"
+    },
+    {
+     "bbox": [
+      53.5,
+      239.2,
+      558.2,
+      248.8
+     ],
+     "text": "Table 8: GraphWiz performances with increasing ratios of the graph to reasoning path (G:R), which is indicative of the data",
+     "label": "Table 8"
+    },
+    {
+     "bbox": [
+      163.7,
+      487.3,
+      448.0,
+      496.6
+     ],
+     "text": "Table 9: Performance of GraphWiz-Mistral-7B on different graph types.",
+     "label": "Table 9"
+    }
+   ],
+   "overlay": "assets/graphwiz/_pages/p12.png"
+  },
+  {
+   "page": 13,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      53.5,
+      87.1,
+      558.2,
+      96.0
+     ],
+     "text": "Table 10: Prompts of Connectivity Task used for GPT-4 and ChatGPT testing, which are also used for initial data generation in",
+     "label": "Table 10"
+    },
+    {
+     "bbox": [
+      53.5,
+      315.3,
+      558.2,
+      324.2
+     ],
+     "text": "Table 11: Prompts of Cycle Detection Task used for GPT-4 and ChatGPT testing, which are also used for initial data generation",
+     "label": "Table 11"
+    },
+    {
+     "bbox": [
+      53.5,
+      479.4,
+      558.2,
+      488.5
+     ],
+     "text": "Table 12: Prompts of Bipartite Graph Check Task used for GPT-4 and ChatGPT testing, which are also used for initial data",
+     "label": "Table 12"
+    }
+   ],
+   "overlay": "assets/graphwiz/_pages/p13.png"
+  },
+  {
+   "page": 14,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      53.5,
+      87.1,
+      558.2,
+      96.0
+     ],
+     "text": "Table 13: Prompts of Topological Sort Task used for GPT-4 and ChatGPT testing, which are also used for initial data generation",
+     "label": "Table 13"
+    },
+    {
+     "bbox": [
+      53.5,
+      241.4,
+      558.2,
+      250.3
+     ],
+     "text": "Table 14: Prompts of Shortest Path Task used for GPT-4 and ChatGPT testing, which are also used for initial data generation in",
+     "label": "Table 14"
+    }
+   ],
+   "overlay": "assets/graphwiz/_pages/p14.png"
+  },
+  {
+   "page": 15,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      53.5,
+      87.1,
+      558.2,
+      96.0
+     ],
+     "text": "Table 15: Prompts of Maximum Flow Task used for GPT-4 and ChatGPT testing, which are also used for initial data generation",
+     "label": "Table 15"
+    },
+    {
+     "bbox": [
+      53.5,
+      420.6,
+      558.2,
+      429.6
+     ],
+     "text": "Table 16: Prompts of Maximum Triangle Sum Task used for GPT-4 and ChatGPT testing, which are also used for initial data",
+     "label": "Table 16"
+    }
+   ],
+   "overlay": "assets/graphwiz/_pages/p15.png"
+  },
+  {
+   "page": 16,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      53.5,
+      87.0,
+      558.2,
+      96.0
+     ],
+     "text": "Table 17: Prompts of Subgraph Matching Task used for GPT-4 and ChatGPT testing, which are also used for initial data",
+     "label": "Table 17"
+    }
+   ],
+   "overlay": "assets/graphwiz/_pages/p16.png"
+  },
+  {
+   "page": 17,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      53.5,
+      87.0,
+      558.2,
+      96.0
+     ],
+     "text": "Table 18: Prompts of Hamilton Path i used for GPT-4 and ChatGPT testing, which are also used for initial data generation in",
+     "label": "Table 18"
+    }
+   ],
+   "overlay": "assets/graphwiz/_pages/p17.png"
+  },
+  {
+   "page": 18,
+   "candidates": [
+    {
+     "id": "cand_p18_k00",
+     "kind": "vector",
+     "bbox": [
+      55.5,
+      87.6,
+      557.7,
+      213.3
+     ],
+     "pdf": "cand_p18_k00.pdf"
+    },
+    {
+     "id": "cand_p18_k01",
+     "kind": "vector",
+     "bbox": [
+      55.5,
+      222.4,
+      557.7,
+      361.4
+     ],
+     "pdf": "cand_p18_k01.pdf"
+    },
+    {
+     "id": "cand_p18_k02",
+     "kind": "vector",
+     "bbox": [
+      55.5,
+      371.7,
+      557.7,
+      524.6
+     ],
+     "pdf": "cand_p18_k02.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      180.4,
+      538.9,
+      431.6,
+      548.2
+     ],
+     "text": "Figure 9: Three cases and responses from GPT-4 and GraphWiz.",
+     "label": "Figure 9"
+    }
+   ],
+   "overlay": "assets/graphwiz/_pages/p18.png"
+  },
+  {
+   "page": 19,
+   "candidates": [
+    {
+     "id": "cand_p19_k00",
+     "kind": "vector",
+     "bbox": [
+      55.6,
+      89.6,
+      557.7,
+      400.2
+     ],
+     "pdf": "cand_p19_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      202.6,
+      416.2,
+      409.4,
+      425.5
+     ],
+     "text": "Figure 10: A False positive response from GraphWiz.",
+     "label": "Figure 10"
+    }
+   ],
+   "overlay": "assets/graphwiz/_pages/p19.png"
+  }
+ ]
+}

@@ -1,0 +1,528 @@
+{
+ "pdf": "higpt.pdf",
+ "slug": "higpt",
+ "page_count": 19,
+ "page_size": [
+  612.0,
+  792.0
+ ],
+ "pages": [
+  {
+   "page": 1,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/higpt/_pages/p01.png"
+  },
+  {
+   "page": 2,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/higpt/_pages/p02.png"
+  },
+  {
+   "page": 3,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/higpt/_pages/p03.png"
+  },
+  {
+   "page": 4,
+   "candidates": [
+    {
+     "id": "cand_p04_k00",
+     "kind": "vector",
+     "bbox": [
+      60.1,
+      82.1,
+      436.9,
+      251.3
+     ],
+     "pdf": "cand_p04_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      208.9,
+      244.2,
+      403.1,
+      253.2
+     ],
+     "text": "Figure 1: The overall architecture of our HiGPT.",
+     "label": "Figure 1"
+    }
+   ],
+   "overlay": "assets/higpt/_pages/p04.png"
+  },
+  {
+   "page": 5,
+   "candidates": [
+    {
+     "id": "cand_p05_k00",
+     "kind": "vector",
+     "bbox": [
+      22.4,
+      247.8,
+      574.3,
+      475.2
+     ],
+     "pdf": "cand_p05_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      144.3,
+      84.6,
+      467.5,
+      93.5
+     ],
+     "text": "Table 1: Prompts for the three tasks of heterogeneous graph instruction-tuning.",
+     "label": "Table 1"
+    },
+    {
+     "bbox": [
+      70.5,
+      410.9,
+      277.3,
+      419.8
+     ],
+     "text": "Figure 2: Mixture-of-Thought (MoT) Augmentation",
+     "label": "Figure 2"
+    }
+   ],
+   "overlay": "assets/higpt/_pages/p05.png"
+  },
+  {
+   "page": 6,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/higpt/_pages/p06.png"
+  },
+  {
+   "page": 7,
+   "candidates": [
+    {
+     "id": "cand_p07_k00",
+     "kind": "table",
+     "bbox": [
+      53.8,
+      96.1,
+      558.2,
+      350.0
+     ],
+     "pdf": "cand_p07_k00.pdf"
+    },
+    {
+     "id": "cand_p07_k01",
+     "kind": "table",
+     "bbox": [
+      55.3,
+      371.1,
+      288.8,
+      567.3
+     ],
+     "pdf": "cand_p07_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      53.5,
+      73.7,
+      558.5,
+      82.8
+     ],
+     "text": "Table 2: Performance comparison on node classification tasks in both few-shot and zero-shot settings. However, since SSL",
+     "label": "Table 2"
+    },
+    {
+     "bbox": [
+      97.4,
+      359.8,
+      250.1,
+      368.7
+     ],
+     "text": "Table 3: Ablation study of our HiGPT.",
+     "label": "Table 3"
+    }
+   ],
+   "overlay": "assets/higpt/_pages/p07.png"
+  },
+  {
+   "page": 8,
+   "candidates": [
+    {
+     "id": "cand_p08_k00",
+     "kind": "table",
+     "bbox": [
+      61.8,
+      77.9,
+      286.0,
+      435.0
+     ],
+     "pdf": "cand_p08_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      70.1,
+      381.8,
+      277.8,
+      390.8
+     ],
+     "text": "Figure 3: Graph In-Context Learning of our HiGPT.",
+     "label": "Figure 3"
+    }
+   ],
+   "overlay": "assets/higpt/_pages/p08.png"
+  },
+  {
+   "page": 9,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/higpt/_pages/p09.png"
+  },
+  {
+   "page": 10,
+   "candidates": [
+    {
+     "id": "cand_p10_k00",
+     "kind": "table",
+     "bbox": [
+      56.8,
+      329.9,
+      288.8,
+      456.0
+     ],
+     "pdf": "cand_p10_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      82.2,
+      314.9,
+      265.3,
+      323.8
+     ],
+     "text": "Table 4: Detailed statistics of utilzed datasets.",
+     "label": "Table 4"
+    }
+   ],
+   "overlay": "assets/higpt/_pages/p10.png"
+  },
+  {
+   "page": 11,
+   "candidates": [
+    {
+     "id": "cand_p11_k00",
+     "kind": "table",
+     "bbox": [
+      53.8,
+      590.3,
+      306.0,
+      710.8
+     ],
+     "pdf": "cand_p11_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      103.1,
+      84.6,
+      508.6,
+      93.5
+     ],
+     "text": "Table 5: Detailed Descriptions of Text-Enriched Heterogeneity Representations for IMDB and DBLP.",
+     "label": "Table 5"
+    },
+    {
+     "bbox": [
+      53.8,
+      723.7,
+      295.6,
+      732.8
+     ],
+     "text": "Figure 4: Instruction construction template for graph in-",
+     "label": "Figure 4"
+    }
+   ],
+   "overlay": "assets/higpt/_pages/p11.png"
+  },
+  {
+   "page": 12,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      100.3,
+      84.6,
+      511.4,
+      93.5
+     ],
+     "text": "Table 6: Detailed Descriptions of Text-Enriched Heterogeneity Representations for ACM (Continued).",
+     "label": "Table 6"
+    }
+   ],
+   "overlay": "assets/higpt/_pages/p12.png"
+  },
+  {
+   "page": 13,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      125.4,
+      84.6,
+      486.3,
+      93.5
+     ],
+     "text": "Table 7: Detailed Prompt of Mixture-of-Thought (MoT) Graph Instruction Augmentation.",
+     "label": "Table 7"
+    }
+   ],
+   "overlay": "assets/higpt/_pages/p13.png"
+  },
+  {
+   "page": 14,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      225.8,
+      81.0,
+      385.9,
+      89.9
+     ],
+     "text": "Table 8: Instruction template for IMDB.",
+     "label": "Table 8"
+    },
+    {
+     "bbox": [
+      200.3,
+      281.4,
+      411.5,
+      290.4
+     ],
+     "text": "Table 9: Instruction template for IMDB (Continued).",
+     "label": "Table 9"
+    }
+   ],
+   "overlay": "assets/higpt/_pages/p14.png"
+  },
+  {
+   "page": 15,
+   "candidates": [
+    {
+     "id": "cand_p15_k00",
+     "kind": "table",
+     "bbox": [
+      53.8,
+      415.1,
+      563.4,
+      434.1
+     ],
+     "pdf": "cand_p15_k00.pdf"
+    },
+    {
+     "id": "cand_p15_k01",
+     "kind": "table",
+     "bbox": [
+      53.8,
+      489.4,
+      568.3,
+      530.2
+     ],
+     "pdf": "cand_p15_k01.pdf"
+    },
+    {
+     "id": "cand_p15_k02",
+     "kind": "table",
+     "bbox": [
+      58.5,
+      508.6,
+      294.4,
+      528.1
+     ],
+     "pdf": "cand_p15_k02.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      54.1,
+      84.6,
+      557.6,
+      93.5
+     ],
+     "text": "Table 10: Visualization of our HiGPT’s response with different prompting engineering techniques on IMDB for action genre.",
+     "label": "Table 10"
+    }
+   ],
+   "overlay": "assets/higpt/_pages/p15.png"
+  },
+  {
+   "page": 16,
+   "candidates": [
+    {
+     "id": "cand_p16_k00",
+     "kind": "table",
+     "bbox": [
+      211.7,
+      215.1,
+      394.9,
+      223.7
+     ],
+     "pdf": "cand_p16_k00.pdf"
+    },
+    {
+     "id": "cand_p16_k01",
+     "kind": "table",
+     "bbox": [
+      53.8,
+      235.1,
+      442.2,
+      253.8
+     ],
+     "pdf": "cand_p16_k01.pdf"
+    },
+    {
+     "id": "cand_p16_k02",
+     "kind": "table",
+     "bbox": [
+      53.8,
+      373.1,
+      568.3,
+      382.6
+     ],
+     "pdf": "cand_p16_k02.pdf"
+    },
+    {
+     "id": "cand_p16_k03",
+     "kind": "table",
+     "bbox": [
+      53.8,
+      537.3,
+      568.3,
+      546.2
+     ],
+     "pdf": "cand_p16_k03.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      53.5,
+      63.0,
+      558.2,
+      71.9
+     ],
+     "text": "Table 11: Visualization of our HiGPT’s response with different prompting engineering techniques on IMDB for comedy genre.",
+     "label": "Table 11"
+    }
+   ],
+   "overlay": "assets/higpt/_pages/p16.png"
+  },
+  {
+   "page": 17,
+   "candidates": [
+    {
+     "id": "cand_p17_k00",
+     "kind": "table",
+     "bbox": [
+      306.5,
+      205.2,
+      550.6,
+      213.9
+     ],
+     "pdf": "cand_p17_k00.pdf"
+    },
+    {
+     "id": "cand_p17_k01",
+     "kind": "table",
+     "bbox": [
+      53.8,
+      388.1,
+      401.9,
+      407.0
+     ],
+     "pdf": "cand_p17_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      53.7,
+      63.0,
+      558.1,
+      71.9
+     ],
+     "text": "Table 12: Visualization of our HiGPT’s response with different prompting engineering techniques on IMDB for drama genre.",
+     "label": "Table 12"
+    }
+   ],
+   "overlay": "assets/higpt/_pages/p17.png"
+  },
+  {
+   "page": 18,
+   "candidates": [
+    {
+     "id": "cand_p18_k00",
+     "kind": "table",
+     "bbox": [
+      53.8,
+      117.7,
+      558.2,
+      554.1
+     ],
+     "pdf": "cand_p18_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      53.5,
+      84.7,
+      559.3,
+      93.5
+     ],
+     "text": "Table 13: Comprehensive performance comparison on node classification tasks in both few-shot and zero-shot settings. However,",
+     "label": "Table 13"
+    }
+   ],
+   "overlay": "assets/higpt/_pages/p18.png"
+  },
+  {
+   "page": 19,
+   "candidates": [
+    {
+     "id": "cand_p19_k00",
+     "kind": "table",
+     "bbox": [
+      56.0,
+      85.1,
+      559.9,
+      651.4
+     ],
+     "pdf": "cand_p19_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      152.3,
+      520.5,
+      459.7,
+      529.5
+     ],
+     "text": "Figure 5: Comprehensive results of graph in-context learning of our HiGPT.",
+     "label": "Figure 5"
+    }
+   ],
+   "overlay": "assets/higpt/_pages/p19.png"
+  }
+ ]
+}

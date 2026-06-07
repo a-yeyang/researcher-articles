@@ -1,0 +1,476 @@
+\documentclass[11pt,UTF8,fontset=fandol]{ctexart}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx,float,caption,subcaption}
+\usepackage{booktabs,array,multirow,makecell}
+\usepackage{geometry,enumitem,xcolor}
+\usepackage[hidelinks]{hyperref}
+\usepackage{url}
+\usepackage{pifont}
+\geometry{margin=2.3cm}
+\graphicspath{{/Users/yye/project/论文/assets/kgagent/}}
+\captionsetup{font=small,labelfont=bf}
+\setlength{\parskip}{0.4em}
+
+% 用于表格中的对勾与叉号
+\newcommand{\cmark}{\textcolor{green!55!black}{\ding{51}}}
+\newcommand{\xmark}{\textcolor{red!75!black}{\ding{55}}}
+
+\title{\textbf{KG-Agent：一个用于知识图谱复杂推理的高效自主智能体框架}}
+
+\author{Jinhao Jiang\textsuperscript{1,3},~Kun Zhou\textsuperscript{2,3},~Wayne Xin Zhao\textsuperscript{1,3}\thanks{通讯作者。},~Yang Song\textsuperscript{4}\footnotemark[1],\\
+Chen Zhu\textsuperscript{5},~Hengshu Zhu\textsuperscript{5},~Ji-Rong Wen\textsuperscript{1,2,3}\\[0.4em]
+\small \textsuperscript{1}中国人民大学高瓴人工智能学院（Gaoling School of Artificial Intelligence, Renmin University of China）\\
+\small \textsuperscript{2}中国人民大学信息学院（School of Information, Renmin University of China）\\
+\small \textsuperscript{3}大数据管理与分析方法北京市重点实验室（Beijing Key Laboratory of Big Data Management and Analysis Methods）\\
+\small \textsuperscript{4}BOSS 直聘 NLP 中心（NLP Center, BOSS Zhipin）~~\textsuperscript{5}BOSS 直聘职业科学实验室（Career Science Lab, BOSS Zhipin）\\
+\small \texttt{jiangjinhao@ruc.edu.cn, batmanfly@gmail.com}}
+
+\date{}
+\begin{document}
+\maketitle
+
+\begin{abstract}
+本文旨在提升大语言模型（large language models, LLMs）在知识图谱（knowledge graphs, KGs）上的推理能力，以回答复杂问题。受现有那些设计大语言模型与知识图谱之间交互策略的方法启发，我们提出了一个基于大语言模型的自主智能体框架，称为 KG-Agent，它使一个小型大语言模型能够主动做出决策，直至完成在知识图谱上的推理过程。在 KG-Agent 中，我们整合了大语言模型、多功能工具箱（multifunctional toolbox）、基于知识图谱的执行器（KG-based executor）以及知识记忆（knowledge memory），并开发了一种迭代机制，该机制能够自主地选择工具，然后更新记忆，以在知识图谱上进行推理。为保证有效性，我们利用程序语言（program language）来刻画在知识图谱上的多跳推理（multi-hop reasoning）过程，并合成一个基于代码的指令数据集来微调基座大语言模型。大量实验表明，仅使用 10K 个样本对 LLaMA-7B 进行微调，就能够在域内（in-domain）和域外（out-domain）数据集上超越使用更大规模大语言模型或更多数据的最先进方法。我们的代码和数据将公开发布。
+\end{abstract}
+
+\section{引言}
+
+尽管大语言模型（LLMs）在各类自然语言处理（NLP）任务上取得了卓越的性能（Brown 等，2020；Zhao 等，2023），但它们仅依靠自身的参数化知识（parametric knowledge）在求解复杂任务方面仍然能力有限（Hu 等，2023b），例如多跳（multi-hop）和知识密集型（knowledge-intensive）推理（Lan 等，2023）。知识图谱（KG）以图结构的形式存储海量知识三元组（knowledge triples），已被广泛用于以外部知识补充大语言模型（Pan 等，2023）。
+
+由于知识图谱数据规模庞大且结构化，大语言模型难以有效利用来自知识图谱的信息。近期工作主要采用检索增强（retrieval-augmented）（Ye 等，2022）或协同增强（synergy-augmented）（Jiang 等，2023b）的方法来用知识图谱数据增强大语言模型。前一种方法将与任务相关的三元组检索出来并序列化，作为大语言模型提示（prompt）的一部分；而后一种方法则在知识图谱与大语言模型之间设计一种信息交互机制（information interaction mechanism），以迭代地寻找问题的解。特别地，协同增强方法能够同时受益于知识图谱上的结构化搜索（例如 SPARQL）和大语言模型的语言理解能力，取得了与以往最先进方法相当甚至更优的性能（Gu 等，2023）。
+
+然而，现有的协同增强方法仍存在两个主要局限。第一，大语言模型与知识图谱之间的信息交互机制通常是预先定义的（例如，遵循人工设计的多轮计划），无法灵活适应各种复杂任务（Luo 等，2023；Jiang 等，2023b）。例如，在处理推理过程中意料之外的需求（如不同的难度或约束条件）时，这类机制会变得低效。第二，这些方法（Wang 等，2023a）大多依赖更强大的闭源大语言模型 API（例如 ChatGPT 和 GPT-4）来理解或学习求解复杂任务。然而，所蒸馏出的计划或流程同样受限于特定的任务设定或能力水平，可能并不最适合用于指导这些较弱的模型。
+
+为解决这些问题，本文提出 KG-Agent，一个用于在知识图谱上进行复杂推理任务的、基于大语言模型的自主智能体框架。其动机有两方面：（1）设计能够在推理过程中主动做出决策、无需人工协助的自主推理方法；（2）使相对较小的模型（例如 7B 大语言模型）能够有效执行复杂推理，而不依赖闭源的大语言模型 API。为实现这一目标，我们的方法做出了三项主要的技术贡献。第一，我们通过精心构建一个多功能工具箱来扩展大语言模型操作结构化数据的能力，使大语言模型能够对知识图谱数据和中间结果执行离散或高级操作（例如过滤、计数和检索）。第二，我们利用现有的知识图谱推理数据集来合成基于代码的指令数据，以微调大语言模型；具体而言，我们首先根据知识图谱上的推理链（reasoning chain）生成程序，然后合成指令数据。第三，我们提出一种基于工具选择（tool selection）和记忆更新（memory updation）的自主迭代机制，它整合了微调后的大语言模型、多功能工具箱、基于知识图谱的执行器和知识记忆，以在知识图谱上进行自主推理。
+
+为验证有效性，我们在域内和域外任务上评估了 KG-Agent，包括基于知识图谱的问答（KG-based question answering, KGQA）和开放域问答（open domain question answering, ODQA）。在使用远少于以往的训练数据（即 10K 个样本）来微调一个更小的大语言模型（即 LLaMA-7B）的情况下，我们的方法在域内数据集上能够超越具有竞争力的基于大语言模型的基线（例如，仅使用原始训练集约 36\% 和 23\% 的数据量，就在 CWQ 和 GrailQA 上分别取得了 7.5\% 和 2.7\% 的 F1 相对提升）。在域外数据集上，我们的 KG-Agent 的零样本（zero-shot）性能优于具有竞争力的全量数据有监督微调模型（例如，在 WQ-Freebase 和 TQ-Wiki 上分别取得 9.7\% 和 8.5\% 的准确率相对提升）。
+
+\section{相关工作}
+
+\textbf{基于大语言模型的知识图谱推理。}
+得益于强大的零样本和少样本（few-shot）能力，近期研究已利用大语言模型在知识图谱上进行推理。这些工作大致可分为检索增强（retrieval-augmented）（Shu 等，2022）和协同增强（synergy-augmented）（Gu 等，2023）两类。检索增强方法是从知识图谱中检索出三元组并将其序列化，然后将其馈入大语言模型以帮助生成最终结果（例如答案或 SPARQL 查询）（Ye 等，2022）。这种方式丢失了原始知识图谱中的结构化信息，并且可能检索到冗余知识，从而限制了大语言模型的理解。为缓解这些问题，协同增强方法在大语言模型与知识图谱之间设计了一种信息交互机制，使大语言模型能够多次查询知识图谱来回答问题（Jiang 等，2023b）。具体而言，它们要么首先生成完整计划（Li 等，2023），然后将其落实（ground）到知识图谱上；要么基于知识图谱逐步制定计划（Luo 等，2023）。尽管取得了更好的性能，但现有方法中大语言模型与知识图谱之间的信息交互机制往往遵循预先定义的方式，无法灵活适应各种复杂任务。相比之下，我们提出的 KG-Agent 能够在知识图谱推理过程中自主做出决策，无需人工协助。
+
+\textbf{基于大语言模型的智能体。}
+近来，大语言模型展现出令人惊讶的长程规划（long-horizon planning）与推理能力（Shinn 等，2023；Zhong 等，2023），基于大语言模型的智能体（LLM-based agents）也逐渐成为自主求解复杂交互式任务的热门话题（Wang 等，2023b）。大量智能体聚焦于通用任务求解。作为代表性项目，ReAct（Yao 等，2023）提出了一种提示方法，将大语言模型（例如 ChatGPT）转化为语言智能体（language agents），以与外部环境交互、接收反馈，然后为下一步推理生成动作。随后，AutoGPT\footnote{\url{https://github.com/Significant-Gravitas/AutoGPT}} 进一步为大语言模型（即 GPT-4）赋予了长/短期记忆管理以及搜索引擎等外部工具，以自主应对用户请求。此外，另有若干智能体专注于特定领域，例如用于网页浏览环境的 WebGPT（Nakano 等，2021）、用于多模态场景的 MM-REACT（Yang 等，2023），以及用于现实生活环境的 ProgPrompt（Singh 等，2023）。然而，近期涉及语言智能体的工作大多依赖更强大的闭源大语言模型 API（例如 ChatGPT 和 GPT-4）来理解或学习求解复杂任务。我们的 KG-Agent 是首个仅依靠相对较小的 7B 大语言模型即可支持在知识图谱上进行复杂推理的自主智能体框架。
+
+\section{预备知识}
+
+本节首先正式定义知识图谱（KG），然后形式化基于知识图谱的复杂知识推理任务。
+
+\textbf{知识图谱（KG）。}
+一个知识图谱通常由大量事实三元组（fact triples）构成，表示为 $\mathcal{G} = \{\langle e, r, e' \rangle \mid e, e' \in \mathcal{E},\, r \in \mathcal{R}\}$，其中 $\mathcal{E}$ 和 $\mathcal{R}$ 分别表示实体（entity）集合和关系（relation）集合。一个三元组 $\langle e, r, e' \rangle$ 描述了一条事实知识，即在头实体（head entity）$e$ 和尾实体（tail entity）$e'$ 之间存在关系 $r$。每个实体 $e$ 被赋予一个唯一的实体 ID（或字符串值），并属于某种实体类型 $t$，例如 Country（国家）和 Person（人物）。此外，我们引入邻接关系（neighboring relations）来表示实体集合 $\{e\}$ 的所有入边（incoming）和出边（outgoing）关系，记为 $\mathcal{R}_{\{e\}} = \{r \mid \langle e, r, e' \rangle \in \mathcal{G}\} \cup \{r \mid \langle e', r, e \rangle \in \mathcal{G}\}$。
+
+\textbf{问题形式化。}
+在本工作中，我们假设知识图谱可用，并且包含给定自然语言问题的答案实体。我们的目标是开发一个基于大语言模型的智能体，使其能够基于给定的知识图谱自主推断问题的答案。由于已有研究表明领域特定接口（domain-specific interface）有助于大语言模型操作结构化数据（Jiang 等，2023b），我们进一步假设可以提供一个工具箱来便利地访问知识图谱中的信息。形式上，给定一个自然语言问题 $q$、一个工具箱 $\mathcal{T}$ 和一个知识图谱 $\mathcal{G}$，我们旨在开发一个有能力的智能体，通过利用 $\mathcal{T}$ 中的工具和 $\mathcal{G}$ 中的知识信息，推导出问题 $q$ 的最终答案 $A_q = \{e\}$。
+
+\section{方法}
+
+本部分介绍所提出的 KG-Agent，用于自主求解知识图谱上的复杂推理任务。我们 KG-Agent 框架的核心是一个受到良好指令训练的大语言模型，它能够在知识图谱推理时自主做出决策。我们首先通过设计一个带有支持工具的工具箱来扩展大语言模型的能力，以操作知识图谱数据或中间结果（第~4.1~节）。为增强逐步推理的能力，我们利用现有的知识图谱问答（KGQA）数据集合成知识图谱推理程序，并将其转换为格式化的指令微调数据（第~4.2~节）。最后，我们设计了一个基于知识记忆的有效智能体框架，以支持在知识图谱上进行自主推理（第~4.3~节）。接下来给出 KG-Agent 的技术细节。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{fig1.pdf}
+\caption{我们所提出的 KG-Agent 的总览。上半部分是我们智能体的工作流程，下半部分是指令微调数据合成以及输入--输出对的提示模板的一个示例。为简洁起见，我们简化了关系的表面形式（surface form）。}
+\label{fig:1}
+\end{figure}
+
+\subsection{面向知识图谱的工具箱}
+
+由于大语言模型难以准确操作结构化数据（Jiang 等，2023b），我们构建了一个支持性工具箱，以便利对知识图谱信息的利用。根据已有工作（Gu 等，2021；Cao 等，2022），在知识图谱（例如 Freebase 或 Wikidata）上进行推理通常需要三种基本操作，即从知识图谱中提取信息、基于问题语义过滤无关信息，以及对所提取的信息进行操作。因此，我们为大语言模型在知识图谱上的推理设计了三类工具，即提取工具（extraction tools）、语义工具（semantic tools）和逻辑工具（logic tools）。
+
+\begin{itemize}[leftmargin=1.5em]
+\item \textbf{提取工具}旨在便利对知识图谱信息的访问。考虑到知识图谱中的基本数据类型，我们设计了五个工具来支持对关系（\texttt{get\_relation}）、头/尾实体（\texttt{get\_head\_entity}/\texttt{get\_tail\_entity}），以及具有特定类型或约束的实体（\texttt{get\_entity\_by\_type}/\texttt{get\_entity\_by\_constraint}）的访问，这些访问以某个实体集合或其他输入信息（例如关系或类型）为条件。
+
+\item \textbf{逻辑工具}旨在支持对所提取的知识图谱信息进行基本的操作运算，包括实体计数（\texttt{count}）、实体集合的交（\texttt{intersect}）与并（\texttt{union}）、条件验证（\texttt{judge}），以及以当前实体集合作为最终答案来结束推理过程（\texttt{end}）。
+
+\item \textbf{语义工具}通过利用预训练模型来实现特定功能，包括关系检索（\texttt{retrieve\_relation}）和实体消歧（\texttt{disambiguate\_entity}）。这些工具扩展了对知识图谱的基本操作，能够为知识图谱推理支持高级功能。
+\end{itemize}
+
+我们在附录~B 的表~\ref{tab:8} 中总结了这些工具的详细定义和用法。需要注意的是，由于每个工具的格式和用法都以统一的方式进行了定义，面向知识图谱的工具箱可以根据实际需求灵活扩展。
+
+\subsection{KG-Agent 指令微调}
+
+为实现自主推理过程，我们构建了一个高质量的指令数据集，用于微调一个小型大语言模型（即 LLaMA2-7B）。为此，我们首先利用现有的基于知识图谱的问答（KGQA）数据集生成知识图谱推理程序，然后将其分解为多个步骤。最后，每个步骤被构造为带有输入和输出的指令数据。
+
+\subsubsection{知识图谱推理程序生成}
+
+我们提出利用现有的 KGQA 数据集来合成知识图谱推理程序，而不是从闭源大语言模型（例如 GPT-4）中蒸馏。这些 KGQA 数据集包含已标注的 SQL 查询，可以执行这些查询来直接为每个问题提取答案实体。特别地，SQL 查询通常包含关系链（relation chain）、条件或约束，这些都有利于推理程序的合成。具体而言，我们首先将 SQL 查询落实到知识图谱上以获得一个查询图（query graph），然后从查询图中提取推理链和约束条件，最后将该链分解为多个代码片段（code snippets）作为推理程序。
+
+\textbf{推理链提取。}
+由于整个知识图谱极其庞大且包含无关数据，第一步是获取一个与问题相关的小型知识图谱子图（subgraph），称为查询图。沿用以往工作（Yin 等，2020），我们通过规则匹配（rule match）从知识图谱中获取查询图。如图~\ref{fig:1}（b）所示，查询图具有树状结构，可以直接映射到一种逻辑形式（logical form）（Yin 等，2020），并且能够清晰地刻画 SQL 查询为获得答案而执行的流程。第二步，从问题中提及的实体（即 Cristiano Ronaldo）出发，我们采用广度优先搜索（breadth-first search, BFS）来访问查询图上的所有节点。这一策略最终会产生一条连接起始实体与答案实体的推理链（例如 teams$\rightarrow$roster\_team），并且相关的约束条件（例如 roster\_from = ``2011''）或数值操作（例如 founded 必须取最近的）也能自然地融入这一过程。
+
+\textbf{推理程序生成。}
+在提取出推理链后，我们接下来将其转换为多个相互关联的三元组，其中每个三元组通常对应一个中间推理步骤。最后，我们将这些三元组重新表述为若干代码格式的函数调用（function calls），它们代表工具的调用，可以执行以基于知识图谱获得相应的三元组。给定一个三元组 $\langle e, r, e' \rangle$，我们设计了一种基于规则的方法来合成那些表示从 $e$ 到 $e'$ 的信息流的函数调用。具体而言，我们从 \texttt{get\_relation(e)} 函数调用开始，以获得知识图谱上与 $e$ 相关联的当前候选关系 $\{r\}$。然后，我们选择一个关系 $r$ 并将其传递给其他所需的函数调用（例如 \texttt{get\_tail\_entity} 或 \texttt{get\_entity\_by\_constraint}），最终获得新的实体。按照推理链的顺序，我们生成所有函数调用，以组成最终的知识图谱推理程序，用于生产指令数据集。我们在图~\ref{fig:1}（b）中展示了一个示例，以直观地说明从已标注的 SQL 查询到我们所需的知识图谱推理程序的转换过程。
+
+\subsubsection{知识图谱推理指令合成}
+
+在获得知识图谱上的推理程序后，我们进一步利用它来合成用于有监督微调（supervised fine-tuning, SFT）的指令数据。如第~4.2.1~节所讨论的，我们的指令数据高度基于推理程序，而推理程序与 KGQA 的中间推理步骤是对齐的。
+
+\textbf{输入--输出对构建。}
+合成的知识图谱推理程序由一连串多个函数调用组成。对于每个函数调用，我们旨在构建一个输入--输出对作为指令。具体而言，输入包含问题、工具箱定义、当前知识图谱信息（即当前实体集合的下一个候选关系），以及当前步骤之前的历史推理程序；输出则是当前步骤的函数调用。接下来，在执行完当前推理步骤的函数调用后，输入中的历史推理程序和当前知识图谱信息将相应地更新，输出将更新为下一步骤的函数调用。通过迭代上述过程，对于 KGQA 数据集中的每个样本，我们可以从其对应的推理程序中获得多个输入--输出对，它们刻画了知识图谱上完整的推理轨迹（reasoning trajectory）。为帮助大语言模型更好地理解，我们进一步利用一个统一的提示（如图~\ref{fig:1}（c）所示）来格式化每个输入--输出对，并获得最终的指令微调数据。
+
+\textbf{智能体指令微调。}
+基于上述格式化的指令微调数据，我们在一个小型大语言模型（即 LLaMA-7B）上执行有监督微调，该模型远小于以往工作中的骨干模型（Jiang 等，2023b）。形式上，对于每个样本，我们将完整轨迹的所有输入--输出对表述为 $\{\langle x_1, y_1 \rangle, ..., \langle x_t, y_t \rangle, ..., \langle x_n, y_n \rangle\}$ 的形式，其中 $\langle x_t, y_t \rangle$ 表示第 $t$ 步的输入和真实响应（ground-truth response），$n$ 表示总步数。为简便起见，下文将每个输入和输出分别记为 $x$ 和 $y$。在指令微调过程中，我们将输入 $x$ 和输出 $y$ 馈入仅解码器（decoder-only）大语言模型，并在真实响应 $y$ 上最小化交叉熵损失（cross-entropy loss）：
+\begin{equation}
+\mathcal{L} = -\sum_{k=1}^{m} \log \Pr(y_k \mid x, y_{<k}),
+\end{equation}
+其中 $m$ 表示 $y$ 中的 token 数量，$y_k$ 和 $y_{<k}$ 分别是输出中第 $k$ 个 token 和此前的所有 token。
+
+\subsection{在知识图谱上的自主推理}
+
+在指令微调之后，我们进一步设计了一个有效的智能体框架，使 KG-Agent 能够自主地在知识图谱上执行多步推理以寻找答案。KG-Agent 的总体示意图如图~\ref{fig:1}（a）所示。它主要包含四个组件，即核心的指令微调大语言模型（第~4.2~节，称为基于大语言模型的规划器，LLM-based planner）、多功能工具箱（第~4.1~节）、用于执行工具调用的基于知识图谱的执行器（KG-based executor），以及用于记录整个过程中上下文和当前有用信息的知识记忆（knowledge memory）。接下来，我们介绍 KG-Agent 如何在知识图谱上进行自主推理。
+
+\textbf{知识记忆初始化。}
+知识记忆保存当前有用的信息，以支持基于大语言模型的规划器做出决策。它主要包含四部分信息，即自然语言问题、工具箱定义、当前知识图谱信息和历史推理程序。前两部分用给定的问题和工具箱定义进行初始化，在推理过程中保持不变。后两部分初始化为空列表，将在每一步大语言模型生成函数调用、执行器调用相应工具之后被不断更新。
+
+\textbf{用于工具选择的规划器。}
+基于当前的知识记忆，基于大语言模型的规划器在每一步选择一个工具来与知识图谱交互。具体而言，当前知识记忆中的所有部分都将用相应的提示模板进行格式化以组成输入（即第~4.2.2~节智能体指令微调中所使用的输入），然后大语言模型将通过从输入中选择一个工具及其参数来生成一个函数调用。一般而言，规划器需要从预定义的工具箱中调用工具，以应对四类任务需求，即：将提及的实体链接到知识图谱（例如 ``get\_candidate\_entity'' 和 ``disambiguate\_entity''）、访问知识图谱信息（例如 ``get\_relation'' 和 ``get\_head\_entity''）、处理中间结果（例如 ``count'' 和 ``intersect''），或返回最终答案以结束推理过程（例如 ``end''）。
+
+\textbf{用于记忆更新的执行器。}
+在规划器生成函数调用之后，基于知识图谱的执行器将使用一个程序编译器（program compiler）来执行它。它可以缓存或操作中间变量，并从知识图谱中提取新的实体或关系。执行之后，知识记忆将相应地更新。第一，当前函数调用将被添加到历史推理程序中。第二，如果所调用的工具是从知识图谱中获取新信息（例如 ``get\_relation''），执行器将把它添加到知识图谱信息中，以更新知识记忆。
+
+\textbf{迭代式自主 KG-Agent。}
+KG-Agent 框架自主地迭代上述工具选择和记忆更新过程，以执行逐步推理，其中知识记忆用于维护从知识图谱中访问到的信息。如此一来，智能体的多轮决策过程就如同沿着关系在知识图谱上行走。一旦到达答案实体，智能体将自动停止迭代过程。需要注意的是，整个过程与任务类型（例如问答）和某些特定的知识图谱无关。因此，我们的方法是一个通用框架，可以应用于各种需要在任意知识图谱上进行推理的复杂任务。
+
+\subsection{与以往工作的比较}
+
+现有的知识图谱推理方法可以根据其工作流程分为两类。第一类研究，如 KB-BINDER（Li 等，2023）、Pangu（Gu 等，2023）、StructGPT（Jiang 等，2023b）和 RoG（Luo 等，2023），设计了大语言模型与知识图谱之间预先定义的交互方式，无法灵活适应各种复杂任务。另一类研究，如 ChatDB（Hu 等，2023a），借助链式思维（chain-of-thought）和记忆增强进行自主推理。然而，它依赖于强大的闭源大语言模型 API（例如 ChatGPT），并且无法使用工具来实现某些专门化的操作（例如 \texttt{count}）。我们的 KG-Agent 是首个借助工具和记忆增强来支持大语言模型与知识图谱之间复杂交互的自主智能体框架。此外，与 KB-BINDER、StructGPT 和 ChatDB 中的骨干大语言模型相比，我们通过指令微调一个更小的 7B 开源大语言模型来实现这一自主智能体。同时，智能体指令微调数据是从多种知识图谱（例如 Wikidata 和 Freebase）构建的，这有助于我们的 KG-Agent 学习在各种知识图谱上进行通用自主决策的能力。
+
+\begin{table}[H]\centering
+\caption{不同方法的比较。Work Flow（工作流程）描述大语言模型与知识图谱之间的交互方式是预先定义的（``pd''）还是自主的（``auto''）。Multi Task（多任务）表示是否通过多任务学习支持跨不同知识图谱的泛化。}
+\label{tab:1}
+\begin{tabular}{lccccc}
+\toprule
+\makecell{方法\\Method} & \makecell{工作流程\\Work Flow} & \makecell{基座模型\\Base Model} & \makecell{工具\\Tool} & \makecell{记忆\\Memory} & \makecell{多任务\\Multi Task} \\
+\midrule
+Pangu      & pd   & T5-3B     & \xmark & \xmark & \xmark \\
+StructGPT  & pd   & ChatGPT   & \cmark & \xmark & \xmark \\
+RoG        & pd   & LLaMA-7B  & \xmark & \xmark & \xmark \\
+ChatDB     & auto & ChatGPT   & \xmark & \cmark & \xmark \\
+KB-BINDER  & pd   & CodeX     & \xmark & \xmark & \xmark \\
+KG-Agent   & auto & LLaMA2-7B & \cmark & \cmark & \cmark \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{实验}
+
+\subsection{实验设置}
+
+我们选取四个常用的 KGQA 数据集作为域内数据集，即基于 Freebase 的 WebQSP、CWQ 和 GrailQA，以及基于 Wikidata 的 KQA Pro。我们还选取三个 ODQA 数据集作为域外数据集，即 WQ、NQ 和 TQ。此外，我们考虑三类基线方法用于域内数据集上的比较，即基于子图的推理（subgraph-based reasoning）、基于语言模型的序列到序列（seq2seq）生成，以及基于大语言模型的方法；并考虑基于微调（Fine-tune based）和基于大语言模型的方法用于域外数据集。上述数据集、基线、评测协议和实现的细节见附录~A。
+
+\subsection{主要结果}
+
+\textbf{域内数据集上的结果。}
+表~\ref{tab:2} 和表~\ref{tab:3} 分别展示了基于 Freebase 和 Wikidata 的域内数据集上的结果。第一，在 WebQSP 和 KQA Pro 上，基于语言模型的 seq2seq 生成方法相比基于子图的推理方法能够取得更好的 F1 分数。这表明语言模型生成的 SPARQL 查询能够获得更完整的答案集合，并且结构化查询相比传统的基于子图的推理方法能够更好地支持某些复杂操作（例如取最大值、计数）。第二，尽管大语言模型很强大，但在 WebQSP、GrailQA 和 KQA Pro 上，直接使用 Davinci-003、ChatGPT 乃至 GPT-4，与最佳的微调方法相比仍存在很大的性能差距，这表明仅靠大语言模型回答复杂问题的难度。
+
+最后，在混合数据上进行指令微调之后，我们的 KG-Agent 在所有数据集上都显著优于所有其他具有竞争力的基线。借助不同数据集之间的相互增强，我们的方法在 WebQSP、CWQ 和 GrailQA 上分别取得了 1.7\%、7.5\% 和 2.7\% 的 F1 提升。得益于自主推理机制，我们的方法能够在两个知识图谱上进行推理，并在所有数据集上获得一致的提升。
+
+\begin{table}[H]\centering
+\caption{基于 Freebase 知识图谱的 WebQSP、CWQ 测试集以及 GrailQA 开发集（dev set）上的结果。我们从 Jiang 等（2023b）、Gu 等（2023）、Luo 等（2023）中复制了部分结果，并使用 OpenAI API 评测了 ChatGPT、Davinci-003、GPT-4 和 StructGPT。加粗字体表示最佳性能。}
+\label{tab:2}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lcccccccc}
+\toprule
+\multirow{2}{*}{Model} & \multicolumn{2}{c}{WebQSP} & \multicolumn{2}{c}{CWQ} & \multicolumn{4}{c}{GrailQA (F1)} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-9}
+ & Hits@1 & F1 & Hits@1 & F1 & Overall & I.I.D. & Compositional & Zero-shot \\
+\midrule
+GraftNet          & 66.4 & 60.4 & 36.8 & 32.7 & -    & -    & -    & -    \\
+NSM               & 68.7 & 62.8 & 47.6 & 42.4 & -    & -    & -    & -    \\
+SubgraphRetrieval & 69.5 & 64.1 & 49.3 & 46.3 & -    & -    & -    & -    \\
+UniKGQA           & 75.1 & 70.2 & 50.7 & 48.0 & -    & -    & -    & -    \\
+ReasoningLM       & 78.5 & 71.0 & 69.0 & 64.9 & -    & -    & -    & -    \\
+RNG-KBQA          & -    & 75.6 & -    & -    & 76.8 & 89.0 & 68.9 & 74.7 \\
+Uni-Parser        & -    & 75.8 & -    & -    & 76.5 & 88.3 & 71.4 & 73.4 \\
+ArcaneQA          & -    & 75.6 & -    & -    & 76.9 & 89.2 & 73.9 & 72.8 \\
+PanGu w/ T5-3B    & -    & 79.6 & -    & -    & 83.4 & -    & -    & -    \\
+TIARA             & 75.2 & 78.9 & -    & -    & 81.9 & 91.2 & 74.8 & 80.7 \\
+FC-KBQA           & -    & 76.9 & -    & 56.4 & 83.8 & 91.5 & 77.3 & 83.1 \\
+RoG               & 85.7 & 70.8 & 62.6 & 56.2 & -    & -    & -    & -    \\
+ChatGPT           & 67.4 & 59.3 & 47.5 & 43.2 & 25.3 & 19.6 & 17.0 & 31.2 \\
+Davinci-003       & 70.8 & 63.9 & 51.4 & 47.6 & 30.1 & 23.5 & 22.0 & 36.4 \\
+GPT-4             & 73.2 & 62.3 & 55.6 & 49.9 & 31.7 & 25.0 & 20.6 & 39.2 \\
+StructGPT         & 72.6 & 63.7 & 54.3 & 49.6 & 54.6 & 70.4 & 44.3 & 50.5 \\
+\textbf{Ours}     & \textbf{83.3} & \textbf{81.0} & \textbf{72.2} & \textbf{69.8} & \textbf{86.1} & \textbf{92.0} & \textbf{80.0} & \textbf{86.3} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]\centering
+\caption{基于 Wikidata 知识图谱的 KQA Pro 测试集上的准确率。Davinci-002、GPT-4 和 ChatGPT 的结果由我们评测，其他基线的结果复制自 Cao 等（2022）。}
+\label{tab:3}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lcccccccc}
+\toprule
+Model & Overall & Multi-hop & Qualifier & Comparison & Logical & Count & Verify & Zero-shot \\
+\midrule
+KVMemNet     & 16.61 & 16.50 & 18.47 & 1.17  & 14.99 & 27.31 & 54.70 & 0.06  \\
+EmbedKGQA    & 28.36 & 26.41 & 25.20 & 11.93 & 23.95 & 32.88 & 61.05 & 0.06  \\
+RGCN         & 35.07 & 34.00 & 27.61 & 30.03 & 35.85 & 41.91 & 65.88 & 0.00  \\
+RNN SPARQL   & 41.98 & 36.01 & 19.04 & 66.98 & 37.74 & 50.26 & 58.84 & 26.08 \\
+BART SPARQL  & 89.68 & 88.49 & 83.09 & 96.12 & 88.67 & 85.78 & 92.33 & 87.88 \\
+ChatGPT      & 24.96 & 24.22 & 26.37 & 39.15 & 25.51 & 10.76 & 54.70 & 15.67 \\
+Davinci-003  & 31.02 & 29.58 & 31.58 & 49.8  & 29.62 & 16.70 & 65.54 & 21.83 \\
+GPT-4        & 37.43 & 34.82 & 37.15 & 55.75 & 36.81 & 15.27 & 72.93 & 27.28 \\
+\textbf{Ours} & \textbf{92.15} & \textbf{91.03} & \textbf{87.90} & \textbf{96.32} & \textbf{91.28} & \textbf{88.21} & \textbf{92.86} & \textbf{91.40} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{域外数据集上的结果。}
+在指令微调之后，我们直接评测 KG-Agent 在域外数据集上的零样本性能。如表~\ref{tab:4} 所示，尽管使用全量数据进行了微调，小型预训练语言模型（例如 T5 和 BART）仍无法有效回答这些事实性问题。得益于大规模参数，Davinci-003 和 ChatGPT 在 NQ 和 TQ 上表现良好，这两个数据集是基于 Wikipedia 构建的，而 Wikipedia 可能正是它们预训练所用的语料。然而，它们在基于 Freebase 知识图谱构建的 WQ 上表现欠佳。相比之下，我们的 KG-Agent 只需学习如何与知识图谱交互，而无需记忆特定的知识。因此，它能够在零样本设定下利用外部知识图谱，并相比微调后的预训练语言模型取得一致的提升。
+
+\begin{table}[H]
+\begin{minipage}[t]{0.49\linewidth}\centering
+\caption{域外 ODQA 数据集开发集子集上的结果。}
+\label{tab:4}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lccc}
+\toprule
+Models & NQ-Wiki & TQ-Wiki & WQ-Freebase \\
+\midrule
+T5-Base      & 30.94 & 27.63 & 24.06 \\
+T5-Large     & 31.21 & 29.40 & 24.70 \\
+BART-Base    & 29.47 & 25.43 & 21.95 \\
+BART-Large   & 32.60 & 33.05 & 26.33 \\
+Davinci-003  & 51.94 & 88.57 & 23.81 \\
+ChatGPT      & 57.49 & 88.68 & 23.23 \\
+\textbf{Ours} & 33.00 & 35.89 & \textbf{28.90} \\
+\bottomrule
+\end{tabular}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.49\linewidth}\centering
+\caption{MetaQA 三个子集上的结果。我们从 Jiang 等（2023b）复制基线的结果。}
+\label{tab:5}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lccc}
+\toprule
+Models & MQA-1hop & MQA-2hop & MQA-3hop \\
+\midrule
+GraftNet     & 82.5 & -    & -    \\
+EmbedKGQA    & 92.0 & 40.7 & 34.6 \\
+NSM          & 94.8 & 97.0 & 91.0 \\
+TransferNet  & 96.5 & 97.5 & 90.1 \\
+ChatGPT      & 61.9 & 31.0 & 43.2 \\
+StructGPT    & 94.2 & 93.9 & 80.2 \\
+\textbf{Ours} & \textbf{97.1} & \textbf{98.0} & \textbf{92.1} \\
+\bottomrule
+\end{tabular}
+\end{minipage}
+\end{table}
+
+\subsection{进一步分析}
+
+\textbf{迁移到领域特定知识图谱。}
+为评估我们的方法在其他知识图谱上的可迁移性，我们在基于电影领域知识图谱的 MetaQA 数据集上测试 KG-Agent。沿用已有工作（He 等，2021；Jiang 等，2023b），我们在表~\ref{tab:5} 中展示测试集上的单样本（one-shot）结果。ChatGPT 在直接回答这些领域特定问题时表现欠佳，在 MQA-3hop 子集上的性能相比有监督微调的 TransferNet 模型绝对下降了 45\%。在为大语言模型配备知识图谱之后，StructGPT 能够大幅超越 ChatGPT，提升约 37\%。相比之下，我们的 KG-Agent 在所有子集上相比具有竞争力的有监督微调基线都能取得一致的性能提升。这表明该智能体确实学到了关于在知识图谱上推理的通用能力，且能够高效地迁移到其他知识图谱。
+
+\textbf{指令数量的影响。}
+我们探究指令数量如何影响 KG-Agent 的性能，并在图~\ref{fig:2} 中展示结果。在采样比例恒定的情况下，我们以指数方式将总量从 2k 扩展到 64k，并评测 WebQSP 和 CWQ 数据集上的 F1 和 Hits@1 分数。可以看到，随着指令微调数据的增多，性能随之提升，并最终达到稳定状态，这表明了数据量的重要性。同时，当数据量从 16k 增加到 64k 时，KG-Agent 并未获得显著的性能提升。我们认为这与指令微调数据的多样性有关，正如已有工作（Chung 等，2022；Aribandi 等，2022）所阐明的。因此，我们将在未来构建更多样化的样本，以进一步提升性能。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\linewidth]{fig2.pdf}
+\caption{KG-Agent 在 WebQSP 和 CWQ 测试集上，使用不同数量指令微调数据时的 F1（左）和 Hits@1（右）分数。}
+\label{fig:2}
+\end{figure}
+
+\textbf{微调数据比例的影响。}
+我们的实验发现，仅从现有数据集中采样 10K 个样本，就足以让骨干大语言模型学到自主决策能力。这里，我们进行一项进一步的消融研究，以在保持指令微调数据总量恒定的情况下，探究采样比例对智能体性能的影响。具体而言，我们在加倍某一个数据集的比例、同时保持其他两个数据集比例不变的情况下，评测 WebQSP、CWQ 和 GrailQA 的智能体性能。我们在表~\ref{tab:6} 中展示结果。可以看到，随着某一数据集采样比例的增加，智能体在该数据集上的性能持续提升。然而，就所有三个数据集的平均性能而言，所有变体都低于我们所选取的比例，这表明我们所选取的比例适合让大语言模型平衡并掌握更全面、更通用的能力。
+
+\begin{table}[H]\centering
+\caption{在不同采样比例下进行指令微调后，三个域内数据集上的 F1 分数。我们用下划线标出发生变化的比例。}
+\label{tab:6}
+\begin{tabular}{lcccc}
+\toprule
+Proportion & WebQSP & CWQ & GrailQA & Average \\
+\midrule
+\underline{1}:10:5  & 80.0 & 69.8 & 86.1 & \textbf{78.6} \\
+\underline{2}:10:5  & 81.2 & 68.7 & 83.3 & 77.8 \\
+1:\underline{20}:5  & 78.9 & 73.6 & 78.8 & 77.1 \\
+1:10:\underline{10} & 80.8 & 66.9 & 84.3 & 77.3 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{结论}
+
+在本工作中，我们提出了一个自主智能体框架，用于协同大语言模型与知识图谱，以在知识图谱上进行复杂推理，称为 KG-Agent。在我们的方法中，我们首先为知识图谱精心构建了一个工具箱，由三类工具组成，以支持在知识图谱上推理时的典型操作。然后，我们开发了一种基于工具选择和记忆更新的自主迭代机制，它整合了大语言模型、多功能工具箱、基于知识图谱的执行器和知识记忆，以在知识图谱上进行推理。接下来，我们利用现有的 KGQA 数据集合成了基于代码的指令微调数据集。最后，仅使用 10K 个微调样本，我们就基于更小的 7B 大语言模型实现了该自主智能体，其性能大多优于基于全量数据微调或更大规模大语言模型的最先进基线。在未来工作中，我们将考虑把我们的框架扩展到处理更多类型的结构化数据，例如数据库（databases）和表格（tables）。
+
+\section*{局限性}
+
+尽管 KG-Agent 在各类复杂的事实性问答任务上展现出卓越性能，但我们的方法仍存在一些局限。第一，我们仅使用 LLaMA2-7B 作为骨干大语言模型，它在指令微调后具有很强的能力。因此，还需要更多实验来评估其他具有可比参数规模的大语言模型，例如 Mistral-7B（Jiang 等，2023a）或 CodeLLaMA-7b（Rozière 等，2023）。第二，我们聚焦于在知识图谱上进行推理以回答事实性问题。我们应当考虑将框架扩展到处理更多类型的知识源，例如数据库或表格。第三，我们仅评估了基于知识图谱的事实性问答任务。未来工作应当包含更广泛的评测场景，以评估我们方法的通用性，例如数据到文本（data-to-text）和形式语言到文本（formal-language-to-text）（Xie 等，2022）。最后，我们已尽力将大语言模型仅微调为基于知识图谱信息回答问题，并避免对用户问题生成歧视性和风险性的响应。然而，我们应当增加更多基于规则的方法，以对预测结果进行后处理并过滤非法响应。
+
+\section*{参考文献}
+\begin{enumerate}[leftmargin=2em]
+\item Vamsi Aribandi, Yi Tay, Tal Schuster, Jinfeng Rao, Huaixiu Steven Zheng, Sanket Vaibhav Mehta, Honglei Zhuang, Vinh Q. Tran, Dara Bahri, Jianmo Ni, Jai Prakash Gupta, Kai Hui, Sebastian Ruder, and Donald Metzler. 2022. Ext5: Towards extreme multi-task scaling for transfer learning. In ICLR. OpenReview.net.
+\item Jonathan Berant, Andrew Chou, Roy Frostig, and Percy Liang. 2013. Semantic parsing on freebase from question-answer pairs. In Proceedings of the 2013 Conference on Empirical Methods in Natural Language Processing, EMNLP 2013, 18-21 October 2013, Grand Hyatt Seattle, Seattle, Washington, USA, A meeting of SIGDAT, a Special Interest Group of the ACL, pages 1533--1544. ACL.
+\item Tom B. Brown, Benjamin Mann, Nick Ryder, Melanie Subbiah, Jared Kaplan, Prafulla Dhariwal, Arvind Neelakantan, Pranav Shyam, Girish Sastry, Amanda Askell, Sandhini Agarwal, Ariel Herbert-Voss, Gretchen Krueger, Tom Henighan, Rewon Child, Aditya Ramesh, Daniel M. Ziegler, Jeffrey Wu, Clemens Winter, Christopher Hesse, Mark Chen, Eric Sigler, Mateusz Litwin, Scott Gray, Benjamin Chess, Jack Clark, Christopher Berner, Sam McCandlish, Alec Radford, Ilya Sutskever, and Dario Amodei. 2020. Language models are few-shot learners. In Advances in Neural Information Processing Systems 33: Annual Conference on Neural Information Processing Systems 2020, NeurIPS 2020, December 6-12, 2020, virtual.
+\item Shulin Cao, Jiaxin Shi, Liangming Pan, Lunyiu Nie, Yutong Xiang, Lei Hou, Juanzi Li, Bin He, and Hanwang Zhang. 2022. KQA pro: A dataset with explicit compositional programs for complex question answering over knowledge base. In Proceedings of the 60th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), ACL 2022, Dublin, Ireland, May 22-27, 2022, pages 6101--6119. Association for Computational Linguistics.
+\item Danqi Chen, Adam Fisch, Jason Weston, and Antoine Bordes. 2017. Reading wikipedia to answer open-domain questions. In Proceedings of the 55th Annual Meeting of the Association for Computational Linguistics, ACL 2017, Vancouver, Canada, July 30 - August 4, Volume 1: Long Papers, pages 1870--1879. Association for Computational Linguistics.
+\item Hyung Won Chung, Le Hou, Shayne Longpre, Barret Zoph, Yi Tay, William Fedus, Eric Li, Xuezhi Wang, Mostafa Dehghani, Siddhartha Brahma, Albert Webson, Shixiang Shane Gu, Zhuyun Dai, Mirac Suzgun, Xinyun Chen, Aakanksha Chowdhery, Sharan Narang, Gaurav Mishra, Adams Yu, Vincent Y. Zhao, Yanping Huang, Andrew M. Dai, Hongkun Yu, Slav Petrov, Ed H. Chi, Jeff Dean, Jacob Devlin, Adam Roberts, Denny Zhou, Quoc V. Le, and Jason Wei. 2022. Scaling instruction-finetuned language models. CoRR, abs/2210.11416.
+\item Yu Gu, Xiang Deng, and Yu Su. 2023. Don't generate, discriminate: A proposal for grounding language models to real-world environments. In Proceedings of the 61st Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), ACL 2023, Toronto, Canada, July 9-14, 2023, pages 4928--4949. Association for Computational Linguistics.
+\item Yu Gu, Sue Kase, Michelle Vanni, Brian M. Sadler, Percy Liang, Xifeng Yan, and Yu Su. 2021. Beyond I.I.D.: three levels of generalization for question answering on knowledge bases. In WWW '21: The Web Conference 2021, Virtual Event / Ljubljana, Slovenia, April 19-23, 2021, pages 3477--3488. ACM / IW3C2.
+\item Yu Gu and Yu Su. 2022. Arcaneqa: Dynamic program induction and contextualized encoding for knowledge base question answering. In Proceedings of the 29th International Conference on Computational Linguistics, COLING 2022, Gyeongju, Republic of Korea, October 12-17, 2022, pages 1718--1731. International Committee on Computational Linguistics.
+\item Gaole He, Yunshi Lan, Jing Jiang, Wayne Xin Zhao, and Ji-Rong Wen. 2021. Improving multi-hop knowledge base question answering by learning intermediate supervision signals. In WSDM '21, The Fourteenth ACM International Conference on Web Search and Data Mining, Virtual Event, Israel, March 8-12, 2021, pages 553--561. ACM.
+\item Chenxu Hu, Jie Fu, Chenzhuang Du, Simian Luo, Junbo Zhao, and Hang Zhao. 2023a. Chatdb: Augmenting llms with databases as their symbolic memory. CoRR, abs/2306.03901.
+\item Xuming Hu, Junzhe Chen, Xiaochuan Li, Yufei Guo, Lijie Wen, Philip S. Yu, and Zhijiang Guo. 2023b. Do large language models know about facts? CoRR, abs/2310.05177.
+\item Albert Q. Jiang, Alexandre Sablayrolles, Arthur Mensch, Chris Bamford, Devendra Singh Chaplot, Diego de Las Casas, Florian Bressand, Gianna Lengyel, Guillaume Lample, Lucile Saulnier, Lélio Renard Lavaud, Marie-Anne Lachaux, Pierre Stock, Teven Le Scao, Thibaut Lavril, Thomas Wang, Timothée Lacroix, and William El Sayed. 2023a. Mistral 7b. CoRR, abs/2310.06825.
+\item Jinhao Jiang, Kun Zhou, Zican Dong, Keming Ye, Wayne Xin Zhao, and Ji-Rong Wen. 2023b. Structgpt: A general framework for large language model to reason over structured data. volume abs/2305.09645.
+\item Jinhao Jiang, Kun Zhou, Wayne Xin Zhao, Yaliang Li, and Ji-Rong Wen. 2023c. Reasoninglm: Enabling structural subgraph reasoning in pre-trained language models for question answering over knowledge graph. In Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing, EMNLP 2023, Singapore, December 6-10, 2023, pages 3721--3735. Association for Computational Linguistics.
+\item Jinhao Jiang, Kun Zhou, Xin Zhao, and Ji-Rong Wen. 2023d. Unikgqa: Unified retrieval and reasoning for solving multi-hop question answering over knowledge graph. In The Eleventh International Conference on Learning Representations, ICLR 2023, Kigali, Rwanda, May 1-5, 2023. OpenReview.net.
+\item Mandar Joshi, Eunsol Choi, Daniel S. Weld, and Luke Zettlemoyer. 2017. Triviaqa: A large scale distantly supervised challenge dataset for reading comprehension. In Proceedings of the 55th Annual Meeting of the Association for Computational Linguistics, ACL 2017, Vancouver, Canada, July 30 - August 4, Volume 1: Long Papers, pages 1601--1611. Association for Computational Linguistics.
+\item Yunshi Lan, Gaole He, Jinhao Jiang, Jing Jiang, Wayne Xin Zhao, and Ji-Rong Wen. 2023. Complex knowledge base question answering: A survey. IEEE Trans. Knowl. Data Eng., 35(11):11196--11215.
+\item Tianle Li, Xueguang Ma, Alex Zhuang, Yu Gu, Yu Su, and Wenhu Chen. 2023. Few-shot in-context learning for knowledge base question answering. CoRR.
+\item Yudong Liu, Xu Zhang, Shilin He, Hongyu Zhang, Liqun Li, Yu Kang, Yong Xu, Minghua Ma, Qingwei Lin, Yingnong Dang, Saravan Rajmohan, and Dongmei Zhang. 2022. Uniparser: A unified log parser for heterogeneous log data. In WWW '22: The ACM Web Conference 2022, Virtual Event, Lyon, France, April 25 - 29, 2022, pages 1893--1901. ACM.
+\item Linhao Luo, Yuan-Fang Li, Gholamreza Haffari, and Shirui Pan. 2023. Reasoning on graphs: Faithful and interpretable large language model reasoning. volume abs/2310.01061.
+\item Alexander H. Miller, Adam Fisch, Jesse Dodge, Amir-Hossein Karimi, Antoine Bordes, and Jason Weston. 2016. Key-value memory networks for directly reading documents. In Proceedings of the 2016 Conference on Empirical Methods in Natural Language Processing, EMNLP 2016, Austin, Texas, USA, November 1-4, 2016, pages 1400--1409.
+\item Reiichiro Nakano, Jacob Hilton, Suchir Balaji, Jeff Wu, Long Ouyang, Christina Kim, Christopher Hesse, Shantanu Jain, Vineet Kosaraju, William Saunders, Xu Jiang, Karl Cobbe, Tyna Eloundou, Gretchen Krueger, Kevin Button, Matthew Knight, Benjamin Chess, and John Schulman. 2021. Webgpt: Browser-assisted question-answering with human feedback. CoRR, abs/2112.09332.
+\item Shirui Pan, Linhao Luo, Yufei Wang, Chen Chen, Jiapu Wang, and Xindong Wu. 2023. Unifying large language models and knowledge graphs: A roadmap. CoRR, abs/2306.08302.
+\item Adam Roberts, Colin Raffel, and Noam Shazeer. 2020. How much knowledge can you pack into the parameters of a language model? In Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing, EMNLP 2020, Online, November 16-20, 2020, pages 5418--5426. Association for Computational Linguistics.
+\item Baptiste Rozière, Jonas Gehring, Fabian Gloeckle, Sten Sootla, Itai Gat, Xiaoqing Ellen Tan, Yossi Adi, Jingyu Liu, Tal Remez, Jérémy Rapin, Artyom Kozhevnikov, Ivan Evtimov, Joanna Bitton, Manish Bhatt, Cristian Canton-Ferrer, Aaron Grattafiori, Wenhan Xiong, Alexandre Défossez, Jade Copet, Faisal Azhar, Hugo Touvron, Louis Martin, Nicolas Usunier, Thomas Scialom, and Gabriel Synnaeve. 2023. Code llama: Open foundation models for code. CoRR, abs/2308.12950.
+\item Apoorv Saxena, Aditay Tripathi, and Partha P. Talukdar. 2020. Improving multi-hop question answering over knowledge graphs using knowledge base embeddings. In Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics, ACL 2020, Online, July 5-10, 2020, pages 4498--4507.
+\item Michael Sejr Schlichtkrull, Thomas N. Kipf, Peter Bloem, Rianne van den Berg, Ivan Titov, and Max Welling. 2018. Modeling relational data with graph convolutional networks. In The Semantic Web - 15th International Conference, ESWC 2018, Heraklion, Crete, Greece, June 3-7, 2018, Proceedings, volume 10843 of Lecture Notes in Computer Science, pages 593--607. Springer.
+\item Noah Shinn, Federico Cassano, Beck Labash, Ashwin Gopinath, Karthik Narasimhan, and Shunyu Yao. 2023. Reflexion: Language agents with verbal reinforcement learning.
+\item Yiheng Shu, Zhiwei Yu, Yuhan Li, Börje F. Karlsson, Tingting Ma, Yuzhong Qu, and Chin-Yew Lin. 2022. TIARA: multi-grained retrieval for robust question answering over large knowledge base. In Proceedings of the 2022 Conference on Empirical Methods in Natural Language Processing, EMNLP 2022, Abu Dhabi, United Arab Emirates, December 7-11, 2022, pages 8108--8121. Association for Computational Linguistics.
+\item Ishika Singh, Valts Blukis, Arsalan Mousavian, Ankit Goyal, Danfei Xu, Jonathan Tremblay, Dieter Fox, Jesse Thomason, and Animesh Garg. 2023. Progprompt: Generating situated robot task plans using large language models. In IEEE International Conference on Robotics and Automation, ICRA 2023, London, UK, May 29 - June 2, 2023, pages 11523--11530. IEEE.
+\item Haitian Sun, Bhuwan Dhingra, Manzil Zaheer, Kathryn Mazaitis, Ruslan Salakhutdinov, and William W. Cohen. 2018. Open domain question answering using early fusion of knowledge bases and text. In Proceedings of the 2018 Conference on Empirical Methods in Natural Language Processing, Brussels, Belgium, October 31 - November 4, 2018, pages 4231--4242.
+\item Jiashuo Sun, Chengjin Xu, Lumingyuan Tang, Saizhuo Wang, Chen Lin, Yeyun Gong, Heung-Yeung Shum, and Jian Guo. 2023. Think-on-graph: Deep and responsible reasoning of large language model with knowledge graph. CoRR, abs/2307.07697.
+\item Alon Talmor and Jonathan Berant. 2018. The web as a knowledge-base for answering complex questions. In Proceedings of the 2018 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies, NAACL-HLT 2018, New Orleans, Louisiana, USA, June 1-6, 2018, Volume 1 (Long Papers), pages 641--651. Association for Computational Linguistics.
+\item Hugo Touvron, Louis Martin, Kevin Stone, Peter Albert, Amjad Almahairi, Yasmine Babaei, Nikolay Bashlykov, Soumya Batra, Prajjwal Bhargava, Shruti Bhosale, Dan Bikel, Lukas Blecher, Cristian Canton-Ferrer, Moya Chen, Guillem Cucurull, David Esiobu, Jude Fernandes, Jeremy Fu, Wenyin Fu, Brian Fuller, Cynthia Gao, Vedanuj Goswami, Naman Goyal, Anthony Hartshorn, Saghar Hosseini, Rui Hou, Hakan Inan, Marcin Kardas, Viktor Kerkez, Madian Khabsa, Isabel Kloumann, Artem Korenev, Punit Singh Koura, Marie-Anne Lachaux, Thibaut Lavril, Jenya Lee, Diana Liskovich, Yinghai Lu, Yuning Mao, Xavier Martinet, Todor Mihaylov, Pushkar Mishra, Igor Molybog, Yixin Nie, Andrew Poulton, Jeremy Reizenstein, Rashi Rungta, Kalyan Saladi, Alan Schelten, Ruan Silva, Eric Michael Smith, Ranjan Subramanian, Xiaoqing Ellen Tan, Binh Tang, Ross Taylor, Adina Williams, Jian Xiang Kuan, Puxin Xu, Zheng Yan, Iliyan Zarov, Yuchen Zhang, Angela Fan, Melanie Kambadur, Sharan Narang, Aurélien Rodriguez, Robert Stojnic, Sergey Edunov, and Thomas Scialom. 2023. Llama 2: Open foundation and fine-tuned chat models. CoRR, abs/2307.09288.
+\item Lei Wang, Chen Ma, Xueyang Feng, Zeyu Zhang, Hao Yang, Jingsen Zhang, Zhiyuan Chen, Jiakai Tang, Xu Chen, Yankai Lin, Wayne Xin Zhao, Zhewei Wei, and Ji-Rong Wen. 2023a. A survey on large language model based autonomous agents. volume abs/2308.11432.
+\item Lei Wang, Chen Ma, Xueyang Feng, Zeyu Zhang, Hao Yang, Jingsen Zhang, Zhiyuan Chen, Jiakai Tang, Xu Chen, Yankai Lin, Wayne Xin Zhao, Zhewei Wei, and Ji-Rong Wen. 2023b. A survey on large language model based autonomous agents. CoRR, abs/2308.11432.
+\item Tianbao Xie, Chen Henry Wu, Peng Shi, Ruiqi Zhong, Torsten Scholak, Michihiro Yasunaga, Chien-Sheng Wu, Ming Zhong, Pengcheng Yin, Sida I. Wang, Victor Zhong, Bailin Wang, Chengzu Li, Connor Boyle, Ansong Ni, Ziyu Yao, Dragomir Radev, Caiming Xiong, Lingpeng Kong, Rui Zhang, Noah A. Smith, Luke Zettlemoyer, and Tao Yu. 2022. Unifiedskg: Unifying and multi-tasking structured knowledge grounding with text-to-text language models. In Proceedings of the 2022 Conference on Empirical Methods in Natural Language Processing, EMNLP 2022, Abu Dhabi, United Arab Emirates, December 7-11, 2022, pages 602--631.
+\item Zhengyuan Yang, Linjie Li, Jianfeng Wang, Kevin Lin, Ehsan Azarnasab, Faisal Ahmed, Zicheng Liu, Ce Liu, Michael Zeng, and Lijuan Wang. 2023. MM-REACT: prompting chatgpt for multimodal reasoning and action. CoRR, abs/2303.11381.
+\item Shunyu Yao, Jeffrey Zhao, Dian Yu, Nan Du, Izhak Shafran, Karthik R. Narasimhan, and Yuan Cao. 2023. React: Synergizing reasoning and acting in language models. In The Eleventh International Conference on Learning Representations, ICLR 2023, Kigali, Rwanda, May 1-5, 2023. OpenReview.net.
+\item Xi Ye, Semih Yavuz, Kazuma Hashimoto, Yingbo Zhou, and Caiming Xiong. 2022. RNG-KBQA: generation augmented iterative ranking for knowledge base question answering. In Proceedings of the 60th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), ACL 2022, Dublin, Ireland, May 22-27, 2022, pages 6032--6043. Association for Computational Linguistics.
+\item Wen-tau Yih, Matthew Richardson, Christopher Meek, Ming-Wei Chang, and Jina Suh. 2016. The value of semantic parse labeling for knowledge base question answering. In Proceedings of the 54th Annual Meeting of the Association for Computational Linguistics, ACL 2016, August 7-12, 2016, Berlin, Germany, Volume 2: Short Papers. The Association for Computer Linguistics.
+\item Pengcheng Yin, Graham Neubig, Wen-tau Yih, and Sebastian Riedel. 2020. Tabert: Pretraining for joint understanding of textual and tabular data. In Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics, ACL 2020, Online, July 5-10, 2020, pages 8413--8426.
+\item Jing Zhang, Xiaokang Zhang, Jifan Yu, Jian Tang, Jie Tang, Cuiping Li, and Hong Chen. 2022. Subgraph retrieval enhanced model for multi-hop knowledge base question answering. In Proceedings of the 60th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), ACL 2022, Dublin, Ireland, May 22-27, 2022, pages 5773--5784. Association for Computational Linguistics.
+\item Lingxi Zhang, Jing Zhang, Yanling Wang, Shulin Cao, Xinmei Huang, Cuiping Li, Hong Chen, and Juanzi Li. 2023. FC-KBQA: A fine-to-coarse composition framework for knowledge base question answering. In Proceedings of the 61st Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), ACL 2023, Toronto, Canada, July 9-14, 2023, pages 1002--1017. Association for Computational Linguistics.
+\item Yuyu Zhang, Hanjun Dai, Zornitsa Kozareva, Alexander J. Smola, and Le Song. 2018. Variational reasoning for question answering with knowledge graph. In Proceedings of the Thirty-Second AAAI Conference on Artificial Intelligence, (AAAI-18), the 30th innovative Applications of Artificial Intelligence (IAAI-18), and the 8th AAAI Symposium on Educational Advances in Artificial Intelligence (EAAI-18), New Orleans, Louisiana, USA, February 2-7, 2018, pages 6069--6076.
+\item Wayne Xin Zhao, Kun Zhou, Junyi Li, Tianyi Tang, Xiaolei Wang, Yupeng Hou, Yingqian Min, Beichen Zhang, Junjie Zhang, Zican Dong, Yifan Du, Chen Yang, Yushuo Chen, Zhipeng Chen, Jinhao Jiang, Ruiyang Ren, Yifan Li, Xinyu Tang, Zikang Liu, Peiyu Liu, Jian-Yun Nie, and Ji-Rong Wen. 2023. A survey of large language models. CoRR.
+\item Wanjun Zhong, Lianghong Guo, Qiqi Gao, He Ye, and Yanlin Wang. 2023. Memorybank: Enhancing large language models with long-term memory. CoRR, abs/2305.10250.
+\end{enumerate}
+
+\appendix
+\section{实验设置}
+
+\subsection{数据集}
+
+我们选取四个流行的复杂 KGQA 数据集作为域内数据集，即基于 Freebase 的 WebQuestionsSP（WebQSP）（Yih 等，2016）、Complex WebQuestions 1.1（CWQ）（Talmor 和 Berant，2018）和 GrailQA（Gu 等，2021），以及基于 Wikidata 的 KQA Pro（Cao 等，2022）。我们还选取三个有代表性的 ODQA 数据集作为域外数据集，即 WebQuestions（WQ）（Berant 等，2013）、Natural Questions（NQ）（Chen 等，2017）和 TriviaQA（TQ）（Joshi 等，2017）。由于我们仅依靠知识图谱来回答问题，我们过滤掉了 ODQA 数据集中无法链接到知识图谱中任何实体的问题，分别记为 WQ-Freebase、NQ-Wiki 和 TQ-Wiki。此外，我们进一步选取了基于领域特定电影知识图谱的 MetaQA（Zhang 等，2018），以评估我们方法的通用性。所选数据集的详细描述如下：
+
+\begin{itemize}[leftmargin=1.5em]
+\item \textbf{WebQSP} 包含 4{,}737 个问题。答案实体位于 Freebase 知识图谱上距离主题实体（topic entity）最多 2 跳的范围内。为保持一致性，我们采用 GraftNet（Sun 等，2018）的训练/验证/测试集划分。
+
+\item \textbf{CWQ} 基于 WebQSP 构建，更具挑战性。它通过扩展问题实体或添加约束以限制答案，使 WebQSP 变得更复杂。答案实体位于 Freebase 知识图谱上距离主题实体最多 4 跳的范围内。
+
+\item \textbf{GrailQA} 包含 64{,}331 个问题。与 WebQSP 和 CWQ 相比，它聚焦于从三个层次（即独立同分布 i.i.d、组合 compositional 和零样本 zero-shot）对更全面的泛化能力进行评估。
+
+\item \textbf{KQA Pro} 包含 117{,}970 个问题。上述三个数据集基于 Freebase，而该数据集基于 Wikidata，需要多种推理能力，包括组合推理、多跳推理、定量比较、集合操作等。
+
+\item \textbf{MetaQA} 包含超过 400{,}000 个基于电影领域知识图谱的问题，答案实体位于距离主题实体最多三跳的范围内。根据跳数，该数据集被划分为三个子数据集：MetaQA-1hop、MetaQA-2hop 和 MetaQA-3hop。沿用已有工作（He 等，2021），我们在 Freebase 上为每个问题模板随机采样一个训练样例，以构成单样本训练数据集。
+
+\item \textbf{WQ} 包含 6{,}642 个问题。这些问题大多围绕单个命名实体，并且应当能由 Freebase 知识图谱回答。我们从原始测试集中抽取 xx 个问题，以构成 WQ-Freebase 子集。
+
+\item \textbf{NQ} 包含 323{,}045 个问题。每个样例包含一个来自 Google 搜索的问题及对应答案，答案是 Wikipedia 页面上的文本片段（text spans）。沿用已有工作（Roberts 等，2020），我们使用该数据集的开放版本，其丢弃了超过 5 个 token 的答案。我们从原始测试集中抽取 xx 个问题，以构成 NQ-Wiki 子集。
+
+\item \textbf{TQ} 包含 110K 个问题。每个样例包含一个由问答爱好者撰写的问题，答案是来自网络或 Wikipedia 的文本片段。沿用已有工作（Roberts 等，2020），我们使用其未过滤版本进行评测。我们从原始测试集中抽取 xx 个问题，以构成 TQ-Wiki 子集。
+\end{itemize}
+
+\subsection{评测协议}
+
+对于 KGQA，沿用已有工作（Sun 等，2018），我们对 WebQSP 和 CWQ 数据集使用 Hits@1 和 F1 指标，对 GrailQA 数据集使用 F1 指标，对 MetaQA 使用 Hits@1。Hits@1 评估排名最高答案的正确性，而 F1 则考虑对所有预测答案的覆盖率。值得注意的是，部分基线和我们的方法在最后会返回所有无序答案，这并不适用于 Hits@1 指标。为进行全面比较，我们沿用已有工作（Shu 等，2022），为每个问题随机选取一个答案作为排名最高的答案，然后通过重复该过程 100 次来计算平均 Hits@1 结果。对于 ODQA，沿用已有工作（Roberts 等，2020），我们报告 EM 指标，该指标评估在执行归一化（normalization）后预测答案是否与标准答案相同。
+
+\subsection{用于比较的基线}
+
+对于 KGQA，我们考虑以下三类基线方法进行性能比较：
+\begin{itemize}[leftmargin=1.5em]
+\item \textbf{基于子图的推理方法}，它们在从知识图谱中检索出的子图形式上进行答案推理，包括用于 Freebase 数据集的 GraftNet（Sun 等，2018）、NSM（He 等，2021）、SubgraphRetrieval（Zhang 等，2022）、UniKGQA（Jiang 等，2023d）和 ReasoningLM（Jiang 等，2023c），以及用于 Wikidata 数据集的 KVMemNet（Miller 等，2016）、EmbedKGQA（Saxena 等，2020）和 RGCN（Schlichtkrull 等，2018）；
+
+\item \textbf{基于语言模型的 seq2seq 生成方法}，它们通过微调一个序列到序列语言模型来生成最终的 SPARQL 查询，包括用于 Freebase 数据集的 RNG-KBQA（Ye 等，2022）、Uni-Parser（Liu 等，2022）、ArcaneQA（Gu 和 Su，2022）、PanGu w/ T5-3B（Gu 等，2023）、TIARA（Shu 等，2022）和 FC-KBQA（Zhang 等，2023），以及用于 Wikidata 数据集的 RNN SPARQL 和 BART SPARQL（Cao 等，2022）；
+
+\item \textbf{基于大语言模型的方法}，它们利用大语言模型强大的零样本或少样本能力来回答问题而无需微调，包括用于域内数据集的 RoG（Luo 等，2023）、StructGPT（Jiang 等，2023b）、gpt-3.5-turbo-instruct（Davinci-003）\footnote{\url{https://platform.openai.com/docs}}、gpt-3.5-turbo（ChatGPT）\footnote{\url{https://platform.openai.com/docs}} 和 gpt-4（GPT-4）\footnote{\url{https://platform.openai.com/docs}}。
+\end{itemize}
+
+对于 ODQA，我们聚焦于不提供任何文档的闭卷（closed-book）设定，并考虑以下两类基线方法：
+\begin{itemize}[leftmargin=1.5em]
+\item \textbf{基于微调的方法}，它们学习预测答案，包括来自（Roberts 等，2020）的 T5-Base、T5-Large、BART-Base 和 BART-Large；
+
+\item \textbf{基于大语言模型的方法}，它们在零样本设定下直接回答问题，包括 gpt-3.5-turbo-instruct（Davinci-003）和 gpt-3.5-turbo（ChatGPT）。
+\end{itemize}
+
+\subsection{实现细节}
+
+对于指令微调数据的构建，我们根据一些先前的经验研究，按照 WebQSP、KQA Pro、GrailQA 和 CWQ 为 1:5:5:10 的比例，从域内数据集中随机采样总计 10{,}000 条训练数据。由于我们聚焦于在知识图谱上的推理过程，我们沿用已有工作（Sun 等，2018；He 等，2021；Jiang 等，2023b），假设每个问题的实体已经给定。对于指令微调，我们使用 LLaMA2-7B（Touvron 等，2023）作为骨干大语言模型。我们采用余弦学习率调度（cosine learning rate schedule），初始学习率为 2e-5、权重衰减为 0.1、批大小为 256、最大长度为 1500，最终对模型微调 3 个 epoch。
+
+对于语义工具中的关系检索模型和实体消歧模型，我们沿用已有工作（Zhang 等，2022；Shu 等，2022）来构建它们。
+
+在指令微调之后，对于域内数据集，我们在 CWQ、WebQSP、KQA Pro 的测试集以及 GrailQA 的开发集上评测 KG-Agent 的性能。对于域外数据集，我们在 NQ-Wiki、TQ-Wiki 和 WQ-Freebase 上评测 KG-Agent 的零样本性能。对于领域特定数据集（即 MetaQA），我们沿用已有工作（He 等，2021；Jiang 等，2023b），从原始训练集中抽取单样本微调子集，并用它微调我们的 KG-Agent。在评测 Davinci-003、ChatGPT 和 GPT-4 的性能时，我们使用 OpenAI 最新的二月版本 API。对于域内数据集，我们为每个测试问题提供六个示例（demonstrations），并沿用已有工作（Sun 等，2023；Jiang 等，2023b）解析预测结果；我们在表~\ref{tab:7} 中展示每个数据集带示例的提示。对于示例的选取，我们从每个数据集对应的训练集中随机采样。对于域外数据集，由于它们是开放域问答任务，我们直接将问题以适当的提示输入大语言模型，如表~\ref{tab:7} 所示。
+
+\section{工具箱总结}
+
+我们在表~\ref{tab:8} 中总结了工具的名称、工具的描述，以及工具的输入参数和输出。
+
+\begin{table}[H]\centering
+\caption{评测 ChatGPT、Davinci-003 和 GPT-4 模型时，每个数据集所使用的提示。在执行评测时，只需将 ``\{test question\}'' 替换为测试问题即可。}
+\label{tab:7}
+\includegraphics[width=0.95\linewidth]{table7.pdf}
+\end{table}
+
+\begin{table}[H]\centering
+\caption{所有工具的详细定义和用法。}
+\label{tab:8}
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{p{1.6cm} p{3.6cm} p{9.5cm}}
+\toprule
+\textbf{类型} & \textbf{工具} & \textbf{描述} \\
+\midrule
+\multirow{10}{*}{\makecell[l]{提取工具\\(Extraction\\Tool)}}
+& \texttt{get\_relation}
+& 输入：实体集合 $\{e\}$ $\rightarrow$ 输出：一跳关系 $\mathcal{R}_{\{e\}}$。返回知识图谱上给定实体集合 $\{e\}$ 的入边和出边关系。 \\
+\cmidrule(l){2-3}
+& \texttt{get\_head\_entity}
+& 输入：实体集合 $\{e\}$、关系 $r$ $\rightarrow$ 输出：实体集合 $\{e\}$。沿关系 $r$ 返回给定尾实体集合 $\{e\}$ 的头实体集合。 \\
+\cmidrule(l){2-3}
+& \texttt{get\_tail\_entity}
+& 输入：实体集合 $\{e\}$、关系 $r$ $\rightarrow$ 输出：实体集合 $\{e\}$。沿关系 $r$ 返回给定头实体集合 $\{e\}$ 的尾实体集合。 \\
+\cmidrule(l){2-3}
+& \texttt{get\_entity\_by\_type}
+& 输入：字符串类型 $t$ $\rightarrow$ 输出：实体集合 $\{e\}$。返回属于给定类型 $t$ 的实体集合。 \\
+\cmidrule(l){2-3}
+& \texttt{get\_entity\_by\_constraint}
+& 输入：实体集合 $\{e\}$、关系 $r$、运算符 $o$、字符串值 $v$ $\rightarrow$ 输出：实体集合 $\{e\}$。返回沿 $r$ 的尾实体满足约束条件的新实体集合。若 $v$ 非空，则 $o$ 应为 $\{$``=''，``>''，``>=''，``<''，``<=''$\}$ 之一，表示尾实体与字符串值的比较应满足该运算符；否则，$o$ 应为 $\{$``argmax''，``argmin''$\}$ 之一，表示尾实体应取最大值或最小值。 \\
+\cmidrule(l){2-3}
+& \texttt{get\_candidate\_entity}
+& 输入：字符串实体提及 $m$ $\rightarrow$ 输出：实体集合 $\{e\}$。返回知识图谱上针对给定实体提及 $m$ 的候选链接实体集合。 \\
+\midrule
+\multirow{8}{*}{\makecell[l]{逻辑工具\\(Logic\\Tool)}}
+& \texttt{count}
+& 输入：实体集合 $\{e\}$ $\rightarrow$ 输出：整数。返回给定实体集合 $\{e\}$ 中实体的数量。 \\
+\cmidrule(l){2-3}
+& \texttt{intersect}
+& 输入：实体集合列表 $[\{e\}]$ $\rightarrow$ 输出：实体集合 $\{e\}$。返回给定实体集合列表的交集。 \\
+\cmidrule(l){2-3}
+& \texttt{union}
+& 输入：实体集合列表 $[\{e\}]$ $\rightarrow$ 输出：实体集合 $\{e\}$。返回给定实体集合列表的并集。 \\
+\cmidrule(l){2-3}
+& \texttt{judge}
+& 输入：实体集合 $\{e\}$、关系 $r$、运算符 $o$、字符串值 $v$ $\rightarrow$ 输出：布尔值。返回一个布尔值，指示给定实体集合 $\{e\}$ 沿关系 $r$ 的尾实体与给定值 $v$ 之间的比较是否满足运算符 $o$。 \\
+\cmidrule(l){2-3}
+& \texttt{end}
+& 输入：实体集合 $\{e\}$ $\rightarrow$ 输出：实体集合 $\{e\}$。将实体集合作为最终答案返回，并结束推理过程。 \\
+\midrule
+\multirow{4}{*}{\makecell[l]{语义工具\\(Semantic\\Tool)}}
+& \texttt{retrieve\_relation}
+& 输入：关系集合 $\{r\}$ $\rightarrow$ 输出：关系集合 $\{r\}$。通过神经网络从给定关系集合 $\{r\}$ 中检索与问题语义相关的关系。 \\
+\cmidrule(l){2-3}
+& \texttt{disambiguate\_entity}
+& 输入：实体集合 $\{e\}$ $\rightarrow$ 输出：实体 $e$。通过神经网络，基于问题语义和知识图谱上的实体信息（例如一跳关系），对候选链接实体 $\{e\}$ 进行消歧。 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\end{document}

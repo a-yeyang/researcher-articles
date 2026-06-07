@@ -1,0 +1,982 @@
+\documentclass[11pt,UTF8,fontset=fandol]{ctexart}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx,float,caption,subcaption}
+\usepackage{booktabs,array,multirow,makecell}
+\usepackage{geometry,enumitem,xcolor}
+\usepackage{fancyvrb}
+\usepackage[hidelinks]{hyperref}
+\usepackage{url}
+\geometry{margin=2.3cm}
+\graphicspath{{/Users/yye/project/论文/assets/graphcot/}}
+\captionsetup{font=small,labelfont=bf}
+\setlength{\parskip}{0.4em}
+
+% 用于附录中保留原文的代码 / 提示框
+\newenvironment{promptbox}{%
+  \par\noindent\begin{minipage}{\linewidth}\centering
+  \begin{minipage}{0.95\linewidth}\small\itshape
+}{%
+  \end{minipage}\end{minipage}\par\medskip
+}
+
+\DefineVerbatimEnvironment{code}{Verbatim}{fontsize=\footnotesize,frame=single,framesep=3pt,xleftmargin=4pt,xrightmargin=4pt}
+
+\title{\textbf{图链式思维：通过在图上推理来增强大语言模型}\\[2pt]\large (Graph Chain-of-Thought: Augmenting Large Language Models by Reasoning on Graphs)}
+
+\author{Bowen Jin$^{1}$,~Chulin Xie$^{1}$,~Jiawei Zhang$^{1}$,~Kashob Kumar Roy$^{1}$,~Yu Zhang$^{1}$\\
+Zheng Li$^{2}$,~Ruirui Li$^{2}$,~Xianfeng Tang$^{2}$,~Suhang Wang$^{3}$,~Yu Meng$^{4}$,~Jiawei Han$^{1}$\\[4pt]
+\small $^{1}$伊利诺伊大学厄巴纳-香槟分校（University of Illinois at Urbana-Champaign），$^{2}$亚马逊（Amazon）\\
+\small $^{3}$宾夕法尼亚州立大学（Pennsylvania State University），$^{4}$弗吉尼亚大学（University of Virginia）\\
+\small \texttt{bowenj4@illinois.edu}}
+
+\date{}
+\begin{document}
+\maketitle
+
+\begin{abstract}
+大语言模型（large language models, LLMs）虽然展现出卓越的性能，但仍存在幻觉（hallucination）问题，在知识密集型任务上尤为突出。已有工作提出从外部知识语料库中检索单条文本单元来增强大语言模型，以缓解这一问题。然而，在许多领域中，文本之间是相互关联的（例如，文献图中的学术论文通过引用关系和合著关系相互连接），从而构成一个（文本属性）图（text-attributed graph）。这类图中的知识不仅编码在单条文本/节点之中，也编码在它们之间的关联里。为了推动利用图来增强大语言模型这一研究方向，我们手工构建了一个名为 GRBench 的图推理基准（Graph Reasoning Benchmark）数据集，其中包含 1{,}740 个可借助 10 个领域图中的知识来回答的问题。随后，我们提出了一个简单而有效的框架，称为图链式思维（Graph Chain-of-thought, \textsc{Graph-CoT}），通过鼓励大语言模型在图上迭代地进行推理，从而利用图来增强大语言模型。\textsc{Graph-CoT} 的每一次迭代包含三个子步骤：大语言模型推理、大语言模型与图的交互，以及图执行。我们在 GRBench 上以三种大语言模型骨干（backbone）开展了系统实验，结果表明 \textsc{Graph-CoT} 始终优于各类基线方法。代码已开源，地址为 \url{https://github.com/PeterGriffinJin/Graph-CoT}。
+\end{abstract}
+
+\section{引言}
+
+大语言模型（LLMs）（Touvron 等，2023；Jiang 等，2024）在真实场景中展现出卓越的语言理解和文本生成能力（Zhao 等，2023）。然而，大语言模型存在幻觉问题，有时倾向于生成看似合理却缺乏事实依据的内容（Tonmoy 等，2024）。这是因为它们以参数化的方式记忆世界知识，无法引用具体的知识来源（Zhang 等，2023b）。为缓解幻觉问题，已有工作提出将外部文本语料库作为知识来源来增强大语言模型（Shuster 等，2021；Wu 等，2023），并将每一篇文档都视为一个知识单元。随后，检索增强（retrieval augmentation, RAG）（Lewis 等，2020；Gao 等，2023）被提出，使大语言模型能够与外部知识来源进行交互：从中检索出相关文本，并将其作为上下文以提升大语言模型的事实性（如图~\ref{fig:1}(a) 所示）。然而，检索增强假设知识能够被很好地表示在单条文本单元中，从而忽略了多条文本单元之间的关联。
+
+在真实场景中，文本单元通常相互关联，形成一个（文本属性）图。这类图的知识不仅以文本的形式得到反映，也体现在它们连接的结构之中。例如，文献图中的学术论文通过引用链接相互连接（Wang 等，2020）。我们可以通过遍历这样一个图来追溯某个研究方向的源头（Bai 等，2019）。法律图中的案例和意见通过引用边相互关联（Sadeghian 等，2018）。我们可以通过在这样的图上查找某个案例的引用来核实对该案例的判决（Chen 等，2019）。
+
+尽管检索增强被广泛用于将文本语料库作为外部知识来源，但出于以下两个原因，它并不能直接用于利用图来增强大语言模型：1）\textbf{结构上下文（Structure Context）}：检索增强能够从图中找到可作为上下文以增强大语言模型的单个节点/文本。然而，图上的知识还蕴含在结构之中，而结构无法被单个节点/文本所捕获。2）\textbf{图规模爆炸（Graph Size Explosion）}：尽管将局部子图结构转换为文本描述、并作为大语言模型的输入上下文是可行的，但随着跳数（hop number）的增加，局部子图的规模会呈指数级增长，导致上下文序列过长。在上下文中存在大量不相关信息的情况下，这可能会使大语言模型“迷失在中间”（lost in the middle）（Liu 等，2023）。此外，过长的序列还可能超出大语言模型的输入长度限制（Zhao 等，2023）。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.62\linewidth]{cand_p02_k00.pdf}
+\caption{利用外部文本语料库或外部文本属性图（text-attributed graph）来增强大语言模型。}
+\label{fig:1}
+\end{figure}
+
+因此，利用此类图信息来增强大语言模型是一个重要的研究课题。遗憾的是，目前一直缺乏能够支持方法论开发、并便于对所提出模型进行评估的基准数据集。为此，我们首先构建了一个名为 GRBench 的图推理基准数据集。GRBench 包含十个真实世界中的图，可作为大语言模型的外部知识来源，涵盖学术（academic）、电子商务（e-commerce）、文学（literature）、医疗健康（healthcare）和法律（legal）五个领域。GRBench 中的每个样本由一个人工设计的问题和一个答案构成，该答案可以通过参考图、或将从图中检索到的信息作为上下文来直接得到。为使数据集更全面，我们纳入了不同难度等级的样本：简单问题（easy questions，可通过图上的单跳推理回答）、中等问题（medium questions，需要图上的多跳推理）以及困难问题（hard questions，需要以图上信息作为上下文进行归纳推理）。
+
+我们提出了一个简单而有效的框架，称为图链式思维（\textsc{Graph-CoT}）。其核心思想是让大语言模型逐步遍历图，从而找出所需的关键信息，而不是直接将整个子图作为上下文输入给大语言模型（如图~\ref{fig:1}(b) 所示）。\textsc{Graph-CoT} 是一个迭代式框架，其中一次迭代对应于图上的一步。\textsc{Graph-CoT} 中的每一次迭代包含三个子步骤：1）\textbf{推理（Reasoning）}：大语言模型提出基于当前信息可以得出何种结论，以及还需要从图中获取哪些进一步的信息；2）\textbf{交互（Interaction）}：大语言模型生成从图中获取信息所需的交互（例如查找节点、检查邻居等）；3）\textbf{执行（Execution）}：在图上执行来自交互步骤的请求，并返回相应的信息。通过这种方式，大语言模型可以在图上进行基于链式（chain-based）的推理，并在图上找到关键信息。这一过程会不断迭代，直到大语言模型在推理子步骤中得出最终答案。
+
+总之，我们的贡献如下：
+\begin{itemize}[leftmargin=1.4em]
+\item 我们提出了利用外部图来增强大语言模型这一问题，并引入了一个全面的基准数据集 GRBench。
+\item 我们开发了一个简单而有效的框架 \textsc{Graph-CoT}，以鼓励大语言模型在图上迭代地进行推理。
+\item 我们在 GRBench 上开展了大量实验，证明了 \textsc{Graph-CoT} 的有效性，并分析了其在不同示例（demonstration）设置、不同骨干大语言模型以及不同问题难度下的表现。此外，我们还探究了其失败案例，并勾画了未来的研究方向。
+\end{itemize}
+
+\section{预备知识}
+
+\textbf{定义 2.1（图，Graph）。} 一个图可以记为 $G = (V, E)$，其中 $V$ 和 $E$ 分别为节点集和边集。每个 $v_i \in V$ 可以关联一些特征信息 $X_{v_i}$。例如，在一个电子商务商品图中，$v \in V$ 是商品，$e \in E$ 是共购买（co-purchase）边，$X_v$ 包含诸如商品标题、描述、价格和类别等特征。在本工作中，我们将所有特征都形式化为文本，因此该图也被称为文本属性图（text-attributed graph）。
+
+\textbf{定义 2.2（邻居与度，Neighbors and Degree）。} 节点 $v_i$ 的邻居（neighbors）是指在图上与 $v_i$ 相连的节点，记为 $N(v_i) = \{v_j \mid e_{v_i, v_j} \in E\}$。节点 $v_i$ 的度（degree）是指 $v_i$ 的邻居数量，记为 $D(v_i) = |N(v_i)|$。
+
+\section{GRBench 数据集}
+
+\subsection{数据集概览}
+
+我们创建 GRBench 数据集，用以评估大语言模型与包含丰富知识的领域特定（domain-specific）图进行交互、从而解决目标问题的有效性。GRBench 包含来自 5 个通用领域（学术、电子商务、文学、医疗健康和法律）的 10 个图。GRBench 中的每个数据样本都是一个问答对。这些问题旨在模拟特定领域中的真实用例。然而，大语言模型很难仅凭存储在模型参数中的内部知识直接回答这些问题；它们需要与外部的领域特定图进行交互。GRBench 的总体统计信息见表~\ref{tab:1}。
+
+\begin{table}[H]\centering
+\caption{GRBench 的数据集统计信息。}
+\label{tab:1}
+\small
+\begin{tabular}{llcccc}
+\toprule
+\multirow{2}{*}{领域} & \multirow{2}{*}{主题} & \multicolumn{2}{c}{图统计} & \multicolumn{2}{c}{数据} \\
+\cmidrule(lr){3-4}\cmidrule(lr){5-6}
+ &  & 节点数 & 边数 & 模板数 & 问题数 \\
+\midrule
+\multirow{6}{*}{学术} & CS（计算机科学） & $\sim$8M & $\sim$52M & 15 & 150 \\
+ & Biology（生物学） & $\sim$4M & $\sim$39M & 14 & 140 \\
+ & Chemistry（化学） & $\sim$4M & $\sim$30M & 14 & 140 \\
+ & Material Science（材料科学） & $\sim$3M & $\sim$22M & 14 & 140 \\
+ & Medicine（医学） & $\sim$6M & $\sim$30M & 14 & 140 \\
+ & Physics（物理学） & $\sim$2M & $\sim$33M & 14 & 140 \\
+电子商务 & Amazon & $\sim$9M & $\sim$313M & 20 & 200 \\
+文学 & Goodreads & $\sim$3M & $\sim$22M & 24 & 240 \\
+医疗健康 & Disease（疾病） & $\sim$47K & $\sim$4M & 27 & 270 \\
+法律 & Freelaw & $\sim$84M & $\sim$114M & 18 & 180 \\
+\midrule
+合计 & - & - & - & 174 & 1740 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+为了在不投入大量人力的情况下整理出高质量且多样化的数据，GRBench 的构建包含四个步骤：1）我们首先从真实世界场景中收集大型参考图数据，作为数据生成的上下文。2）随后，我们手工设计可在参考图数据上得到回答的问题模板。3）之后，我们调用 GPT-4 为每个问题模板生成多样化的问题表述。4）最后，我们从领域特定图中自动生成基准答案（ground truth answers）。
+
+\subsection{参考图数据}
+
+我们从五个知识以图的形式存在的领域中收集数据：学术、电子商务、文学、医疗健康和法律。这些图的详细统计信息见附录表~\ref{tab:5}。
+
+在\textbf{学术领域}中，论文、作者和会议（venue）通过引用、“written-by”（由……撰写）和“publish-in”（发表于……）关系自然地相互关联。我们从 DBLP\footnote{\url{https://originalfileserver.aminer.cn/misc/dblp_v14.tar.gz}}（Tang 等，2008）和 Microsoft Academic Graph（MAG）\footnote{\url{https://zenodo.org/records/7611544}}（Wang 等，2020；Zhang 等，2023a）获取了横跨六个学科的学术图，这些学科包括生物学、计算机科学、化学、材料科学、医学和物理学。这类图上的节点是论文、作者和会议，而边包括引用边、作者关系边和会议关系边。
+
+在\textbf{电子商务领域}中，单个产品被赋予一个品牌，不同产品通过“also-viewed”（同时浏览）或“also-bought”（同时购买）关系相互连接，这天然地体现了类图结构。我们使用 Amazon 产品数据集\footnote{\url{https://cseweb.ucsd.edu/~jmcauley/datasets/amazon/links.html}}（He 和 McAuley，2016），它提供了横跨众多产品类别的商品元数据信息。该图上的节点是商品和品牌，而边包括“also-viewed”、“also-bought”、“buy-after-viewing”（浏览后购买）、“bought-together”（一起购买）和“item-brand”（商品-品牌）。
+
+在\textbf{文学领域}中，图结构本身存在于书籍、作者、出版商和丛书（series）之间的相互连接中。Goodreads 数据集\footnote{\url{https://mengtingwan.github.io/data/goodreads}}（Wan 和 McAuley，2018）提供了大量书籍及其元数据。该图上的节点是书籍、作者、出版商和丛书，而边包括“written-by”、“publish-in”、“book-series”（书籍-丛书）等。
+
+在\textbf{医疗健康领域}中，我们可以通过将疾病及其相关属性纳入考虑来构建图。我们采用生物学疾病图 Hetionet\footnote{\url{https://github.com/hetio/hetionet}}（Himmelstein 等，2017），它以药物再利用（drug repurposing）为目标，全面汇总了现有疾病及其症状。该图上的节点包括疾病、症状、副作用、化合物等，而边包括“disease-present-symptom”（疾病-呈现-症状）、“compound-cause-side effect”（化合物-引起-副作用）等。
+
+在\textbf{法律领域}中，案例（case）与意见（opinion）之间存在丰富的引用链接（因为法官需要依据引用先前案例的意见来撰写当前案例），这自然地构成一个图。我们使用来自 CourtListener\footnote{\url{https://www.courtlistener.com/}} 的数据。该图上的节点是意见（opinion）、意见簇（opinion-cluster）、案卷（docket）和法院（court），而边包括“opinion-citation”（意见-引用）、“opinion-cluster”（意见-簇）、“cluster-docket”（簇-案卷）和“docket-court”（案卷-法院）。
+
+\subsection{人工设计的问题模板}
+
+问题生成阶段旨在生成大语言模型在参考领域图之后能够回答的问题。考虑到生成的问题应当准确且有意义，我们邀请了四名受过良好训练的计算机科学博士生，在给定图作为上下文的情况下撰写可被回答的潜在问题。
+
+为了全面评估大语言模型及其与图交互的能力，我们要求标注者设计三种不同难度的问题模板：
+
+\begin{itemize}[leftmargin=1.4em]
+\item \textbf{简单（Easy）}：这些问题可以通过仅查找一个节点的特征/度，或在图上一跳范围内的移动来回答。例如，“What is the price of the \{item\}?”（“\{商品\} 的价格是多少？”）或“Who are the authors of \{paper\}?”（“\{论文\} 的作者是谁？”）。
+\item \textbf{中等（Medium）}：这些问题需要在图上进行超过一跳的推理，并涉及返回节点的特征/度。例如，“Who is the closest collaborator with \{author\} in \{year\}?”（“在 \{年份\}，谁是与 \{作者\} 关系最密切的合作者？”）。
+\item \textbf{困难（Hard）}：这些问题无法通过直接查找图来回答，但图可以通过提供有信息量的上下文而发挥作用。例如，“What is the complementary item given this \{query\}?”（“给定这个 \{查询\}，与之互补的商品是什么？”）。
+\end{itemize}
+
+值得注意的是，简单等级和中等等级的问题可以从给定的图中得到回答，而困难问题的基准答案则无法从图中直接找到。所有问题模板见附录~B。
+
+一旦人工设计好问题模板，我们便从图中提取数值，将模板转化为实际问题。例如，给定问题模板“How many citations did \{paper\} have in \{year\}?”（“\{论文\} 在 \{年份\} 有多少次引用？”），我们可以参考学术图，采样“Language Models are Unsupervised Multitask Learners”作为“paper”的取值、“2021”作为“year”的取值。这样便会得到一个真实问题：“How many citations did Language Models are Unsupervised Multitask Learners have in 2021?”（“Language Models are Unsupervised Multitask Learners 在 2021 年有多少次引用？”）。
+
+\subsection{使用 GPT-4 实现多样化的问题表述}
+
+按照前述步骤，我们为每个图获得了问题样本。然而，所有隶属于同一模板的样本将共享相同的表述。例如，询问某件商品的价格将始终得到问题“What is the price of the \{item\}?”。这限制了数据样本的多样性，并可能导致评估不够全面。
+
+为此，我们提出使用 GPT-4 将每个问题模板改写为五种不同的表述，从而针对同一类型的问题获得更多样化的问题样本。用于改写的提示见附录~C。
+
+\subsection{自动答案生成}
+
+最后一步是为每个生成的问题从图中获取基准答案。为实现这一目标，我们首先实现图函数（graph functions，例如邻居检查、度检查），可用于在图上进行推理。然后，我们实现函数链（function chains），它可以作为图函数的组合，以便从图中获取基准答案。函数链由标注者针对每种类型的问题手工编写。示例见附录~D。
+
+\section{图链式思维}
+
+让大语言模型与图交互的直接解决方案是通过检索增强生成（retrieval-augmentation generation, RAG）（Lewis 等，2020；Gao 等，2023），其中由检索器（retriever）从图中获取相关信息，作为大语言模型生成的上下文。然而，与作为外部知识来源的文本语料库不同，图中的信息还蕴含在文本单元之间复杂的相互连接中，这就潜在地要求对图进行遍历和推理。为了让大语言模型能够推理，链式思维（Chain-of-thought）（Wei 等，2022）被提出，以鼓励大语言模型将复杂任务分解为若干步骤。然而，它是为在文本上推理而设计的，将大语言模型在图上的推理留作了一个开放问题。
+
+为此，我们设计了一个简单的解决方案，称为图链式思维（\textsc{Graph-CoT}），以利用大语言模型解决复杂的图推理问题（如图~\ref{fig:2} 所示）。\textsc{Graph-CoT} 是一个迭代式框架，每一次迭代包含三个步骤：推理、交互和执行。我们对每一步详述如下：
+
+\textbf{用大语言模型进行推理（Reasoning with LLMs）。} 给定问题或上一次迭代的上下文，第一步是让大语言模型推理：为回答该问题还需要图中哪些进一步的外部信息，或者该问题是否已可借助当前来自图的上下文得到回答。例如，给定问题“Who are the authors of Language Models are Unsupervised Multitask Learners?”（“Language Models are Unsupervised Multitask Learners 的作者是谁？”），大语言模型应当推理出“我们需要首先在图上找到论文节点 \{Language Models are Unsupervised Multitask Learners\}”。
+
+\textbf{大语言模型与图之间的交互（Interaction between LLMs and Graphs）。} 基于上一步大语言模型推理的输出结果，下一步是让大语言模型知道如何与图交互并从图中获取相关信息。受（Yao 等，2022）的启发，我们预先定义了四个图函数，以同时覆盖图上的语义信息和结构信息：
+
+\begin{itemize}[leftmargin=1.4em]
+\item \texttt{RetrieveNode(Text)}：通过语义搜索（semantic search）识别图中的相关节点。
+\item \texttt{NodeFeature(NodeID, FeatureName)}：从图中提取特定节点的文本特征信息。
+\item \texttt{NeighborCheck(NodeID, NeighborType)}：返回图中特定节点的邻居信息。
+\item \texttt{NodeDegree(NodeID, NeighborType)}：返回图中特定节点某一特定邻居类型的度。
+\end{itemize}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{cand_p05_k00.pdf}
+\caption{\textsc{Graph-CoT} 的工作流程，这是一个迭代式框架，每一次迭代包含三个步骤：用大语言模型进行推理、大语言模型与图之间的交互，以及在图上执行。}
+\label{fig:2}
+\end{figure}
+
+当前任务要求大语言模型基于其先前的推理结果，生成准确的图函数调用，从而有效地与图交互。在上述示例中，大语言模型应当生成“RetrieveNode(Language Models are Unsupervised Multitask Learners)”。
+
+\textbf{在图上执行（Execution on Graphs）。} 最后一步是调用上一步给出的那些函数，并从图中获取相关信息。对于前述示例，图将执行 RetrieveNode($\cdot$) 函数并返回“最相关的论文节点的 ID 是 p-4123”。然后，当前迭代结束，我们从“用大语言模型进行推理”开始新的迭代。整个框架将不断迭代，直到大语言模型完成推理并输出最终答案。在本工作中，我们使大语言模型通过上下文学习（in-context learning）（Dong 等，2022）来学习如何进行 \textsc{Graph-CoT}。提示和示例见附录~E。
+
+\textbf{与大语言模型智能体的联系（Connection to LLM agents）。} 值得一提的是，\textsc{Graph-CoT} 可以被视为一个智能体（agent）框架（Xi 等，2023；Zhuang 等，2023），其中大语言模型骨干是智能体，而图是环境。智能体（大语言模型）可以借助一些预定义函数（即上文本节所定义的函数）与环境（图）进行交互。智能体的目标是探索图环境并进行问答。
+
+\section{实验}
+
+\subsection{实验设置}
+
+\textbf{基线方法（Baselines）。} 我们将所提出的 \textsc{Graph-CoT} 与三类基线方法进行比较：标准大语言模型（Base LLMs）、文本检索增强大语言模型（Text RAG LLMs）以及图检索增强大语言模型（Graph RAG LLMs）：
+
+\begin{itemize}[leftmargin=1.4em]
+\item \textbf{Base LLMs}：我们测试大语言模型能否在不与外部数据交互的情况下，凭借自身知识回答给定问题。我们采用标准提示（standard prompting），即提供简单的指令并让大语言模型为问题生成答案。
+\item \textbf{Text RAG LLMs}（Gao 等，2023）：我们将外部图视为纯文本语料库，并利用检索器从中检索相关文本信息。随后，检索到的文本作为上下文来增强大语言模型以进行问答。
+\item \textbf{Graph RAG LLMs}：这是文本 RAG 的扩展，其中不仅将检索到的文本/节点、还将与之关联的子图线性化（linearize）为一个文本序列（Ye 等，2023）并作为上下文。在主要结果中，我们使用 1 跳自我图（1-hop ego-graphs）。
+\end{itemize}
+
+对于所有类别的基线，我们都探索了三种大语言模型骨干，包括 LLaMA-2-13b-chat（Touvron 等，2023）、Mixtral-8x7b-Instruct（Jiang 等，2024）和 GPT-3.5-turbo（Ouyang 等，2022）。
+
+\begin{table}[H]\centering
+\caption{在 GRBench 上对比标准大语言模型、文本检索增强大语言模型（Text RAG）、图检索增强大语言模型（Graph RAG）以及 \textsc{Graph-CoT} 的模型性能。我们基于 Rouge-L（R-L）和 GPT4score 展示它们的性能。我们采用 GPT-3.5-turbo 作为 \textsc{Graph-CoT} 的骨干。}
+\label{tab:2}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{llcccccccccc}
+\toprule
+\multicolumn{2}{c}{\multirow{2}{*}{模型}} & \multicolumn{2}{c}{学术} & \multicolumn{2}{c}{电子商务} & \multicolumn{2}{c}{文学} & \multicolumn{2}{c}{医疗健康} & \multicolumn{2}{c}{法律} \\
+\cmidrule(lr){3-4}\cmidrule(lr){5-6}\cmidrule(lr){7-8}\cmidrule(lr){9-10}\cmidrule(lr){11-12}
+ &  & R-L & GPT4s. & R-L & GPT4s. & R-L & GPT4s. & R-L & GPT4s. & R-L & GPT4s. \\
+\midrule
+\multirow{3}{*}{\makecell[l]{Base}}
+ & LLaMA-2-13b-chat & 8.13 & 8.03 & 7.01 & 12.00 & 5.32 & 20.83 & 5.25 & 13.70 & 15.97 & 16.11 \\
+ & Mixtral-8x7b & 9.02 & 8.14 & 12.54 & 18.00 & 7.50 & 22.50 & 3.88 & 20.00 & 12.74 & 16.11 \\
+ & GPT-3.5-turbo & 6.05 & 12.80 & 9.18 & 23.50 & 10.43 & 26.67 & 5.83 & 14.44 & 10.51 & 20.00 \\
+\midrule
+\multirow{3}{*}{\makecell[l]{Text\\RAG}}
+ & LLaMA-2-13b-chat & 8.69 & 8.52 & 9.23 & 12.50 & 7.61 & 20.00 & 1.44 & 5.93 & 15.37 & 16.67 \\
+ & Mixtral-8x7b & 8.44 & 8.02 & 23.14 & 29.50 & 13.35 & 27.92 & 3.22 & 16.67 & 19.69 & 25.00 \\
+ & GPT-3.5-turbo & 5.83 & 9.91 & 14.06 & 20.00 & 10.04 & 20.83 & 4.57 & 8.52 & 18.14 & 23.89 \\
+\midrule
+\multirow{3}{*}{\makecell[l]{Graph\\RAG}}
+ & LLaMA-2-13b & 22.01 & 22.97 & 12.48 & 20.00 & 9.25 & 20.00 & 2.97 & 4.81 & 17.98 & 17.22 \\
+ & Mixtral-8x7b & 27.77 & 31.20 & 32.87 & 37.00 & 20.08 & 33.33 & 8.66 & 15.19 & 23.48 & 25.56 \\
+ & GPT-3.5-turbo & 18.45 & 26.98 & 17.52 & 28.00 & 14.94 & 24.17 & 8.69 & 14.07 & 18.66 & 22.22 \\
+\midrule
+\multicolumn{2}{l}{\textsc{Graph-CoT}} & \textbf{31.89} & \textbf{33.48} & \textbf{42.40} & \textbf{44.50} & \textbf{41.59} & \textbf{46.25} & \textbf{22.33} & \textbf{28.89} & \textbf{30.52} & \textbf{28.33} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{评测指标（Evaluation Metrics）。} 我们同时使用基于规则的指标和基于模型的指标，以全面评估模型结果。对于前者，我们使用 Rouge-L（R-L），它度量响应与基准答案之间最长的公共词序列。对于后者，我们调用 GPT-4 来判断模型输出与基准答案是否相同。我们将 GPT-4 判定为“正确（correct）”的百分比计算为 GPT4score。
+
+\textbf{实现设置（Implementation Settings）。} 所有实验都在 NVIDIA GeForce RTX A6000 GPU 上进行，使用 Python 3.8 和 Huggingface 4.36.2。我们对所有基线方法和我们的方法都使用 Mpnet-v2\footnote{\url{https://huggingface.co/sentence-transformers/all-mpnet-base-v2}} 作为检索器，并用 FAISS（Johnson 等，2019）实现索引。在 \textsc{Graph-CoT} 中，我们在主要结果中采用 GPT-3.5-turbo-16k（2024 年 1 月）作为骨干大语言模型，并将温度（temperature）$t$ 设为 0 以获得一致的响应。我们在附录~E 中提供了关于如何进行推理的 \textsc{Graph-CoT} 示例。
+
+\subsection{总体性能}
+
+主要结果如表~\ref{tab:2} 所示。从结果中我们可以发现：1）\textsc{Graph-CoT} 始终且显著地优于所有基线方法。2）Base LLMs 表现相当差，这通常是因为大语言模型可能不包含回答这些问题所需的知识。3）在大多数情况下，Graph RAG LLMs 优于 Text RAG LLMs，因为前者可以提供更具结构感知（structure-aware）的上下文，这有助于解决问题。4）尽管 \textsc{Graph-CoT} 表现最佳，但其绝对分数并不高，仍有很大的提升空间。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.78\linewidth]{cand_p06_k00.pdf}
+\caption{\textsc{Graph-CoT} 的消融研究。它在领域内（in-domain）示例下表现良好，并且对示例的领域偏移（domain shift）整体上保持鲁棒。}
+\label{fig:3}
+\end{figure}
+
+\subsection{消融研究}
+
+\textbf{示例对 \textsc{Graph-CoT} 有多重要？} 为回答这一问题，我们从两个方面开展实验：零样本研究（zero-shot study，不提供示例）和跨领域研究（cross-domain study，使用来自其他领域的示例）（Ding 等，2018）。结果如图~\ref{fig:3} 所示，其中列和行分别对应源领域（source domain）和目标领域（target domain）。对于零样本研究，不提供任何示例（图~\ref{fig:3} 中最右侧一列）。我们通过实验发现，在不提供推理示例的情况下，\textsc{Graph-CoT} 在所有数据集上都无法工作（性能接近 0）。这意味着，如果给定的指令不足（仅有图定义和交互函数定义），大语言模型就会表现不佳。对于跨领域研究，我们提供来自源领域图的示例，并在目标领域图上进行测试。从结果（图~\ref{fig:3} 中左侧五列）来看，领域内示例（对角线）表现相当好，并且 \textsc{Graph-CoT} 总体上对示例的领域偏移保持鲁棒。这一观察结果突显了 \textsc{Graph-CoT} 通过上下文学习捕获图链式推理关键步骤的适应性和有效性，尽管示例的领域各不相同。
+
+\begin{table}[H]
+\begin{minipage}[t]{0.48\linewidth}\centering
+\caption{使用不同大语言模型骨干的 \textsc{Graph-CoT} 结果。}
+\label{tab:3}
+\small
+\begin{tabular}{lc}
+\toprule
+模型 & GPT4score \\
+\midrule
+\textsc{Graph-CoT} &  \\
+\quad w. LLaMA-2-13b-chat & 16.04 \\
+\quad w. Mixtral-8x7b & 36.46 \\
+\quad w. GPT-3.5-turbo & 36.63 \\
+\quad w. GPT-4 & \textbf{46.28} \\
+\bottomrule
+\end{tabular}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.48\linewidth}\centering
+\caption{在 GRBench 上使用不同检索增强方法的大语言模型结果。}
+\label{tab:4}
+\small
+\begin{tabular}{lc}
+\toprule
+模型 & GPT4score \\
+\midrule
+GPT-3.5-turbo & 19.48 \\
++ 节点检索（node retrieval） & 16.63 \\
++ 1 跳子图检索 & 23.09 \\
++ 2 跳子图检索 & 22.12 \\
++ \textsc{Graph-CoT} & \textbf{36.29} \\
+\bottomrule
+\end{tabular}
+\end{minipage}
+\end{table}
+
+\textbf{不同的大语言模型在 \textsc{Graph-CoT} 中表现如何？} 在主要结果中，我们采用 GPT-3.5-turbo 作为 \textsc{Graph-CoT} 的大语言模型骨干。在本节中，我们探索使用其他大语言模型骨干的 \textsc{Graph-CoT}，包括 LLaMA-2-13b-chat、Mixtral-8x7b-Instruct、GPT-3.5-turbo 和 GPT-4。我们从 GRBench 中随机抽取一个子集（每个问题模板取一个样本）进行实验，结果如表~\ref{tab:3} 所示。从结果中我们发现，大语言模型骨干很重要。具有更强指令遵循能力和推理能力的大语言模型（即 GPT-4）能够在 \textsc{Graph-CoT} 中带来更好的性能。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.78\linewidth]{cand_p07_k00.pdf}
+\caption{\textsc{Graph-CoT} 在 GRBench 中不同难度样本上的结果。}
+\label{fig:4}
+\end{figure}
+
+\subsection{RAG 与 \textsc{Graph-CoT} 的对比}
+
+\textbf{检索增强大语言模型在图上是一个好的选择吗？} 我们通过将检索到的子图分别设置为仅一个节点、1 跳自我图和 2 跳自我图，来研究图检索增强大语言模型的工作方式。在所有设置中，自我图都被线性化为文本序列并作为上下文。在所有数据集上的平均结果如表~\ref{tab:4} 所示。从结果来看，检索 1 跳自我图表现最佳，但仍逊于 \textsc{Graph-CoT}。原因在于，进行子图检索时，节点/文本的数量会随着跳数线性增长而呈指数级增长。尽管子图越大、所含信息越多，但大跳数的自我图会导致超长的上下文，甚至超过大语言模型的最大输入长度，并使大语言模型“迷失在中间”。在这种情况下，\textsc{Graph-CoT} 可以作为一种更好的方式，从图中提取更多有用的信息。
+
+\subsection{\textsc{Graph-CoT} 在 GRBench 中不同难度问题上的表现}
+
+在本节中，我们分析 \textsc{Graph-CoT} 在不同难度等级问题上的表现。结果如图~\ref{fig:4} 所示，我们发现 \textsc{Graph-CoT} 在简单问题上表现相对较好（这些问题的推理链很简单），而在中等/困难问题上表现较差（复杂/归纳推理）。
+
+\subsection{\textsc{Graph-CoT} 的案例研究}
+
+我们开展案例研究，以理解 \textsc{Graph-CoT} 的不足之处。两个失败案例的结果如图~\ref{fig:5} 所示。对于左侧的案例，我们可以发现，尽管使用了最先进的大语言模型骨干（即 GPT-4），该框架有时仍会指向某个词的出现位置，而非理解其语义含义，从而导致错误的交互函数调用。对于右侧的案例，我们可以发现，该框架有时会误解图的结构，导致交互失败。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{cand_p08_k00.pdf}
+\caption{\textsc{Graph-CoT} 的失败案例。问题中的关键信息以及 \textsc{Graph-CoT} 错误的交互均以红色标注。第二个示例中的作者姓名被匿名化为 A 和 B。}
+\label{fig:5}
+\end{figure}
+
+尽管 \textsc{Graph-CoT} 在 GRBench 上取得了相对不错的性能，但仍有相当大的改进空间。增强大语言模型图推理能力的两个最有前景的方向是：探索如何让大语言模型更好地理解图，以及如何让大语言模型进行更复杂的推理。对于前者，在 \textsc{Graph-CoT} 中，我们主要使用自然语言来为大语言模型描述图。鉴于图更具结构性而非序列性，更具结构感知的语言（例如 graphXML（Herman 和 Marshall，2000））可能是更好的选择。对于后者，鉴于图上的推理问题不仅仅是链式推理问题，一些更高级的推理范式，例如基于树的推理（tree-based reasoning）（Yao 等，2023）和基于图的推理（graph-based reasoning）（Besta 等，2023），可能是不错的方向。
+
+\section{相关工作}
+
+\subsection{图上的大语言模型}
+
+受大语言模型近期在自然语言处理任务上取得成功的启发，研究者们正在探索利用大语言模型解决图任务（Jin 等，2023a）。其主要思想是将大语言模型用作特征提取器（feature extractor）（Chen 等，2023）或最终预测器（final predictor）（Jin 等，2023b）。对于前者，许多方法采用大语言模型-图神经网络（LLM-GNN）级联结构（Chien 等，2021），其中大语言模型为图神经网络（graph neural networks, GNNs）（Wu 等，2020）提取节点特征。例如，SimTeG（Duan 等，2023）提出在训练整个流水线之前，先对大语言模型特征提取器进行预热（warm up）。GLEM（Zhao 等，2022）引入了一个迭代式流水线，其中图神经网络可以为大语言模型特征提取器提供反馈。对于后者，已有工作将结构信息转换为序列以输入给大语言模型（Tian 等，2023；Xiong 等，2024），或设计高级的图赋能大语言模型（graph-empowered LLMs）（Yang 等，2021）。例如，InstructGLM（Ye 等，2023）利用自然语言来描述图结构。Heterformer（Jin 等，2023c）提出了一种图嵌套（graph-nested）语言模型架构。然而，大多数现有工作主要关注传统的图任务，如节点分类（node classification）（Xiao 等，2022）和链接预测（link prediction）（Zhang 和 Chen，2018）。另一方面，思维图（Graph-of-thought）（Besta 等，2023）提出以图结构化的思维进行大语言模型推理。然而，它主要关注基于文本的推理，而非参考外部图。在我们的工作中，我们研究的是通过利用大语言模型进行图推理，从而用外部图来增强大语言模型这一问题。
+
+\subsection{用外部知识增强大语言模型}
+
+尽管大语言模型（Touvron 等，2023；Jiang 等，2024）已展现出卓越的语言理解和生成能力（Zhao 等，2023），但它们会遇到生成误导性信息的问题——这些信息看似可信却缺乏事实依据，这一现象被称为幻觉（Tonmoy 等，2024；Rawte 等，2023）。为缓解这一问题，已有工作（Shuster 等，2021）提出将文本语料库作为外部知识来源来增强大语言模型，并提出了检索增强框架（Lewis 等，2020；Gao 等，2023）。在大语言模型推理之前，从语料库（Karpukhin 等，2020）中检索相关文本单元，作为大语言模型的上下文，以帮助减少幻觉（Dong 等，2022）。Lewis 等（2020）提出端到端地训练带有检索器和生成器的整个框架。Izacard 和 Grave（2020）引入了一种融合于解码器（fusion-in-decoder）的架构，在生成过程中联合考虑所有检索到的上下文。然而，大多数现有工作都是为利用外部文本语料库来增强大语言模型而设计的。在我们的工作中，我们探索如何用外部文本属性图来增强大语言模型，并提出了一个用于评估的基准。
+
+\section{结论}
+
+在本工作中，我们研究了将（文本属性）图作为外部知识来源来增强大语言模型这一问题。我们首先手工构建了一个名为 GRBench 的基准数据集，它包含来自 5 个领域的 1{,}740 个问题和 10 个图。GRBench 中的每个问题都可以通过参考图来回答。我们进一步提出了一个简单而有效的框架，称为 \textsc{Graph-CoT}，它通过让大语言模型在图上进行迭代推理，从而利用图来增强大语言模型。\textsc{Graph-CoT} 的每一次迭代包含三个子步骤：大语言模型推理、大语言模型与图的交互，以及图执行。然后，我们在 GRBench 上以三种骨干大语言模型开展实验，证明了 \textsc{Graph-CoT} 的有效性。未来的工作可以探索如何让大语言模型更好地理解图，以及如何让大语言模型进行更复杂的推理。
+
+\section*{局限性}
+
+在本工作中，我们主要关注通过在图上推理，将外部图作为知识来源来增强大语言模型，并提出了一个全面的基准数据集。对于 GRBench 的构建，尽管我们使用 GPT-4 来改写问题模板，但它们大多仍是人工设计的，因此在问题多样性和难度方面可能仍有改进空间。对于 \textsc{Graph-CoT}，所使用的大语言模型骨干是一个无法微调（或微调成本非常高）的 API 模型。未来的方法可能需要考虑如何显式地训练大语言模型以在图上导航。
+
+\section*{伦理声明}
+
+研究已经证明，大语言模型（LLMs）（Touvron 等，2023；Jiang 等，2024）在掌握语言处理和生成方面表现优异。然而，相关研究也指出了它们的局限性，包括社会偏见（social biases）（Liang 等，2021）和虚假信息的传播（Abid 等，2021）。我们的研究旨在通过整合外部图作为知识来源来增强大语言模型，并将这一方法作为减少偏见、消除虚假信息的潜在解决方案提出。
+
+\section*{致谢}
+
+我们感谢 Chen Yan（J.D.）提供法律领域知识，以帮助作者构建法律图。本研究部分由美国 DARPA KAIROS 计划（编号 FA8750-19-2-1004）和 INCAS 计划（编号 HR001121C0165）、美国国家科学基金会（National Science Foundation）IIS-19-56151，以及由 NSF 资助（奖项编号 2019897）的 Molecule Maker Lab Institute（一个 AI 研究机构项目），还有由 NSF 资助（奖项编号 2118329）的 Institute for Geospatial Understanding through an Integrative Discovery Environment（I-GUIDE）支持。本文所表达的任何观点、发现、结论或建议均为作者本人的观点，不一定代表 DARPA 或美国政府明示或暗示的立场。本文所含的观点和结论均为作者本人的，不应被解释为代表任何资助机构。
+
+\section*{参考文献}
+\begin{enumerate}[leftmargin=2em]
+\item Abubakar Abid, Maheen Farooqi, and James Zou. 2021. Persistent anti-muslim bias in large language models. In AIES.
+\item Xiaomei Bai, Mengyang Wang, Ivan Lee, Zhuo Yang, Xiangjie Kong, and Feng Xia. 2019. Scientific paper recommendation: A survey. Ieee Access, 7:9324--9339.
+\item Maciej Besta, Nils Blach, Ales Kubicek, Robert Gerstenberger, Lukas Gianinazzi, Joanna Gajda, Tomasz Lehmann, Michal Podstawski, Hubert Niewiadomski, Piotr Nyczyk, et al. 2023. Graph of thoughts: Solving elaborate problems with large language models. arXiv preprint arXiv:2308.09687.
+\item Si Chen, Pengfei Wang, Wei Fang, Xingchen Deng, and Feng Zhang. 2019. Learning to predict charges for judgment with legal graph. In Artificial Neural Networks and Machine Learning--ICANN 2019: Text and Time Series: 28th International Conference on Artificial Neural Networks, Munich, Germany, September 17--19, 2019, Proceedings, Part IV 28, pages 240--252. Springer.
+\item Zhikai Chen, Haitao Mao, Hang Li, Wei Jin, Hongzhi Wen, Xiaochi Wei, Shuaiqiang Wang, Dawei Yin, Wenqi Fan, Hui Liu, et al. 2023. Exploring the potential of large language models (llms) in learning on graphs. arXiv preprint arXiv:2307.03393.
+\item Eli Chien, Wei-Cheng Chang, Cho-Jui Hsieh, Hsiang-Fu Yu, Jiong Zhang, Olgica Milenkovic, and Inderjit S Dhillon. 2021. Node feature extraction by self-supervised multi-scale neighborhood prediction. arXiv preprint arXiv:2111.00064.
+\item Zhengming Ding, Sheng Li, Ming Shao, and Yun Fu. 2018. Graph adaptive knowledge transfer for unsupervised domain adaptation. In Proceedings of the European Conference on Computer Vision (ECCV), pages 37--52.
+\item Qingxiu Dong, Lei Li, Damai Dai, Ce Zheng, Zhiyong Wu, Baobao Chang, Xu Sun, Jingjing Xu, and Zhifang Sui. 2022. A survey for in-context learning. arXiv preprint arXiv:2301.00234.
+\item Keyu Duan, Qian Liu, Tat-Seng Chua, Shuicheng Yan, Wei Tsang Ooi, Qizhe Xie, and Junxian He. 2023. Simteg: A frustratingly simple approach improves textual graph learning. arXiv preprint arXiv:2308.02565.
+\item Yunfan Gao, Yun Xiong, Xinyu Gao, Kangxiang Jia, Jinliu Pan, Yuxi Bi, Yi Dai, Jiawei Sun, and Haofen Wang. 2023. Retrieval-augmented generation for large language models: A survey. arXiv preprint arXiv:2312.10997.
+\item Ruining He and Julian McAuley. 2016. Ups and downs: Modeling the visual evolution of fashion trends with one-class collaborative filtering. In proceedings of the 25th international conference on world wide web, pages 507--517.
+\item Ivan Herman and M Scott Marshall. 2000. Graphxml---an xml-based graph description format. In International Symposium on Graph Drawing, pages 52--62. Springer.
+\item Daniel Scott Himmelstein, Antoine Lizee, Christine Hessler, Leo Brueggeman, Sabrina L Chen, Dexter Hadley, Ari Green, Pouya Khankhanian, and Sergio E Baranzini. 2017. Systematic integration of biomedical knowledge prioritizes drugs for repurposing. Elife, 6:e26726.
+\item Gautier Izacard and Edouard Grave. 2020. Leveraging passage retrieval with generative models for open domain question answering.
+\item Albert Jiang, Alexandre Sablayrolles, Antoine Roux, Arthur Mensch, Blanche Savary, Chris Bamford, et al. 2024. Mixtral of experts. arXiv preprint arXiv:2401.04088.
+\item Bowen Jin, Gang Liu, Chi Han, Meng Jiang, Heng Ji, and Jiawei Han. 2023a. Large language models on graphs: A comprehensive survey. arXiv preprint arXiv:2312.02783.
+\item Bowen Jin, Wentao Zhang, Yu Zhang, Yu Meng, Xinyang Zhang, Qi Zhu, and Jiawei Han. 2023b. Patton: Language model pretraining on text-rich networks. arXiv preprint arXiv:2305.12268.
+\item Bowen Jin, Yu Zhang, Qi Zhu, and Jiawei Han. 2023c. Heterformer: Transformer-based deep node representation learning on heterogeneous text-rich networks. In Proceedings of the 29th ACM SIGKDD Conference on Knowledge Discovery and Data Mining, pages 1020--1031.
+\item Jeff Johnson, Matthijs Douze, and Herv\'e J\'egou. 2019. Billion-scale similarity search with GPUs. IEEE Transactions on Big Data, 7(3):535--547.
+\item Vladimir Karpukhin, Barlas O\u{g}uz, Sewon Min, Patrick Lewis, Ledell Wu, Sergey Edunov, Danqi Chen, and Wen-tau Yih. 2020. Dense passage retrieval for open-domain question answering. arXiv preprint arXiv:2004.04906.
+\item Patrick Lewis, Ethan Perez, Aleksandra Piktus, Fabio Petroni, Vladimir Karpukhin, Naman Goyal, Heinrich K\"uttler, Mike Lewis, Wen-tau Yih, Tim Rockt\"aschel, et al. 2020. Retrieval-augmented generation for knowledge-intensive nlp tasks. Advances in Neural Information Processing Systems, 33:9459--9474.
+\item Paul Pu Liang, Chiyu Wu, Louis-Philippe Morency, and Ruslan Salakhutdinov. 2021. Towards understanding and mitigating social biases in language models. In ICML.
+\item Nelson F Liu, Kevin Lin, John Hewitt, Ashwin Paranjape, Michele Bevilacqua, Fabio Petroni, and Percy Liang. 2023. Lost in the middle: How language models use long contexts. arXiv preprint arXiv:2307.03172.
+\item Long Ouyang, Jeffrey Wu, Xu Jiang, Diogo Almeida, Carroll Wainwright, Pamela Mishkin, Chong Zhang, Sandhini Agarwal, Katarina Slama, Alex Ray, et al. 2022. Training language models to follow instructions with human feedback. Advances in Neural Information Processing Systems, 35:27730--27744.
+\item Vipula Rawte, Amit Sheth, and Amitava Das. 2023. A survey of hallucination in large foundation models. arXiv preprint arXiv:2309.05922.
+\item Ali Sadeghian, Laksshman Sundaram, Daisy Zhe Wang, William F Hamilton, Karl Branting, and Craig Pfeifer. 2018. Automatic semantic edge labeling over legal citation graphs. Artificial Intelligence and Law, 26:127--144.
+\item Kurt Shuster, Spencer Poff, Moya Chen, Douwe Kiela, and Jason Weston. 2021. Retrieval augmentation reduces hallucination in conversation. arXiv preprint arXiv:2104.07567.
+\item Jie Tang, Jing Zhang, Limin Yao, Juanzi Li, Li Zhang, and Zhong Su. 2008. Arnetminer: Extraction and mining of academic social networks. In KDD'08, pages 990--998.
+\item Yijun Tian, Huan Song, Zichen Wang, Haozhu Wang, Ziqing Hu, Fang Wang, Nitesh V Chawla, and Panpan Xu. 2023. Graph neural prompting with large language models. arXiv preprint arXiv:2309.15427.
+\item SM Tonmoy, SM Zaman, Vinija Jain, Anku Rani, Vipula Rawte, Aman Chadha, and Amitava Das. 2024. A comprehensive survey of hallucination mitigation techniques in large language models. arXiv preprint arXiv:2401.01313.
+\item Hugo Touvron, Louis Martin, Kevin Stone, Peter Albert, Amjad Almahairi, Yasmine Babaei, Nikolay Bashlykov, Soumya Batra, Prajjwal Bhargava, Shruti Bhosale, et al. 2023. Llama 2: Open foundation and fine-tuned chat models. arXiv preprint arXiv:2307.09288.
+\item Mengting Wan and Julian McAuley. 2018. Item recommendation on monotonic behavior chains. In Proceedings of the 12th ACM conference on recommender systems, pages 86--94.
+\item Kuansan Wang, Zhihong Shen, Chiyuan Huang, Chieh-Han Wu, Yuxiao Dong, and Anshul Kanakia. 2020. Microsoft academic graph: When experts are not enough. Quantitative Science Studies, 1(1):396--413.
+\item Jason Wei, Xuezhi Wang, Dale Schuurmans, Maarten Bosma, Fei Xia, Ed Chi, Quoc V Le, Denny Zhou, et al. 2022. Chain-of-thought prompting elicits reasoning in large language models. Advances in Neural Information Processing Systems, 35:24824--24837.
+\item Yuanhao Wu, Juno Zhu, Siliang Xu, Kashun Shum, Cheng Niu, Randy Zhong, Juntong Song, and Tong Zhang. 2023. Ragtruth: A hallucination corpus for developing trustworthy retrieval-augmented language models. arXiv preprint arXiv:2401.00396.
+\item Zonghan Wu, Shirui Pan, Fengwen Chen, Guodong Long, Chengqi Zhang, and S Yu Philip. 2020. A comprehensive survey on graph neural networks. IEEE transactions on neural networks and learning systems, 32(1):4--24.
+\item Zhiheng Xi, Wenxiang Chen, Xin Guo, Wei He, Yiwen Ding, Boyang Hong, Ming Zhang, Junzhe Wang, Senjie Jin, Enyu Zhou, et al. 2023. The rise and potential of large language model based agents: A survey. arXiv preprint arXiv:2309.07864.
+\item Shunxin Xiao, Shiping Wang, Yuanfei Dai, and Wenzhong Guo. 2022. Graph neural networks in node classification: survey and evaluation. Machine Vision and Applications, 33:1--19.
+\item Siheng Xiong, Ali Payani, Ramana Kompella, and Faramarz Fekri. 2024. Large language models can learn temporal reasoning. arXiv preprint arXiv:2401.06853.
+\item Junhan Yang, Zheng Liu, Shitao Xiao, Chaozhuo Li, Defu Lian, Sanjay Agrawal, Amit Singh, Guangzhong Sun, and Xing Xie. 2021. Graphformers: Gnn-nested transformers for representation learning on textual graph. Advances in Neural Information Processing Systems, 34:28798--28810.
+\item Shunyu Yao, Dian Yu, Jeffrey Zhao, Izhak Shafran, Thomas L Griffiths, Yuan Cao, and Karthik Narasimhan. 2023. Tree of thoughts: Deliberate problem solving with large language models. arXiv preprint arXiv:2305.10601.
+\item Shunyu Yao, Jeffrey Zhao, Dian Yu, Nan Du, Izhak Shafran, Karthik Narasimhan, and Yuan Cao. 2022. React: Synergizing reasoning and acting in language models. arXiv preprint arXiv:2210.03629.
+\item Ruosong Ye, Caiqi Zhang, Runhui Wang, Shuyuan Xu, and Yongfeng Zhang. 2023. Natural language is all a graph needs. arXiv preprint arXiv:2308.07134.
+\item Muhan Zhang and Yixin Chen. 2018. Link prediction based on graph neural networks. Advances in neural information processing systems, 31.
+\item Yu Zhang, Bowen Jin, Qi Zhu, Yu Meng, and Jiawei Han. 2023a. The effect of metadata on scientific literature tagging: A cross-field cross-model study. In WWW'23, pages 1626--1637.
+\item Yue Zhang, Yafu Li, Leyang Cui, Deng Cai, Lemao Liu, Tingchen Fu, Xinting Huang, Enbo Zhao, Yu Zhang, Yulong Chen, et al. 2023b. Siren's song in the ai ocean: A survey on hallucination in large language models. arXiv preprint arXiv:2309.01219.
+\item Jianan Zhao, Meng Qu, Chaozhuo Li, Hao Yan, Qian Liu, Rui Li, Xing Xie, and Jian Tang. 2022. Learning on large-scale text-attributed graphs via variational inference. arXiv preprint arXiv:2210.14709.
+\item Wayne Xin Zhao, Kun Zhou, Junyi Li, Tianyi Tang, Xiaolei Wang, Yupeng Hou, Yingqian Min, Beichen Zhang, Junjie Zhang, Zican Dong, et al. 2023. A survey of large language models. arXiv preprint arXiv:2303.18223.
+\item Yuchen Zhuang, Yue Yu, Kuan Wang, Haotian Sun, and Chao Zhang. 2023. Toolqa: A dataset for llm question answering with external tools. Advances in Neural Information Processing Systems, 36:50117--50143.
+\end{enumerate}
+
+\appendix
+
+\section{数据集}
+
+GRBench 中各图的详细统计信息见表~\ref{tab:5}。下面我们分别讨论每个图中节点的特征和邻居。
+
+\textbf{学术图（Academic Graphs）} 包含三种类型的节点：论文（paper）、作者（author）和会议（venue）。下面给出示例，分别展示这三种类型节点的特征信息和邻居信息。
+
+\begin{code}
+# paper node
+{
+    'features': {
+        'title': ...,
+        'abstract': ...,
+        'keywords': [...],
+        'lang': ...,
+        'year': ...,
+        },
+    'neighbors': {
+        'author': [...],
+        'venue': [...],
+        'reference': [...],
+        'cited_by': [...],
+        }
+}
+# author node
+{
+    'features': {
+        'name': ...,
+        'organization': ...,
+        },
+    'neighbors': {
+        'paper': [...],
+        }
+}
+# venue node
+{
+    'features': {
+        'name': ...,
+        },
+    'neighbors': {
+        'paper': [...],
+        }
+}
+\end{code}
+
+\textbf{电子商务图（E-commerce Graph）} 包含两种类型的节点：商品（item）和品牌（brand）。下面给出示例，分别展示这两种类型节点的特征信息和邻居信息。
+
+\begin{code}
+# item node
+{
+    'features': {
+        'title': ...,
+        'description': ...,
+        'price': ...,
+        'category': [...],
+        },
+    'neighbors': {
+        'also_viewed_item': [...],
+        'buy_after_viewing_item': [...],
+        'also_bought_item': [...],
+        'bought_together_item': [...],
+        'brand': [...],
+        }
+}
+# brand node
+{
+    'features': {
+        'name': ...,
+        },
+    'neighbors': {
+        'item': [...],
+        }
+}
+\end{code}
+
+\textbf{文学图（Literature Graph）} 包含四种类型的节点：书籍（book）、作者（author）、出版商（publisher）和丛书（series）。下面给出示例，分别展示这四种类型节点的特征信息和邻居信息。
+
+\begin{code}
+# book node
+{
+    'features': {
+        'country_code': ...,
+        'language_code': ...,
+        'is_ebook': ...,
+        'title': ...,
+        'description': ...,
+        'format': ...,
+        'num_pages': ...,
+        'publication_year': ...,
+        'popular_shelves': [...],
+        'genres': [...],
+        },
+    'neighbors': {
+        'author': [...],
+        'publisher': [...],
+        'series': [...],
+        'similar_books': [...],
+        }
+}
+# author node
+{
+    'features': {'name': ...,},
+    'neighbors': {'book': [...],}
+}
+# publisher node
+{
+    'features': {'name': ...,},
+    'neighbors': {'book': [...],}
+}
+# series node
+{
+    'features': {
+        'title': ...,
+        'description': ...,
+        },
+    'neighbors': {'book': [...],}
+}
+\end{code}
+
+\textbf{医疗健康图（Healthcare Graph）} 包含十一种类型的节点：解剖结构（anatomy）、生物过程（biological process）、细胞组分（cellular component）、化合物（compound）、疾病（disease）、基因（gene）、分子功能（molecular function）、通路（pathway）、药理学类别（pharmacologic class）、副作用（side effect）和症状（symptom）。下面给出示例，分别展示这十一种类型节点的特征信息和邻居信息。
+
+\begin{code}
+# anatomy node
+{
+    'features': {'name': ...,},
+    'neighbors': {
+        'Anatomy-expresses-Gene': [...],
+        }
+}
+# biological process node
+{
+    'features': {'name': ...,},
+    'neighbors': {
+        'Gene-participates-Biological Process': [...],
+        }
+}
+# cellular component node
+{
+    'features': {'name': ...,},
+    'neighbors': {
+        'Gene-participates-Cellular Component': [...],
+        }
+}
+# compound node
+{
+    'features': {'name': ...,},
+    'neighbors': {
+        'Compound-causes-Side Effect': [...],
+        'Compound-upregulates-Gene': [...],
+        'Compound-downregulates-Gene': [...],
+        }
+}
+# disease node
+{
+    'features': {'name': ...,},
+    'neighbors': {
+        'Disease-associates-Gene': [...],
+        'Disease-localizes-Anatomy': [...],
+        'Compound-treats-Disease': [...],
+        'Disease-resembles-Disease': [...],
+        'Disease-presents-Symptom': [...],
+        'Disease-upregulates-Gene': [...],
+        }
+}
+# gene node
+{
+    'features': {'name': ...,},
+    'neighbors': {
+        'Gene-participates-Biological Process': [...],
+        'Anatomy-upregulates-Gene': [...],
+        'Anatomy-expresses-Gene': [...],
+        'Anatomy-downregulates-Gene': [...],
+        'Compound-upregulates-Gene': [...],
+        'Gene-interacts-Gene': [...],
+        'Gene-participates-Molecular Function': [...],
+        'Gene-participates-Cellular Component': [...],
+        }
+}
+# molecular function node
+{
+    'features': {'name': ...,},
+    'neighbors': {
+        'Gene-participates-Molecular Function': [...],
+        }
+}
+# pathway node
+{
+    'features': {'name': ...,},
+    'neighbors': {
+        'Gene-participates-Pathway': [...],
+        }
+}
+# pharmacologic node
+{
+    'features': {'name': ...,},
+    'neighbors': {
+        'Pharmacologic Class-includes-Compound': [...],
+        }
+}
+# side effect node
+{
+    'features': {'name': ...,},
+    'neighbors': {
+        'Compound-causes-Side Effect': [...],
+        }
+}
+# symptom node
+{
+    'features': {'name': ...,},
+    'neighbors': {
+        'Disease-presents-Symptom': [...],
+        }
+}
+\end{code}
+
+\textbf{法律图（Legal Graph）} 包含四种类型的节点：意见（opinion）、意见簇（opinion cluster）、案卷（docket）和法院（court）。下面给出示例，分别展示这四种类型节点的特征信息和邻居信息。
+
+\begin{code}
+# opinion node
+{
+    'features': {'plain_text': ...,},
+    'neighbors': {
+        'opinion_cluster': [...],
+        'reference': [...],
+        'cited_by': [...],
+        }
+}
+# opinion cluster node
+{
+    'features': {
+        'judges': ...,
+        'case_name': ...,
+        'attorneys': ...,
+        'syllabus': ...,
+        },
+    'neighbors': {
+        'opinion': [...],
+        'docket': [...],
+        }
+}
+# docket node
+{
+    'features': {
+        'case_name': ...,
+        'pacer_case_id': ...,
+        },
+    'neighbors': {
+        'opinion_cluster': [...],
+        'court': [...],
+        }
+}
+# court node
+{
+    'features': {
+        'citation_string': ...,
+        'full_name': ...,
+        'start_date': ...,
+        'end_date': ...,
+        },
+    'neighbors': {
+        'docket': [...],
+        }
+}
+\end{code}
+
+\begin{table}[H]\centering
+\caption{GRBench 的详细数据集统计信息。}
+\label{tab:5}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{llllcc}
+\toprule
+\multirow{2}{*}{领域} & \multirow{2}{*}{主题} & \multicolumn{2}{c}{图统计} & \multicolumn{2}{c}{数据} \\
+\cmidrule(lr){3-4}\cmidrule(lr){5-6}
+ &  & 节点 & 边 & 模板数 & 问题数 \\
+\midrule
+\multirow{18}{*}{学术}
+ & \multirow{3}{*}{CS} & Paper ($\sim$5M) & Written-by ($\sim$14M) & \multirow{3}{*}{15} & \multirow{3}{*}{150} \\
+ &  & Author ($\sim$2M) & Publish-in ($\sim$5M) &  &  \\
+ &  & Venue ($\sim$55K) & Cited-by ($\sim$32M) &  &  \\
+\cmidrule(lr){2-6}
+ & \multirow{3}{*}{Biology} & Paper ($\sim$1M) & written-by ($\sim$8M) & \multirow{3}{*}{14} & \multirow{3}{*}{140} \\
+ &  & Author ($\sim$2M) & publish-in ($\sim$1M) &  &  \\
+ &  & Venue (100) & cited-by ($\sim$29M) &  &  \\
+\cmidrule(lr){2-6}
+ & \multirow{3}{*}{Chemistry} & Paper ($\sim$1M) & written-by ($\sim$7M) & \multirow{3}{*}{14} & \multirow{3}{*}{140} \\
+ &  & Author ($\sim$2M) & publish-in ($\sim$1M) &  &  \\
+ &  & Venue (100) & cited-by ($\sim$20M) &  &  \\
+\cmidrule(lr){2-6}
+ & \multirow{3}{*}{Material Science} & Paper ($\sim$1M) & written-by ($\sim$6M) & \multirow{3}{*}{14} & \multirow{3}{*}{140} \\
+ &  & Author ($\sim$1M) & publish-in ($\sim$1M) &  &  \\
+ &  & Venue (99) & cited-by ($\sim$14M) &  &  \\
+\cmidrule(lr){2-6}
+ & \multirow{3}{*}{Medicine} & Paper ($\sim$2M) & written-by ($\sim$14M) & \multirow{3}{*}{14} & \multirow{3}{*}{140} \\
+ &  & Author ($\sim$4M) & publish-in ($\sim$2M) &  &  \\
+ &  & Venue (100) & cited-by ($\sim$12M) &  &  \\
+\cmidrule(lr){2-6}
+ & \multirow{3}{*}{Physics} & Paper ($\sim$1M) & written-by ($\sim$13M) & \multirow{3}{*}{14} & \multirow{3}{*}{140} \\
+ &  & Author ($\sim$1M) & publish-in ($\sim$1M) &  &  \\
+ &  & Venue (91) & cited-by ($\sim$18M) &  &  \\
+\midrule
+\multirow{5}{*}{电子商务} & \multirow{5}{*}{Amazon} & \multirow{2}{*}{Item ($\sim$9M)} & also-viewed ($\sim$125M) & \multirow{5}{*}{20} & \multirow{5}{*}{200} \\
+ &  &  & buy-after-viewing ($\sim$9M) &  &  \\
+ &  & \multirow{3}{*}{Brand ($\sim$110K)} & also-bought ($\sim$170M) &  &  \\
+ &  &  & bought-together ($\sim$6M) &  &  \\
+ &  &  & item-brand ($\sim$1M) &  &  \\
+\midrule
+\multirow{4}{*}{文学} & \multirow{4}{*}{Goodreads} & Book ($\sim$2M) & written-by ($\sim$3M) & \multirow{4}{*}{24} & \multirow{4}{*}{240} \\
+ &  & Author ($\sim$829K) & published-in ($\sim$1M) &  &  \\
+ &  & Publisher ($\sim$193K) & book-series ($\sim$822K) &  &  \\
+ &  & Series ($\sim$400K) & similar-book ($\sim$16M) &  &  \\
+\midrule
+\multirow{2}{*}{医疗健康} & \multirow{2}{*}{Disease} & 11 种节点类型 & 24 种边类型 & \multirow{2}{*}{27} & \multirow{2}{*}{270} \\
+ &  & 见附录 A & 见附录 A &  &  \\
+\midrule
+\multirow{4}{*}{法律} & \multirow{4}{*}{Freelaw} & Opinion ($\sim$9M) & opinion-cluster ($\sim$9M) & \multirow{4}{*}{18} & \multirow{4}{*}{180} \\
+ &  & Opinion-cluster ($\sim$8M) & opinion-citation ($\sim$29M) &  &  \\
+ &  & Docket ($\sim$66M) & cluster-docket ($\sim$8M) &  &  \\
+ &  & Court ($\sim$3K) & docket-court ($\sim$66M) &  &  \\
+\midrule
+合计 & - & - & - & 174 & 1740 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{问题模板}
+
+在本节中，我们展示简单、中等和困难问题的模板。这些模板均为原始英文，占位符（如 \texttt{\{paper\_title\}}）保持不变。
+
+\subsection*{学术图（Academic Graphs）}
+\noindent\textbf{Easy}
+\begin{itemize}[leftmargin=1.4em,nosep]
+\item Who are the authors of paper ``\{paper\_title\}''?
+\item What organization is researcher \{author\_name\} affiliated with?
+\item Where is the paper ``\{paper\_title\}'' published?
+\item How many papers cite the paper ``\{paper\_title\}''?
+\item How many papers does paper ``\{paper\_title\}'' cite?
+\item Which is the most cited paper by author \{author\_name\} in \{org\_name\}?
+\item How many papers did author \{author\_name\} in \{org\_name\} write?
+\end{itemize}
+\noindent\textbf{Medium}
+\begin{itemize}[leftmargin=1.4em,nosep]
+\item Who collaborate with author \{author\_name\} in \{org\_name\} to write paper ``\{paper\_title\}''?
+\item Who wrote both the paper ``\{paper1\_title\}'' and paper ``\{paper2\_title\}''?
+\item Who is the closest collaborator with author \{author\_name\} in \{org\_name\}? Closeness is defined in terms of the number of collaborations together.
+\item How many collaborators does author \{author\_name\} in \{org\_name\} have in year?
+\item How many papers did \{author\_name1\} in \{org\_name1\} and \{author\_name2\} in \{org\_name2\} write together?
+\item Which venue did \{author\_name1\} in \{org\_name1\} and \{author\_name2\} in \{org\_name2\} collaborate most?
+\item How many people does author \{author\_name1\} in \{org\_name1\} need to know at least to know author \{author\_name2\} in \{org\_name2\}?
+\item What is the research interests (top 3 keywords) of author \{author\_name\} in \{org\_name\}?
+\end{itemize}
+\noindent\textbf{Hard}
+\begin{itemize}[leftmargin=1.4em,nosep]
+\item Which paper should be recommended to the reader of paper \{paper1\_title\}? Please select from the candidate list \{paper2\_title\}, \{paper3\_title\}, \{paper4\_title\}, \{paper5\_title\}, \{paper6\_title\}, \{paper7\_title\}, \{paper8\_title\}, \{paper9\_title\}, \{paper10\_title\}, \{paper11\_title\}. Please answer the paper title rather than ID.
+\end{itemize}
+
+\subsection*{电子商务图（E-commerce Graph）}
+\noindent\textbf{Easy}
+\begin{itemize}[leftmargin=1.4em,nosep]
+\item What is the brand of item \{item\_title\}?
+\item What is the category of item \{item\_title\}?
+\item What is the price of item \{item\_title\}?
+\end{itemize}
+\noindent\textbf{Medium}
+\begin{itemize}[leftmargin=1.4em,nosep]
+\item How many co-viewed items does item \{item\_title\} have?
+\item How many bought-together items does item \{item\_title\} have?
+\item How many buy-after-viewing items does item \{item\_title\} have?
+\item How many also-bought items does item \{item\_title\} have?
+\item How many items are in brand \{brand\_name\}?
+\item Find the items which are in the same brand and same category as item \{item\_title\}.
+\item Which item shares over \{num\} co-viewed items with item \{item\_title\}?
+\item Which item shares over \{num\} bought-together items with item \{item\_title\}?
+\item How many items have the same bought-together items with item \{item\_title\}?
+\item What is the average price of the bought-together/co-viewed items with \{item\_title\}?
+\item What is the most popular category name of the bought-together/co-viewed items with \{item\_title\}?
+\end{itemize}
+\noindent\textbf{Hard}
+\begin{itemize}[leftmargin=1.4em,nosep]
+\item What next item should be recommended to the user based on his history: \{item\_titles\}?
+\item What is the exact matched item given this query: \{query\_text\}?
+\item What is the substitutive item given this query: \{query\_text\}?
+\item What is the complementary item given this query: \{query\_text\}?
+\end{itemize}
+
+\subsection*{文学图（Literature Graph）}
+\noindent\textbf{Easy}
+\begin{itemize}[leftmargin=1.4em,nosep]
+\item Who are the authors of book \{book title\}?
+\item What is the publisher of book \{book title\}?
+\item Which shelves do we need to put book \{book title\} on?
+\item What genre does the book \{book title\} belong to?
+\item In which series is the book \{book title\} included?
+\item What is the publication year of book \{book title\}?
+\item How many pages does the book \{book title\} have?
+\item Is the book \{book title\} an eBook?
+\item What language is the book \{book title\} written in?
+\item How many books has author \{author name\} written?
+\item How many similar books does Book \{book title\} have?
+\item How many books does publisher \{publisher name\} publish?
+\item How many books are part of the series \{series title\}?
+\item What is the most common language among the books written by author \{author name\}?
+\end{itemize}
+\noindent\textbf{Medium}
+\begin{itemize}[leftmargin=1.4em,nosep]
+\item Find the book written by the same author and published by the same publisher as book \{book title\}.
+\item Find books by the same author and share similar genre with book \{book title\}.
+\item Find the earliest book written by the author of the book \{book title\}.
+\item Find the series in which the same author as the book \{book title\} has contributed, but the series is different from the book's series.
+\item How many authors have collaborated with the publisher \{publisher name\}?
+\item Which author has the most published books that have the same genre as the book \{book title\}?
+\item What is the most common publication format of books by author \{author name\}?
+\item What is the most frequent genre in the works of the author \{author name\}?
+\item Which publisher has released the majority of books in the genre \{genre name\}?
+\end{itemize}
+\noindent\textbf{Hard}
+\begin{itemize}[leftmargin=1.4em,nosep]
+\item What book should be recommended to the user based on his history: \{book titles\}?
+\end{itemize}
+
+\subsection*{医疗健康图（Healthcare Graph）}
+\noindent\textbf{Easy}
+\begin{itemize}[leftmargin=1.4em,nosep]
+\item What are the side effects of compound \{compound name\}?
+\item What are the symptoms of the disease \{disease name\}?
+\item What are the biological processes of gene \{gene name\}?
+\item What are the molecular functions of gene \{gene name\}?
+\item What anatomy can be downregulated by gene \{gene name\}?
+\item What anatomy can be expressed by gene \{gene name\}?
+\item What anatomy can be upregulated by gene \{gene name\}?
+\item How many resemble compounds do \{compound name\} have?
+\item How many resemble disease do \{disease name\} have?
+\item How many compounds can be used to treat \{disease name\}?
+\end{itemize}
+\noindent\textbf{Medium}
+\begin{itemize}[leftmargin=1.4em,nosep]
+\item What compound can treat both \{disease name1\} and \{disease name2\}?
+\item What disease located in \{anatomy name\} can \{compound name\} palliate?
+\item What disease located in \{anatomy name\} can \{compound name\} treat?
+\item What disease is downregulated by \{gene name\} and located in \{anatomy name\}?
+\item What disease is associated by \{gene name\} and located in \{anatomy name\}?
+\item What disease is upregulated by \{gene name\} and located in \{anatomy name\}?
+\item Is there a correlation between \{gene name\} and \{symptom name\}? Please answer True or False
+\item Which pharmacologic class includes the most compounds that can palliate the disease with \{symptom name\}?
+\item Which pharmacologic class includes the most compounds that can treat the disease with \{symptom name\}?
+\item Which cellular component is participated by most genes that are upregulated in disease with \{symptom name\}?
+\item Which cellular component is participated by most genes that are associated in disease with \{symptom name\}?
+\item Which cellular component is participated by most genes that are downregulated in disease with \{symptom name\}?
+\item Which pathway is participated by most genes that are upregulated in disease with \{symptom name\}?
+\item Which pathway is participated by most genes that are associated in disease with \{symptom name\}?
+\item Which pathway is participated by most genes that are downregulated in disease with \{symptom name\}?
+\item How many genes participate the exact same biological processes with \{gene name\}?
+\item How many diseases present the exact same symptoms with \{disease name\}?
+\end{itemize}
+
+\subsection*{法律图（Legal Graph）}
+\noindent\textbf{Easy}
+\begin{itemize}[leftmargin=1.4em,nosep]
+\item what is the start date of court \{court name\}?
+\item what is the end date of court \{court name\}?
+\item what is the citation string of court \{court name\}?
+\item which court is handling the case listed under the PACER docket number \{pacer id\}?
+\item Who are the attorneys for the case corresponding to this opinion cluster: \{opinion cluster text\}?
+\item How many dockets have been processed in court \{court name\}?
+\item How many opinions are citing this opinion: \{opinion text\}?
+\end{itemize}
+\noindent\textbf{Medium}
+\begin{itemize}[leftmargin=1.4em,nosep]
+\item Which members of the judiciary are responsible for the group of rulings that includes the following opinion: \{opinion text\}
+\item What docket includes this opinion: \{opinion plain text\}? Please answer with the pacer case ID.
+\item Which court is this opinion cluster syllabus published: \{opinion cluster text\}?
+\item How many times has the case \{case name\} been judged in different courts?
+\item How many opinions are contained in the opinion clusters about \{case name\}?
+\item How many opinions are contained in the opinion cluster with syllabus: \{opinion cluster text\}?
+\item How many opinions are contained in the opinion cluster with opinion \{opinion text\}?
+\item Which court is this opinion (\{opinion text\}) published?
+\item What is the preferred court to cite of judges in court \{source court name\}?
+\end{itemize}
+\noindent\textbf{Hard}
+\begin{itemize}[leftmargin=1.4em,nosep]
+\item Is the given sentence supported by the given case? Sentence: text, case: \{case name\}.
+\item Find a case which can support this sentence: \{text\}.
+\end{itemize}
+
+\section{问题模板改写提示}
+
+\begin{promptbox}
+\textbf{Paraphrase Prompt}\\[4pt]
+\normalfont Paraphrase the given template in four different ways. Keep the name in `' unchanged, don't use ' in question, and use the same format (`question string', `answer string'):
+\end{promptbox}
+
+\section{程序化自动答案生成示例}
+
+\begin{code}
+# Define graph walking functions
+def one_hop(graph, center_node_type, center_node_save_key,
+            neighbor_node_type, neighbor_node_save_key, edge_type, k):
+    generated_data = []
+    cnt = 0
+    center_ids = list(graph[center_node_type].keys())
+    random.shuffle(center_ids)
+    for center_id in center_ids:
+        center_name = graph[center_node_type][center_id]['features']['name']
+        if edge_type not in graph[center_node_type][center_id]['neighbors']:
+            continue
+        neighbor_ids = graph[center_node_type][center_id]['neighbors'][edge_type]
+        neighbor_names = [graph[neighbor_node_type][neighbor_id]['features']['name']
+                          for neighbor_id in neighbor_ids]
+        if len(neighbor_names) > 5:
+            continue
+        generated_data.append({center_node_save_key: center_name,
+                               neighbor_node_save_key: ','.join(neighbor_names)})
+        cnt += 1
+        if cnt == k:
+            break
+    return generated_data
+
+# Generate examples
+random.seed(2023)
+question = "what are the side effects of compound {compound_name}?"
+answer = "{side_effects}"
+generated_data = one_hop(graph, 'Compound_nodes', 'compound_name',
+                         'Side_Effect_nodes', 'side_effects',
+                         'Compound-causes-Side Effect', k)
+assert len(generated_data) == k
+all_generated_data[(question, answer)] = generated_data
+\end{code}
+
+\section{\textsc{Graph-CoT} 中的提示}
+
+用于指示大语言模型进行 \textsc{Graph-CoT} 的提示包含三个部分：图描述（graph description）、交互函数描述（interaction function description）和示例（demonstrations）。最终的提示如下所示，其中“graph definition”（图定义）、“interaction function descriptions”（交互函数描述）和“examples”（示例）分别对应这三个部分：
+
+\begin{promptbox}
+\textbf{\textsc{Graph-CoT} prompt}\\[4pt]
+\normalfont Solve a question answering task with interleaving Thought, Interaction with Graph, Feedback from Graph steps. In Thought step, you can think about what further information is needed, and In Interaction step, you can get feedback from graphs with four functions:\\[4pt]
+\{interaction function descriptions\}\\
+You may take as many steps as necessary. Here are some examples:\\[4pt]
+\{examples\}\\
+(END OF EXAMPLES)\\
+Definition of the graph: \{graph definition\}\\
+Question: \{question\}\\
+Please answer by providing node main feature (e.g., names) rather than node IDs.
+\end{promptbox}
+
+\subsection{图描述提示}
+
+\begin{promptbox}
+\textbf{MAG graph descriptions}\\[4pt]
+\normalfont There are three types of nodes in the graph: paper, author and venue. Paper nodes have features: title, abstract, year and label. Author nodes have features: name. Venue nodes have features: name. Paper nodes are linked to author nodes, venue nodes, reference nodes and cited by nodes. Author nodes are linked to paper nodes. Venue nodes are linked to paper nodes.
+\end{promptbox}
+
+\begin{promptbox}
+\textbf{DBLP graph descriptions}\\[4pt]
+\normalfont There are three types of nodes in the graph: paper, author and venue. Paper nodes have features: title, abstract, keywords, lang, and year. Author nodes have features: name and organization. Venue nodes have features: name. Paper nodes are linked to their author nodes, venue nodes, reference nodes (the papers this paper cite) and cited by nodes (other papers which cite this paper). Author nodes are linked to their paper nodes. Venue nodes are linked to their paper nodes.
+\end{promptbox}
+
+\begin{promptbox}
+\textbf{E-commerce graph descriptions}\\[4pt]
+\normalfont There are two types of nodes in the graph: item and brand. Item nodes have features: title, description, price, img, category. Brand nodes have features: name. Item nodes are linked to their brand nodes, also viewed item nodes, buy after viewing item nodes, also bought item nodes, bought together item nodes. Brand nodes are linked to their item nodes.
+\end{promptbox}
+
+\begin{promptbox}
+\textbf{Literature graph descriptions}\\[4pt]
+\normalfont There are four types of nodes in the graph: book, author, publisher, and series. Book nodes have features: country code, language code, is ebook, title, description, format, num pages, publication year, url, popular shelves, and genres. Author nodes have features: name. Publisher nodes have features: name. Series nodes have features: title and description. Book nodes are linked to their author nodes, publisher nodes, series nodes and similar books nodes. Author nodes are linked to their book nodes. Publisher nodes are linked to their book nodes. Series nodes are linked to their book nodes.
+\end{promptbox}
+
+\begin{promptbox}
+\textbf{Healthcare graph descriptions}\\[4pt]
+\normalfont There are eleven types of nodes in the graph: Anatomy, Biological Process, Cellular Component, Compound, Disease, Gene, Molecular Function, Pathway, Pharmacologic Class, Side Effect, Symptom. Each node has name feature. There are these types of edges: Anatomy-downregulates-Gene, Anatomy-expresses-Gene, Anatomy-upregulates-Gene, Compound-binds-Gene, Compound-causes-Side Effect, Compound-downregulates-Gene, Compound-palliates-Disease, Compound-resembles-Compound, Compound-treats-Disease, Compound-upregulates-Gene, Disease-associates-Gene, Disease-downregulates-Gene, Disease-localizes-Anatomy, Disease-presents-Symptom, Disease-resembles-Disease, Disease-upregulates-Gene, Gene-covaries-Gene, Gene-interacts-Gene, Gene-participates-Biological Process, Gene-participates-Cellular Component, Gene-participates-Molecular Function, Gene-participates-Pathway, Gene-regulates-Gene, Pharmacologic Class-includes-Compound.
+\end{promptbox}
+
+\begin{promptbox}
+\textbf{Legal graph descriptions}\\[4pt]
+\normalfont There are four types of nodes in the graph: opinion, opinion cluster, docket, and court. Opinion nodes have features: plain text. Opinion cluster nodes have features: syllabus, judges, case name, attorneys. Docket nodes have features: pacer case id, case name. Court nodes have features: full name, start date, end date, citation string. Opinion nodes are linked to their reference nodes and cited by nodes, as well as their opinion cluster nodes. Opinion cluster nodes are linked to opinion nodes and docket nodes. Docket nodes are linked to opinion cluster nodes and court nodes. Court nodes are linked to docket nodes.
+\end{promptbox}
+
+\subsection{交互函数描述提示}
+
+\begin{promptbox}
+\textbf{Interaction function descriptions}\\[4pt]
+\normalfont (1) RetrieveNode[keyword], which retrieves the related node from the graph according to the corresponding query.\\
+(2) NodeFeature[Node, feature], which returns the detailed attribute information of Node regarding the given ``feature'' key.\\
+(3) NodeDegree[Node, neighbor type], which calculates the number of ``neighbor type'' neighbors of the node Node in the graph.\\
+(4) NeighbourCheck[Node, neighbor type], which lists the ``neighbor type'' neighbours of the node Node in the graph and returns them.
+\end{promptbox}
+
+\subsection{示例}
+
+在 \textsc{Graph-CoT} 中，我们提供了三个示例来教导大语言模型如何使用这四个交互函数。学术领域图的示例如图~\ref{fig:6} 所示。关于其他领域图示例的更详细信息，可参见 \url{https://github.com/PeterGriffinJin/Graph-CoT/blob/main/Graph-CoT/code/graph_fewshots.py}。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\linewidth]{cand_p22_k00.pdf}
+\caption{学术领域图的示例（demonstrations）。}
+\label{fig:6}
+\end{figure}
+
+\end{document}

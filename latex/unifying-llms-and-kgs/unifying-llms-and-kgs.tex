@@ -1,0 +1,761 @@
+\documentclass[11pt,UTF8,fontset=fandol]{ctexart}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx,float,caption,subcaption}
+\usepackage{booktabs,array,multirow,makecell}
+\usepackage{geometry,enumitem,xcolor}
+\usepackage[hidelinks]{hyperref}
+\usepackage{url}
+\geometry{margin=2.3cm}
+\graphicspath{{/Users/yye/project/论文/assets/unifying-llms-and-kgs/}}
+\captionsetup{font=small,labelfont=bf}
+\setlength{\parskip}{0.4em}
+
+\title{\textbf{统一大语言模型与知识图谱：一份路线图}}
+
+\author{Shirui Pan,~\textit{Senior Member, IEEE},~Linhao Luo,\\
+Yufei Wang,~Chen Chen,~Jiapu Wang,~Xindong Wu,~\textit{Fellow, IEEE}%
+\thanks{Shirui Pan 供职于澳大利亚昆士兰州格里菲斯大学（Griffith University）信息与通信技术学院及综合与智能系统研究所（IIIS）。电子邮件：s.pan@griffith.edu.au。}%
+\thanks{Linhao Luo 和 Yufei Wang 供职于澳大利亚墨尔本莫纳什大学（Monash University）数据科学与人工智能系。电子邮件：linhao.luo@monash.edu, garyyufei@gmail.com。}%
+\thanks{Chen Chen 供职于新加坡南洋理工大学（Nanyang Technological University）。电子邮件：s190009@ntu.edu.sg。}%
+\thanks{Jiapu Wang 供职于中国北京北京工业大学（Beijing University of Technology）信息学部。电子邮件：jpwang@emails.bjut.edu.cn。}%
+\thanks{Xindong Wu 供职于中国合肥合肥工业大学（Hefei University of Technology）知识工程与大数据教育部重点实验室，同时供职于中国杭州之江实验室知识工程研究中心。电子邮件：xwu@hfut.edu.cn。}%
+\thanks{Shirui Pan 与 Linhao Luo 对本文贡献相同。}%
+\thanks{通讯作者：Xindong Wu。}%
+}
+
+
+\date{}
+\begin{document}
+\maketitle
+
+\begin{abstract}
+大语言模型（large language models, LLMs），如 ChatGPT 和 GPT-4，凭借其涌现能力（emergent ability）和泛化能力（generalizability），正在自然语言处理（natural language processing）和人工智能（artificial intelligence）领域掀起新的浪潮。然而，大语言模型属于黑箱模型（black-box model），在捕获和访问事实知识（factual knowledge）方面往往存在不足。相比之下，知识图谱（knowledge graphs, KGs），例如 Wikipedia 和华谱（Huapu），是一种结构化知识模型，能够显式地存储丰富的事实知识。知识图谱可以通过提供外部知识来增强大语言模型的推理（inference）能力和可解释性（interpretability）。与此同时，知识图谱本身难以构建，且其知识会随时间不断演化，这对现有的知识图谱方法在生成新事实和表示未见知识方面构成了挑战。因此，将大语言模型与知识图谱统一起来，同时发挥二者的优势，具有高度的互补性。本文提出一份面向未来的路线图，用于统一大语言模型与知识图谱。该路线图包含三个通用框架：\textit{1) 知识图谱增强的大语言模型（KG-enhanced LLMs）}，即在大语言模型的预训练（pre-training）和推理阶段融入知识图谱，或用于增强对大语言模型所学知识的理解；\textit{2) 大语言模型增强的知识图谱（LLM-augmented KGs）}，即利用大语言模型完成各类知识图谱任务，如嵌入（embedding）、补全（completion）、构建（construction）、图到文本生成（graph-to-text generation）和问答（question answering）；以及 \textit{3) 协同化的大语言模型与知识图谱（Synergized LLMs + KGs）}，即大语言模型与知识图谱扮演同等重要的角色，以互利的方式协同工作，通过数据和知识的双重驱动增强双向推理能力。我们在路线图中回顾和总结了这三个框架下的现有工作，并指明了未来的研究方向。
+\end{abstract}
+
+\noindent\textbf{关键词}——自然语言处理，大语言模型，生成式预训练，知识图谱，路线图，双向推理。
+
+\section{引言}
+
+大语言模型（LLMs）\footnote{大语言模型也被称为预训练语言模型（pre-trained language models, PLMs）。}（例如 BERT [1]、RoBERTA [2] 和 T5 [3]），通过在大规模语料库上进行预训练，在各类自然语言处理（NLP）任务中展现出卓越的性能，如问答 [4]、机器翻译 [5] 和文本生成 [6]。近年来，模型规模的急剧增长进一步赋予了大语言模型涌现能力 [7]，为将大语言模型应用于通用人工智能（Artificial General Intelligence, AGI）铺平了道路。以 ChatGPT\footnote{\url{https://openai.com/blog/chatgpt}} 和 PaLM2\footnote{\url{https://ai.google/discover/palm2}} 为代表的先进大语言模型，凭借数十亿参数，在教育 [8]、代码生成 [9] 和推荐 [10] 等众多复杂的实际任务中展现出巨大潜力。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.45\linewidth]{cand_p01_k00.pdf}
+\caption{大语言模型与知识图谱的优势与不足总结。大语言模型的优势：通用知识（General Knowledge）[11]、语言处理（Language Processing）[12]、泛化能力 [13]；大语言模型的不足：隐式知识（Implicit Knowledge）[14]、幻觉（Hallucination）[15]、不确定性（Indecisiveness）[16]、黑箱 [17]、缺乏领域特定知识及新知识（Lacking Domain-specific/New Knowledge）[18]。知识图谱的优势：结构化知识（Structural Knowledge）[19]、准确性（Accuracy）[20]、确定性（Decisiveness）[21]、可解释性 [22]、领域特定知识（Domain-specific Knowledge）[23]、可演化知识（Evolving Knowledge）[24]；知识图谱的不足：不完整性（Incompleteness）[25]、缺乏语言理解能力（Lacking Language Understanding）[26]、未见事实（Unseen Facts）[27]。优势与不足基于各自的代表性进行选取，详细讨论参见附录 A。}
+\label{fig:1}
+\end{figure}
+
+尽管大语言模型在众多应用中取得了成功，但它们因缺乏事实知识而受到批评。具体而言，大语言模型记忆的是训练语料库中包含的事实和知识 [14]。然而，进一步的研究表明，大语言模型无法可靠地回忆事实，并且经常产生幻觉，即生成与事实不符的陈述 [15]、[28]。例如，大语言模型可能会说"爱因斯坦在1687年发现了万有引力"，而当被问到"爱因斯坦是何时发现万有引力的？"时，这一回答与艾萨克·牛顿提出万有引力理论的事实相矛盾。这一问题严重损害了大语言模型的可信度。
+
+作为黑箱模型，大语言模型还因缺乏可解释性而受到批评。大语言模型将知识隐式地表示在其参数中，难以解释或验证大语言模型所获取的知识。此外，大语言模型通过概率模型进行推理，这是一个不确定的过程 [16]。大语言模型用于做出预测或决策的具体模式和函数对人类而言并非直接可访问或可解释 [17]。即使部分大语言模型能够通过应用链式思维（chain-of-thought）[29] 来解释其预测，其推理解释也会受到幻觉问题的影响 [30]。这严重制约了大语言模型在高风险场景中的应用，如医疗诊断和法律判断。例如，在医疗诊断场景中，大语言模型可能会错误地诊断疾病，并给出与医学常识相矛盾的解释。这也引发了另一个问题，即在通用语料库上训练的大语言模型可能无法很好地泛化到特定领域或新知识，因为缺乏领域特定知识或新的训练数据 [18]。
+
+为了解决上述问题，一个潜在的解决方案是将知识图谱融入大语言模型。知识图谱以三元组的形式存储海量事实，即 \textit{(头实体, 关系, 尾实体)}（\textit{head entity, relation, tail entity}），是一种结构化且确定性的知识表示方式（例如 Wikidata [20]、YAGO [31] 和 NELL [32]）。知识图谱在各类应用中至关重要，因为它们提供了准确的显式知识 [19]。此外，知识图谱以其符号推理（symbolic reasoning）能力 [22] 而著称，能够生成可解释的结果。知识图谱还可以通过持续添加新知识来主动演化 [24]。此外，专家可以构建领域特定的知识图谱，以提供精确且可靠的领域特定知识 [23]。
+
+然而，知识图谱难以构建 [25]，目前知识图谱中的方法 [27]、[33]、[34] 在处理现实世界知识图谱的不完整性和动态变化特性方面存在不足。这些方法无法有效地建模未见实体（entity）和表示新事实。此外，它们往往忽略了知识图谱中丰富的文本信息。而且，现有的知识图谱方法通常是针对特定知识图谱或任务定制的，泛化能力不足。因此，利用大语言模型来解决知识图谱面临的挑战同样十分必要。我们在图~1 中分别总结了大语言模型和知识图谱的优势与不足。
+
+近来，统一大语言模型与知识图谱的可能性已引起研究者和实践者越来越多的关注。大语言模型和知识图谱具有内在的互联性，能够相互增强。在\textit{知识图谱增强的大语言模型}中，知识图谱不仅可以融入大语言模型的预训练和推理阶段以提供外部知识 [35]--[37]，还可以用于分析大语言模型并提供可解释性 [14]、[38]、[39]。在\textit{大语言模型增强的知识图谱}中，大语言模型已被用于各类知识图谱相关任务，例如知识图谱嵌入 [40]、知识图谱补全 [26]、知识图谱构建 [41]、知识图谱到文本生成 [42] 和知识图谱问答（KGQA）[43]，以提升知识图谱的性能并促进知识图谱的应用。在\textit{协同化的大语言模型与知识图谱}中，研究者结合大语言模型和知识图谱各自的优势，在知识表示 [44] 和推理 [45]、[46] 方面实现相互增强。尽管已有一些关于知识增强型大语言模型的综述 [47]--[49]，但这些综述主要关注将知识图谱作为外部知识来增强大语言模型，忽略了将知识图谱融入大语言模型的其他可能性以及大语言模型在知识图谱应用中的潜在作用。
+
+本文提出一份面向未来的路线图，用于统一大语言模型与知识图谱，以充分发挥二者各自的优势并克服各方法在不同下游任务中的局限性。我们提出了详细的分类体系，开展了全面的综述，并指明了这些快速发展领域中新兴的方向。我们的主要贡献总结如下：
+
+\begin{enumerate}
+    \item \textbf{路线图。} 我们提出了一份面向未来的路线图，用于整合大语言模型与知识图谱。该路线图由三个通用框架组成，用以统一大语言模型与知识图谱，分别是\textit{知识图谱增强的大语言模型}、\textit{大语言模型增强的知识图谱}和\textit{协同化的大语言模型与知识图谱}，为这两种不同但互补的技术的统一提供了指导方针。
+    \item \textbf{分类与综述。} 对于路线图中的每个整合框架，我们提出了统一大语言模型与知识图谱的详细分类和新颖的研究分类体系。在每个类别中，我们从不同的整合策略和任务角度对研究进行综述，从而为每个框架提供了更深入的见解。
+    \item \textbf{前沿进展的覆盖。} 我们涵盖了大语言模型和知识图谱两个领域的前沿技术，包括对 ChatGPT 和 GPT-4 等最先进的大语言模型以及多模态知识图谱等新型知识图谱的讨论。
+    \item \textbf{挑战与未来方向总结。} 我们指出了现有研究中的挑战，并提出了若干有前景的未来研究方向。
+\end{enumerate}
+
+本文其余部分的组织结构如下。第~2~节首先介绍大语言模型和知识图谱的背景知识。第~3~节介绍路线图和本文的总体分类框架。第~4~节阐述不同的知识图谱增强大语言模型方法。第~5~节描述可能的大语言模型增强知识图谱方法。第~6~节展示协同化大语言模型与知识图谱的方法。第~7~节讨论挑战和未来研究方向。最后，第~8~节总结全文。
+
+\section{背景}
+
+本节首先简要介绍几种代表性的大语言模型（Large Language Models, LLMs），并讨论能够高效利用 LLMs 完成各类应用的提示工程（prompt engineering）。随后，我们阐述知识图谱（Knowledge Graphs, KGs）的概念，并介绍不同类别的知识图谱。
+
+\subsection{大语言模型（Large Language Models）}
+
+在大规模语料库上进行预训练（pre-training）的大语言模型（LLMs）在各种自然语言处理（Natural Language Processing, NLP）任务中展现出巨大潜力 [13]。如图~\ref{fig:3} 所示，大多数 LLMs 源自 Transformer 架构设计 [50]，其中包含由自注意力机制（self-attention mechanism）驱动的编码器（encoder）和解码器（decoder）模块。根据架构结构，LLMs 可以分为三类：1) 仅编码器 LLMs（encoder-only LLMs）；2) 编码器--解码器 LLMs（encoder-decoder LLMs）；3) 仅解码器 LLMs（decoder-only LLMs）。如图~\ref{fig:2} 所示，我们总结了若干具有不同模型架构、模型规模和开源可用性的代表性 LLMs。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{cand_p03_k00.pdf}
+\caption{近年来代表性的大语言模型（LLMs）。开源模型用实心方块表示，闭源模型用空心方块表示。}
+\label{fig:2}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.4\linewidth]{cand_p03_k01.pdf}
+\caption{基于 Transformer 的 LLM 自注意力机制示意图。}
+\label{fig:3}
+\end{figure}
+
+\subsubsection{代表性大语言模型}
+
+\paragraph{仅编码器 LLMs。}
+仅编码器大语言模型仅使用编码器来编码句子并理解词与词之间的关系。该类模型的常见训练范式是预测输入句子中的掩码词（mask words）。这种方法是无监督的，可以在大规模语料库上进行训练。仅编码器 LLMs 如 BERT [1]、ALBERT [51]、RoBERTa [2] 和 ELECTRA [52] 需要添加额外的预测头（prediction head）来解决下游任务。这些模型最适合需要理解整个句子的任务，例如文本分类 [26] 和命名实体识别（named entity recognition）[53]。
+
+\paragraph{编码器--解码器 LLMs。}
+编码器--解码器大语言模型同时采用编码器和解码器模块。编码器模块负责将输入句子编码到隐藏空间（hidden space），解码器则用于生成目标输出文本。编码器--解码器 LLMs 的训练策略更加灵活。例如，T5 [3] 通过掩码和预测掩码片段进行预训练（pre-trained）。UL2 [54] 统一了多种训练目标，如不同的掩码片段和掩码频率。编码器--解码器 LLMs（例如 T0 [55]、ST-MoE [56] 和 GLM-130B [57]）能够基于一定上下文直接解决生成句子的任务，如摘要生成（summarization）、翻译（translation）和问答（question answering）[58]。
+
+\paragraph{仅解码器 LLMs。}
+仅解码器大语言模型仅采用解码器模块来生成目标输出文本。该类模型的训练范式是预测句子中的下一个词。大规模仅解码器 LLMs 通常可以通过少量示例或简单指令来执行下游任务，而无需添加预测头或进行微调（fine-tuning）[59]。许多最先进的 LLMs（例如 Chat-GPT [60] 和 GPT-4\footnote{\url{https://openai.com/product/gpt-4}}）均采用仅解码器架构。然而，由于这些模型是闭源的，学术研究人员难以开展进一步研究。近期，Alpaca\footnote{\url{https://github.com/tatsu-lab/stanford\_alpaca}} 和 Vicuna\footnote{\url{https://lmsys.org/blog/2023-03-30-vicuna/}} 作为开源的仅解码器 LLMs 被发布。这些模型基于 LLaMA [61] 进行微调，并取得了与 ChatGPT 和 GPT-4 相当的性能。
+
+\subsubsection{提示工程（Prompt Engineering）}
+
+提示工程（prompt engineering）是一个新兴领域，致力于创建和优化提示（prompt），以最大化大语言模型（LLMs）在各种应用和研究领域中的效果 [62]。如图~\ref{fig:4} 所示，提示是为 LLMs 指定的一段自然语言输入序列，用于完成特定任务，例如情感分类（sentiment classification）。一个提示可以包含若干要素，即：1) \textit{指令}（Instruction）；2) \textit{上下文}（Context）；3) \textit{输入文本}（Input Text）。\textit{指令}是一个简短的句子，用于指示模型执行特定任务。\textit{上下文}为输入文本或少样本示例（few-shot examples）提供背景信息。\textit{输入文本}是需要模型处理的文本。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.4\linewidth]{cand_p04_k01.pdf}
+\caption{情感分类提示示例。}
+\label{fig:4}
+\end{figure}
+
+提示工程旨在提升大语言模型（例如 ChatGPT）在多种复杂任务中的能力，包括问答、情感分类和常识推理（common sense reasoning）。链式思维（Chain-of-thought, CoT）提示 [63] 通过中间推理步骤实现复杂的推理能力。提示工程还能够将结构化数据（如知识图谱）集成到 LLMs 中。Li 等人 [64] 将知识图谱简单地线性化，并使用模板将其转换为文本段落。Mindmap [65] 设计了一种知识图谱提示，将图结构转换为思维导图，使 LLMs 能够基于此进行推理。提示提供了一种无需微调即可利用 LLMs 潜力的简便方式。熟练掌握提示工程有助于更好地理解 LLMs 的优势与局限。
+
+\subsection{知识图谱（Knowledge Graphs）}
+
+知识图谱（KGs）以三元组（triple）集合的形式存储结构化知识，形式化定义为 $\mathcal{KG} = \{(h, r, t) \subseteq \mathcal{E} \times \mathcal{R} \times \mathcal{E}\}$，其中 $\mathcal{E}$ 和 $\mathcal{R}$ 分别表示实体（entity）和关系（relation）的集合。现有知识图谱可以根据其存储的信息分为四类：1) \textit{百科知识图谱}（encyclopedic KGs）；2) \textit{常识知识图谱}（commonsense KGs）；3) \textit{领域特定知识图谱}（domain-specific KGs）；4) \textit{多模态知识图谱}（multi-modal KGs）。图~\ref{fig:5} 展示了不同类别知识图谱的示例。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.45\linewidth]{fig5.pdf}
+\caption{不同类别知识图谱的示例，包括百科知识图谱（encyclopedic KGs）、常识知识图谱（commonsense KGs）、领域特定知识图谱（domain-specific KGs）和多模态知识图谱（multi-modal KGs）。}
+\label{fig:5}
+\end{figure}
+
+\subsubsection{百科知识图谱}
+
+百科知识图谱是最常见的知识图谱类型，用于表示现实世界中的通用知识。百科知识图谱通常通过整合来自多种多样且内容广泛的来源（包括人类专家、百科全书和数据库）的信息来构建。Wikidata [20] 是最广泛使用的百科知识图谱之一，它融合了从 Wikipedia 文章中提取的各类知识。其他典型的百科知识图谱，如 Freebase [66]、Dbpedia [67] 和 YAGO [31]，也源自 Wikipedia。此外，NELL [32] 是一个持续改进的百科知识图谱，它能够自动从网络中提取知识，并利用这些知识不断提升自身性能。目前还有一些非英语语言的百科知识图谱，例如 CN-DBpedia [68] 和 Vikidia [69]。最大的知识图谱 Knowledge Occean (KO)\footnote{\url{https://ko.zhonghuapu.com/}} 目前包含 4,878,4636 个实体和 17,315,8349 条关系，涵盖中英文双语。
+
+\subsubsection{常识知识图谱}
+
+常识知识图谱系统化地表述关于日常概念（如物体、事件）及其相互关系的知识 [70]。与百科知识图谱相比，常识知识图谱通常建模从文本中提取的隐性知识（tacit knowledge），例如 (\textit{Car}, \textit{UsedFor}, \textit{Drive})。ConceptNet [71] 包含大量常识概念和关系，有助于计算机理解人们使用词语的方式。ATOMIC [72]、[73] 和 ASER [74] 关注事件之间的因果效应，可用于常识推理（commonsense reasoning）。其他一些常识知识图谱，如 TransOMCS [75] 和 CausalBanK [76]，是自动构建的，旨在提供常识知识。
+
+\subsubsection{领域特定知识图谱}
+
+领域特定知识图谱通常用于表示特定领域的知识，例如医学、生物学和金融 [23]。与百科知识图谱相比，领域特定知识图谱的规模通常较小，但更加精确可靠。例如，UMLS [77] 是医学领域的领域特定知识图谱，包含生物医学概念及其关系。此外，在其他领域也存在领域特定知识图谱，如金融 [78]、地质 [79]、生物 [80]、化学 [81] 和家谱 [82]。
+
+\subsubsection{多模态知识图谱}
+
+与仅包含文本信息的传统知识图谱不同，多模态知识图谱以多种模态表示事实，包括图像、声音和视频 [83]。例如，IMGpedia [84]、MMKG [85] 和 Richpedia [86] 同时将文本和图像信息融入知识图谱中。这些知识图谱可用于各种多模态任务，如图文匹配（image-text matching）[87]、视觉问答（visual question answering）[88] 和推荐（recommendation）[89]。
+
+\subsection{LLMs 与 KGs 的应用}
+
+LLMs 和 KGs 已被广泛应用于各种实际场景。我们在表~\ref{tab:1} 中总结了使用 LLMs 和 KGs 的一些代表性应用。ChatGPT/GPT-4 是基于 LLM 的聊天机器人（chatbot），能够以自然对话方式与人类交流。为了提升 LLMs 的知识感知能力，ERNIE 3.0 和 Bard 在其聊天机器人应用中融入了知识图谱。Firefly 开发了一款照片编辑应用程序，允许用户通过自然语言描述来编辑照片。Copilot、New Bing 和 Shop.ai 采用 LLMs 来增强其在代码助手、网络搜索和推荐领域的应用。Wikidata 和 KO 是两个代表性的知识图谱应用，用于提供外部知识。OpenBG [90] 是一个专为推荐设计的知识图谱。Doctor.ai 开发了一个医疗保健助手，结合 LLMs 和 KGs 来提供医疗建议。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.45\linewidth]{cand_p05_k00.pdf}
+\caption{使用 LLMs 和 KGs 的代表性应用。}
+\label{tab:1}
+\end{figure}
+
+\section{路线图与分类}
+
+本节首先给出统一大语言模型（large language model, LLM）与知识图谱（knowledge graph, KG）的显式框架路线图，然后对相关研究进行系统分类。
+
+\subsection{路线图}
+
+统一知识图谱与大语言模型的路线图如图~\ref{fig:6} 所示。在该路线图中，我们确定了三个用于统一大语言模型与知识图谱的框架，包括：KG 增强的 LLMs、LLM 增强的 KGs，以及 LLMs 与 KGs 的协同。其中，KG 增强的 LLMs 和 LLM 增强的 KGs 是两个平行的框架，分别旨在增强大语言模型和知识图谱的能力。在这两个框架的基础上，LLMs 与 KGs 的协同是一个统一框架，旨在使大语言模型与知识图谱相互增强。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{fig6.pdf}
+\caption{统一知识图谱与大语言模型的总路线图。(a) KG 增强的 LLMs。(b) LLM 增强的 KGs。(c) LLMs 与 KGs 的协同。}
+\label{fig:6}
+\end{figure}
+
+\subsubsection{KG 增强的 LLMs}
+
+大语言模型以其从大规模语料库中学习知识的能力而著称，在各种自然语言处理（natural language processing, NLP）任务中取得了最先进的性能。然而，大语言模型常因幻觉（hallucination）问题和缺乏可解释性（interpretability）而受到批评。为解决这些问题，研究者们提出利用知识图谱来增强大语言模型。
+
+知识图谱以显式且结构化的方式存储海量知识，可用于增强大语言模型的知识感知能力。一些研究者提出在预训练（pre-training）阶段将知识图谱融入大语言模型，以帮助大语言模型从知识图谱中学习知识~[35]、[91]。另一些研究者则提出在推理（inference）阶段将知识图谱融入大语言模型。通过从知识图谱中检索知识，可以显著提升大语言模型在获取领域特定知识方面的性能~[92]。为了提高大语言模型的可解释性，研究者还利用知识图谱来解释大语言模型所学习的事实~[14]及其推理过程~[38]。
+
+\subsubsection{LLM 增强的 KGs}
+
+知识图谱存储的结构化知识在众多实际应用中发挥着重要作用~[19]。现有的知识图谱方法在处理不完整的知识图谱~[33]和从文本语料库构建知识图谱~[93]方面仍存在不足。借助大语言模型的泛化能力（generalizability），许多研究者正尝试利用大语言模型的能力来解决与知识图谱相关的任务。
+
+最直接的方式是将大语言模型作为文本编码器用于知识图谱相关任务。研究者利用大语言模型处理知识图谱中的文本语料，然后使用文本的表示（representation）来丰富知识图谱的表示~[94]。一些研究还利用大语言模型处理原始语料，提取关系（relation）和实体（entity）以用于知识图谱构建~[95]。近期的研究尝试设计一种知识图谱提示（prompt），将结构化的知识图谱有效转换为大语言模型可理解的格式。通过这种方式，大语言模型可以直接应用于知识图谱相关任务，例如知识图谱补全（KG completion）~[96]和知识图谱推理~[97]。
+
+\subsubsection{LLMs 与 KGs 的协同}
+
+近年来，大语言模型与知识图谱的协同研究受到越来越多的关注~[40]、[42]。大语言模型与知识图谱是两种本质上互补的技术，应被整合到一个通用框架中以实现相互增强。
+
+为进一步探索这种统一，我们在图~\ref{fig:7} 中提出了 LLMs 与 KGs 协同的统一框架。该统一框架包含四个层次：1) 数据层（Data）、2) 协同模型层（Synergized Model）、3) 技术层（Technique）和 4) 应用层（Application）。在数据层，大语言模型和知识图谱分别用于处理文本数据和结构化数据。随着多模态大语言模型~[98]和知识图谱~[99]的发展，该框架可以扩展到处理多模态数据，如视频、音频和图像。在协同模型层，大语言模型和知识图谱可以相互协作以提升各自的能力。在技术层，大语言模型和知识图谱中已使用的相关技术可以融入该框架，以进一步提升性能。在应用层，大语言模型和知识图谱可以被整合以解决各种实际应用问题，如搜索引擎~[100]、推荐系统~[10]和 AI 助手~[101]。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.45\linewidth]{cand_p06_k00.pdf}
+\caption{LLMs 与 KGs 协同的通用框架，包含四个层次：1) 数据层、2) 协同模型层、3) 技术层和 4) 应用层。}
+\label{fig:7}
+\end{figure}
+
+\subsection{分类}
+
+为了更好地理解统一大语言模型与知识图谱的研究，我们进一步为路线图中的每个框架提供细粒度的分类。具体而言，我们关注整合知识图谱与大语言模型的不同方式，即 KG 增强的 LLMs、LLM 增强的 KGs，以及 LLMs 与 KGs 的协同。研究的细粒度分类如图~\ref{fig:8} 所示。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{cand_p07_k01.pdf}
+\caption{统一大语言模型（LLMs）与知识图谱（KGs）研究的细粒度分类。}
+\label{fig:8}
+\end{figure}
+
+\textbf{KG 增强的 LLMs。}整合知识图谱可以在多种下游任务中增强大语言模型的性能和可解释性。我们将 KG 增强的 LLMs 研究分为三组：
+
+\begin{enumerate}
+\item \textit{KG 增强的 LLM 预训练}包括在预训练阶段应用知识图谱、以改进大语言模型知识表达的研究工作。
+\item \textit{KG 增强的 LLM 推理}包括在大语言模型推理阶段利用知识图谱的研究工作，使大语言模型无需重新训练即可获取最新知识。
+\item \textit{KG 增强的 LLM 可解释性}包括利用知识图谱来理解大语言模型所学知识并解释其推理过程的研究工作。
+\end{enumerate}
+
+\textbf{LLM 增强的 KGs。}大语言模型可以应用于增强各种与知识图谱相关的任务。我们根据任务类型将 LLM 增强的 KGs 研究分为五组：
+
+\begin{enumerate}
+\item \textit{LLM 增强的 KG 嵌入（embedding）}包括通过编码实体和关系的文本描述来利用大语言模型丰富知识图谱表示的研究。
+\item \textit{LLM 增强的 KG 补全}包括利用大语言模型编码文本或生成事实以提升知识图谱补全性能的论文。
+\item \textit{LLM 增强的 KG 构建}包括利用大语言模型解决实体发现（entity discovery）、共指消解（coreference resolution）和关系抽取（relation extraction）等知识图谱构建任务的研究工作。
+\item \textit{LLM 增强的 KG 文本生成（KG-to-text generation）}包括利用大语言模型生成描述知识图谱事实的自然语言的研究。
+\item \textit{LLM 增强的 KG 问答（question answering）}包括利用大语言模型弥合自然语言问题与知识图谱之间的鸿沟、从知识图谱中检索答案的研究。
+\end{enumerate}
+
+\textbf{LLMs 与 KGs 的协同。}大语言模型与知识图谱的协同旨在将二者整合到一个统一框架中以实现相互增强。在本分类中，我们从\textit{知识表示}（knowledge representation）和\textit{推理}（reasoning）两个角度回顾 LLMs 与 KGs 协同的近期研究。
+
+在后续章节（第~4、5 和~6 节）中，我们将对这些分类进行详细阐述。
+
+\section{KG 增强的大语言模型}
+
+大语言模型（Large Language Models, LLMs）在许多自然语言处理（Natural Language Processing, NLP）任务中取得了令人瞩目的成果。然而，LLMs 因缺乏实际知识以及在推理（inference）时倾向于产生事实性错误而受到批评。为解决这一问题，研究人员提出将知识图谱（Knowledge Graphs, KGs）与 LLMs 进行整合以增强其能力。本节中，我们首先介绍 KG 增强的 LLM 预训练（pre-training），其目的是在预训练阶段将知识注入 LLMs。随后，我们介绍 KG 增强的 LLM 推理，使 LLMs 能够在生成句子时考虑最新知识。最后，我们介绍 KG 增强的 LLM 可解释性（interpretability），旨在利用 KGs 提升 LLMs 的可解释性。表~2 总结了整合 KGs 的典型 LLM 方法。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.45\linewidth]{cand_p07_k00.pdf}
+\caption{KG 增强 LLM 方法总结。E: 百科知识图谱；C: 常识知识图谱；D: 领域特定知识图谱。}
+\label{tab:2}
+\end{figure}
+
+\subsection{KG 增强的 LLM 预训练}
+
+现有的大语言模型主要依赖于在大规模语料库上的无监督训练。虽然这些模型在下游任务上表现出色，但它们往往缺乏与现实世界相关的实际知识。此前将 KGs 整合到大语言模型中的工作可归纳为三类：1) \emph{将 KGs 融入训练目标}；2) \emph{将 KGs 融入 LLM 输入}；3) \emph{KGs 指令微调（instruction-tuning）}。
+
+\subsubsection{将 KGs 融入训练目标}
+
+该类研究致力于设计新颖的知识感知训练目标。一个直观的想法是在预训练目标中暴露更多的知识实体（entity）。GLM [102] 利用知识图谱结构来分配掩码概率（masking probability）。具体而言，在一定跳数（hop）范围内可达的实体（entity）被认为是最重要的学习实体，并在预训练过程中被赋予更高的掩码概率。此外，E-BERT [103] 进一步控制了词元级（token-level）训练损失与实体级（entity-level）训练损失之间的平衡。训练损失值被用作词元和实体学习过程的指示，动态决定下一个训练周期中二者的比例。SKEP [124] 也采用类似的融合方式，在 LLMs 预训练过程中注入情感知识。SKEP 首先利用逐点互信息（PMI）以及一组预定义的种子情感词来确定正面和负面情感词汇，然后为这些被识别的情感词分配更高的掩码概率。
+
+另一类工作则显式地利用知识与输入文本之间的关联。如图~9 所示，ERNIE [35] 提出了一种新颖的词--实体对齐训练目标（word-entity alignment training objective）作为预训练目标。具体而言，ERNIE 将句子和句子中提及的对应实体同时输入 LLMs，然后训练 LLMs 预测文本词元与知识图谱中实体之间的对齐链接。类似地，KALM [91] 通过融入实体嵌入（entity embedding）来增强输入词元，并在仅针对词元的预训练目标之外增加了实体预测任务。这一方法旨在提高 LLMs 捕获与实体相关知识的能力。最后，KEPLER [40] 同时采用知识图谱嵌入（knowledge graph embedding）训练目标和掩码词元预训练目标，并将两者整合到一个共享的基于 Transformer 的编码器中。Deterministic LLM [104] 专注于预训练语言模型以捕获\emph{确定性}（deterministic）事实知识。它仅对具有确定性实体的跨度进行掩码，并引入额外的线索对比学习（clue contrast learning）和线索分类目标。WKLM [106] 首先将文本中的实体替换为其他同类型实体，然后将其输入 LLMs。该模型进一步进行预训练，以判别实体是否被替换。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.45\linewidth]{cand_p08_k00.pdf}
+\caption{通过文本--知识对齐损失将 KG 信息注入 LLMs 训练目标，其中 $h$ 表示 LLMs 生成的隐藏表示。}
+\label{fig:9}
+\end{figure}
+
+\subsubsection{将 KGs 融入 LLM 输入}
+
+如图~10 所示，该类研究致力于将相关的知识子图引入 LLMs 的输入。给定知识图谱三元组（triple）及其对应句子，ERNIE 3.0 [101] 将三元组表示为词元序列，并直接将其与句子拼接。然后对三元组中的关系（relation）词元或句子中的词元进行随机掩码，以更好地融合知识与文本表示。然而，这种直接的知识三元组拼接方法使得句子中的词元能够与知识子图中的词元进行密集交互，这可能导致\emph{知识噪声}（Knowledge Noise）[36]。为解决这一问题，K-BERT [36] 首先通过\emph{可见矩阵}（visible matrix）将知识三元组注入句子，使得只有知识实体可以访问知识三元组信息，而句子中的词元在自注意力模块中只能相互可见。为进一步减少\emph{知识噪声}，Colake [107] 提出了一种统一的词--知识图谱（如图~10 所示），其中输入句子中的词元与知识实体通过其相邻实体相连，形成一个完全连通的词--知识图。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.45\linewidth]{cand_p08_k01.pdf}
+\caption{通过图结构将 KG 信息注入 LLMs 输入。}
+\label{fig:10}
+\end{figure}
+
+上述方法确实能够向 LLMs 注入大量知识。然而，它们大多聚焦于热门实体，而忽视了低频和长尾实体。DkLLM [108] 旨在改善 LLMs 对这些实体的表示。DkLLM 首先提出一种新的度量方法来确定长尾实体，然后将文本中被选中的实体替换为伪词元嵌入（pseudo token embedding），作为大语言模型的新输入。此外，Dict-BERT [125] 提出利用外部词典来解决这一问题。具体而言，Dict-BERT 通过在输入文本末尾附加词典中罕见词的定义来改善其表示质量，并训练语言模型在输入句子和词典定义中局部对齐罕见词表示，同时判别输入文本和定义是否正确映射。
+
+\subsubsection{KGs 指令微调}
+
+与将事实知识直接注入 LLMs 不同，KGs 指令微调（instruction-tuning）旨在对 LLMs 进行微调（fine-tuning），使其更好地理解 KGs 的结构并有效遵循用户指令来完成复杂任务。KGs 指令微调利用事实和 KGs 的结构来创建指令微调数据集。在这些数据集上微调的 LLMs 能够从 KGs 中提取事实和结构知识，从而增强推理能力。KP-PLM [109] 首先设计了若干提示模板，将结构化图转换为自然语言文本，然后提出两个自监督任务来微调 LLMs，以进一步利用这些提示中的知识。OntoPrompt [110] 提出了一种本体增强的提示微调方法，能够将实体知识置于 LLMs 的上下文中，并在多个下游任务上进一步微调。ChatKBQA [111] 在 KG 结构上微调 LLMs 以生成逻辑查询，这些查询可在 KGs 上执行以获取答案。为了在图上进行更好的推理，RoG [112] 提出了一个规划--检索--推理框架。RoG 在 KG 结构上进行微调，以生成由 KGs 支撑的关系路径作为忠实规划（faithful plans）。这些规划随后被用于从 KGs 中检索有效的推理路径，以进行忠实推理并生成可解释的结果。
+
+KGs 指令微调能够更好地利用 KGs 的知识来增强下游任务的表现。然而，它需要重新训练模型，耗时且需要大量资源。
+
+\subsection{KG 增强的 LLM 推理}
+
+上述方法能够有效地将知识融入 LLMs。然而，现实世界的知识是动态变化的，这些方法的局限性在于，不重新训练模型就无法更新已融入的知识。因此，它们可能无法很好地泛化（generalize）到推理过程中遇到的未知知识 [126]。为此，大量研究致力于将知识空间与文本空间分离，并在推理时注入知识。这些方法主要聚焦于问答（Question Answering, QA）任务，因为 QA 要求模型同时捕获文本语义含义和最新的现实世界知识。
+
+\subsubsection{检索增强知识融合}
+
+检索增强知识融合（Retrieval-Augmented Knowledge Fusion）是一种在推理阶段向 LLMs 注入知识的流行方法。其核心思想是从大规模语料库中检索相关知识，然后将检索到的知识融入 LLMs。如图~11 所示，RAG [92] 提出结合非参数模块和参数模块来处理外部知识。给定输入文本，RAG 首先通过 MIPS（最大内积搜索）在非参数模块中搜索相关 KG 以获取若干文档。RAG 随后将这些文档视为隐变量 $z$，并将其输入由 Seq2Seq LLMs 驱动的输出生成器，作为额外的上下文信息。研究表明，在不同生成步骤中使用检索到的文档作为条件，比仅用单一文档来引导整个生成过程表现更优。实验结果显示，RAG 在开放域 QA 中优于仅参数化模型和仅非参数化基线模型。RAG 还能生成比其他仅参数化基线更具体、更多样、更具事实性的文本。Story-fragments [127] 通过添加一个额外模块来确定关键的知识实体并将其融入生成器，从而进一步改进架构，以提高生成长篇故事的质量。EMAT [115] 通过将外部知识编码为键值记忆并利用快速最大内积搜索进行记忆查询，进一步提升了此类系统的效率。REALM [114] 提出了一种新的知识检索器，帮助模型在预训练阶段从大规模语料库中检索和关注文档，并成功提升了开放域问答的性能。KGLM [113] 从知识图谱中根据当前上下文选择事实以生成事实性句子。借助外部知识图谱，KGLM 能够使用领域外的词汇或短语描述事实。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.45\linewidth]{cand_p09_k00.pdf}
+\caption{检索外部知识以增强 LLM 生成。}
+\label{fig:11}
+\end{figure}
+
+\subsubsection{KGs 提示}
+
+为了在推理阶段更好地将 KG 结构输入 LLM，KGs 提示（prompting）旨在设计精心构造的提示，将结构化 KGs 转换为文本序列，从而作为上下文输入 LLMs。通过这种方式，LLMs 能够更好地利用 KGs 的结构进行推理。Li 等人 [64] 采用预定义模板将每个三元组转换为一个短句，这可以被 LLMs 理解以进行推理。Mindmap [65] 设计了一种 KG 提示，将图结构转换为思维导图，使 LLMs 能够通过整合 KGs 中的事实与 LLMs 中的隐式知识来进行推理。ChatRule [116] 从 KGs 中采样若干关系路径，将其文本化后输入 LLMs，然后提示 LLMs 生成可用于推理的有意义逻辑规则。CoK [117] 提出了一种知识链提示（chain-of-knowledge prompting），使用一系列三元组来激发 LLMs 的推理能力，以获得最终答案。
+
+KGs 提示提供了一种简洁的方式来协同 LLMs 和 KGs。通过使用提示，我们可以方便地利用 LLMs 的能力，基于 KGs 进行推理而无需重新训练模型。然而，提示通常需要人工设计，这需要大量的人力投入。
+
+\subsection{KG 增强 LLM 预训练与推理的比较}
+
+KG 增强的 LLM 预训练方法通常利用语义相关的真实世界知识来丰富大量未标注语料库。这些方法允许将知识表示与适当的语言上下文对齐，并显式地从零开始训练 LLMs 以利用这些知识。当将得到的 LLMs 应用于下游知识密集型任务时，它们应该能够达到最优性能。相比之下，KG 增强的 LLM 推理方法仅在推理阶段向 LLMs 呈现知识，底层的 LLMs 可能无法经过训练来充分利用这些知识，在执行下游任务时可能导致次优的模型性能。
+
+然而，现实世界的知识是动态的，需要频繁更新。尽管有效，KG 增强的 LLM 预训练方法不允许在不重新训练模型的情况下进行知识更新或编辑。因此，KG 增强的 LLM 预训练方法对于新近或未见知识的泛化能力（generalizability）可能较差。KG 增强的 LLM 推理方法则可以通过改变推理输入轻松维护知识更新。这些方法有助于提升 LLMs 在新知识和新领域上的性能。
+
+总之，何时使用这些方法取决于具体的应用场景。如果希望将 LLMs 应用于处理特定领域中对时间不敏感的知识（例如常识和推理知识），应考虑 KG 增强的 LLM 预训练方法；如果需要处理频繁更新的开放域知识，则可使用 KG 增强的 LLM 推理方法。
+
+\subsection{KG 增强的 LLM 可解释性}
+
+尽管 LLMs 在许多 NLP 任务中取得了显著成就，但它们仍因缺乏可解释性而受到批评。大语言模型的可解释性是指对大语言模型内部工作机制和决策过程的理解与解释。这可以提高 LLMs 的可信度，并促进其在医学诊断和法律判断等高风险场景中的应用。知识图谱以结构化方式表示知识，能够为推理结果提供良好的可解释性。因此，研究人员尝试利用 KGs 来提升 LLMs 的可解释性，这些工作大致可分为两类：1) \emph{用于 LLM 探测的 KGs}；2) \emph{用于 LLM 分析的 KGs}。
+
+\subsubsection{用于 LLM 探测的 KGs}
+
+大语言模型探测（LLM probing）旨在理解 LLMs 中存储的知识。在大规模语料库上训练的 LLMs 通常被认为包含海量知识。然而，LLMs 以隐式方式存储知识，使得难以弄清其所存储的内容。此外，LLMs 受到幻觉（hallucination）问题 [15] 的困扰，即生成与事实相矛盾的陈述，这严重影响了 LLMs 的可靠性。因此，有必要利用 KGs 来探测和验证 LLMs 中存储的知识。
+
+LAMA [14] 是首个利用 KGs 探测 LLMs 中知识的工作。如图~12 所示，LAMA 首先通过预定义的提示模板将 KGs 中的事实转换为完形填空（cloze）陈述，然后使用 LLMs 预测缺失的实体。预测结果用于评估 LLMs 中存储的知识。例如，我们尝试探测 LLMs 是否知道事实 (\emph{Obama, profession, president})。我们首先将该事实三元组转换为一个完形填空问题``Obama's profession is \_''，其中宾语被掩码。然后，我们测试 LLMs 能否正确预测出宾语``president''。
+
+然而，LAMA 忽略了提示可能不恰当这一事实。例如，对于语言模型而言，``\emph{Obama worked as a \_}'' 可能比``\emph{Obama is a \_ by profession}'' 更有利于预测空白处的内容。因此，LPAQA [118] 提出了一种基于挖掘和释义的方法，以自动生成高质量且多样化的提示，从而更准确地评估语言模型中包含的知识。此外，Adolphs 等人 [128] 尝试使用示例来帮助语言模型理解查询，实验表明在 T-REx 数据上的 BERT-large 获得了显著提升。不同于使用人工定义的提示模板，Autoprompt [119] 提出了一种基于梯度引导搜索的自动方法来创建提示。LLM-facteval [121] 设计了一个系统化框架，能够从 KGs 自动生成探测问题，生成的问题随后被用于评估 LLMs 中存储的事实知识。
+
+除了使用百科和常识知识图谱探测一般知识外，BioLAMA [129] 和 MedLAMA [120] 利用医学知识图谱探测 LLMs 中的医学知识。Alex 等人 [130] 研究了 LLMs 保留不太流行的事实知识的能力。他们从 Wikidata 知识图谱中选择具有低频点击实体的冷门事实，然后将这些事实用于评估。结果表明，LLMs 在处理此类知识时遇到困难，而且扩大模型规模未能显著改善对长尾事实知识的记忆。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.4\linewidth]{cand_p10_k00.pdf}
+\caption{用知识图谱进行语言模型探测的一般框架。}
+\label{fig:12}
+\end{figure}
+
+\subsubsection{用于 LLM 分析的 KGs}
+
+用于预训练语言模型分析的知识图谱旨在回答以下问题，例如``LLMs 如何生成结果？''以及``LLMs 的功能和结构如何运作？''。为分析 LLMs 的推理过程，如图~13 所示，KagNet [38] 和 QA-GNN [131] 在每个推理步骤中，使 LLMs 生成的结果基于知识图谱。通过这种方式，LLMs 的推理过程可以通过从 KGs 中提取图结构来解释。Shaobo 等人 [123] 研究了 LLMs 如何正确生成结果。他们采用基于因果启发的分析方法，利用从 KGs 中提取的事实进行分析。该分析定量地衡量了 LLMs 依赖哪些词汇模式来生成结果。研究结果表明，LLMs 生成缺失事实时更多依赖位置上接近的词而非知识相关的词。因此，他们指出 LLMs 由于不准确的依赖关系而不足以记忆事实知识。为解释 LLMs 的训练过程，Swamy 等人 [132] 利用知识图谱来调查 LLMs 在预训练过程中如何获取知识。他们提出使用探测来跟踪模型在训练过程中获取知识的情况，实验结果表明 LLMs 对频繁出现的事实和关系学习更快，同时遗忘更少。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.4\linewidth]{cand_p10_k01.pdf}
+\caption{用知识图谱进行语言模型分析的一般框架。}
+\label{fig:13}
+\end{figure}
+
+\section{LLM 增强的知识图谱}
+\label{sec:llm-augmented-kg}
+
+知识图谱（knowledge graph, KG）以结构化方式表示知识而闻名，已被广泛应用于问答（question answering）、推荐（recommendation）和网络搜索（web search）等众多下游任务。然而，传统知识图谱往往不完整，且现有方法通常缺乏对文本信息的充分考虑。为解决这些问题，近期研究探索了将大语言模型（large language model, LLM）与知识图谱相集成，以纳入文本信息并提升下游任务的性能。本节将介绍将 LLM 集成到知识图谱中的最新研究，涵盖 KG 嵌入（embedding）、KG 补全（completion）、KG 构建（construction）、KG 到文本生成（KG-to-text generation）以及 KG 问答（question answering）等方面的方法。代表性工作总结于表~\ref{tab:llm-augmented-kg-methods}。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.45\linewidth]{cand_p11_k00.pdf}
+\caption{LLM 增强 KG 方法的代表性工作总结。E: 仅编码器 LLM，D: 仅解码器 LLM，ED: 编码器--解码器 LLM。}
+\label{tab:llm-augmented-kg-methods}
+\end{figure}
+
+\subsection{LLM 增强的 KG 嵌入}
+\label{sec:llm-augmented-kge}
+
+知识图谱嵌入（knowledge graph embedding, KGE）旨在将每个实体（entity）和关系（relation）映射到低维向量（嵌入）空间中。这些嵌入包含了知识图谱的语义信息和结构信息，可用于问答 [180]、推理（reasoning）[38] 和推荐 [181] 等多种下游任务。传统的知识图谱嵌入方法主要依赖知识图谱的结构信息来优化基于嵌入定义的评分函数（scoring function）（例如 TransE [33] 和 DisMult [182]）。然而，这些方法在表示未见实体（unseen entity）和长尾关系（long-tailed relation）时往往力不从心，原因在于其有限的结构连通性 [183]、[184]。为解决这一问题，如图~\ref{fig:llm-text-encoder-kge} 所示，近期研究采用 LLM 通过编码实体和关系的文本描述来丰富知识图谱的表示 [40]、[94]。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.45\linewidth]{cand_p11_k01.pdf}
+\caption{LLM 作为知识图谱嵌入（KGE）文本编码器的框架。}
+\label{fig:llm-text-encoder-kge}
+\end{figure}
+
+\subsubsection{LLMs 作为文本编码器}
+
+Pretrain-KGE [94] 是遵循图~\ref{fig:llm-text-encoder-kge} 所示框架的代表性方法。给定知识图谱中的一个三元组（triple）$(h, r, t)$，该方法首先使用 LLM 编码器将实体 $h$、$t$ 和关系 $r$ 的文本描述编码为表示：
+\begin{equation}
+e_h = \text{LLM}(\text{Text}_h),\; e_t = \text{LLM}(\text{Text}_t),\; e_r = \text{LLM}(\text{Text}_r), \tag{1}
+\end{equation}
+其中 $e_h$、$e_r$ 和 $e_t$ 分别表示实体 $h$、$t$ 和关系 $r$ 的初始嵌入。Pretrain-KGE 在实验中使用 BERT 作为 LLM 编码器。随后，这些初始嵌入被送入 KGE 模型以生成最终嵌入 $v_h$、$v_r$ 和 $v_t$。在 KGE 训练阶段，该方法遵循标准的 KGE 损失函数（loss function）进行优化：
+\begin{equation}
+\mathcal{L} = [\gamma + f(v_h, v_r, v_t) - f(v'_h, v'_r, v'_t)], \tag{2}
+\end{equation}
+其中 $f$ 为 KGE 评分函数，$\gamma$ 为间隔超参数（margin hyperparameter），$v'_h$、$v'_r$ 和 $v'_t$ 为负样本（negative sample）。通过这种方式，KGE 模型能够学习到充分的结构信息，同时保留来自 LLM 的部分知识，从而实现更好的知识图谱嵌入。KEPLER [40] 提出了一个统一的知识嵌入与预训练语言表示模型。该模型不仅利用强大的 LLM 生成有效的文本增强知识嵌入，还能将事实知识无缝集成到 LLM 中。Nayyeri 等人 [132] 使用 LLM 生成词级、句子级和文档级表示，并通过 Dihedral 和 Quaternion 的 4D 超复数（hypercomplex）表示将其与图结构嵌入融合为统一向量。Huang 等人 [133] 将 LLM 与其他视觉编码器和图编码器相结合，学习多模态知识图谱嵌入，从而增强下游任务的性能。CoDEx [134] 提出了一种由 LLM 赋能的新型损失函数，通过考虑文本信息来引导 KGE 模型度量三元组的似然度。该损失函数与模型无关，可与任何 KGE 模型结合使用。
+
+\subsubsection{LLMs 用于联合文本与 KG 嵌入}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.45\linewidth]{cand_p12_k00.pdf}
+\caption{LLM 用于联合文本与知识图谱嵌入的框架。}
+\label{fig:joint-text-kg-embedding}
+\end{figure}
+
+与使用 KGE 模型考虑图结构不同，另一类方法直接利用 LLM 将图结构和文本信息同时纳入嵌入空间。如图~\ref{fig:joint-text-kg-embedding} 所示，$k$NN-KGE [136] 将实体和关系视为 LLM 中的特殊标记（special token）。在训练过程中，该方法将每个三元组 $(h, r, t)$ 及其对应的文本描述转换为句子 $x$：
+\begin{equation}
+x = \texttt{[CLS]}\ h\ \text{Text}_h\ \texttt{[SEP]}\ r\ \texttt{[SEP]}\ \texttt{[MASK]}\ \text{Text}_t\ \texttt{[SEP]}, \tag{3}
+\end{equation}
+其中尾部实体被 \texttt{[MASK]} 替代。该句子被送入 LLM，然后对模型进行微调（fine-tuning）以预测被遮蔽的实体，其形式化表达为：
+\begin{equation}
+P_{LLM}(t|h,r) = P(\texttt{[MASK]}=t|x, \Theta), \tag{4}
+\end{equation}
+其中 $\Theta$ 表示 LLM 的参数。该 LLM 的优化目标是最大化正确实体 $t$ 的概率。训练完成后，LLM 中对应的标记表示被用作实体和关系的嵌入。类似地，LMKE [135] 提出了一种对比学习（contrastive learning）方法来改进 LLM 为 KGE 生成的嵌入的学习过程。同时，为更好地捕获图结构，LambdaKG [137] 对三元组的一跳邻居实体进行采样，并将其标记与三元组拼接为一个句子输入 LLM。
+
+\subsection{LLM 增强的 KG 补全}
+\label{sec:llm-augmented-kgc}
+
+知识图谱补全（knowledge graph completion, KGC）是指在给定知识图谱中推断（infer）缺失事实（missing fact）的任务。与 KGE 类似，传统 KGC 方法主要关注知识图谱的结构信息，而未充分考虑丰富的文本信息。然而，LLM 的近期集成使得 KGC 方法能够编码文本或生成事实，从而提升 KGC 性能。这些方法根据其利用方式可分为两大类别：1) \textbf{LLM 作为编码器}（LLM as Encoders, PaE）和 2) \textbf{LLM 作为生成器}（LLM as Generators, PaG）。
+
+\subsubsection{LLM 作为编码器（PaE）}
+
+如图~\ref{fig:llm-encoder-kgc}(a)、(b) 和 (c) 所示，这一类工作首先使用仅编码器（encoder-only）LLM 编码文本信息和 KG 事实，然后通过将编码后的表示送入预测头（prediction head）来预测三元组或被遮蔽实体的合理性。预测头可以是简单的 MLP 或传统的 KG 评分函数（例如 TransE [33] 和 TransR [185]）。
+
+\textbf{联合编码（Joint Encoding）。}由于仅编码器 LLM（例如 Bert [1]）擅长编码文本序列，KG-BERT [26] 将三元组 $(h, r, t)$ 表示为文本序列，并使用 LLM 对其进行编码（图~\ref{fig:llm-encoder-kgc}(a)）：
+\begin{equation}
+x = \texttt{[CLS]}\ \text{Text}_h\ \texttt{[SEP]}\ \text{Text}_r\ \texttt{[SEP]}\ \text{Text}_t\ \texttt{[SEP]}, \tag{5}
+\end{equation}
+\texttt{[CLS]} 标记的最终隐藏状态（hidden state）被送入分类器以预测该三元组的可能性，其形式化表达为：
+\begin{equation}
+s = \sigma(\text{MLP}(e_{\texttt{[CLS]}})), \tag{6}
+\end{equation}
+其中 $\sigma(\cdot)$ 表示 sigmoid 函数，$e_{\texttt{[CLS]}}$ 表示 LLM 编码的表示。为提升 KG-BERT 的效果，MTL-KGC [138] 提出了一个多任务学习（Multi-Task Learning）的 KGC 框架，将额外的辅助任务整合到模型训练中，包括预测（prediction, RP）和相关性排序（relevance ranking, RR）。PKGC [139] 通过使用预定义模板将三元组 $(h, r, t)$ 及其支持信息转换为自然语言句子来评估三元组的有效性，这些句子随后由 LLM 进行二分类处理。三元组的支持信息源自 $h$ 和 $t$ 的属性，并通过一个语言化函数（verbalizing function）生成。例如，如果三元组为 \textit{(Lebron James, member of sports team, Lakers)}，则关于 Lebron James 的信息被语言化为``Lebron James: American basketball player''。LASS [140] 观察到语言语义和图结构对 KGC 同等重要，因此提出联合学习两种类型的嵌入：语义嵌入（semantic embedding）和结构嵌入（structure embedding）。在该方法中，三元组的完整文本被前馈至 LLM，并分别计算 $h$、$r$ 和 $t$ 对应 LLM 输出的均值池化（mean pooling），然后将这些嵌入传入基于图的方法（如 TransE）以重建 KG 结构。
+
+\textbf{MLM 编码（MLM Encoding）。}许多工作引入掩码语言模型（Masked Language Model, MLM）的概念来编码 KG 文本（图~\ref{fig:llm-encoder-kgc}(b)），而非编码三元组的完整文本。MEM-KGC [141] 使用掩码实体模型（Masked Entity Model, MEM）分类机制来预测三元组中被遮蔽的实体。输入文本的形式为：
+\begin{equation}
+x = \texttt{[CLS]}\ \text{Text}_h\ \texttt{[SEP]}\ \text{Text}_r\ \texttt{[SEP]}\ \texttt{[MASK]}\ \texttt{[SEP]}, \tag{7}
+\end{equation}
+与公式 (4) 类似，该方法试图最大化被遮蔽实体为正确实体 $t$ 的概率。此外，为使模型能够学习未见实体，MEM-KGC 集成了基于实体文本描述的多任务学习，用于实体及超类别（super-class）预测：
+\begin{equation}
+x = \texttt{[CLS]}\ \texttt{[MASK]}\ \texttt{[SEP]}\ \text{Text}_h\ \texttt{[SEP]}. \tag{8}
+\end{equation}
+OpenWorld KGC [142] 将 MEM-KGC 模型扩展到开放世界 KGC 的挑战中，采用流水线框架定义了两个顺序的基于 MLM 的模块：实体描述预测（Entity Description Prediction, EDP）——一个辅助模块，根据给定的文本描述预测对应实体；不完整三元组预测（Incomplete Triple Prediction, ITP）——目标模块，为给定的不完整三元组 $(h, r, ?)$ 预测合理实体。EDP 首先使用公式 (8) 编码三元组并生成最终隐藏状态，然后将其作为头实体的嵌入传入 ITP，以预测目标实体。
+
+\textbf{分离编码（Separated Encoding）。}如图~\ref{fig:llm-encoder-kgc}(c) 所示，这类方法将三元组 $(h, r, t)$ 划分为两个不同的部分，即 $(h, r)$ 和 $t$，其表达形式为：
+\begin{align}
+x_{(h,r)} &= \texttt{[CLS]}\ \text{Text}_h\ \texttt{[SEP]}\ \text{Text}_r\ \texttt{[SEP]}, \tag{9} \\
+x_t &= \texttt{[CLS]}\ \text{Text}_t\ \texttt{[SEP]}. \tag{10}
+\end{align}
+然后，两部分分别由 LLM 编码，\texttt{[CLS]} 标记的最终隐藏状态分别作为 $(h, r)$ 和 $t$ 的表示。这些表示随后被送入评分函数以预测三元组的可能性，其形式化表达为：
+\begin{equation}
+s = f_{score}(e_{(h,r)},\, e_t), \tag{11}
+\end{equation}
+其中 $f_{score}$ 表示类似 TransE 的评分函数。
+
+StAR [143] 在其文本上应用 Siamese 式文本编码器，将其编码为独立的上下文化表示。为避免文本编码方法（如 KG-BERT）的组合爆炸问题，StAR 采用了一个评分模块，其中包含确定性分类器和空间度量，分别用于表示学习和结构学习，同时通过探索空间特征来增强结构化知识。SimKGC [144] 是另一个利用 Siamese 文本编码器编码文本表示的实例。在编码过程之后，SimKGC 对这些表示应用对比学习技术，计算给定三元组的编码表示与其正样本和负样本之间的相似度。具体而言，三元组与正样本之间编码表示的相似度被最大化，而三元组与负样本之间编码表示的相似度被最小化，从而使 SimKGC 学习到一个能够区分合理与不合理三元组的表示空间。为避免过拟合文本信息，CSPromp-KG [186] 采用参数高效的提示学习（prompt learning）方法进行 KGC。
+
+LP-BERT [145] 是一种混合 KGC 方法，结合了 MLM 编码和分离编码。该方法包含两个阶段：预训练（pre-training）和微调。在预训练阶段，该方法利用标准 MLM 机制在 KGC 数据上预训练 LLM。在微调阶段，LLM 编码两个部分，并使用对比学习策略进行优化（类似于 SimKGC [144]）。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.45\linewidth]{fig16.pdf}
+\caption{采用 LLM 作为编码器（PaE）进行知识图谱补全的通用框架。}
+\label{fig:llm-encoder-kgc}
+\end{figure}
+
+\subsubsection{LLM 作为生成器（PaG）}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.4\linewidth]{fig17.pdf}
+\caption{采用 LLM 作为解码器（PaG）进行知识图谱补全的通用框架。En. 和 De. 分别表示编码器和解码器。}
+\label{fig:llm-decoder-kgc}
+\end{figure}
+
+近期工作将 LLM 用作知识图谱补全中的序列到序列（sequence-to-sequence）生成器。如图~\ref{fig:llm-decoder-kgc}(a) 和 (b) 所示，这些方法涉及编码器--解码器（encoder-decoder）或仅解码器（decoder-only）LLM。LLM 接收查询三元组 $(h, r, ?)$ 的文本序列输入，直接生成尾部实体 $t$ 的文本。
+
+GenKGC [96] 使用大语言模型 BART [5] 作为骨干模型。受 GPT-3 [59] 中上下文学习（in-context learning）方法的启发，GenKGC 将相关样本拼接起来以学习正确的输出答案，并提出了一种关系引导的示范技术（relation-guided demonstration technique），其中包含具有相同关系的三元组以促进模型的学习过程。此外，在生成阶段，该方法提出了一种实体感知的层次解码（entity-aware hierarchical decoding）方法以降低时间复杂度。KGT5 [146] 提出了一种新颖的 KGC 模型，满足此类模型的四项关键要求：可扩展性（scalability）、质量（quality）、多功能性（versatility）和简洁性（simplicity）。该模型采用简洁的 T5 小型架构，与之前使用预训练模型初始化的 KGC 方法不同，其参数随机初始化。KG-S2S [147] 是一个综合性框架，适用于各种类型的 KGC 任务，包括静态 KGC（Static KGC）、时序 KGC（Temporal KGC）和少样本 KGC（Few-shot KGC）。为此，KG-S2S 通过引入额外元素将标准的三元组 KG 事实重新表述为四元组 $(h, r, t, m)$，其中 $m$ 表示附加的``条件''元素。尽管不同 KGC 任务的条件各异，但它们通常具有相似的文本格式，这使得跨 KGC 任务的统一成为可能。KG-S2S 方法融合了多种技术，如实体描述、软提示（soft prompt）和 Seq2Seq Dropout，以提升模型性能。此外，该方法使用受约束解码（constrained decoding）来确保生成的实体有效。对于闭源 LLM（如 ChatGPT 和 GPT-4），AutoKG 采用提示工程（prompt engineering）来设计定制化提示 [93]。如图~\ref{fig:prompt-pag-kgc} 所示，这些提示包含任务描述、少样本示例和测试输入，用以指导 LLM 预测尾部实体以完成知识图谱补全。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.4\linewidth]{cand_p14_k00.pdf}
+\caption{基于提示的 PaG 框架用于知识图谱补全。}
+\label{fig:prompt-pag-kgc}
+\end{figure}
+
+\textbf{PaE 与 PaG 的比较。}LLM 作为编码器（PaE）在 LLM 编码的表示之上附加额外的预测头，因此 PaE 框架更容易进行微调——只需优化预测头并冻结 LLM 即可。此外，预测的输出可以方便地指定，并与现有的 KGC 函数集成以适应不同的 KGC 任务。然而，在推理（inference）阶段，PaE 需要为知识图谱中的每个候选实体计算分数，计算代价可能较高。此外，PaE 无法泛化到未见实体。再者，PaE 需要 LLM 的表示输出，而一些最先进的 LLM（如 GPT-4\textsuperscript{1}）是闭源的，不提供表示输出的访问权限。
+
+LLM 作为生成器（PaG）则不需要预测头，无需微调或访问表示即可使用，因此 PaG 框架适用于所有类型的 LLM。此外，PaG 直接生成尾部实体，在推理时无需遍历所有候选实体进行排序，且容易泛化到未见实体。但 PaG 的挑战在于：生成的实体可能是多样的且不存在于知识图谱中；由于自回归生成（auto-regressive generation）的特性，单次推理的时间更长；如何设计有效的提示将知识图谱信息输入 LLM 仍是一个开放性问题。因此，尽管 PaG 在 KGC 任务中展现了良好的前景，但在选择合适的基于 LLM 的 KGC 框架时，必须仔细权衡模型复杂度与计算效率之间的取舍。
+
+\subsubsection{模型分析}
+
+Justin 等人 [187] 对集成 LLM 的 KGC 方法进行了全面分析。其研究考察了 LLM 嵌入的质量，发现其对于有效的实体排序而言并非最优。为此，他们提出了若干嵌入处理技术以提升其在候选实体检索中的适用性。该研究还比较了不同的模型选择维度，如嵌入抽取（Embedding Extraction）、查询实体抽取（Query Entity Extraction）和语言模型选择（Language Model Selection）。最后，作者提出了一个能有效将 LLM 适配于知识图谱补全的框架。
+
+\subsection{LLM 增强的 KG 构建}
+\label{sec:llm-augmented-kgc-construction}
+
+知识图谱构建（knowledge graph construction）涉及在特定领域内创建知识的结构化表示，包括识别实体及其相互关系。知识图谱构建过程通常涉及多个阶段，包括：1) \textbf{实体发现}（entity discovery）、2) \textbf{共指消解}（coreference resolution）和 3) \textbf{关系抽取}（relation extraction）。图~\ref{fig:llm-kg-construction} 展示了在 KG 构建各阶段应用 LLM 的通用框架。更近期的方法还探索了 4) \textbf{端到端知识图谱构建}（end-to-end knowledge graph construction），即一步构建完整的知识图谱；或直接 5) \textbf{从 LLM 中蒸馏知识图谱}（distilling knowledge graphs from LLMs）。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.45\linewidth]{cand_p15_k00.pdf}
+\caption{基于 LLM 的知识图谱构建通用框架。}
+\label{fig:llm-kg-construction}
+\end{figure}
+
+\subsubsection{实体发现}
+
+知识图谱构建中的实体发现（entity discovery）是指从非结构化数据源（如文本文档、网页或社交媒体帖子）中识别和抽取实体，并将其纳入知识图谱构建的过程。
+
+\textbf{命名实体识别}（Named Entity Recognition, NER）涉及在文本数据中识别和标注命名实体及其位置和分类。命名实体包括人名、组织名、地名及其他类型的实体。最先进的 NER 方法通常利用 LLM 来发挥其上下文理解和语言知识的优势，以实现准确的实体识别和分类。根据 NER 跨度（span）的类型，存在三种 NER 子任务：扁平 NER（flat NER）、嵌套 NER（nested NER）和不连续 NER（discontinuous NER）。1) \textit{扁平 NER 旨在从输入文本中识别非重叠的命名实体}。它通常被概念化为序列标注（sequence labelling）问题，其中文本中的每个标记根据其在序列中的位置被分配一个唯一标签 [1]、[148]、[188]、[189]。2) \textit{嵌套 NER 考虑允许一个标记属于多个实体的复杂场景}。基于跨度的方法 [190]--[194] 是嵌套 NER 的一个流行分支，其枚举所有候选跨度并将其分类为实体类型（包括非实体类型）。基于解析的方法 [195]--[197] 揭示了嵌套 NER 与成分句法分析（constituency parsing）任务之间的相似性（两者都需要预测嵌套和非重叠的跨度），并提出将成分句法分析的思想融入嵌套 NER。3) \textit{不连续 NER 识别文本中可能不连续的命名实体}。为应对这一挑战，[198] 使用 LLM 输出来识别实体片段并判断它们是否重叠或连续。
+
+与特定任务的方法不同，GenerativeNER [149] 使用带有指针机制（pointer mechanism）的序列到序列 LLM 生成实体序列，能够解决上述三种 NER 子任务。
+
+\textbf{实体类型标注}（Entity Typing, ET）旨在为上下文中给定的实体提供细粒度（fine-grained）和超细粒度（ultra-fine-grained）的类型信息。这类方法通常利用 LLM 编码提及项（mention）、上下文和类型。LDET [150] 应用预训练的 ELMo 嵌入 [148] 进行词表示，并采用 LSTM 作为其句子编码器和提及项编码器。BOX4Types [151] 认识到类型依赖关系的重要性，使用 BERT 在超矩形（box）空间中表示隐藏向量和每种类型。LRN [199] 考虑标签之间的外在和内在依赖关系，使用 BERT 编码上下文和实体，并利用这些输出嵌入进行演绎推理和归纳推理。MLMET [200] 使用预定义模式构造 BERT MLM 的输入样本，并使用 \texttt{[MASK]} 预测提及项的上下文相关上位词（hypernym），这些上位词可视为类型标签。PL [201] 和 DFET [202] 利用提示学习进行实体类型标注。LITE [203] 将实体类型标注表述为文本蕴含（textual inference）任务，并使用 RoBERTa-large-MNLI 作为骨干网络。
+
+\textbf{实体链接}（Entity Linking, EL），又称实体消歧（entity disambiguation），涉及将文本中出现的实体提及项链接到知识图谱中对应的实体。[204] 提出了基于 BERT 的端到端 EL 系统，能够同时发现和链接实体。ELQ [152] 采用快速的双编码器（bi-encoder）架构，联合执行提及项检测和链接，一次性完成下游问答系统的需求。与将 EL 视为向量空间中匹配问题的前期模型不同，GENRE [205] 将其表述为序列到序列问题，自回归生成输入文本的标记注释版本，其中包含以自然语言表达的实体唯一标识符。GENRE 被扩展为其多语言版本 mGENRE [206]。考虑到生成式 EL 方法的效率挑战，[207] 将自回归链接在所有潜在提及项之间并行化，并依赖于浅层高效的解码器。ReFinED [153] 提出了一种高效的零样本 EL 方法，利用由 LLM 编码器处理的细粒度实体类型和实体描述。
+
+\subsubsection{共指消解}
+
+共指消解（coreference resolution, CR）旨在找出所有指代同一实体或事件的表达式（即提及项）。
+
+\textbf{文档内共指消解（Within-document CR）}指的是所有提及项均在单个文档内的 CR 子任务。Mandar 等人 [154] 通过将之前的 LSTM 编码器 [208] 替换为 BERT 来初始化基于 LLM 的共指消解。随后，SpanBERT [155] 被引入，其在 BERT 架构上使用基于跨度的掩码语言模型进行预训练。受这些工作的启发，Tuan Manh 等人 [209] 通过将 SpanBERT 编码器融入非 LLM 方法 e2e-coref [208]，建立了一个强基线。CorefBERT 利用提及项参考预测（Mention Reference Prediction, MRP）任务，该任务遮蔽一个或多个提及项，要求模型预测被遮蔽提及项对应的指称对象（referent）。CorefQA [210] 将共指消解表述为问答任务，为每个候选提及项生成上下文查询，并从文档中使用这些查询抽取指称对象跨度。Tuan Manh 等人 [211] 引入了门控机制和噪声训练方法，利用 SpanBERT 编码器从事件提及项中抽取信息。
+
+为减少大型基于 LLM 的 NER 模型所面临的大量内存占用问题，Yuval 等人 [212] 和 Raghuveer 等人 [213] 分别提出了起止模型（start-to-end model）和近似模型（approximation model），两者都利用双线性函数（bilinear function）来计算提及项和先行词（antecedent）的分数，减少了对基于跨度的表示的依赖。
+
+\textbf{跨文档共指消解（Cross-document CR）}指的是提及项可能指代同一实体或事件但分布在多个文档中的子任务。CDML [156] 提出了一种跨文档语言建模方法，在拼接的相关文档上预训练 Longformer [214] 编码器，并使用 MLP 进行二分类以判断一对提及项是否共指。CrossCR [157] 采用端到端模型进行跨文档共指消解，在金标注提及项跨度上预训练提及项评分器，并使用成对评分器将提及项与所有文档中的所有跨度进行比较。CR-RL [158] 提出了一种基于 actor-critic 深度强化学习（deep reinforcement learning）的跨文档共指消解器。
+
+\subsubsection{关系抽取}
+
+关系抽取（relation extraction, RE）涉及识别自然语言文本中提及的实体之间的语义关系。关系抽取方法分为两类：句子级 RE（sentence-level RE）和文档级 RE（document-level RE）。
+
+\textbf{句子级关系抽取（Sentence-level RE）}专注于识别单个句子内两个实体之间的关系。Peng 等人 [159] 和 TRE [215] 引入 LLM 来提升关系抽取模型的性能。BERT-MTB [216] 基于 BERT 通过执行匹配填空（matching-the-blanks）任务并结合专门设计的关系抽取目标来学习关系表示。Curriculum-RE [160] 利用课程学习（curriculum learning），通过在训练过程中逐步增加数据难度来改进关系抽取模型。RECENT [217] 引入 SpanBERT 并利用实体类型限制来减少嘈杂的候选关系类型。Jiewen [218] 扩展了 RECENT，将实体信息和标签信息结合到句子级嵌入中，使嵌入能够感知实体标签。
+
+\textbf{文档级关系抽取}（Document-level RE, DocRE）旨在抽取文档内跨多个句子的实体间关系。Hong 等人 [219] 通过将 BiLSTM 骨干替换为 LLM，为 DocRE 建立了强基线。HIN [220] 使用 LLM 在实体级、句子级和文档级等不同层次上编码和聚合实体表示。GLRE [221] 是一种全局到局部网络，使用 LLM 编码文档信息，涵盖实体全局表示、局部表示以及上下文关系表示。SIRE [222] 使用两个基于 LLM 的编码器分别抽取句内关系和句间关系。LSR [223] 和 GAIN [224] 提出基于图的方法，在 LLM 之上引导图结构以更好地抽取关系。DocuNet [225] 将 DocRE 表述为语义分割（semantic segmentation）任务，并在 LLM 编码器上引入 U-Net [226] 来捕获实体间的局部和全局依赖关系。ATLOP [227] 专注于 DocRE 中的多标签问题，通过两种技术加以解决：自适应阈值（adaptive thresholding）用于分类器，以及局部上下文池化（localized context pooling）用于 LLM。DREEAM [161] 进一步扩展并改进了 ATLOP，融入了证据信息。
+
+\textbf{端到端知识图谱构建（End-to-End KG Construction）。}目前，研究者正探索使用 LLM 进行端到端的知识图谱构建。Kumar 等人 [95] 提出了一种从原始文本构建知识图谱的统一方法，包含两个由 LLM 驱动的组件：首先在命名实体识别任务上微调 LLM，使其能够识别原始文本中的实体；然后提出另一个``双模型 BERT''用于关系抽取任务，该任务包含两个基于 BERT 的分类器——第一个分类器学习关系类别，第二个二分类器学习两个实体间关系的方向。预测的三元组和关系随后用于构建知识图谱。Guo 等人 [162] 提出了一种基于 BERT 的端到端知识抽取模型，可用于从中国古典文本中构建知识图谱。Grapher [41] 提出了一种新颖的端到端多阶段系统，首先利用 LLM 生成 KG 实体，然后通过简单的关系构建头实现从文本描述中高效构建知识图谱。PiVE [163] 提出了一种带有迭代验证的提示框架，利用较小的 LLM（如 T5）来纠正较大 LLM（如 ChatGPT）生成的知识图谱中的错误。为进一步探索高级 LLM，AutoKG 为不同的 KG 构建任务（如实体类型标注、实体链接和关系抽取）设计了不同的提示，然后采用提示工程，使用 ChatGPT 和 GPT-4 进行知识图谱构建。
+
+\subsubsection{从 LLMs 蒸馏知识图谱}
+
+LLM 已被证明能够隐式编码大量知识 [14]。如图~\ref{fig:distill-kg-from-llm} 所示，一些研究旨在从 LLM 中蒸馏（distill）知识以构建知识图谱。COMET [164] 提出了一种常识 Transformer 模型，通过使用现有元组（tuple）作为种子知识集进行训练来构建常识知识图谱。利用这一种子集，LLM 学会将其学到的表示适配于知识生成（knowledge generation），并产出高质量的新元组。实验结果表明，LLM 中的隐式知识能够被迁移为常识知识图谱中的显式知识。BertNet [165] 提出了一种由 LLM 赋能的自动化知识图谱构建新框架，仅需关系的最简定义作为输入，即可自动生成多样化提示，并在给定 LLM 中执行高效的知识搜索以获得一致的输出。所构建的知识图谱在质量、多样性和新颖性方面表现出色，且包含更丰富的新型和复杂关系，这些关系是先前方法无法抽取的。West 等人 [166] 提出了一种符号知识蒸馏（symbolic knowledge distillation）框架，从 LLM 中蒸馏符号知识。他们首先通过从 GPT-3 等大型 LLM 中蒸馏常识事实来微调一个小型学生 LLM，然后利用该学生 LLM 生成常识知识图谱。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.45\linewidth]{cand_p16_k00.pdf}
+\caption{从 LLM 中蒸馏知识图谱的通用框架。}
+\label{fig:distill-kg-from-llm}
+\end{figure}
+
+\subsection{LLM 增强的 KG 到文本生成}
+
+知识图谱到文本（Knowledge-Graph-to-Text, KG-to-Text）生成的目标是生成高质量的文本，以准确且连贯地描述输入的知识图谱（knowledge graph）信息 [228]。KG 到文本生成将知识图谱与文本相连接，显著提升了知识图谱在更真实的自然语言生成（natural language generation, NLG）场景中的适用性，包括故事生成 [229] 和基于知识的对话 [230]。然而，收集大规模的图-文平行数据既具有挑战性又代价高昂，导致训练数据不足和生成质量欠佳。因此，大量研究工作致力于通过以下两种途径解决这一问题：1）\emph{利用 LLMs 的知识}；2）\emph{构建大规模弱监督 KG-文本对齐语料}。
+
+\subsubsection{利用 LLMs 的知识}
+
+作为将 LLMs 用于 KG-to-Text 生成的先驱性研究工作，Ribeiro 等人 [167] 以及 Kale 和 Rastogi [231] 直接微调（fine-tuning）了多种 LLMs，包括 BART 和 T5，目标是将 LLMs 的知识迁移到该任务中。如图~\ref{fig:21} 所示，这两项工作都简单地将输入图表示为线性遍历序列，并发现这种朴素的方法能够成功超越许多现有的先进 KG-to-Text 生成系统。值得注意的是，Ribeiro 等人 [167] 还发现，继续进行预训练（pre-training）可以进一步提升模型性能。然而，这些方法无法\emph{显式地}融入知识图谱中丰富的图语义信息。为了利用 KG 结构信息增强 LLMs，JointGT [42] 提出将保持 KG 结构的表示注入 Seq2Seq 大语言模型中。给定输入的子知识图谱及其对应文本，JointGT 首先将 KG 实体（entity）及其关系（relation）表示为一个标记序列，然后将其与文本标记拼接后输入 LLM。经过标准的自注意力模块后，JointGT 利用一个池化层获取知识图谱实体和关系的上下文语义表示。最后，这些池化后的 KG 表示在另一个结构感知的自注意力层中进行聚合。JointGT 还部署了额外的预训练目标，包括在给定掩码输入的条件下进行 KG 和文本重建任务，以提升文本与图信息之间的对齐效果。Li 等人 [168] 关注少样本场景，首先采用一种新颖的广度优先搜索（breadth-first search, BFS）策略来更好地遍历输入的 KG 结构，并将增强的线性化图表示输入 LLMs 以生成高质量输出，然后对齐基于 GCN 的和基于 LLM 的 KG 实体表示。Colas 等人 [169] 首先将图转换为适当的表示形式再进行线性化。接着，每个 KG 节点通过全局注意力机制进行编码，随后经过图感知注意力模块，最终解码为标记序列。不同于上述工作，KG-BART [37] 保持 KG 的结构，并利用图注意力机制聚合子 KG 中丰富的概念语义信息，从而增强模型在未见概念集上的泛化能力（generalizability）。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.45\linewidth]{fig21.pdf}
+\caption{KG-to-Text 生成的一般框架。}
+\label{fig:21}
+\end{figure}
+
+\subsubsection{构建大规模弱监督 KG-文本对齐语料}
+
+尽管 LLMs 取得了显著的实验成效，但其无监督的预训练目标并不一定与 KG-to-Text 生成任务完全契合，这促使研究者开发大规模的 KG-文本对齐语料。Jin 等人 [170] 从 Wikipedia 中构建了一个包含 130 万条数据的无监督 KG-to-Graph 训练数据集。具体而言，他们首先通过超链接和命名实体（entity）检测器识别文本中出现的实体，然后仅添加与对应知识图谱共享相同实体集合的文本，这种做法类似于关系抽取任务 [232] 中远程监督的思想。他们还提供了超过 1,000 条人工标注的 KG-to-Text 测试数据，用于验证预训练 KG-to-Text 模型的有效性。类似地，Chen 等人 [171] 也从英文 Wikidump 中构建了一个基于 KG 的文本语料。为了确保 KG 与文本之间的关联性，他们仅提取包含至少两个 Wikipedia 锚链接的句子，然后利用这些链接中的实体查询其在 WikiData 中的周围邻居，并计算这些邻居与原始句子之间的词汇重叠度。最终，仅选取高度重叠的配对。作者同时探索了基于图的编码器和基于序列的编码器，并在多种不同的任务和设置中比较了两者的优势。
+
+\subsection{LLM 增强的 KG 问答}
+
+知识图谱问答（Knowledge Graph Question Answering, KGQA）旨在基于知识图谱中存储的结构化事实来回答自然语言问题 [233], [234]。KGQA 中不可避免的挑战是检索相关事实并将知识图谱的推理（inference）优势扩展到问答任务中。因此，近期研究致力于利用 LLMs 弥合自然语言问题与结构化知识图谱之间的鸿沟 [174], [175], [235]。将 LLMs 应用于 KGQA 的一般框架如图~\ref{fig:22} 所示，其中 LLMs 可以被用作：1）实体/关系抽取器；2）答案推理器。
+
+\subsubsection{LLMs 作为实体/关系抽取器}
+
+实体/关系抽取器旨在识别自然语言问题中提及的实体和关系，并在知识图谱中检索相关事实。鉴于 LLMs 在语言理解方面的出色能力，它们可以被有效地用于这一目的。Lukovnikov 等人 [172] 率先将 LLMs 用作关系预测的分类器，相比浅层神经网络取得了显著的性能提升。Nan 等人 [174] 提出了两个基于 LLM 的 KGQA 框架，利用 LLMs 检测问题中提及的实体和关系，然后使用抽取出的实体-关系对在知识图谱中查询答案。QA-GNN [131] 使用 LLMs 对问题和候选答案对进行编码，以评估相关 KG 实体的重要性。这些实体被检索后形成一个子图，在该子图上通过图神经网络进行答案推理。Luo 等人 [173] 使用 LLMs 计算关系与问题之间的相似度以检索相关事实，其公式化表示为：
+\begin{equation}
+s(r, q) = \text{LLM}(r)^{\top} \text{LLM}(q), \tag{12}
+\end{equation}
+其中 $q$ 表示问题，$r$ 表示关系，$\text{LLM}(\cdot)$ 分别为 $q$ 和 $r$ 生成表示向量。此外，Zhang 等人 [236] 提出了一种基于 LLM 的路径检索器，用于逐跳地检索与问题相关的关系并构建多条路径。每条路径的概率可以计算为：
+\begin{equation}
+P(p|q) = \prod_{t=1}^{|p|} s(r_t, q), \tag{13}
+\end{equation}
+其中 $p$ 表示路径，$r_t$ 表示路径 $p$ 中第 $t$ 跳的关系。检索到的关系和路径可以作为上下文知识来提升答案推理器的性能，其公式化表示为：
+\begin{equation}
+P(a|q) = \sum_{p \in \mathcal{P}} P(a|p) P(p|q), \tag{14}
+\end{equation}
+其中 $\mathcal{P}$ 表示检索到的路径集合，$a$ 表示答案。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.45\linewidth]{cand_p18_k00.pdf}
+\caption{将 LLMs 应用于知识图谱问答（KGQA）的一般框架。}
+\label{fig:22}
+\end{figure}
+
+\subsubsection{LLMs 作为答案推理器}
+
+答案推理器旨在对检索到的事实进行推理并生成答案。LLMs 可以被用作答案推理器来直接生成答案。例如，如图~\ref{fig:22} 的第 3 部分所示，DEKCOR [175] 将检索到的事实与问题和候选答案拼接，其格式为：
+\begin{equation}
+x = \texttt{[CLS]}\ q\ \texttt{[SEP]}\ \text{Related Facts}\ \texttt{[SEP]}\ a\ \texttt{[SEP]}, \tag{15}
+\end{equation}
+其中 $a$ 表示候选答案。然后，将其输入 LLMs 以预测答案得分。在利用 LLMs 生成 $x$ 的表示作为问答上下文之后，DRLK [176] 提出了一个动态层次推理器（Dynamic Hierarchical Reasoner），用于捕捉问答上下文与答案之间的交互，以进行答案预测。Yan 等人 [235] 提出了一个包含两个阶段的基于 LLM 的 KGQA 框架：（1）从知识图谱中检索相关事实；（2）基于检索到的事实生成答案。第一个阶段类似于实体/关系抽取器。给定一个候选答案实体 $a$，该框架从知识图谱中抽取一系列路径 $p_1, \ldots, p_n$。第二个阶段则是基于 LLM 的答案推理器。它首先通过使用知识图谱中的实体名称和关系名称将路径文本化，然后将问题 $q$ 与所有路径 $p_1, \ldots, p_n$ 拼接，构成如下输入样本：
+\begin{equation}
+x = \texttt{[CLS]}\ q\ \texttt{[SEP]}\ p_1\ \texttt{[SEP]}\ \cdots\ \texttt{[SEP]}\ p_n\ \texttt{[SEP]}. \tag{16}
+\end{equation}
+这些路径被视为候选答案 $a$ 的相关事实。最后，利用 LLMs 预测如下假设是否成立："$a$ 是 $q$ 的答案"是否被这些事实所支持，其公式化表示为：
+\begin{align}
+e_{\texttt{[CLS]}} &= \text{LLM}(x), \tag{17} \\
+s &= \sigma(\text{MLP}(e_{\texttt{[CLS]}})), \tag{18}
+\end{align}
+其中，模型使用 LLM 对 $x$ 进行编码，并将对应 \texttt{[CLS]} 标记的表示送入多层感知机进行二分类，$\sigma(\cdot)$ 表示 sigmoid 函数。
+
+为了更好地引导 LLMs 在知识图谱上进行推理，OreoLM [177] 提出了一个知识交互层（Knowledge Interaction Layer, KIL），嵌入到 LLM 的各层之间。KIL 与一个 KG 推理模块进行交互，在该模块中它发现不同的推理路径，然后推理模块沿这些路径进行推理以生成答案。GreaseLM [178] 融合了来自 LLMs 和图神经网络的表示，以有效地对 KG 事实和语言上下文进行推理。UniKGQA [43] 将事实检索和推理统一到一个框架中。UniKGQA 由两个模块组成：第一个模块是语义匹配模块，使用 LLM 将问题与对应的关系进行语义匹配；第二个模块是匹配信息传播模块，沿知识图谱的有向边传播匹配信息以进行答案推理。类似地，ReLMKG [179] 在大语言模型和关联的知识图谱上执行联合推理。问题和文本化的路径由语言模型编码，语言模型的不同层产生输出，引导图神经网络执行消息传递。这一过程利用了结构化知识图谱中包含的显式知识来实现推理目的。StructGPT [237] 采用一个定制化接口，允许大语言模型（如 ChatGPT）直接在知识图谱上进行推理，以执行多步问题的回答。
+
+\section{LLMs 与 KGs 的协同}
+
+LLMs 与 KGs 的协同（synergy）近年来吸引了越来越多的关注，它融合了 LLMs 和 KGs 各自的优势，在各种下游应用中实现性能的相互提升。例如，LLMs 可用于理解自然语言，而 KGs 则被视为提供事实性知识的知识库。LLMs 与 KGs 的统一有望构建一个在知识表示（knowledge representation）和推理（reasoning）方面均具有强大能力的模型。
+
+本节将从两个角度讨论\emph{协同 LLMs + KGs}（Synergized LLMs + KGs）的最新进展：1) 协同知识表示（Synergized Knowledge Representation）；2) 协同推理（Synergized Reasoning）。代表性工作汇总于表~4 中。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.45\linewidth]{cand_p18_k01.pdf}
+\caption{协同 KGs 与 LLMs 方法总结。}
+\label{tab:synergized-summary}
+\end{figure}
+
+\subsection{协同知识表示}
+
+文本语料和知识图谱（knowledge graph）都包含海量知识。然而，文本语料中的知识通常是隐式且非结构化的，而知识图谱中的知识则是显式且结构化的。协同知识表示旨在设计一种能够有效表示来自 LLMs 和 KGs 两方面知识的协同模型。这种协同模型能够更好地理解来自两种来源的知识，从而在众多下游任务中发挥价值。
+
+为了联合表示知识，研究者们提出通过引入额外的 KG 融合模块来增强协同模型，这些融合模块与 LLMs 联合训练。如图~23 所示，ERNIE [35] 提出了一种文本-知识双编码器架构，其中 \emph{T-encoder} 首先对输入句子进行编码，然后 \emph{K-encoder} 处理知识图谱，并将其与来自 \emph{T-encoder} 的文本表示进行融合。BERT-MK [241] 采用了类似的双编码器架构，但在 LLMs 预训练（pre-training）阶段的知识编码器组件中引入了邻居实体（entity）的额外信息。然而，KGs 中的部分邻居实体可能与输入文本无关，从而产生额外的冗余和噪声。CokeBERT [242] 针对这一问题，提出了一种基于 GNN 的模块，利用输入文本过滤掉不相关的 KG 实体。JAKET [243] 则提出在大语言模型的中间层融合实体信息。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.4\linewidth]{cand_p19_k01.pdf}
+\caption{通过额外的 KG 融合模块实现协同知识表示。}
+\label{fig:23}
+\end{figure}
+
+KEPLER [40] 提出了一种统一的知识嵌入（embedding）与预训练语言表示模型。在 KEPLER 中，文本实体描述通过 LLM 编码为其嵌入表示，然后联合优化知识嵌入目标和语言建模目标。JointGT [42] 提出了一种图-文联合表示学习模型，设计了三个预训练任务来对齐图和文本的表示。DRAGON [44] 提出了一种自监督方法，用于从文本和 KG 中预训练一个联合的语言-知识基础模型。它以文本片段和相关 KG 子图作为输入，双向融合来自两种模态的信息。随后，DRAGON 利用两个自监督推理任务——即掩码语言建模和 KG 链接预测——来优化模型参数。HKLM [238] 引入了一种统一的 LLM，通过整合 KGs 来学习领域特定知识的表示。
+
+\subsection{协同推理}
+
+为了更好地利用文本语料和知识图谱中的知识，协同推理旨在设计一种能够有效结合 LLMs 和 KGs 进行推理的协同模型。
+
+\textbf{LLM-KG 融合推理。}LLM-KG 融合推理（LLM-KG Fusion Reasoning）利用两个独立的 LLM 和 KG 编码器来处理文本及相关 KG 输入 [244]。这两个编码器同等重要，并且联合融合来自两个来源的知识以用于推理。为了改善文本与知识之间的交互，KagNet [38] 提出首先对输入 KG 进行编码，然后增强输入的文本表示。相比之下，MHGRN [234] 使用输入文本的最终 LLM 输出来引导 KG 上的推理过程。然而，上述两种方法都仅设计了文本与 KGs 之间的单向交互。为了解决这一问题，QA-GNN [131] 提出使用基于 GNN 的模型，通过消息传递联合推理输入上下文和 KG 信息。具体而言，QA-GNN 通过池化操作将输入文本信息表示为一个特殊节点，并将该节点与 KG 中的其他实体相连接。然而，文本输入仅被池化为单一的稠密向量，限制了信息融合的效果。JointLK [245] 随后提出了一种具有细粒度交互能力的框架，通过 LM-to-KG 和 KG-to-LM 双向注意力机制（attention mechanism），实现输入文本中任意词元（token）与任意 KG 实体之间的交互。如图~24 所示，成对点积分数在所有文本词元和 KG 实体上计算，双向注意力分数分别计算。此外，在每一层 JointLK 层中，KG 根据注意力分数进行动态剪枝，使后续层能够聚焦于更重要的子 KG 结构。尽管 JointLK 效果显著，但其融合过程仍以最终 LLM 输出作为输入文本表示。GreaseLM [178] 在 LLMs 的每一层中设计了输入文本词元和 KG 实体之间深度且丰富的交互。其架构和融合方法与第 6.1 节讨论的 ERNIE [35] 大致相似，不同之处在于 GreaseLM 不使用仅处理文本的 \emph{T-encoder} 来处理输入文本。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.4\linewidth]{cand_p19_k00.pdf}
+\caption{LLM-KG 融合推理框架。}
+\label{fig:24}
+\end{figure}
+
+\textbf{LLMs 作为智能体进行推理。}除了使用两个编码器来融合知识外，LLMs 还可以作为智能体（agent）与 KGs 交互以进行推理 [246]，如图~25 所示。KD-CoT [247] 从 KGs 中迭代检索事实并生成忠实的推理轨迹，以引导 LLMs 生成答案。KSL [239] 教会 LLMs 在 KGs 上进行搜索以检索相关事实，然后生成答案。StructGPT [237] 设计了多个 API 接口，使 LLMs 能够访问结构化数据并通过在 KGs 上遍历来执行推理。Think-on-graph [240] 提供了一个灵活的即插即用框架，其中 LLM 智能体在 KGs 上迭代执行波束搜索（beam search），以发现推理路径并生成答案。为了增强智能体的能力，AgentTuning [248] 提出了多个指令微调（fine-tuning）数据集来引导 LLM 智能体在 KGs 上执行推理。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.4\linewidth]{cand_p20_k00.pdf}
+\caption{LLMs 作为智能体在 KGs 上进行推理。}
+\label{fig:25}
+\end{figure}
+
+\textbf{比较与讨论。}LLM-KG 融合推理将 LLM 编码器和 KG 编码器相结合，以统一的方式表示知识，然后采用协同推理模块对结果进行联合推理。该框架允许不同的编码器和推理模块进行端到端训练，从而有效利用 LLMs 和 KGs 的知识与推理能力。然而，这些额外的模块可能引入额外的参数和计算开销，同时缺乏可解释性（interpretability）。而 LLMs 作为智能体进行 KG 推理的方法则提供了一种灵活的框架，无需额外训练即可在 KGs 上推理，且可推广到不同的 LLMs 和 KGs。同时，推理过程具有可解释性，可用于解释推理结果。然而，为 LLM 智能体定义动作和策略本身也颇具挑战。LLMs 与 KGs 的协同仍然是一个活跃的研究课题，未来有望发展出更强大的框架。
+
+\section{未来方向与里程碑}
+
+本节讨论统一 KGs 与 LLMs 研究领域的未来方向和若干里程碑。
+
+\subsection{用于 LLMs 幻觉检测的 KGs}
+
+LLMs 中的幻觉（hallucination）问题——即生成事实性错误的内容——严重阻碍了 LLMs 的可靠性。如第 4 节所述，现有研究尝试通过预训练或 KG 增强推理来利用 KGs 获取更可靠的 LLMs。尽管付出了诸多努力，幻觉问题在可预见的未来可能仍将持续存在于 LLMs 领域。因此，为了赢得公众的信任并拓展应用边界，检测和评估 LLMs 及其他形式的 AI 生成内容（AIGC）中的幻觉现象势在必行。现有方法通过在小规模文档集上训练神经分类器来检测幻觉 [249]，但这些方法既不够鲁棒也不够强大，难以应对不断增长的 LLMs。近年来，研究者们尝试利用 KGs 作为外部来源来验证 LLMs [250]。进一步的研究结合 LLMs 和 KGs，构建了可跨领域检测幻觉的通用事实核查模型 [251]。因此，这为利用 KGs 进行幻觉检测打开了新的大门。
+
+\subsection{用于编辑 LLMs 知识的 KGs}
+
+尽管 LLMs 能够存储海量的真实世界知识，但它们无法随着现实世界情况的变化而快速更新其内部知识。目前已有一些研究致力于在不重新训练整个 LLM 的情况下编辑 LLMs 中的知识 [252]。然而，这些方案仍然存在性能不佳或计算开销过高的问题 [253]。现有研究 [254] 还揭示，编辑单个事实会对其他相关知识产生连锁效应。因此，有必要开发一种更加高效且有效的方法来编辑 LLMs 中的知识。近年来，研究者们尝试利用 KGs 高效地编辑 LLMs 中的知识。
+
+\subsection{用于黑盒 LLMs 知识注入的 KGs}
+
+尽管预训练和知识编辑可以更新 LLMs 以跟上最新知识，但它们仍需要访问 LLMs 的内部结构和参数。然而，许多最先进的大型 LLMs（如 ChatGPT）仅向用户和开发者提供 API 接口，使其成为对外的黑盒（black-box）模型。因此，按照 [38]、[244] 所描述的传统 KG 注入方法——即通过添加额外的知识融合模块来改变 LLM 结构——是不可行的。将各类知识转化为不同的文本提示（prompt）似乎是一个可行的方案。然而，这些提示能否良好地泛化（generalize）到新的 LLMs 上尚不明确。此外，基于提示的方法受限于 LLMs 输入词元的长度限制。因此，如何为黑盒 LLMs 实现有效的知识注入仍然是一个有待探索的开放问题 [255]、[256]。
+
+\subsection{用于 KGs 的多模态 LLMs}
+
+当前的知识图谱通常依赖文本和图结构来处理 KG 相关应用。然而，真实世界的知识图谱往往由来自多种模态的数据构建 [99]、[257]、[258]。因此，有效利用来自多种模态的表示将是未来研究中的一个重大挑战 [259]。一个潜在的解决方案是开发能够跨不同模态准确编码和对齐实体的方法。近年来，随着多模态 LLMs [98]、[260] 的发展，利用 LLMs 进行模态对齐展现出了广阔的前景。然而，弥合多模态 LLMs 与 KG 结构之间的差距仍然是该领域的一个关键挑战，需要进一步的研究和探索。
+
+\subsection{LLMs 对 KG 结构的理解}
+
+在纯文本数据上训练的传统 LLMs 并非为理解知识图谱这类结构化数据而设计。因此，LLMs 可能无法完全把握或理解 KG 结构所承载的信息。一种直接的方法是将结构化数据线性化为 LLMs 能够理解的句子。然而，KGs 的规模使得将整个 KGs 线性化作为输入变得不可行。此外，线性化过程可能会丢失 KGs 中的一些底层信息。因此，有必要开发能够直接理解 KG 结构并在其上进行推理的 LLMs [237]。
+
+\subsection{LLMs 与 KGs 的协同双向推理}
+
+KGs 和 LLMs 是两种互补的技术，能够相互协同。然而，LLMs 与 KGs 的协同目前尚未被研究者们充分探索。理想的协同应当能够利用两种技术的优势来克服各自的局限性。LLMs（如 ChatGPT）擅长生成类人文本和理解自然语言，而 KGs 则是以结构化方式捕获和表示知识的结构化数据库。通过结合两者的能力，我们可以创建一个强大的系统，该系统既能受益于 LLMs 的上下文理解能力，又能利用 KGs 的结构化知识表示。为了更好地统一 LLMs 和 KGs，许多先进技术有待整合，例如多模态学习 [261]、图神经网络（graph neural network）[262] 和持续学习（continual learning）[263]。最后，LLMs 与 KGs 的协同可以应用于许多真实世界的应用场景，如搜索引擎 [100]、推荐系统 [10]、[89] 和药物发现。
+
+对于一个给定的应用问题，我们可以利用 KG 执行知识驱动的潜在目标和未知数据搜索，同时利用 LLMs 执行数据/文本驱动的推理（inference），以发现新的数据/目标项。当基于知识的搜索与基于数据/文本的推理相结合时，两者可以相互验证，形成如双驱动轮般高效且有效的解决方案。因此，我们可以预见人们将日益关注释放 KGs 与 LLMs 集成的潜力，以服务于在不久的将来兼具生成能力和推理能力的多样化下游应用。
+
+我们预计在统一 KGs 和 LLMs 的路线图中将出现多个阶段（里程碑），如图~26 所示。具体而言，我们预期研究将在三个阶段逐步深入：\emph{阶段 1}：KG 增强的 LLMs 和 LLM 增强的 KGs；\emph{阶段 2}：协同的 LLMs + KGs；\emph{阶段 3}：图结构理解、多模态与知识更新。我们希望本文能够为推进未来研究提供指导。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.4\linewidth]{cand_p21_k00.pdf}
+\caption{统一 KGs 与 LLMs 的里程碑。}
+\label{fig:26}
+\end{figure}
+
+\section{结论}
+
+统一大语言模型（LLMs）和知识图谱（KGs）是一个活跃的研究方向，已经吸引了学术界和工业界越来越多的关注。本文对该领域的最新研究进行了全面综述。我们首先介绍了将 KGs 集成以增强 LLMs 的不同方式。随后，我们介绍了将 LLMs 应用于 KGs 的现有方法，并基于各类 KG 任务建立了系统的分类体系。最后，我们讨论了该领域的挑战与未来方向。
+
+\appendix
+\section{LLMs 和 KGs 的优缺点}
+
+本节详细介绍 LLMs 和 KGs 各自的优缺点。我们分别总结图~1 中 LLMs 和 KGs 的优缺点如下。
+
+\subsection*{LLM 的优点}
+
+\begin{itemize}
+    \item \textbf{通用知识}（General Knowledge）[11]：在大规模语料上预训练的 LLMs 包含大量通用知识，例如常识性知识 [264] 和事实性知识 [14]。这些知识可以从 LLMs 中提取并用于下游任务 [265]。
+    \item \textbf{语言处理}（Language Processing）[12]：LLMs 在自然语言理解方面展现出优异的性能 [266]。因此，LLMs 可用于许多自然语言处理任务，例如问答 [4]、机器翻译 [5] 和文本生成 [6]。
+    \item \textbf{泛化能力}（Generalizability）[13]：LLMs 具有出色的泛化能力（generalizability），可应用于各种下游任务 [267]。通过提供少样本示例 [59] 或在多任务数据上微调 [3]，LLMs 可在众多任务上取得优异表现。
+\end{itemize}
+
+\subsection*{LLM 的缺点}
+
+\begin{itemize}
+    \item \textbf{隐式知识}（Implicit Knowledge）[14]：LLMs 将知识隐式地表示在其参数中，难以解释或验证 LLMs 所获取的知识。
+    \item \textbf{幻觉}（Hallucination）[15]：LLMs 经常产生幻觉现象，即生成看似合理但实际上事实性错误的内容 [268]。这一问题严重降低了 LLMs 在真实世界场景中的可信度。
+    \item \textbf{不确定性}（Indecisiveness）[16]：LLMs 通过从概率模型中生成来执行推理，这是一个不确定的过程。生成的结果是从概率分布中采样的，难以控制。
+    \item \textbf{黑盒性}（Black-box）[17]：LLMs 因缺乏可解释性而受到批评。人们难以了解 LLMs 在做出预测或决策时所使用的具体模式和函数。
+    \item \textbf{缺乏领域特定知识/新知识}（Lacking Domain-specific/New Knowledge）[18]：在通用语料上训练的 LLMs 可能无法很好地泛化到特定领域或新知识，这是由于缺乏领域特定知识或新的训练数据所致。
+\end{itemize}
+
+\subsection*{KG 的优点}
+
+\begin{itemize}
+    \item \textbf{结构化知识}（Structural Knowledge）[19]：KGs 以结构化格式（即三元组（triple））存储事实，这种格式可被人类和机器同时理解。
+    \item \textbf{准确性}（Accuracy）[20]：KGs 中的事实通常由专家手动策划或验证，因此比 LLMs 中的知识更加准确和可靠。
+    \item \textbf{确定性}（Decisiveness）[21]：KGs 中的事实性知识以确定性方式存储，其推理算法也是确定性的，能够提供确定性的结果。
+    \item \textbf{可解释性}（Interpretability）[22]：KGs 以其符号推理能力著称，提供了可被人类理解的可解释推理过程。
+    \item \textbf{领域特定知识}（Domain-specific Knowledge）[23]：许多领域可以由专家构建其 KGs，以提供精确且可靠的领域特定知识。
+    \item \textbf{知识演化}（Evolving Knowledge）[24]：KGs 中的事实是持续演化的。通过插入新的三元组和删除过时的三元组，KGs 可以不断更新。
+\end{itemize}
+
+\subsection*{KG 的缺点}
+
+\begin{itemize}
+    \item \textbf{不完整性}（Incompleteness）[25]：KGs 难以构建且往往是不完整的，这限制了 KGs 提供全面知识的能力。
+    \item \textbf{缺乏语言理解}（Lacking Language Understanding）[33]：大多数关于 KGs 的研究建模知识的结构，但忽略了 KGs 中的文本信息。KGs 中的文本信息在 KG 相关任务中往往被忽略，例如 KG 补全（KG completion）[26] 和 KGQA [43]。
+    \item \textbf{未见事实}（Unseen Facts）[27]：KGs 是动态变化的，这使得建模未见实体和表示新事实变得困难。
+\end{itemize}
+
+
+\section*{致谢}
+
+本研究得到了澳大利亚研究理事会（Australian Research Council, ARC）基金 FT210100097 和 DP240101547 的资助，以及中国国家自然科学基金（NSFC）基金 62120106008 的支持。
+
+\section*{参考文献}
+
+\begin{figure}[H]\centering
+\includegraphics[width=0.45\linewidth]{refs_p21.pdf}
+\end{figure}
+
+\begin{figure}[H]\centering
+\includegraphics[width=\linewidth]{refs_p22.pdf}
+\end{figure}
+
+\begin{figure}[H]\centering
+\includegraphics[width=\linewidth]{refs_p23.pdf}
+\end{figure}
+
+\begin{figure}[H]\centering
+\includegraphics[width=\linewidth]{refs_p24.pdf}
+\end{figure}
+
+\begin{figure}[H]\centering
+\includegraphics[width=\linewidth]{refs_p25.pdf}
+\end{figure}
+
+\begin{figure}[H]\centering
+\includegraphics[width=\linewidth]{refs_p26.pdf}
+\end{figure}
+
+\begin{figure}[H]\centering
+\includegraphics[width=\linewidth]{refs_p27.pdf}
+\end{figure}
+
+
+\end{document}

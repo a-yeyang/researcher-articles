@@ -1,0 +1,437 @@
+\documentclass[11pt,UTF8,fontset=fandol]{ctexart}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx,float,caption,subcaption}
+\usepackage{booktabs,array,multirow,makecell}
+\usepackage{geometry,enumitem,xcolor}
+\usepackage[hidelinks]{hyperref}
+\usepackage{url}
+\geometry{margin=2.3cm}
+\graphicspath{{/Users/yye/project/论文/assets/unigraph/}}
+\captionsetup{font=small,labelfont=bf}
+\setlength{\parskip}{0.4em}
+\hypersetup{pdftitle={UniGraph 中文精读导读},pdfauthor={He et al.}}
+
+% 小白知识卡片：上下加线 + 粗体标签，稳健不挑内容
+\newenvironment{tip}[1]{%
+  \par\smallskip\noindent\rule{\linewidth}{0.4pt}\par\nobreak
+  \noindent\textbf{【小白补丁】#1}\par\nobreak\noindent\ignorespaces
+}{%
+  \par\noindent\rule{\linewidth}{0.4pt}\par\smallskip
+}
+
+\title{UniGraph 中文精读导读：用“文本”当通用语，造一个跨领域的图基础模型}
+\author{原文：Yufei He, Yuan Sui, Xiaoxin He, Bryan Hooi（新加坡国立大学，KDD 2025）}
+\date{}
+
+\begin{document}
+\maketitle
+\begin{center}\small\textit{本导读为面向初学者的中文学习笔记：含要点翻译、公式精讲与图表解读。}\end{center}
+
+\section*{论文卡片}
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{标题} & UniGraph: Learning a Unified Cross-Domain Foundation Model \\
+            & for Text-Attributed Graphs \\
+\textbf{作者} & Yufei He, Yuan Sui, Xiaoxin He, Bryan Hooi \\
+\textbf{机构} & 新加坡国立大学（National University of Singapore） \\
+\textbf{会议} & KDD 2025（ACM SIGKDD 知识发现与数据挖掘大会） \\
+\textbf{arXiv} & 2402.13630 \\
+\textbf{代码} & \url{https://github.com/yf-he/UniGraph} \\
+\textbf{方向} & 图（Graph）$\times$ 基础模型 $\times$ 自监督预训练 $\times$ 跨领域迁移 \\
+\textbf{一句话} & 把各种图统一看成“带文字的图”，用文本当通用语、用掩码自监督 \\
+              & 预训练一个能零样本/少样本迁移到没见过的图与任务的基础模型。 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{一、这篇论文在解决什么问题}
+
+最近几年，\textbf{基础模型（foundation model）}彻底改变了 AI：像 ChatGPT、GPT-4 这样的大模型，
+预训练一次，就能在大量它原本没专门学过的任务上通用。但作者指出，\textbf{图学习（graph learning）}
+这个领域却一直停留在“老办法”上——\textbf{一次只为一张图训练一个模型}（作者称之为
+\emph{单图模型，single-graph model}）。这种模型通常只能做一两个任务，换一张图、换一个任务就得从头再来，
+而且每个任务都要大量人工标注，数据稀缺时很吃亏。
+
+于是一个自然的问题是：\textbf{能不能像 NLP、CV 那样，造一个“图的基础模型”}——预训练一次，就能
+零样本/少样本地用到\emph{从没见过的图和任务}上？作者认为这件事很难，难点集中在“图领域千差万别、
+如何学到跨领域不变的东西”，具体有两点：
+
+\begin{enumerate}[leftmargin=2em]
+  \item \textbf{特征空间与标签空间不统一}。NLP 里不同领域的文本再不一样，也能用\emph{同一套词典}编码，
+        因此表示天然可迁移；但不同领域的图，节点和边的\emph{类型与含义完全不同}（论文的引用网络
+        vs.\ 知识图谱的实体关系），特征互不兼容，输入都没法统一。更麻烦的是，GNN 用一个固定的
+        softmax 分类器输出，\textbf{换个标签空间就没法零样本预测}。
+  \item \textbf{图结构差异巨大}。引用网络是有向、近似无环的；知识图谱却充满环、团（clique）这类复杂模式；
+        分子图又是另一回事。让模型把“在一种图上学到的结构知识”迁移到另一种图上，非常困难。
+\end{enumerate}
+
+\textbf{本文的目标}：提出 \textbf{UniGraph} 框架，设计并训练一个\emph{真正跨领域}的图基础模型，
+能泛化到不同领域、没见过的图上的各种任务。
+
+\begin{tip}{什么叫“跨领域图基础模型”？为什么它这么难}
+“基础模型”=预训练一个大模型当通用底座，下游各种任务直接拿来用。语言模型能这样，是因为有
+\textbf{“不变量”}：所有英文都共用一套词典。图却没有这种天然的通用语——社交网络的“节点”和分子的“原子”
+根本不是一回事。UniGraph 的核心赌注就是：\textbf{用“文本”给所有图当通用语}，从而把这个“没有共同词典”
+的难题转化成“大家都说同一种语言（自然语言）”的问题。
+\end{tip}
+
+\section{二、摘要中译}
+
+\begin{quote}
+像 ChatGPT、GPT-4 这样的基础模型已经革新了人工智能，展现出超越其初始训练目标、在大量任务与应用上
+泛化的惊人能力。然而图学习长期以单图模型为主，针对特定任务或数据集量身定制，缺乏把已学知识迁移到
+不同领域的能力。这一局限源于图结构固有的复杂性与多样性，以及图数据各自不同的特征空间与标签空间。
+本文中，我们认识到\textbf{文本是一种有效的统一媒介}，并借助\textbf{文本属性图（Text-Attributed Graphs, TAGs）}
+来发挥这一潜力。我们提出 UniGraph 框架，旨在为 TAG 学习一个基础模型，使其能够泛化到不同领域中
+未见过的图与任务。不同于以维度各异的预计算节点特征为输入的单图模型，我们的方法\textbf{用文本特征
+来统一节点表示}，即便是分子图这类本身没有天然文本特征的图也能处理。我们提出一种\textbf{语言模型（LM）
+与图神经网络（GNN）级联的新颖架构}作为主干网络；此外，我们提出\textbf{首个专为 TAG 上大规模自监督学习
+设计的预训练算法}，它基于\textbf{掩码图建模（Masked Graph Modeling）}。我们还引入\textbf{借助大语言模型（LLM）
+的图指令微调（graph instruction tuning）}，以赋予模型零样本预测能力。覆盖多种图学习任务与领域的全面实验
+表明，本模型在未见图上的自监督表示学习、少样本上下文迁移、以及零样本迁移上都很有效，
+\textbf{甚至超过或追平了在目标数据集上做过监督训练的 GNN}。
+\end{quote}
+
+\section{三、三大核心贡献}
+\begin{enumerate}[leftmargin=2em]
+  \item \textbf{指出难点 + 给出统一思路}：识别出跨领域图基础模型的核心挑战，提出\textbf{用 TAG（文本属性图）
+        统一不同领域的图}，并给出 UniGraph 模型——含一个新颖的\textbf{“LM + GNN 级联”主干}，
+        以及\textbf{首个面向 TAG 大规模自监督学习的预训练算法}。
+  \item \textbf{用图指令微调解锁零样本}：借助 LLM 强大的泛化能力，把不同图的标签空间
+        \textbf{统一成自然语言}，从而在图学习任务上做\emph{零样本}预测。
+  \item \textbf{大规模、跨领域的充分验证}：在 \textbf{5 个领域、11 个数据集}上做了节点/边/图三种层级的任务，
+        最大的图有 \textbf{1.11 亿个节点}。在跨领域设定下，UniGraph 不仅胜过其他跨领域方法，
+        \textbf{还胜过在目标数据集上专门做监督训练的模型}。
+\end{enumerate}
+
+\section{四、预备知识（小白先看这里）}
+
+\begin{tip}{什么是文本属性图（TAG, Text-Attributed Graph）}
+就是\textbf{节点（有时还有边）上带着一段文字}的图。比如引用网络：每个节点是一篇论文，文字就是它的
+标题+摘要；知识图谱：节点是实体，文字是实体名+描述。论文的巧思在于：\textbf{连本来没有文字的图也强行
+“配上文字”}——例如分子图，把每个原子描述成“某元素、手性如何、几个氢、是否在环上……”这样一句话，
+于是分子图也变成了 TAG。这样一来，\emph{所有图都能用同一个语言模型来编码}，特征空间就统一了。
+\end{tip}
+
+\begin{tip}{什么是自监督学习与掩码预测（masked modeling）}
+\textbf{自监督（self-supervised）}指\emph{不用人工标签}，而是从数据自己造监督信号来训练。最经典的玩法就是
+\textbf{掩码预测}：像 BERT 那样把句子里一些词盖住（换成 [MASK]），让模型根据上下文把被盖的词猜回来。
+猜对猜错本身就是监督信号，不需要人去标注。UniGraph 把这招搬到图上：盖住某个节点的部分文字，
+\textbf{让模型借助“邻居节点的文字”把它补全}——这就逼着模型既理解文本、又利用图结构。
+\end{tip}
+
+\begin{tip}{什么是锚节点（Anchor Node）及其上下文子图}
+这是 UniGraph 统一“节点/边/图三种任务”的关键概念。\textbf{锚节点}=你这次要做预测的对象所在的那个（些）节点。
+\textbf{上下文子图}=围绕锚节点取出的一小块局部子图（它的“邻里环境”）。做节点任务时锚节点就是那一个点；
+做边任务时锚节点是这条边的两个端点；做图任务时整张图的所有点都是锚节点。这样\textbf{一个统一函数}就能
+适配三种任务，不必为每种任务单独设计模型（详见第六节）。
+\end{tip}
+
+形式化记号（看不懂可跳过，用到时再回看）：文本属性图记作 $G=(V,E,T_V,T_E)$，其中 $V,E$ 是节点集与边集，
+$T_V,T_E$ 分别是节点文字、边文字的集合（很多图\emph{只有} $T_V$）。预训练好的模型记作 $f_\theta$，
+它\textbf{吃一张图、为每个节点吐一个向量}：
+\begin{equation*}
+  f_\theta:\ G\ \longrightarrow\ \mathbb{R}^{|V|\times d}, \tag{记号}
+\end{equation*}
+$d$ 是向量维度。论文用\textbf{三种问题设定}来检验它的跨领域泛化：
+
+\begin{itemize}[leftmargin=2em]
+  \item \textbf{自监督表示学习}：冻结 $f_\theta$，只在它产出的向量上\textbf{训练一个线性分类器}（叫
+        \emph{线性探测，linear probing}），看表示好不好用。
+  \item \textbf{少样本迁移（Few-shot）}：$N$ 类、每类只给 $K$ 个带标签样本（$N$-way $K$-shot），
+        不更新模型参数，靠\textbf{比对查询样本与支持样本的向量相似度}来分类，考的是“上下文学习”能力。
+  \item \textbf{零样本迁移（Zero-shot）}：把 $K$ 设为 0，\textbf{完全没见过目标类别的任何样本}，
+        靠图指令微调过的 LLM 直接用自然语言预测。
+\end{itemize}
+
+\section{五、数据集与任务}
+
+作者在\textbf{5 个领域、11 个数据集}上做实验，覆盖节点/边/图三种任务层级（见表~\ref{tab:data}）。
+最关键的一点：所有自监督方法都\textbf{只在一张超大引用网络 ogbn-Papers100M（1.11 亿节点）上预训练一次}，
+然后\textbf{直接拿去测从没见过的另外那些图}——这才叫“跨领域”。
+
+\begin{table}[H]\centering
+\caption{11 个文本属性图数据集统计（数据源自原文 Table 1）。}
+\label{tab:data}
+\small
+\begin{tabular}{lllrrr}
+\toprule
+\textbf{数据集} & \textbf{领域} & \textbf{任务} & \textbf{图数} & \textbf{平均节点数} & \textbf{平均边数} \\
+\midrule
+Cora            & 引用网络  & 节点 & 1       & 2{,}708       & 5{,}429 \\
+PubMed          & 引用网络  & 节点 & 1       & 19{,}717      & 44{,}338 \\
+ogbn-Arxiv      & 引用网络  & 节点 & 1       & 169{,}343     & 1{,}166{,}243 \\
+ogbn-Papers100M & 引用网络  & 节点 & 1       & 111{,}059{,}956 & 1{,}615{,}685{,}872 \\
+ogbn-Products   & 商品网络  & 节点 & 1       & 2{,}449{,}029  & 61{,}859{,}140 \\
+Wiki-CS         & 网页链接  & 节点 & 1       & 11{,}701      & 216{,}123 \\
+FB15K237        & 知识图谱  & 边   & 1       & 14{,}541      & 310{,}116 \\
+WN18RR          & 知识图谱  & 边   & 1       & 40{,}943      & 93{,}003 \\
+PCBA            & 分子      & 图   & 437{,}929 & 26.0        & 28.1 \\
+HIV             & 分子      & 图   & 41{,}127  & 25.5        & 27.5 \\
+ChEMBL          & 分子      & 图   & 365{,}065 & 25.9        & 55.9 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{tip}{为什么这套数据集能体现“跨领域”含金量}
+预训练只用\emph{引用网络}这一种图；测试却要去做\emph{商品分类、知识图谱关系预测、分子性质预测}——
+这些图的节点含义（论文 vs.\ 商品 vs.\ 实体 vs.\ 原子）、任务层级（节点 vs.\ 边 vs.\ 图）全都不同。
+模型从没在这些领域训练过，却要直接给出好结果，难度远大于“同领域迁移”。
+\end{tip}
+
+\section{六、UniGraph 方法逐节精讲}
+
+UniGraph 由三块拼成（见图~\ref{fig:arch}）：① \textbf{自监督预训练}（图左，用掩码图建模学一个 LM+GNN 编码器）；
+② \textbf{少样本上下文学习}（图右上，靠向量相似度比对，不训练）；③ \textbf{图指令微调}（图右下，
+把图向量喂给 LLM，用自然语言做零样本预测）。下面分别讲。
+
+\begin{figure}[H]\centering
+  \includegraphics[width=0.98\linewidth]{cand_p03_k00.pdf}
+  \caption{UniGraph 总体框架（原文 Figure 1，图内英文为原文保留）。
+  \textbf{左（Self-supervised Pre-training）}：随机掩盖节点文字，经“LM 编码器 + GNN 编码器”级联后，
+  用解码器去\emph{重建被掩盖的文字}（Masked Language Modeling Loss），同时用一个不参与梯度的
+  \emph{目标网络（Target Encoder）}做隐空间正则（Latent Loss）。
+  \textbf{右上（Few-shot In-context Learning）}：用预训练好的 LM+GNN 编码器把“支持图”和“查询图”都编码成向量，
+  靠\emph{相似度} $h_i\cdot s_j$ 给查询样本分类。
+  \textbf{右下（Graph Instruction Tuning）}：经投影器（Projector）把图向量送入冻结的 LLM（Llama），
+  配上自然语言指令、用 LoRA 微调，让模型\emph{用自然语言说出类别标签}，实现零样本。
+  图例：\emph{Updated by gradient}=梯度更新，\emph{Frozen}=冻结，\emph{Updated by EMA}=指数滑动平均更新。}
+  \label{fig:arch}
+\end{figure}
+
+\subsection{6.1 用“锚节点 + 上下文子图”统一所有任务}
+
+作者要找一个\textbf{通用函数}，能适配节点/边/图三种任务。做法是把“要预测的对象”统一表述成
+\textbf{锚节点（Anchor Node）集合 $A$} 和它们的\textbf{上下文子图集合 $X$}，再套一个统一公式：
+\begin{equation*}
+  h = g(X,A) = R\big(f_\theta(X),\,A\big). \tag{1}
+\end{equation*}
+意思是：先用预训练模型 $f_\theta$ 把上下文子图 $X$ 编码，再用一个\textbf{任务专属的读出函数 $R$}
+（readout）把锚节点对应的部分抽出来、聚合成最终向量 $h$。三种任务只是 $A$ 和 $R$ 不同：
+
+\begin{itemize}[leftmargin=2em]
+  \item \textbf{节点级}：锚节点就是要预测的那个点 $v$，$A=\{v\}$，$X=\{G_v\}$；$R_{\text{node}}$ 直接取出它的向量。
+  \item \textbf{边级}：锚节点是这条边的两个端点 $v,u$，$A=\{v,u\}$；$R_{\text{edge}}$ 取出两点向量\textbf{拼接}起来。
+  \item \textbf{图级}：图通常较小，整张图所有点都是锚节点，$A=V$；$R_{\text{graph}}$ 用\textbf{池化}（如平均池化）汇总。
+\end{itemize}
+
+\begin{tip}{怎么取“上下文子图”？——个性化 PageRank（PPR）}
+对锚节点 $v$，作者用 \textbf{top-$k$ 个性化 PageRank（Personalized PageRank, PPR）}采样它的上下文子图：
+PPR 会给图上每个点算一个“相对于 $v$ 的相关度分数”，然后取分数最高的 $k$ 个点（连同它们之间的边）
+组成子图 $G_v$。相比简单的“$k$ 跳邻居”，PPR 能挑出\textbf{在更大范围里真正重要}的节点和结构，
+更通用、更可迁移；而且“只取一小块子图”让模型能\textbf{扩展到网页级的超大图}。
+\end{tip}
+
+\subsection{6.2 预训练核心：图孪生掩码自编码器（Graph Siamese Masked Autoencoders）}
+
+这是论文\textbf{首创的、专为 TAG 设计的自监督预训练算法}。主干是\textbf{“LM + GNN 级联”}：
+论文用 DeBERTa-base 当 LM、GAT 当 GNN。训练分四步：
+
+\textbf{(a) 掩码（Masking）}：给每个节点的文字前后加上 [CLS] 和 [SEP] 标记，把 token 序列里\textbf{随机一部分
+换成 [MASK]}（掩码率 $p$，论文取 0.75）。形式化为：
+\begin{equation*}
+  m_v = \mathrm{Mask}(t_v) = [\,[\text{CLS}],M_1,M_2,\dots,M_{n_v},[\text{SEP}]\,],\quad
+  M_i = \begin{cases} [\text{MASK}], & \text{以概率 } p\\ T_i, & \text{否则.}\end{cases}\tag{2}
+\end{equation*}
+
+\textbf{(b) 编码器（Encoder）}：先用 LM $f_{\text{LM}}$ 处理\emph{被掩码}的序列 $m_v$，取出每个节点的 [CLS]
+向量；再把\textbf{所有节点的 [CLS] 向量 $\tilde{E}_{\text{cls}}$ 喂给 GNN $f_{\text{GNN}}$，在图上传播}，
+得到融合了邻居信息的 $\tilde{E}'_{\text{cls}}=f_{\text{GNN}}(G,\tilde{E}_{\text{cls}})$。
+\emph{这一步就是“LM 管文本、GNN 管结构”的级联精髓}。
+
+\textbf{(c) 解码 + 掩码语言建模（MLM）损失}：把“GNN 传播后的节点向量”和“该节点被掩码的文字表示”
+拼接、线性变换后，过一个 MLMHead 映射到词表，预测\textbf{被掩盖位置的原始 token}。损失是对所有被掩位置的
+交叉熵：
+\begin{equation*}
+  \mathcal{L}_{\text{mask}}
+  = -\frac{1}{\sum_v\sum_i \mathbb{I}(v,i)}
+    \sum_{v\in V}\sum_{i=1}^{n_v}\mathbb{I}(v,i)\cdot \log P_v[i,T_i]. \tag{4}
+\end{equation*}
+其中 $\mathbb{I}(v,i)=1$ 表示节点 $v$ 的第 $i$ 个 token 被掩码了，$P_v[i,T_i]$ 是模型给\emph{正确 token} $T_i$
+打的概率。\textbf{直觉}：模型被迫\emph{用邻居节点的文字去补全当前节点被盖住的文字}——这就同时学会了
+“看懂文本”和“利用图结构”。
+
+\textbf{(d) 隐空间正则（Latent Loss）}：为了让训练更稳、表示质量更高，作者再加一个\textbf{目标网络
+（target network）}。它和编码器结构相同，但\textbf{参数不靠梯度更新}，而是用\emph{指数滑动平均（EMA）}
+缓慢跟随编码器：$\delta'\!\leftarrow\!\delta$，$\xi'\!\leftarrow\!\tau\xi'+(1-\tau)\xi$。
+目标网络处理\emph{未掩码}的原文，编码器的输出要去\textbf{对齐}目标网络的输出（用余弦相似度）：
+\begin{equation*}
+  \mathcal{L}_{\text{latent}}
+  = \frac{1}{|V|}\sum_{i}^{|V|}
+    \Big(1-\frac{\bar{z}_i^{\top}\, e'_{\text{cls},i}}{\lVert \bar{z}_i\rVert\cdot \lVert e'_{\text{cls},i}\rVert}\Big). \tag{5}
+\end{equation*}
+
+\begin{tip}{为什么要搞一个“不学习”的目标网络？}
+这是自监督里防“崩塌”（collapse）的常用技巧（来自 BYOL、DINO 等）。如果编码器只优化掩码重建，
+表示可能学得不稳。引入一个用 EMA 缓慢更新的“影子网络”当作\textbf{稳定的对齐目标}，让编码器去追它，
+能让隐空间表示更平滑、更稳健。$\xi'\!\leftarrow\!\tau\xi'+(1-\tau)\xi$ 就是“影子”每步只挪一点点（$\tau$ 接近 1，论文取 0.996）。
+\end{tip}
+
+\textbf{总损失}：两项用系数 $\lambda$ 混合（论文 $\lambda=0.1$）：
+\begin{equation*}
+  \mathcal{L} = \mathcal{L}_{\text{mask}} + \lambda\cdot \mathcal{L}_{\text{latent}}. \tag{6}
+\end{equation*}
+\textbf{推理时}：扔掉解码器和目标网络，\textbf{只留编码器}（LM+GNN）来给节点产出向量。
+
+\subsection{6.3 少样本：靠相似度做“上下文学习”}
+
+预训练完，每个节点/边/图都能得到一个 (向量 $h$, 标签 $y$) 对。在 $N$-way $K$-shot 任务里，
+对每个类别 $c$ 算它 $K$ 个支持样本的\textbf{平均向量} $e_c$，再把查询样本 $h_q$ 按\textbf{余弦相似度}
+归到最近的类。准确率写作：
+\begin{equation*}
+  \mathcal{M} = \frac{1}{|Q|}\sum_{h_q\in Q}
+    \mathbb{1}\!\left[\arg\max_{c\in\{1,\dots,N\}}\frac{h_q\cdot e_c}{\lVert h_q\rVert\,\lVert e_c\rVert} = y_q\right]. \tag{7}
+\end{equation*}
+\textbf{关键}：这一步\emph{完全不更新模型参数}，纯靠预训练向量的质量——所以它直接检验“表示好不好用”。
+
+\subsection{6.4 零样本：图指令微调（Graph Instruction Tuning）}
+
+不同领域标签空间不同（论文类别 vs.\ 商品类别 vs.\ 关系类型），想零样本就得有个\textbf{能用自然语言说出
+任意标签}的出口。作者的做法：把预训练得到的\textbf{图向量经一个投影器（Projector）映射进 LLM 的词嵌入空间}，
+再和\textbf{自然语言指令}拼在一起喂给 LLM（论文用 Llama-7B），\textbf{用 LoRA 微调 LLM、词嵌入保持冻结}，
+训练它\textbf{直接生成自然语言形式的类别标签}（损失只算在预测目标上）。
+
+\begin{tip}{为什么图指令微调能“零样本”？}
+LLM 本身就懂海量自然语言。把“图的结构信息（向量）”对齐进 LLM 后，分类任务就变成了“读懂指令、
+用自然语言回答属于哪一类”。由于答案是\emph{开放式自然语言}而非固定 softmax 输出，\textbf{遇到训练时
+没见过的新类别/新图，也能直接用语言描述出来}——这就是零样本能力的来源。论文特意让指令微调用的
+类别（Arxiv、FB15K237）与下游测试的类别\emph{完全不重叠}，以确保是真零样本。
+\end{tip}
+
+\section{七、实验怎么做、结果怎么读}
+
+核心实验设置：LM 用 DeBERTa-base，GNN 用 GAT，LLM 用 Llama-7B；所有自监督方法\textbf{统一在
+ogbn-Papers100M（1.11 亿节点）上预训练一次}，再去测其它从没见过的图。下面挑三组关键结果。
+
+\subsection{7.1 自监督表示学习（跨领域，线性探测）}
+
+\textbf{怎么读}：白底行=自监督方法（在 Papers100M 预训练后迁移），灰底的 GCN/GAT=\emph{在目标数据集上
+专门监督训练}的“天花板”对照。表~\ref{tab:t2} 节选关键行。
+
+\begin{table}[H]\centering
+\caption{自监督表示学习结果（数值源自原文 Table 2；节点/边任务报准确率\%，图任务报 ROC-AUC\%；越高越好，加粗为最优）。}
+\label{tab:t2}
+\small
+\begin{tabular}{llccccccc}
+\toprule
+ & 方法 & Cora & PubMed & Arxiv & Products & WN18RR & HIV & PCBA \\
+\midrule
+\multirow{2}{*}{\makecell[l]{自监督\\(DeBERTa 特征)}}
+ & GraphMAE2 & 42.87 & 53.98 & 59.39 & 67.91 & 51.78 & 61.42 & 52.35 \\
+ & GAT(监督) & 47.99 & 61.01 & 63.11 & 67.02 & 73.98 & 67.12 & 56.45 \\
+\midrule
+\multirow{2}{*}{\makecell[l]{以原文\\为输入}}
+ & GIANT-XRT+GraphMAE2 & 80.11 & 69.43 & 72.01 & 75.23 & 57.32 & 67.23 & 52.01 \\
+ & \textbf{UniGraph} & \textbf{81.43} & \textbf{74.33} & \textbf{72.91} & \textbf{80.11} & \textbf{85.45} & \textbf{71.23} & 57.67 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{三点结论}（原文）：(1) UniGraph \textbf{大幅领先}所有自监督基线，说明它在跨领域场景下泛化更强；
+(2) \textbf{直接从 TAG 文本学}（UniGraph、GIANT-XRT）比“先用 LM 把文本预编码成向量再喂 GNN”更有利于跨领域；
+(3) 最惊人的是——作为\emph{一个}迁移过来的模型，UniGraph 在多数数据集上\textbf{追平甚至超过了在该数据集上
+专门监督训练的 GCN/GAT}（如 WN18RR 上 85.45 vs.\ GAT 的 73.98）。这直接证明了“训练一个图基础模型”是可行的。
+
+\subsection{7.2 少样本迁移（不更新参数）}
+
+在 Arxiv、FB15K237 上做 $N$-way $K$-shot（表~\ref{tab:t3} 节选）。对照里 OFA、Prodigy 是\emph{在同任务上
+专门预训练}的强基线，UniGraph 却\textbf{不在下游训练、纯靠相似度}就赢了它们。
+
+\begin{table}[H]\centering
+\caption{少样本迁移结果（数值源自原文 Table 3，报准确率\%；越高越好，加粗为最优）。}
+\label{tab:t3}
+\small
+\begin{tabular}{lccccc}
+\toprule
+ & \multicolumn{2}{c}{Arxiv} & \multicolumn{3}{c}{FB15K237} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-6}
+方法 & 40-way & 5-way & 40-way & 10-way & 5-way \\
+\midrule
+Prodigy        & 25.13 & 61.52 & 59.58 & 81.10 & 88.02 \\
+OFA            & 22.13 & 60.12 & 65.23 & 83.01 & 90.11 \\
+GIANT-XRT+GraphMAE2 & 27.35 & 66.91 & 47.73 & 74.33 & 80.17 \\
+\textbf{UniGraph} & \textbf{31.35} & \textbf{74.12} & \textbf{68.76} & \textbf{85.32} & \textbf{91.12} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{怎么读}：在 Arxiv 5-way 上，UniGraph 74.12 比 OFA 60.12 高出约 14 个点；FB15K237 10-way 上
+85.32 也超过 OFA 的 83.01。\textbf{关键意义}：这些基线都在下游数据上微调过，UniGraph\emph{一个参数不动}
+还能赢，说明它从预训练里学到的是\textbf{可在上下文里直接复用的通用知识}。
+
+\subsection{7.3 零样本迁移（图指令微调）}
+
+把 UniGraph 的图向量接上指令微调的 LLM（记作 \textbf{UniGraph-IT}），与通用 LLM、图-LLM 方法比
+（表~\ref{tab:t4} 节选）。
+
+\begin{table}[H]\centering
+\caption{零样本迁移结果（数值源自原文 Table 4，报准确率\%；越高越好，加粗为最优）。}
+\label{tab:t4}
+\small
+\begin{tabular}{lcccccc}
+\toprule
+ & Cora(7) & PubMed(2) & Products(47) & Wiki-CS(10) & WN18RR(11) \\
+\midrule
+vicuna-7B-v1.5 & 45.23 & 72.21 & 20.24 & 29.46 & 23.24 \\
+G2P2           & 54.29 & 82.41 & 30.82 & 30.11 & 26.24 \\
+ZeroG          & 64.21 & 87.83 & 31.24 & 31.26 & 31.42 \\
+\textbf{UniGraph-IT} & \textbf{69.53} & \textbf{89.74} & \textbf{38.45} & \textbf{43.45} & \textbf{36.73} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{怎么读}：UniGraph-IT \textbf{在所有数据集上都明显胜过通用 LLM 和图-LLM 基线}。
+比如 Products 47 类零样本上 38.45 vs.\ ZeroG 的 31.24。这说明：把高质量图向量对齐进 LLM 后，
+\textbf{LLM 确实能从图指令微调里学到“可迁移的图结构与图任务知识”}，从而对\emph{完全没见过类别}的图做预测。
+
+\subsection{7.4 其它值得一看的分析}
+
+\begin{itemize}[leftmargin=2em]
+  \item \textbf{vs.\ 同数据集专用自监督}（原文 Table 5）：即便只比表示学习，\emph{跨领域}的 UniGraph 也
+        超过了在各数据集上单独训练的 DGI/BGRL/GraphMAE2；而\emph{同数据集版} UniGraph-single 更高一截，
+        说明算法本身强、且跨领域仍有提升空间。
+  \item \textbf{消融实验}（原文 Table 7）：去掉 GNN 掉分最狠（如 HIV 71.23$\to$56.11），其次是去掉 MLM 损失；
+        去掉隐空间损失、去掉 PPR 采样也都有掉分。\textbf{结论：LM+GNN 级联、掩码重建、隐空间正则、PPR
+        采样四件套缺一不可}。
+  \item \textbf{预训练数据消融}（原文 Table 8）：在预训练里\emph{加入同领域的图}能提升对应下游性能
+        （如加分子图后 HIV 从 71.23 升到 77.84），印证“同领域迁移更容易”。
+  \item \textbf{效率}（原文 Table 6 与 Table 10）：UniGraph 预训练虽久（Papers100M 上约 23.4 小时），
+        但\textbf{开销与“只训练一个 LM 做 MLM”相当}（参数、显存、速度都接近 DeBERTa-base）；
+        而它作为基础模型，\textbf{下游只需推理、无需重训}，数据集越多越省。
+\end{itemize}
+
+\section{八、小白知识点卡片（速查）}
+\begin{itemize}[leftmargin=2em]
+  \item \textbf{文本属性图 / TAG}：节点（有时含边）带文字的图。UniGraph 把分子图等也“配文字”变成 TAG。
+  \item \textbf{基础模型（foundation model）}：预训练一次、能通用到大量下游任务的大模型。
+  \item \textbf{跨领域（cross-domain）}：在一种图上预训练，迁移到\emph{另一种领域}的图与任务。
+  \item \textbf{自监督学习}：不用人工标签，从数据自身造监督信号训练。
+  \item \textbf{掩码图建模（MGM）}：盖住节点文字、用邻居文字补全，是 UniGraph 的预训练任务。
+  \item \textbf{锚节点 + 上下文子图}：统一节点/边/图三种任务的通用表述。
+  \item \textbf{PPR（个性化 PageRank）}：按“相对某点的相关度”采样局部子图，比 $k$ 跳邻居更通用、可扩展。
+  \item \textbf{LM+GNN 级联}：LM 管文本语义、GNN 管图结构传播的主干架构。
+  \item \textbf{目标网络 / EMA}：用指数滑动平均缓慢更新的“影子网络”，防自监督表示崩塌。
+  \item \textbf{图指令微调}：把图向量喂给 LLM、用自然语言输出标签，从而零样本预测。
+  \item \textbf{线性探测（linear probing）}：冻结模型、只训一个线性分类器，用来评测表示质量。
+  \item \textbf{$N$-way $K$-shot}：$N$ 个类、每类 $K$ 个样本；$K=0$ 即零样本。
+  \item \textbf{LoRA}：参数高效微调，只训练低秩增量矩阵，省显存。
+\end{itemize}
+
+\section{九、一句话总结与谱系定位}
+
+\textbf{一句话}：UniGraph 把“所有图都看成带文字的图（TAG）”，\textbf{用文本当跨领域通用语}；
+靠“LM+GNN 级联 + 掩码图建模 + 目标网络正则”做大规模自监督预训练得到一个图基础模型，
+再用“锚节点 + 上下文子图”统一节点/边/图三种任务、用“图指令微调 LLM”解锁零样本——
+从而\textbf{一次预训练、零样本/少样本迁移到没见过的图与任务，甚至打赢专门训练的监督模型}。
+
+\textbf{在“图 $\times$ 大模型”谱系里的位置}：它属于\textbf{“用文本统一 + 自监督预训练”}这条造\emph{图基础模型}的
+路线。与之相对：\textbf{OFA} 是\emph{监督}框架、需要下游标签且要多图共训；\textbf{GCC/ULTRA} 忽略节点特征、
+只迁移\emph{结构}；\textbf{LLaGA/GraphGPT} 是\emph{纯 LLM}路线（把图映射进 LLM 嵌入空间做指令微调）。
+UniGraph 的差异化在于\textbf{端到端、自监督、且预训练后能直接泛化到任意未见 TAG}，
+并且它产出的高质量图向量\emph{还能反过来增强 LLaGA/GraphGPT 这类方法}。
+
+\textbf{动手复现}：官方代码 \url{https://github.com/yf-he/UniGraph}（含 DeBERTa+GAT 级联、掩码图建模预训练、
+PPR 采样、以及 Llama 图指令微调流程），是入门“图基础模型”很好的练手项目。
+
+\end{document}

@@ -1,0 +1,606 @@
+{
+ "pdf": "Graph Chain-of-Thought (Graph-CoT).pdf",
+ "slug": "graphcot",
+ "page_count": 22,
+ "page_size": [
+  595.3,
+  841.9
+ ],
+ "pages": [
+  {
+   "page": 1,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/graphcot/_pages/p01.png"
+  },
+  {
+   "page": 2,
+   "candidates": [
+    {
+     "id": "cand_p02_k00",
+     "kind": "vector",
+     "bbox": [
+      36.9,
+      28.8,
+      379.3,
+      221.4
+     ],
+     "pdf": "cand_p02_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      70.9,
+      196.9,
+      289.1,
+      206.8
+     ],
+     "text": "Figure 1: Augmenting LLMs with external text corpora",
+     "label": "Figure 1"
+    }
+   ],
+   "overlay": "assets/graphcot/_pages/p02.png"
+  },
+  {
+   "page": 3,
+   "candidates": [
+    {
+     "id": "cand_p03_k00",
+     "kind": "table",
+     "bbox": [
+      75.4,
+      222.7,
+      284.2,
+      230.4
+     ],
+     "pdf": "cand_p03_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      97.4,
+      71.7,
+      262.3,
+      81.6
+     ],
+     "text": "Table 1: Dataset Statistics of GRBENCH.",
+     "label": "Table 1"
+    },
+    {
+     "bbox": [
+      70.5,
+      266.0,
+      105.4,
+      276.9
+     ],
+     "text": "Table 1.",
+     "label": "Table 1"
+    }
+   ],
+   "overlay": "assets/graphcot/_pages/p03.png"
+  },
+  {
+   "page": 4,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/graphcot/_pages/p04.png"
+  },
+  {
+   "page": 5,
+   "candidates": [
+    {
+     "id": "cand_p05_k00",
+     "kind": "table",
+     "bbox": [
+      74.2,
+      82.9,
+      523.1,
+      205.2
+     ],
+     "pdf": "cand_p05_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      70.9,
+      223.1,
+      524.4,
+      233.0
+     ],
+     "text": "Figure 2: The workflow of GRAPH-COT, an iterative framework with three steps in each iteration: reasoning with",
+     "label": "Figure 2"
+    }
+   ],
+   "overlay": "assets/graphcot/_pages/p05.png"
+  },
+  {
+   "page": 6,
+   "candidates": [
+    {
+     "id": "cand_p06_k00",
+     "kind": "table",
+     "bbox": [
+      309.6,
+      267.4,
+      518.2,
+      429.0
+     ],
+     "pdf": "cand_p06_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      70.6,
+      71.6,
+      524.4,
+      81.7
+     ],
+     "text": "Table 2: Model performance on GRBENCH comparing standard LLMs, text retrieval augmented LLMs (Text",
+     "label": "Table 2"
+    },
+    {
+     "bbox": [
+      306.1,
+      428.9,
+      524.4,
+      439.0
+     ],
+     "text": "Figure 3: Ablation study of GRAPH-COT. It performs",
+     "label": "Figure 3"
+    }
+   ],
+   "overlay": "assets/graphcot/_pages/p06.png"
+  },
+  {
+   "page": 7,
+   "candidates": [
+    {
+     "id": "cand_p07_k00",
+     "kind": "table",
+     "bbox": [
+      306.4,
+      203.2,
+      524.1,
+      369.4
+     ],
+     "pdf": "cand_p07_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      70.6,
+      71.6,
+      289.1,
+      81.7
+     ],
+     "text": "Table 3: Results of GRAPH-COT with different LLM",
+     "label": "Table 3"
+    },
+    {
+     "bbox": [
+      305.8,
+      71.6,
+      341.4,
+      81.7
+     ],
+     "text": "Table 4:",
+     "label": "Table 4"
+    },
+    {
+     "bbox": [
+      306.1,
+      380.2,
+      526.1,
+      390.2
+     ],
+     "text": "Figure 4: Results of GRAPH-COT on samples of differ-",
+     "label": "Figure 4"
+    }
+   ],
+   "overlay": "assets/graphcot/_pages/p07.png"
+  },
+  {
+   "page": 8,
+   "candidates": [
+    {
+     "id": "cand_p08_k00",
+     "kind": "vector",
+     "bbox": [
+      62.0,
+      32.1,
+      532.9,
+      297.0
+     ],
+     "pdf": "cand_p08_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      70.9,
+      273.6,
+      526.1,
+      283.5
+     ],
+     "text": "Figure 5: Failure cases of GRAPH-COT. The key information in the question and the wrong interaction of GRAPH-",
+     "label": "Figure 5"
+    }
+   ],
+   "overlay": "assets/graphcot/_pages/p08.png"
+  },
+  {
+   "page": 9,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/graphcot/_pages/p09.png"
+  },
+  {
+   "page": 10,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/graphcot/_pages/p10.png"
+  },
+  {
+   "page": 11,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/graphcot/_pages/p11.png"
+  },
+  {
+   "page": 12,
+   "candidates": [
+    {
+     "id": "cand_p12_k00",
+     "kind": "vector",
+     "bbox": [
+      306.1,
+      72.3,
+      524.4,
+      455.1
+     ],
+     "pdf": "cand_p12_k00.pdf"
+    },
+    {
+     "id": "cand_p12_k01",
+     "kind": "vector",
+     "bbox": [
+      70.9,
+      206.4,
+      289.1,
+      687.4
+     ],
+     "pdf": "cand_p12_k01.pdf"
+    },
+    {
+     "id": "cand_p12_k02",
+     "kind": "vector",
+     "bbox": [
+      306.1,
+      543.2,
+      524.4,
+      776.9
+     ],
+     "pdf": "cand_p12_k02.pdf"
+    }
+   ],
+   "captions": [],
+   "overlay": "assets/graphcot/_pages/p12.png"
+  },
+  {
+   "page": 13,
+   "candidates": [
+    {
+     "id": "cand_p13_k00",
+     "kind": "vector",
+     "bbox": [
+      70.9,
+      72.3,
+      289.1,
+      509.3
+     ],
+     "pdf": "cand_p13_k00.pdf"
+    },
+    {
+     "id": "cand_p13_k01",
+     "kind": "vector",
+     "bbox": [
+      306.1,
+      72.3,
+      524.4,
+      776.9
+     ],
+     "pdf": "cand_p13_k01.pdf"
+    },
+    {
+     "id": "cand_p13_k02",
+     "kind": "vector",
+     "bbox": [
+      70.9,
+      624.5,
+      289.1,
+      776.9
+     ],
+     "pdf": "cand_p13_k02.pdf"
+    }
+   ],
+   "captions": [],
+   "overlay": "assets/graphcot/_pages/p13.png"
+  },
+  {
+   "page": 14,
+   "candidates": [
+    {
+     "id": "cand_p14_k00",
+     "kind": "vector",
+     "bbox": [
+      306.1,
+      72.3,
+      524.4,
+      387.4
+     ],
+     "pdf": "cand_p14_k00.pdf"
+    },
+    {
+     "id": "cand_p14_k01",
+     "kind": "vector",
+     "bbox": [
+      70.9,
+      72.3,
+      289.1,
+      776.9
+     ],
+     "pdf": "cand_p14_k01.pdf"
+    },
+    {
+     "id": "cand_p14_k02",
+     "kind": "vector",
+     "bbox": [
+      306.1,
+      475.4,
+      524.4,
+      776.9
+     ],
+     "pdf": "cand_p14_k02.pdf"
+    }
+   ],
+   "captions": [],
+   "overlay": "assets/graphcot/_pages/p14.png"
+  },
+  {
+   "page": 15,
+   "candidates": [
+    {
+     "id": "cand_p15_k00",
+     "kind": "vector",
+     "bbox": [
+      70.9,
+      72.3,
+      289.1,
+      414.5
+     ],
+     "pdf": "cand_p15_k00.pdf"
+    }
+   ],
+   "captions": [],
+   "overlay": "assets/graphcot/_pages/p15.png"
+  },
+  {
+   "page": 16,
+   "candidates": [
+    {
+     "id": "cand_p16_k00",
+     "kind": "table",
+     "bbox": [
+      99.8,
+      508.6,
+      497.6,
+      518.9
+     ],
+     "pdf": "cand_p16_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      196.9,
+      71.7,
+      398.1,
+      81.6
+     ],
+     "text": "Table 5: Detailed Dataset Statistics of GRBENCH.",
+     "label": "Table 5"
+    }
+   ],
+   "overlay": "assets/graphcot/_pages/p16.png"
+  },
+  {
+   "page": 17,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/graphcot/_pages/p17.png"
+  },
+  {
+   "page": 18,
+   "candidates": [
+    {
+     "id": "cand_p18_k00",
+     "kind": "vector",
+     "bbox": [
+      306.1,
+      494.7,
+      524.4,
+      578.4
+     ],
+     "pdf": "cand_p18_k00.pdf"
+    },
+    {
+     "id": "cand_p18_k01",
+     "kind": "vector",
+     "bbox": [
+      306.1,
+      626.4,
+      524.4,
+      775.8
+     ],
+     "pdf": "cand_p18_k01.pdf"
+    }
+   ],
+   "captions": [],
+   "overlay": "assets/graphcot/_pages/p18.png"
+  },
+  {
+   "page": 19,
+   "candidates": [
+    {
+     "id": "cand_p19_k00",
+     "kind": "vector",
+     "bbox": [
+      306.1,
+      70.9,
+      524.4,
+      317.1
+     ],
+     "pdf": "cand_p19_k00.pdf"
+    },
+    {
+     "id": "cand_p19_k01",
+     "kind": "vector",
+     "bbox": [
+      70.9,
+      74.9,
+      289.1,
+      413.6
+     ],
+     "pdf": "cand_p19_k01.pdf"
+    },
+    {
+     "id": "cand_p19_k02",
+     "kind": "vector",
+     "bbox": [
+      306.1,
+      411.0,
+      524.4,
+      562.4
+     ],
+     "pdf": "cand_p19_k02.pdf"
+    },
+    {
+     "id": "cand_p19_k03",
+     "kind": "vector",
+     "bbox": [
+      306.1,
+      594.3,
+      524.4,
+      772.8
+     ],
+     "pdf": "cand_p19_k03.pdf"
+    }
+   ],
+   "captions": [],
+   "overlay": "assets/graphcot/_pages/p19.png"
+  },
+  {
+   "page": 20,
+   "candidates": [
+    {
+     "id": "cand_p20_k00",
+     "kind": "vector",
+     "bbox": [
+      70.9,
+      70.9,
+      289.1,
+      220.0
+     ],
+     "pdf": "cand_p20_k00.pdf"
+    },
+    {
+     "id": "cand_p20_k01",
+     "kind": "vector",
+     "bbox": [
+      306.1,
+      70.9,
+      524.4,
+      439.1
+     ],
+     "pdf": "cand_p20_k01.pdf"
+    },
+    {
+     "id": "cand_p20_k02",
+     "kind": "vector",
+     "bbox": [
+      70.9,
+      555.9,
+      289.1,
+      772.8
+     ],
+     "pdf": "cand_p20_k02.pdf"
+    },
+    {
+     "id": "cand_p20_k03",
+     "kind": "vector",
+     "bbox": [
+      306.1,
+      546.4,
+      524.4,
+      776.9
+     ],
+     "pdf": "cand_p20_k03.pdf"
+    }
+   ],
+   "captions": [],
+   "overlay": "assets/graphcot/_pages/p20.png"
+  },
+  {
+   "page": 21,
+   "candidates": [
+    {
+     "id": "cand_p21_k00",
+     "kind": "vector",
+     "bbox": [
+      70.9,
+      89.0,
+      289.1,
+      305.9
+     ],
+     "pdf": "cand_p21_k00.pdf"
+    }
+   ],
+   "captions": [],
+   "overlay": "assets/graphcot/_pages/p21.png"
+  },
+  {
+   "page": 22,
+   "candidates": [
+    {
+     "id": "cand_p22_k00",
+     "kind": "vector",
+     "bbox": [
+      70.9,
+      70.9,
+      524.4,
+      716.4
+     ],
+     "pdf": "cand_p22_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      181.3,
+      734.0,
+      414.0,
+      743.9
+     ],
+     "text": "Figure 6: Demonstrations for the academic domain graphs",
+     "label": "Figure 6"
+    }
+   ],
+   "overlay": "assets/graphcot/_pages/p22.png"
+  }
+ ]
+}

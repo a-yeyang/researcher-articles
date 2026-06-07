@@ -1,0 +1,776 @@
+{
+ "pdf": "Breaking the Performance Ceiling in Reinforcement Learning requires Inference Strategies.pdf",
+ "slug": "breaking",
+ "page_count": 35,
+ "page_size": [
+  612.0,
+  792.0
+ ],
+ "pages": [
+  {
+   "page": 1,
+   "candidates": [
+    {
+     "id": "cand_p01_k00",
+     "kind": "table",
+     "bbox": [
+      143.6,
+      529.5,
+      468.3,
+      650.1
+     ],
+     "pdf": "cand_p01_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      657.2,
+      504.0,
+      667.1
+     ],
+     "text": "Figure 1: Improvement from using inference-time search over zero-shot state-of-the-art. Across",
+     "label": "Figure 1"
+    }
+   ],
+   "overlay": "assets/breaking/_pages/p01.png"
+  },
+  {
+   "page": 2,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/breaking/_pages/p02.png"
+  },
+  {
+   "page": 3,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/breaking/_pages/p03.png"
+  },
+  {
+   "page": 4,
+   "candidates": [
+    {
+     "id": "cand_p04_k00",
+     "kind": "vector",
+     "bbox": [
+      115.7,
+      71.6,
+      496.1,
+      208.1
+     ],
+     "pdf": "cand_p04_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      218.5,
+      504.3,
+      228.5
+     ],
+     "text": "Figure 2: Numerous applications of RL involve two distinct phases: (1) a training phase, typically",
+     "label": "Figure 2"
+    }
+   ],
+   "overlay": "assets/breaking/_pages/p04.png"
+  },
+  {
+   "page": 5,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/breaking/_pages/p05.png"
+  },
+  {
+   "page": 6,
+   "candidates": [
+    {
+     "id": "cand_p06_k00",
+     "kind": "table",
+     "bbox": [
+      362.7,
+      539.0,
+      502.9,
+      694.1
+     ],
+     "pdf": "cand_p06_k00.pdf"
+    },
+    {
+     "id": "cand_p06_k01",
+     "kind": "table",
+     "bbox": [
+      371.9,
+      597.5,
+      493.5,
+      626.1
+     ],
+     "pdf": "cand_p06_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      361.4,
+      702.1,
+      505.6,
+      712.3
+     ],
+     "text": "Figure 3: Overview of our evalua-",
+     "label": "Figure 3"
+    }
+   ],
+   "overlay": "assets/breaking/_pages/p06.png"
+  },
+  {
+   "page": 7,
+   "candidates": [
+    {
+     "id": "cand_p07_k00",
+     "kind": "vector",
+     "bbox": [
+      290.2,
+      170.6,
+      504.0,
+      353.9
+     ],
+     "pdf": "cand_p07_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      290.2,
+      360.9,
+      505.7,
+      370.9
+     ],
+     "text": "Figure 4: Training the SOTA algorithm Sable to con-",
+     "label": "Figure 4"
+    }
+   ],
+   "overlay": "assets/breaking/_pages/p07.png"
+  },
+  {
+   "page": 8,
+   "candidates": [
+    {
+     "id": "cand_p08_k00",
+     "kind": "table",
+     "bbox": [
+      290.2,
+      174.3,
+      504.0,
+      316.6
+     ],
+     "pdf": "cand_p08_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      290.2,
+      323.7,
+      505.7,
+      333.6
+     ],
+     "text": "Figure 5: Performance obtained by inference strate-",
+     "label": "Figure 5"
+    }
+   ],
+   "overlay": "assets/breaking/_pages/p08.png"
+  },
+  {
+   "page": 9,
+   "candidates": [
+    {
+     "id": "cand_p09_k00",
+     "kind": "vector",
+     "bbox": [
+      78.5,
+      52.4,
+      527.4,
+      271.7
+     ],
+     "pdf": "cand_p09_k00.pdf"
+    },
+    {
+     "id": "cand_p09_k01",
+     "kind": "vector",
+     "bbox": [
+      294.1,
+      500.0,
+      504.0,
+      659.9
+     ],
+     "pdf": "cand_p09_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      268.9,
+      504.0,
+      279.0
+     ],
+     "text": "Figure 6: Performance contour plots of Sable with different inference strategies on a range",
+     "label": "Figure 6"
+    },
+    {
+     "bbox": [
+      294.1,
+      666.8,
+      504.0,
+      676.9
+     ],
+     "text": "Figure 7: Scaling of performance with respect to",
+     "label": "Figure 7"
+    }
+   ],
+   "overlay": "assets/breaking/_pages/p09.png"
+  },
+  {
+   "page": 10,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/breaking/_pages/p10.png"
+  },
+  {
+   "page": 11,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/breaking/_pages/p11.png"
+  },
+  {
+   "page": 12,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/breaking/_pages/p12.png"
+  },
+  {
+   "page": 13,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/breaking/_pages/p13.png"
+  },
+  {
+   "page": 14,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/breaking/_pages/p14.png"
+  },
+  {
+   "page": 15,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/breaking/_pages/p15.png"
+  },
+  {
+   "page": 16,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/breaking/_pages/p16.png"
+  },
+  {
+   "page": 17,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/breaking/_pages/p17.png"
+  },
+  {
+   "page": 18,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/breaking/_pages/p18.png"
+  },
+  {
+   "page": 19,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/breaking/_pages/p19.png"
+  },
+  {
+   "page": 20,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/breaking/_pages/p20.png"
+  },
+  {
+   "page": 21,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/breaking/_pages/p21.png"
+  },
+  {
+   "page": 22,
+   "candidates": [
+    {
+     "id": "cand_p22_k00",
+     "kind": "vector",
+     "bbox": [
+      79.5,
+      136.8,
+      528.2,
+      356.5
+     ],
+     "pdf": "cand_p22_k00.pdf"
+    },
+    {
+     "id": "cand_p22_k01",
+     "kind": "vector",
+     "bbox": [
+      235.1,
+      498.1,
+      376.9,
+      639.8
+     ],
+     "pdf": "cand_p22_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      353.5,
+      504.0,
+      363.6
+     ],
+     "text": "Figure 8: Performance contour plots of Sable with different inference strategies on remaining",
+     "label": "Figure 8"
+    },
+    {
+     "bbox": [
+      108.0,
+      399.4,
+      504.0,
+      409.5
+     ],
+     "text": "Fig. 8, shows similar trends to those illustrated in Section 4.2. SABLE +COMPASS leads to the",
+     "label": "Fig. 8"
+    },
+    {
+     "bbox": [
+      108.0,
+      646.9,
+      504.0,
+      657.1
+     ],
+     "text": "Figure 9: Environment rendering for Connector. Task name: con-10x10-10a. Image from Mahjoub",
+     "label": "Figure 9"
+    }
+   ],
+   "overlay": "assets/breaking/_pages/p22.png"
+  },
+  {
+   "page": 23,
+   "candidates": [
+    {
+     "id": "cand_p23_k00",
+     "kind": "image",
+     "bbox": [
+      235.1,
+      404.5,
+      376.9,
+      546.2
+     ],
+     "pdf": "cand_p23_k00.pdf"
+    },
+    {
+     "id": "cand_p23_k01",
+     "kind": "vector",
+     "bbox": [
+      241.3,
+      141.9,
+      370.7,
+      283.6
+     ],
+     "pdf": "cand_p23_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      290.6,
+      152.5,
+      300.7
+     ],
+     "text": "Figure 10:",
+     "label": "Figure 10"
+    },
+    {
+     "bbox": [
+      108.0,
+      553.3,
+      504.0,
+      563.5
+     ],
+     "text": "Figure 11: Environment rendering for SMAX. Task name: 2s3z. Image from Mahjoub et al. (2025).",
+     "label": "Figure 11"
+    }
+   ],
+   "overlay": "assets/breaking/_pages/p23.png"
+  },
+  {
+   "page": 24,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      107.7,
+      288.1,
+      504.0,
+      298.0
+     ],
+     "text": "Table 1: Performance comparison on Craftax-1B between zero-shot inference and stochastic sampling",
+     "label": "Table 1"
+    }
+   ],
+   "overlay": "assets/breaking/_pages/p24.png"
+  },
+  {
+   "page": 25,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      107.7,
+      79.1,
+      504.0,
+      89.0
+     ],
+     "text": "Table 2: Hyper-parameters used for COMPASS’ training phase. The same values are used for all three",
+     "label": "Table 2"
+    },
+    {
+     "bbox": [
+      107.7,
+      277.4,
+      504.0,
+      287.3
+     ],
+     "text": "Table 3: Hyper-parameters of the CMA-ES process used to search COMPASS’ latent space at inference",
+     "label": "Table 3"
+    },
+    {
+     "bbox": [
+      107.7,
+      425.5,
+      503.8,
+      435.4
+     ],
+     "text": "Table 4: Hyper-parameters used when doing online fine-tuning at inference-time with SABLE, MAPPO",
+     "label": "Table 4"
+    }
+   ],
+   "overlay": "assets/breaking/_pages/p25.png"
+  },
+  {
+   "page": 26,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      107.7,
+      79.0,
+      504.0,
+      89.0
+     ],
+     "text": "Table 5: Hyper-parameters for Simulation Guided Beam Search (SGBS). The same values are used",
+     "label": "Table 5"
+    },
+    {
+     "bbox": [
+      107.7,
+      205.4,
+      504.0,
+      215.4
+     ],
+     "text": "Table 6: To sample stochastically from a policy (SABLE, IPPO or MAPPO), we always use the same",
+     "label": "Table 6"
+    },
+    {
+     "bbox": [
+      107.7,
+      468.3,
+      476.5,
+      478.2
+     ],
+     "text": "Table 7 the training budget given to the methods to reach convergence, in environment steps.",
+     "label": "Table 7"
+    },
+    {
+     "bbox": [
+      149.0,
+      501.3,
+      462.7,
+      511.3
+     ],
+     "text": "Table 7: Training budgets (in environment steps) for each method across tasks.",
+     "label": "Table 7"
+    }
+   ],
+   "overlay": "assets/breaking/_pages/p26.png"
+  },
+  {
+   "page": 27,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/breaking/_pages/p27.png"
+  },
+  {
+   "page": 28,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      107.6,
+      89.5,
+      243.5,
+      99.5
+     ],
+     "text": "Algorithm 1 Stochastic Sampling",
+     "label": "Algorithm 1"
+    },
+    {
+     "bbox": [
+      107.6,
+      299.8,
+      293.6,
+      309.9
+     ],
+     "text": "Algorithm 2 Simulation-Guided Beam Search",
+     "label": "Algorithm 2"
+    },
+    {
+     "bbox": [
+      107.6,
+      542.7,
+      240.9,
+      552.8
+     ],
+     "text": "Algorithm 3 Online Fine-Tuning",
+     "label": "Algorithm 3"
+    }
+   ],
+   "overlay": "assets/breaking/_pages/p28.png"
+  },
+  {
+   "page": 29,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      107.6,
+      74.0,
+      283.6,
+      84.1
+     ],
+     "text": "Algorithm 4 COMPASS + CMA-ES search",
+     "label": "Algorithm 4"
+    }
+   ],
+   "overlay": "assets/breaking/_pages/p29.png"
+  },
+  {
+   "page": 30,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      204.6,
+      79.1,
+      407.1,
+      89.0
+     ],
+     "text": "Table 8: Parameter count comparison for MAPPO.",
+     "label": "Table 8"
+    },
+    {
+     "bbox": [
+      211.0,
+      329.2,
+      400.7,
+      339.1
+     ],
+     "text": "Table 9: Parameter count comparison for IPPO.",
+     "label": "Table 9"
+    }
+   ],
+   "overlay": "assets/breaking/_pages/p30.png"
+  },
+  {
+   "page": 31,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      203.5,
+      79.1,
+      408.2,
+      89.0
+     ],
+     "text": "Table 10: Parameter count comparison for SABLE.",
+     "label": "Table 10"
+    },
+    {
+     "bbox": [
+      107.7,
+      325.2,
+      504.0,
+      335.3
+     ],
+     "text": "Table 11: Number of attempts (solutions generated) when using SABLE + COMPASS during 300",
+     "label": "Table 11"
+    }
+   ],
+   "overlay": "assets/breaking/_pages/p31.png"
+  },
+  {
+   "page": 32,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      107.7,
+      79.1,
+      504.0,
+      89.0
+     ],
+     "text": "Table 12: Number of attempts (solutions generated) when using online fine-tuning and SABLE during",
+     "label": "Table 12"
+    },
+    {
+     "bbox": [
+      107.7,
+      347.8,
+      504.0,
+      357.7
+     ],
+     "text": "Table 13: Number of attempts (solutions generated) when sampling stochastically from SABLE during",
+     "label": "Table 13"
+    }
+   ],
+   "overlay": "assets/breaking/_pages/p32.png"
+  },
+  {
+   "page": 33,
+   "candidates": [
+    {
+     "id": "cand_p33_k00",
+     "kind": "table",
+     "bbox": [
+      125.6,
+      117.4,
+      486.4,
+      324.2
+     ],
+     "pdf": "cand_p33_k00.pdf"
+    },
+    {
+     "id": "cand_p33_k01",
+     "kind": "table",
+     "bbox": [
+      120.6,
+      381.9,
+      491.4,
+      588.7
+     ],
+     "pdf": "cand_p33_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      107.7,
+      79.0,
+      504.0,
+      89.0
+     ],
+     "text": "Table 14: Number of attempts (solutions generated) when using COMPASS with SABLE, IPPO and",
+     "label": "Table 14"
+    },
+    {
+     "bbox": [
+      107.7,
+      343.5,
+      505.2,
+      353.6
+     ],
+     "text": "Table 15: Number of attempts (solutions generated) when using stochastic sampling with SABLE,",
+     "label": "Table 15"
+    }
+   ],
+   "overlay": "assets/breaking/_pages/p33.png"
+  },
+  {
+   "page": 34,
+   "candidates": [
+    {
+     "id": "cand_p34_k00",
+     "kind": "image",
+     "bbox": [
+      117.9,
+      321.3,
+      494.1,
+      643.8
+     ],
+     "pdf": "cand_p34_k00.pdf"
+    },
+    {
+     "id": "cand_p34_k01",
+     "kind": "vector",
+     "bbox": [
+      123.1,
+      117.4,
+      488.9,
+      324.2
+     ],
+     "pdf": "cand_p34_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      107.7,
+      79.1,
+      503.8,
+      89.0
+     ],
+     "text": "Table 16: Number of attempts (solutions generated) when using online fine-tuning with SABLE, IPPO",
+     "label": "Table 16"
+    },
+    {
+     "bbox": [
+      108.0,
+      650.7,
+      504.0,
+      660.8
+     ],
+     "text": "Figure 12: Training the SOTA algorithm Sable to convergence is not enough to achieve optimal",
+     "label": "Figure 12"
+    }
+   ],
+   "overlay": "assets/breaking/_pages/p34.png"
+  },
+  {
+   "page": 35,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      107.7,
+      284.7,
+      505.7,
+      294.7
+     ],
+     "text": "Table 17: Performance comparison between the base policy (after 20M timesteps and after conver-",
+     "label": "Table 17"
+    }
+   ],
+   "overlay": "assets/breaking/_pages/p35.png"
+  }
+ ]
+}

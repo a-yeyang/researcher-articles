@@ -1,0 +1,980 @@
+{
+ "pdf": "whendollm.pdf",
+ "slug": "whendollm",
+ "page_count": 27,
+ "page_size": [
+  612.0,
+  792.0
+ ],
+ "pages": [
+  {
+   "page": 1,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/whendollm/_pages/p01.png"
+  },
+  {
+   "page": 2,
+   "candidates": [
+    {
+     "id": "cand_p02_k00",
+     "kind": "table",
+     "bbox": [
+      309.6,
+      68.3,
+      536.9,
+      229.2
+     ],
+     "pdf": "cand_p02_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      345.8,
+      238.2,
+      503.1,
+      248.3
+     ],
+     "text": "Figure 1: Overview of LLMNodeBed.",
+     "label": "Figure 1"
+    }
+   ],
+   "overlay": "assets/whendollm/_pages/p02.png"
+  },
+  {
+   "page": 3,
+   "candidates": [
+    {
+     "id": "cand_p03_k00",
+     "kind": "table",
+     "bbox": [
+      57.1,
+      81.3,
+      539.8,
+      143.2
+     ],
+     "pdf": "cand_p03_k00.pdf"
+    },
+    {
+     "id": "cand_p03_k01",
+     "kind": "image",
+     "bbox": [
+      71.8,
+      362.6,
+      196.2,
+      405.5
+     ],
+     "pdf": "cand_p03_k01.pdf"
+    },
+    {
+     "id": "cand_p03_k02",
+     "kind": "image",
+     "bbox": [
+      -73.8,
+      356.1,
+      71.8,
+      409.8
+     ],
+     "pdf": "cand_p03_k02.pdf"
+    },
+    {
+     "id": "cand_p03_k03",
+     "kind": "vector",
+     "bbox": [
+      88.8,
+      157.3,
+      268.2,
+      203.2
+     ],
+     "pdf": "cand_p03_k03.pdf"
+    },
+    {
+     "id": "cand_p03_k04",
+     "kind": "vector",
+     "bbox": [
+      329.9,
+      166.9,
+      505.2,
+      227.1
+     ],
+     "pdf": "cand_p03_k04.pdf"
+    },
+    {
+     "id": "cand_p03_k05",
+     "kind": "vector",
+     "bbox": [
+      88.8,
+      218.3,
+      274.0,
+      259.8
+     ],
+     "pdf": "cand_p03_k05.pdf"
+    },
+    {
+     "id": "cand_p03_k06",
+     "kind": "vector",
+     "bbox": [
+      150.9,
+      273.6,
+      296.5,
+      329.8
+     ],
+     "pdf": "cand_p03_k06.pdf"
+    },
+    {
+     "id": "cand_p03_k07",
+     "kind": "vector",
+     "bbox": [
+      418.6,
+      248.7,
+      505.2,
+      330.5
+     ],
+     "pdf": "cand_p03_k07.pdf"
+    },
+    {
+     "id": "cand_p03_k08",
+     "kind": "vector",
+     "bbox": [
+      292.8,
+      363.0,
+      420.0,
+      424.3
+     ],
+     "pdf": "cand_p03_k08.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      176.3,
+      67.8,
+      420.2,
+      77.8
+     ],
+     "text": "Table 1: Statistics of supported datasets in LLMNodeBed.",
+     "label": "Table 1"
+    },
+    {
+     "bbox": [
+      70.4,
+      353.9,
+      526.5,
+      364.0
+     ],
+     "text": "Figure 2: Illustrations of LLM-based node classification algorithms under supervised and zero-shot settings.",
+     "label": "Figure 2"
+    }
+   ],
+   "overlay": "assets/whendollm/_pages/p03.png"
+  },
+  {
+   "page": 4,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/whendollm/_pages/p04.png"
+  },
+  {
+   "page": 5,
+   "candidates": [
+    {
+     "id": "cand_p05_k00",
+     "kind": "table",
+     "bbox": [
+      57.1,
+      102.8,
+      539.8,
+      359.0
+     ],
+     "pdf": "cand_p05_k00.pdf"
+    },
+    {
+     "id": "cand_p05_k01",
+     "kind": "table",
+     "bbox": [
+      57.2,
+      240.7,
+      539.7,
+      357.9
+     ],
+     "pdf": "cand_p05_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      55.1,
+      67.6,
+      520.4,
+      77.8
+     ],
+     "text": "Table 2: Performance comparison under semi-supervised and supervised settings with Accuracy (%) reported.",
+     "label": "Table 2"
+    }
+   ],
+   "overlay": "assets/whendollm/_pages/p05.png"
+  },
+  {
+   "page": 6,
+   "candidates": [
+    {
+     "id": "cand_p06_k00",
+     "kind": "table",
+     "bbox": [
+      75.6,
+      90.7,
+      518.8,
+      264.9
+     ],
+     "pdf": "cand_p06_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      55.1,
+      67.6,
+      502.2,
+      77.8
+     ],
+     "text": "Table 3: Performance comparison under zero-shot setting with Accuracy (%) and Macro-F1 (%) reported.",
+     "label": "Table 3"
+    },
+    {
+     "bbox": [
+      55.1,
+      371.2,
+      289.4,
+      381.2
+     ],
+     "text": "Table 3 and Table 13 in the Appendix, where we have the",
+     "label": "Table 3"
+    }
+   ],
+   "overlay": "assets/whendollm/_pages/p06.png"
+  },
+  {
+   "page": 7,
+   "candidates": [
+    {
+     "id": "cand_p07_k00",
+     "kind": "table",
+     "bbox": [
+      57.4,
+      78.5,
+      539.4,
+      108.6
+     ],
+     "pdf": "cand_p07_k00.pdf"
+    },
+    {
+     "id": "cand_p07_k01",
+     "kind": "table",
+     "bbox": [
+      57.4,
+      122.2,
+      539.4,
+      249.4
+     ],
+     "pdf": "cand_p07_k01.pdf"
+    },
+    {
+     "id": "cand_p07_k02",
+     "kind": "table",
+     "bbox": [
+      317.4,
+      123.4,
+      404.9,
+      143.8
+     ],
+     "pdf": "cand_p07_k02.pdf"
+    },
+    {
+     "id": "cand_p07_k03",
+     "kind": "table",
+     "bbox": [
+      183.2,
+      143.8,
+      539.4,
+      207.2
+     ],
+     "pdf": "cand_p07_k03.pdf"
+    },
+    {
+     "id": "cand_p07_k04",
+     "kind": "table",
+     "bbox": [
+      272.7,
+      207.2,
+      404.9,
+      228.5
+     ],
+     "pdf": "cand_p07_k04.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      55.1,
+      67.6,
+      523.3,
+      77.8
+     ],
+     "text": "Table 4: Comparison of LLM- and LM-as-Encoder with Accuracy (%) reported under semi-supervised setting.",
+     "label": "Table 4"
+    }
+   ],
+   "overlay": "assets/whendollm/_pages/p07.png"
+  },
+  {
+   "page": 8,
+   "candidates": [
+    {
+     "id": "cand_p08_k00",
+     "kind": "table",
+     "bbox": [
+      55.4,
+      77.7,
+      533.3,
+      309.2
+     ],
+     "pdf": "cand_p08_k00.pdf"
+    },
+    {
+     "id": "cand_p08_k01",
+     "kind": "table",
+     "bbox": [
+      56.7,
+      335.8,
+      539.6,
+      395.1
+     ],
+     "pdf": "cand_p08_k01.pdf"
+    },
+    {
+     "id": "cand_p08_k02",
+     "kind": "table",
+     "bbox": [
+      56.7,
+      422.6,
+      539.6,
+      477.4
+     ],
+     "pdf": "cand_p08_k02.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      55.1,
+      67.6,
+      541.4,
+      77.9
+     ],
+     "text": "Table 5: Comparison of LLM- and LM-as-Encoder with Accuracy (%) reported on heterophilic graphs. The",
+     "label": "Table 5"
+    },
+    {
+     "bbox": [
+      92.6,
+      322.1,
+      503.9,
+      332.3
+     ],
+     "text": "Table 6: Performance (%) of TAPE with different LLM backbones under semi-supervised setting.",
+     "label": "Table 6"
+    },
+    {
+     "bbox": [
+      104.0,
+      408.9,
+      492.6,
+      419.1
+     ],
+     "text": "Table 7: Performance (%) of TAPE with different LLM backbones under supervised setting.",
+     "label": "Table 7"
+    }
+   ],
+   "overlay": "assets/whendollm/_pages/p08.png"
+  },
+  {
+   "page": 9,
+   "candidates": [
+    {
+     "id": "cand_p09_k00",
+     "kind": "table",
+     "bbox": [
+      57.2,
+      78.5,
+      539.7,
+      170.9
+     ],
+     "pdf": "cand_p09_k00.pdf"
+    },
+    {
+     "id": "cand_p09_k01",
+     "kind": "table",
+     "bbox": [
+      57.2,
+      198.4,
+      539.7,
+      276.5
+     ],
+     "pdf": "cand_p09_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      55.1,
+      67.6,
+      430.2,
+      77.8
+     ],
+     "text": "Table 8: Accuracy (%) of LLaGA to different LLM backbones under supervised settings.",
+     "label": "Table 8"
+    },
+    {
+     "bbox": [
+      111.0,
+      184.7,
+      485.6,
+      194.9
+     ],
+     "text": "Table 9: Macro-F1(%) of LLaGA to different LLM backbones under supervised settings.",
+     "label": "Table 9"
+    }
+   ],
+   "overlay": "assets/whendollm/_pages/p09.png"
+  },
+  {
+   "page": 10,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/whendollm/_pages/p10.png"
+  },
+  {
+   "page": 11,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/whendollm/_pages/p11.png"
+  },
+  {
+   "page": 12,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/whendollm/_pages/p12.png"
+  },
+  {
+   "page": 13,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/whendollm/_pages/p13.png"
+  },
+  {
+   "page": 14,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/whendollm/_pages/p14.png"
+  },
+  {
+   "page": 15,
+   "candidates": [
+    {
+     "id": "cand_p15_k00",
+     "kind": "vector",
+     "bbox": [
+      55.4,
+      194.6,
+      541.4,
+      303.5
+     ],
+     "pdf": "cand_p15_k00.pdf"
+    },
+    {
+     "id": "cand_p15_k01",
+     "kind": "vector",
+     "bbox": [
+      55.4,
+      409.6,
+      541.4,
+      630.7
+     ],
+     "pdf": "cand_p15_k01.pdf"
+    }
+   ],
+   "captions": [],
+   "overlay": "assets/whendollm/_pages/p15.png"
+  },
+  {
+   "page": 16,
+   "candidates": [
+    {
+     "id": "cand_p16_k00",
+     "kind": "vector",
+     "bbox": [
+      55.4,
+      67.1,
+      541.4,
+      225.4
+     ],
+     "pdf": "cand_p16_k00.pdf"
+    }
+   ],
+   "captions": [],
+   "overlay": "assets/whendollm/_pages/p16.png"
+  },
+  {
+   "page": 17,
+   "candidates": [
+    {
+     "id": "cand_p17_k00",
+     "kind": "table",
+     "bbox": [
+      69.1,
+      89.4,
+      527.0,
+      380.1
+     ],
+     "pdf": "cand_p17_k00.pdf"
+    },
+    {
+     "id": "cand_p17_k01",
+     "kind": "table",
+     "bbox": [
+      68.2,
+      396.0,
+      527.0,
+      433.0
+     ],
+     "pdf": "cand_p17_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      111.3,
+      67.8,
+      485.3,
+      77.8
+     ],
+     "text": "Table 10: Details of datasets: label space and training data percentages with supervision.",
+     "label": "Table 10"
+    }
+   ],
+   "overlay": "assets/whendollm/_pages/p17.png"
+  },
+  {
+   "page": 18,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/whendollm/_pages/p18.png"
+  },
+  {
+   "page": 19,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/whendollm/_pages/p19.png"
+  },
+  {
+   "page": 20,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/whendollm/_pages/p20.png"
+  },
+  {
+   "page": 21,
+   "candidates": [
+    {
+     "id": "cand_p21_k00",
+     "kind": "table",
+     "bbox": [
+      57.5,
+      115.1,
+      539.4,
+      163.7
+     ],
+     "pdf": "cand_p21_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      95.1,
+      93.4,
+      501.5,
+      103.6
+     ],
+     "text": "Table 11: Performance comparison (in %) on large-scale dataset ogbn-products (Hu et al., 2020).",
+     "label": "Table 11"
+    }
+   ],
+   "overlay": "assets/whendollm/_pages/p21.png"
+  },
+  {
+   "page": 22,
+   "candidates": [
+    {
+     "id": "cand_p22_k00",
+     "kind": "table",
+     "bbox": [
+      57.1,
+      136.5,
+      539.8,
+      391.2
+     ],
+     "pdf": "cand_p22_k00.pdf"
+    },
+    {
+     "id": "cand_p22_k01",
+     "kind": "table",
+     "bbox": [
+      57.2,
+      273.7,
+      539.7,
+      390.2
+     ],
+     "pdf": "cand_p22_k01.pdf"
+    },
+    {
+     "id": "cand_p22_k02",
+     "kind": "table",
+     "bbox": [
+      68.3,
+      432.7,
+      526.1,
+      577.6
+     ],
+     "pdf": "cand_p22_k02.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      55.1,
+      93.4,
+      527.4,
+      103.6
+     ],
+     "text": "Table 12: Performance comparison under semi-supervised and supervised settings with Macro-F1 (%) reported.",
+     "label": "Table 12"
+    },
+    {
+     "bbox": [
+      61.3,
+      411.0,
+      535.2,
+      421.2
+     ],
+     "text": "Table 13: Performance comparison under zero-shot setting with both Accuracy (%) and Macro-F1 (%) reported.",
+     "label": "Table 13"
+    }
+   ],
+   "overlay": "assets/whendollm/_pages/p22.png"
+  },
+  {
+   "page": 23,
+   "candidates": [
+    {
+     "id": "cand_p23_k00",
+     "kind": "table",
+     "bbox": [
+      57.0,
+      146.9,
+      539.5,
+      156.1
+     ],
+     "pdf": "cand_p23_k00.pdf"
+    },
+    {
+     "id": "cand_p23_k01",
+     "kind": "table",
+     "bbox": [
+      57.0,
+      170.2,
+      539.6,
+      289.5
+     ],
+     "pdf": "cand_p23_k01.pdf"
+    },
+    {
+     "id": "cand_p23_k02",
+     "kind": "table",
+     "bbox": [
+      57.0,
+      468.9,
+      539.5,
+      626.8
+     ],
+     "pdf": "cand_p23_k02.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      55.1,
+      111.0,
+      541.4,
+      121.3
+     ],
+     "text": "Table 14: Comparison of LLM- and LM-as-Encoder with Accuracy (%) reported under supervised setting. The",
+     "label": "Table 14"
+    },
+    {
+     "bbox": [
+      55.1,
+      435.7,
+      445.9,
+      445.7
+     ],
+     "text": "Table 15: Sensitivity of LLaGA to different LLM backbones under semi-supervised Settings.",
+     "label": "Table 15"
+    }
+   ],
+   "overlay": "assets/whendollm/_pages/p23.png"
+  },
+  {
+   "page": 24,
+   "candidates": [
+    {
+     "id": "cand_p24_k00",
+     "kind": "table",
+     "bbox": [
+      113.7,
+      67.1,
+      483.2,
+      173.4
+     ],
+     "pdf": "cand_p24_k00.pdf"
+    },
+    {
+     "id": "cand_p24_k01",
+     "kind": "table",
+     "bbox": [
+      113.7,
+      235.1,
+      483.2,
+      341.5
+     ],
+     "pdf": "cand_p24_k01.pdf"
+    },
+    {
+     "id": "cand_p24_k02",
+     "kind": "table",
+     "bbox": [
+      57.5,
+      413.5,
+      539.4,
+      479.8
+     ],
+     "pdf": "cand_p24_k02.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      55.4,
+      199.9,
+      541.4,
+      210.1
+     ],
+     "text": "Figure 3: Performance trends within Qwen-series in different scales using LLaGA framework in semi-supervised",
+     "label": "Figure 3"
+    },
+    {
+     "bbox": [
+      55.4,
+      368.1,
+      541.3,
+      378.1
+     ],
+     "text": "Figure 4: Performance trends within Qwen-series in different scales using LLaGA framework in supervised settings.",
+     "label": "Figure 4"
+    },
+    {
+     "bbox": [
+      89.9,
+      392.0,
+      506.7,
+      402.0
+     ],
+     "text": "Table 16: Training and inference times of Qwen-series models ranging from 3B to 32B parameters.",
+     "label": "Table 16"
+    }
+   ],
+   "overlay": "assets/whendollm/_pages/p24.png"
+  },
+  {
+   "page": 25,
+   "candidates": [
+    {
+     "id": "cand_p25_k00",
+     "kind": "table",
+     "bbox": [
+      102.8,
+      67.1,
+      494.1,
+      203.2
+     ],
+     "pdf": "cand_p25_k00.pdf"
+    },
+    {
+     "id": "cand_p25_k01",
+     "kind": "table",
+     "bbox": [
+      112.5,
+      266.5,
+      484.4,
+      382.1
+     ],
+     "pdf": "cand_p25_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      55.4,
+      229.8,
+      541.4,
+      239.9
+     ],
+     "text": "Figure 5: Biased predictions by LLM-as-Predictor methods on the Instagram dataset: Comparison of ground-truth",
+     "label": "Figure 5"
+    },
+    {
+     "bbox": [
+      122.5,
+      408.7,
+      474.4,
+      418.7
+     ],
+     "text": "Figure 6: Biased predictions by LLM-as-Predictor methods on the Pubmed dataset.",
+     "label": "Figure 6"
+    }
+   ],
+   "overlay": "assets/whendollm/_pages/p25.png"
+  },
+  {
+   "page": 26,
+   "candidates": [
+    {
+     "id": "cand_p26_k00",
+     "kind": "table",
+     "bbox": [
+      80.4,
+      105.2,
+      514.0,
+      199.6
+     ],
+     "pdf": "cand_p26_k00.pdf"
+    },
+    {
+     "id": "cand_p26_k01",
+     "kind": "table",
+     "bbox": [
+      57.4,
+      226.2,
+      539.5,
+      325.2
+     ],
+     "pdf": "cand_p26_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      55.1,
+      67.6,
+      541.4,
+      77.9
+     ],
+     "text": "Table 17: Average hallucination ratios (%) of LLM-as-Predictor methods. The hallucination rate is calculated as the",
+     "label": "Table 17"
+    },
+    {
+     "bbox": [
+      88.2,
+      212.6,
+      508.3,
+      222.7
+     ],
+     "text": "Table 18: Examples of hallucinations in GraphGPT’s outputs on the Citeseer and Pubmed datasets.",
+     "label": "Table 18"
+    }
+   ],
+   "overlay": "assets/whendollm/_pages/p26.png"
+  },
+  {
+   "page": 27,
+   "candidates": [
+    {
+     "id": "cand_p27_k00",
+     "kind": "table",
+     "bbox": [
+      57.5,
+      127.1,
+      539.4,
+      281.0
+     ],
+     "pdf": "cand_p27_k00.pdf"
+    },
+    {
+     "id": "cand_p27_k01",
+     "kind": "table",
+     "bbox": [
+      103.6,
+      334.5,
+      489.6,
+      437.1
+     ],
+     "pdf": "cand_p27_k01.pdf"
+    },
+    {
+     "id": "cand_p27_k02",
+     "kind": "table",
+     "bbox": [
+      141.4,
+      477.6,
+      453.0,
+      613.8
+     ],
+     "pdf": "cand_p27_k02.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      55.1,
+      93.6,
+      541.4,
+      103.6
+     ],
+     "text": "Table 19: Total training times of different methods in supervised settings. All recorded experiment times are based on a",
+     "label": "Table 19"
+    },
+    {
+     "bbox": [
+      55.1,
+      301.0,
+      541.4,
+      311.1
+     ],
+     "text": "Table 20: Inference times of different methods. Values in brackets denote the average inference time per case in",
+     "label": "Table 20"
+    },
+    {
+     "bbox": [
+      107.6,
+      456.1,
+      488.9,
+      466.2
+     ],
+     "text": "Table 21: Memory costs (in GB) of different methods during training and inference stages.",
+     "label": "Table 21"
+    }
+   ],
+   "overlay": "assets/whendollm/_pages/p27.png"
+  }
+ ]
+}

@@ -1,0 +1,414 @@
+{
+ "pdf": "DPO.pdf",
+ "slug": "dpo",
+ "page_count": 27,
+ "page_size": [
+  612.0,
+  792.0
+ ],
+ "pages": [
+  {
+   "page": 1,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/dpo/_pages/p01.png"
+  },
+  {
+   "page": 2,
+   "candidates": [
+    {
+     "id": "cand_p02_k00",
+     "kind": "image",
+     "bbox": [
+      108.2,
+      72.0,
+      503.8,
+      151.5
+     ],
+     "pdf": "cand_p02_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      158.5,
+      504.0,
+      167.6
+     ],
+     "text": "Figure 1: DPO optimizes for human preferences while avoiding reinforcement learning. Existing methods",
+     "label": "Figure 1"
+    }
+   ],
+   "overlay": "assets/dpo/_pages/p02.png"
+  },
+  {
+   "page": 3,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/dpo/_pages/p03.png"
+  },
+  {
+   "page": 4,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/dpo/_pages/p04.png"
+  },
+  {
+   "page": 5,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/dpo/_pages/p05.png"
+  },
+  {
+   "page": 6,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/dpo/_pages/p06.png"
+  },
+  {
+   "page": 7,
+   "candidates": [
+    {
+     "id": "cand_p07_k00",
+     "kind": "table",
+     "bbox": [
+      108.7,
+      72.0,
+      503.3,
+      220.5
+     ],
+     "pdf": "cand_p07_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      227.6,
+      504.0,
+      236.6
+     ],
+     "text": "Figure 2: Left. The frontier of expected reward vs KL to the reference policy. DPO provides the highest expected",
+     "label": "Figure 2"
+    }
+   ],
+   "overlay": "assets/dpo/_pages/p07.png"
+  },
+  {
+   "page": 8,
+   "candidates": [
+    {
+     "id": "cand_p08_k00",
+     "kind": "table",
+     "bbox": [
+      108.7,
+      72.0,
+      503.3,
+      220.5
+     ],
+     "pdf": "cand_p08_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      227.5,
+      504.0,
+      236.6
+     ],
+     "text": "Figure 3: Left. Win rates computed by GPT-4 for Anthropic-HH one-step dialogue; DPO is the only method",
+     "label": "Figure 3"
+    },
+    {
+     "bbox": [
+      108.0,
+      602.0,
+      504.0,
+      612.0
+     ],
+     "text": "Figure 2 shows the reward-KL frontier for various algorithms in the sentiment setting. We execute",
+     "label": "Figure 2"
+    }
+   ],
+   "overlay": "assets/dpo/_pages/p08.png"
+  },
+  {
+   "page": 9,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      396.4,
+      504.0,
+      406.5
+     ],
+     "text": "Figure 4) and a 2-shot prompted version of the Pythia-2.8B base model, finding DPO performs as",
+     "label": "Figure 4"
+    },
+    {
+     "bbox": [
+      355.2,
+      586.9,
+      470.1,
+      596.0
+     ],
+     "text": "Table 1: GPT-4 win rates vs.",
+     "label": "Table 1"
+    }
+   ],
+   "overlay": "assets/dpo/_pages/p09.png"
+  },
+  {
+   "page": 10,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      317.6,
+      285.4,
+      504.0,
+      294.4
+     ],
+     "text": "Table 2: Comparing human and GPT-4 win rates",
+     "label": "Table 2"
+    }
+   ],
+   "overlay": "assets/dpo/_pages/p10.png"
+  },
+  {
+   "page": 11,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/dpo/_pages/p11.png"
+  },
+  {
+   "page": 12,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/dpo/_pages/p12.png"
+  },
+  {
+   "page": 13,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/dpo/_pages/p13.png"
+  },
+  {
+   "page": 14,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/dpo/_pages/p14.png"
+  },
+  {
+   "page": 15,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/dpo/_pages/p15.png"
+  },
+  {
+   "page": 16,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/dpo/_pages/p16.png"
+  },
+  {
+   "page": 17,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/dpo/_pages/p17.png"
+  },
+  {
+   "page": 18,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/dpo/_pages/p18.png"
+  },
+  {
+   "page": 19,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/dpo/_pages/p19.png"
+  },
+  {
+   "page": 20,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/dpo/_pages/p20.png"
+  },
+  {
+   "page": 21,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/dpo/_pages/p21.png"
+  },
+  {
+   "page": 22,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      107.7,
+      460.3,
+      504.0,
+      469.2
+     ],
+     "text": "Table 3: Unlikelihood samples from TL;DR prompts sampled at temperature 1.0. In general, we find unlikelihood",
+     "label": "Table 3"
+    }
+   ],
+   "overlay": "assets/dpo/_pages/p22.png"
+  },
+  {
+   "page": 23,
+   "candidates": [
+    {
+     "id": "cand_p23_k00",
+     "kind": "table",
+     "bbox": [
+      110.7,
+      114.3,
+      501.3,
+      259.9
+     ],
+     "pdf": "cand_p23_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      266.7,
+      504.0,
+      276.0
+     ],
+     "text": "Figure 4: Best of N baseline for N = {1, 4, 16, 64, 128}. Performance plateaus after roughly 64-128 samples.",
+     "label": "Figure 4"
+    },
+    {
+     "bbox": [
+      107.7,
+      621.0,
+      504.7,
+      630.0
+     ],
+     "text": "Table 4: Sample summaries to a post from the TL;DR test set. DPO sample generated with a temperature 0.25;",
+     "label": "Table 4"
+    }
+   ],
+   "overlay": "assets/dpo/_pages/p23.png"
+  },
+  {
+   "page": 24,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      107.7,
+      367.6,
+      504.7,
+      376.6
+     ],
+     "text": "Table 5: Sample summaries to a post from the TL;DR test set. DPO sample generated with a temperature 0.25;",
+     "label": "Table 5"
+    },
+    {
+     "bbox": [
+      107.7,
+      662.9,
+      504.7,
+      671.9
+     ],
+     "text": "Table 6: Sample summaries to a post from the TL;DR test set. DPO sample generated with a temperature 0.25;",
+     "label": "Table 6"
+    }
+   ],
+   "overlay": "assets/dpo/_pages/p24.png"
+  },
+  {
+   "page": 25,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      107.7,
+      386.2,
+      504.0,
+      395.3
+     ],
+     "text": "Table 7: GPT-4 chooses DPO over GT. Sample responses to a prompt from the Anthropic-HH test set. DPO",
+     "label": "Table 7"
+    },
+    {
+     "bbox": [
+      107.7,
+      643.2,
+      504.0,
+      652.4
+     ],
+     "text": "Table 8: GPT-4 chooses DPO over GT. Sample responses to a prompt from the Anthropic-HH test set. DPO",
+     "label": "Table 8"
+    }
+   ],
+   "overlay": "assets/dpo/_pages/p25.png"
+  },
+  {
+   "page": 26,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      107.7,
+      393.8,
+      504.0,
+      402.7
+     ],
+     "text": "Table 9: GPT-4 chooses GT over DPO. DPO’s response is verbose and plausible, but contains factually incorrect",
+     "label": "Table 9"
+    },
+    {
+     "bbox": [
+      107.7,
+      688.5,
+      504.0,
+      697.5
+     ],
+     "text": "Table 10: GPT-4 chooses GT over DPO. GPT-4 incorrectly states that the ground truth is correct while DPO’s",
+     "label": "Table 10"
+    }
+   ],
+   "overlay": "assets/dpo/_pages/p26.png"
+  },
+  {
+   "page": 27,
+   "candidates": [
+    {
+     "id": "cand_p27_k00",
+     "kind": "image",
+     "bbox": [
+      278.3,
+      90.6,
+      504.0,
+      358.7
+     ],
+     "pdf": "cand_p27_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      278.3,
+      365.8,
+      505.5,
+      374.8
+     ],
+     "text": "Figure 5: Layout of the survey in SurveyMonkey. Each respon-",
+     "label": "Figure 5"
+    }
+   ],
+   "overlay": "assets/dpo/_pages/p27.png"
+  }
+ ]
+}

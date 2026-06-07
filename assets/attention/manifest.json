@@ -1,0 +1,316 @@
+{
+ "pdf": "Attention Is All You Need.pdf",
+ "slug": "attention",
+ "page_count": 15,
+ "page_size": [
+  612.0,
+  792.0
+ ],
+ "pages": [
+  {
+   "page": 1,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/attention/_pages/p01.png"
+  },
+  {
+   "page": 2,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/attention/_pages/p02.png"
+  },
+  {
+   "page": 3,
+   "candidates": [
+    {
+     "id": "cand_p03_k00",
+     "kind": "image",
+     "bbox": [
+      196.6,
+      72.0,
+      415.4,
+      394.4
+     ],
+     "pdf": "cand_p03_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      210.0,
+      404.7,
+      402.0,
+      414.7
+     ],
+     "text": "Figure 1: The Transformer - model architecture.",
+     "label": "Figure 1"
+    }
+   ],
+   "overlay": "assets/attention/_pages/p03.png"
+  },
+  {
+   "page": 4,
+   "candidates": [
+    {
+     "id": "cand_p04_k00",
+     "kind": "image",
+     "bbox": [
+      175.0,
+      94.0,
+      239.0,
+      221.3
+     ],
+     "pdf": "cand_p04_k00.pdf"
+    },
+    {
+     "id": "cand_p04_k01",
+     "kind": "image",
+     "bbox": [
+      346.8,
+      82.7,
+      467.0,
+      267.3
+     ],
+     "pdf": "cand_p04_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      274.4,
+      504.0,
+      284.5
+     ],
+     "text": "Figure 2: (left) Scaled Dot-Product Attention. (right) Multi-Head Attention consists of several",
+     "label": "Figure 2"
+    }
+   ],
+   "overlay": "assets/attention/_pages/p04.png"
+  },
+  {
+   "page": 5,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/attention/_pages/p05.png"
+  },
+  {
+   "page": 6,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      107.7,
+      71.3,
+      504.0,
+      81.1
+     ],
+     "text": "Table 1: Maximum path lengths, per-layer complexity and minimum number of sequential operations",
+     "label": "Table 1"
+    }
+   ],
+   "overlay": "assets/attention/_pages/p06.png"
+  },
+  {
+   "page": 7,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/attention/_pages/p07.png"
+  },
+  {
+   "page": 8,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      107.7,
+      71.2,
+      504.0,
+      81.2
+     ],
+     "text": "Table 2: The Transformer achieves better BLEU scores than previous state-of-the-art models on the",
+     "label": "Table 2"
+    },
+    {
+     "bbox": [
+      107.7,
+      598.4,
+      504.0,
+      608.2
+     ],
+     "text": "Table 2 summarizes our results and compares our translation quality and training costs to other model",
+     "label": "Table 2"
+    }
+   ],
+   "overlay": "assets/attention/_pages/p08.png"
+  },
+  {
+   "page": 9,
+   "candidates": [
+    {
+     "id": "cand_p09_k00",
+     "kind": "table",
+     "bbox": [
+      108.0,
+      129.9,
+      508.7,
+      384.2
+     ],
+     "pdf": "cand_p09_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      107.7,
+      71.3,
+      504.0,
+      81.1
+     ],
+     "text": "Table 3: Variations on the Transformer architecture. Unlisted values are identical to those of the base",
+     "label": "Table 3"
+    }
+   ],
+   "overlay": "assets/attention/_pages/p09.png"
+  },
+  {
+   "page": 10,
+   "candidates": [
+    {
+     "id": "cand_p10_k00",
+     "kind": "table",
+     "bbox": [
+      145.1,
+      93.9,
+      467.0,
+      236.6
+     ],
+     "pdf": "cand_p10_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      107.7,
+      71.3,
+      504.0,
+      81.1
+     ],
+     "text": "Table 4: The Transformer generalizes well to English constituency parsing (Results are on Section 23",
+     "label": "Table 4"
+    }
+   ],
+   "overlay": "assets/attention/_pages/p10.png"
+  },
+  {
+   "page": 11,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/attention/_pages/p11.png"
+  },
+  {
+   "page": 12,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/attention/_pages/p12.png"
+  },
+  {
+   "page": 13,
+   "candidates": [
+    {
+     "id": "cand_p13_k00",
+     "kind": "table",
+     "bbox": [
+      119.7,
+      84.3,
+      504.7,
+      302.1
+     ],
+     "pdf": "cand_p13_k00.pdf"
+    },
+    {
+     "id": "cand_p13_k01",
+     "kind": "table",
+     "bbox": [
+      119.7,
+      239.8,
+      504.7,
+      302.1
+     ],
+     "pdf": "cand_p13_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      312.3,
+      504.0,
+      322.4
+     ],
+     "text": "Figure 3: An example of the attention mechanism following long-distance dependencies in the",
+     "label": "Figure 3"
+    }
+   ],
+   "overlay": "assets/attention/_pages/p13.png"
+  },
+  {
+   "page": 14,
+   "candidates": [
+    {
+     "id": "cand_p14_k00",
+     "kind": "table",
+     "bbox": [
+      122.0,
+      123.9,
+      503.7,
+      641.6
+     ],
+     "pdf": "cand_p14_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      614.3,
+      505.4,
+      624.2
+     ],
+     "text": "Figure 4: Two attention heads, also in layer 5 of 6, apparently involved in anaphora resolution. Top:",
+     "label": "Figure 4"
+    }
+   ],
+   "overlay": "assets/attention/_pages/p14.png"
+  },
+  {
+   "page": 15,
+   "candidates": [
+    {
+     "id": "cand_p15_k00",
+     "kind": "table",
+     "bbox": [
+      120.8,
+      138.2,
+      499.4,
+      618.2
+     ],
+     "pdf": "cand_p15_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      602.3,
+      504.0,
+      612.4
+     ],
+     "text": "Figure 5: Many of the attention heads exhibit behaviour that seems related to the structure of the",
+     "label": "Figure 5"
+    }
+   ],
+   "overlay": "assets/attention/_pages/p15.png"
+  }
+ ]
+}

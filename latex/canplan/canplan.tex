@@ -1,0 +1,1141 @@
+\documentclass[11pt,UTF8,fontset=fandol]{ctexart}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx,float,caption,subcaption}
+\usepackage{booktabs,array,multirow,makecell}
+\usepackage{geometry,enumitem,xcolor}
+\usepackage[hidelinks]{hyperref}
+\usepackage{url}
+\usepackage{amsthm}
+\geometry{margin=2.3cm}
+\graphicspath{{/Users/yye/project/论文/assets/canplan/}}
+\captionsetup{font=small,labelfont=bf}
+\setlength{\parskip}{0.4em}
+
+% 定理类环境
+\newtheorem{theorem}{定理}
+\newtheorem{proposition}{命题}
+\newtheorem{lemma}{引理}
+\newtheorem{assumption}{假设}
+\newtheorem{example}{示例}
+\renewcommand{\proofname}{\textbf{证明}}
+
+% 常用数学算子
+\DeclareMathOperator*{\argmax}{argmax}
+
+\title{\textbf{图学习能否提升基于大语言模型的智能体的规划能力？}}
+
+\author{Xixi Wu\textsuperscript{1,3}\thanks{标注 $*$ 者贡献相同。本工作由 Xixi Wu（xxwu@se.cuhk.edu.hk）在微软亚洲研究院实习期间完成。通讯作者：yifeishen@microsoft.com，yunx@fudan.edu.cn。}\quad Yifei Shen\textsuperscript{2}\quad Caihua Shan\textsuperscript{2}\quad Kaitao Song\textsuperscript{2}\quad Siwei Wang\textsuperscript{2}\quad Bohang Zhang\textsuperscript{4}\\
+Jiarui Feng\textsuperscript{5}\quad Hong Cheng\textsuperscript{3}\quad Wei Chen\textsuperscript{2}\quad Yun Xiong\textsuperscript{1}\quad Dongsheng Li\textsuperscript{2}\\[0.6em]
+\textsuperscript{1}\,Fudan University（复旦大学）\thanks{复旦大学计算机科学技术学院上海市数据科学重点实验室。}\quad \textsuperscript{2}\,Microsoft Research Asia（微软亚洲研究院）\\
+\textsuperscript{3}\,The Chinese University of Hong Kong（香港中文大学）\quad \textsuperscript{4}\,Peking University（北京大学）\\
+\textsuperscript{5}\,Washington University, Saint Louis（圣路易斯华盛顿大学）}
+
+\date{}
+\begin{document}
+\maketitle
+
+\begin{abstract}
+随着大语言模型（large language models, LLMs）的发展，语言智能体（language agents）中的任务规划（task planning）正在成为一个重要的研究主题。它旨在将复杂的自然语言用户请求分解为可解决的子任务，从而完成原始请求。在这一背景下，子任务可以自然地被视为一个图：节点表示子任务，边表示子任务之间的依赖关系。因此，任务规划是一个决策问题，即在相应的图中选择一条连通路径或子图并加以调用。本文探索基于图学习（graph learning）的任务规划方法，这一方向与当前普遍关注的提示设计（prompt design）相互正交。我们对图学习的兴趣源于一个理论发现：注意力（attention）和自回归损失（auto-regressive loss）的偏置会妨碍大语言模型在图上有效进行决策，而图神经网络（graph neural networks, GNNs）恰好能够妥善地解决这一问题。这一理论洞见促使我们将 GNNs 与 LLMs 相结合，以提升整体性能。大量实验表明，基于 GNN 的方法即使在不经过训练的情况下也能超越现有方案，而少量训练可以进一步提升其性能。随着任务图规模的增大，这种性能增益也随之增加。\footnote{代码与数据集可在 \url{https://github.com/WxxShirley/GNN4TaskPlan} 获取。}
+\end{abstract}
+
+\section{引言}
+
+基于大语言模型的智能体（LLM-based agents）近来已成为一个快速发展的研究领域，被认为是迈向通用人工智能（artificial general intelligence, AGI）的重要一步 [61, 7]。这些智能体在多个领域取得了显著成功，例如它们能够应对复杂的 AI 挑战（如 HuggingGPT [46]）、在游戏环境中表现出色（如 Voyager [58]），并推动化学研究的创新（如 [5]）。在这一蓬勃发展的领域中，语言智能体中的任务规划是一个关键的研究方向。它要求大语言模型自主地解读用户指令，将用户的自然语言指令分解为具体且可解决的子任务，然后通过执行每个子任务来完成用户请求 [43, 46, 45]。例如，在 HuggingGPT [46] 中，任务规划涉及调用 HuggingFace 网站上的专家 AI 模型，以解决仅靠 GPT 无法完成的复杂 AI 任务。
+
+鉴于其重要的现实意义，已有大量算法被提出，其主要关注点集中在提示设计上 [45, 46, 33, 30, 60, 49, 71, 4, 63]。本文提出探索一个正交的方向，即基于图学习的方法。在任务规划中，可解决的子任务可以自然地表示为一个任务图（task graph），其中每个节点对应一个不同的子任务，每条边表示这些子任务之间的依赖关系。因此，任务规划的核心在于选择一条连通路径或子图来满足用户请求，这是图上的一个决策问题。采用这一框架，我们分析了大语言模型的任务规划能力，具体是在 HuggingGPT [46] 的背景下展开的。我们的实证研究发现，相当一部分规划失败可归因于大语言模型无法准确辨识任务图的结构。这一发现从理论和实证两个角度都提出了引人深思的问题。在理论上，它引发了关于大语言模型处理任务图固有局限性的讨论。在实证上，它凸显了开发有效且高效的策略以缓解这一缺陷、提升任务规划性能的迫切需求。
+
+对于理论问题，我们首先研究 Transformer 架构在应用于以顺序图输入（sequential graph input，如边列表表示）的图任务时的表达能力（expressiveness），边列表正是任务规划所采用的图输入格式。我们最初的假设是，顺序图输入的格式可能与图结构固有的归纳偏置（inductive bias）不匹配，从而可能削弱表达能力。然而与该假设相反，我们证明了：以边列表作为输入，一个常数宽度（constant-width）的 Transformer 可以通过在边列表上模拟动态规划（dynamic programming）算法来求解图决策问题。尽管如此，我们发现大语言模型的解法在图同构（graph isomorphism）下缺乏不变性（invariance），而这是图决策问题的一个重要性质。此外，如果注意力是稀疏的（这在大语言模型中很常见 [66]），表达能力会被削弱。除表达能力之外，我们还考察了自回归损失的影响，证明它会引入虚假相关性（spurious correlations），而这对图决策任务可能是有害的。这些洞见揭示了大语言模型在任务规划中、乃至在更广泛的图相关问题（例如 [14, 59, 34] 中的挑战）中的固有局限性。
+
+为了应对这些局限，我们采用了 GNNs，无论在理论上还是实践中，它都被证明能够妥善处理图决策问题 [24, 68]。首先，我们部署大语言模型来解读模糊的用户请求，将其分解为更细致的步骤。随后，我们利用 GNN 根据这些细致步骤及相应的子任务描述来检索相关的子任务。值得注意的是，如果采用诸如 SGC [65] 这样的无参数（parameter-free）GNN 模型，这一方法无需训练即可实现。对于基于训练的方法，我们应用贝叶斯个性化排序（Bayesian Personalized Ranking, BPR）损失 [41]，以便从隐式的子任务排序中进行学习。大量实验表明，所提方法取得了优于基线的性能。具体而言，我们的主要贡献总结如下：
+
+\begin{enumerate}[leftmargin=2em]
+    \item \textbf{任务规划的形式化：} 本研究将任务规划形式化为一个图决策问题。在任务规划领域，我们的工作开启了利用图学习方法来提升性能的探索。同时，它将任务规划引入为图学习领域的一项新应用。
+    \item \textbf{理论洞见：} 我们证明了 Transformer 具有基于边列表输入求解图决策问题的表达能力，但注意力的归纳偏置和自回归损失函数可能成为其充分发挥潜力的障碍。
+    \item \textbf{新颖的算法：} 基于理论分析，我们引入一个额外的 GNN 用于子任务检索，提供无需训练（training-free）和需要训练（training-based）两种变体。在多种大语言模型和规划数据集上的实验表明，所提方法以远低于现有方案的计算时间超越了它们。此外，改进的提示或微调后的模型还能进一步提升性能。
+\end{enumerate}
+
+\section{预备知识}
+
+本节介绍语言智能体中的任务规划以及当前基于大语言模型的解决方案。
+
+\subsection{语言智能体中的任务规划}
+
+我们从任务规划的定义出发，并以 HuggingGPT [46] 作为具体示例。在任务规划中，存在一个预定义任务（pre-defined tasks）的任务池。任务规划的输入包括这个任务池和一个用户请求。用户请求以自然语言表达，它是模糊的，可能涵盖多个复杂任务。输出是一系列任务及其调用顺序，用以满足用户请求。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.98\linewidth]{cand_p03_k00.pdf}
+\caption{语言智能体中任务规划的示意图（以 HuggingGPT [46] 为例）。}
+\label{fig:1}
+\end{figure}
+
+图~\ref{fig:1} 展示了 HuggingGPT 中的任务规划，其中预定义任务对应于 HuggingFace 网站上的 API（例如 Translation 和 Pose-to-Image），并附有标签和详细描述。例如，Translation 的详细描述为“Translation is the task of converting text from one language to another（翻译是将文本从一种语言转换为另一种语言的任务）”。该用户请求为“Please generate an image where a girl is reading a book, and her pose matches the boy in `example.jpg', then describe the new image with your voice.（请生成一张图像，其中一个女孩正在读书，且她的姿势与 `example.jpg' 中的男孩相同，然后用你的声音描述这张新图像。）”真值（ground-truth）输出是一个由四个 API（节点）组成的序列：\{Pose Detection, Pose-to-Image, Image-to-Text, Text-to-Speech\}，它勾勒出这些 API 的调用顺序（即一条路径）。通过在 HuggingFace 上调用这些 API，用户请求即可得到满足。
+
+\subsection{当前基于大语言模型的任务规划解决方案}
+
+当前的任务规划解决方案完全基于大语言模型，包含两个阶段 [45, 46]。第一阶段是请求分解（request decomposition），即通过大语言模型将用户的模糊请求分解为具体步骤。例如，图~\ref{fig:1} 中所示的请求被分解为以下步骤：（1）分析男孩的姿势；（2）以该姿势生成一张新图像；（3）为新生成的图像生成图注；（4）将生成的文本转换为音频。第二阶段是任务检索（task retrieval）。对于每个分解后的步骤，使用大语言模型从任务池中检索一个合适的任务并按顺序执行。例如，“分析男孩的姿势”对应于 Pose detection。输出的任务应当为：（1）Pose detection；（2）Pose-to-Image；（3）Image-to-Text；（4）Text-to-Speech。图~\ref{fig:6} 展示了这一流程。
+
+\section{图形式化与洞见}
+\subsection{任务规划的图形式化}
+
+在本小节中，我们将任务规划形式化为任务图上的决策问题。任务图是一种特殊的文本属性图（text-attributed graph），我们将其定义为 $G = (V, E, T)$。每个节点 $v \in V$ 表示任务池中的一个预定义任务，并关联一段描述其功能的文本 $t_v \in T$（例如“Translation. Translation is the task of converting text from one language to another.”）。每条边 $(u, v) \in E$ 表示任务之间的一种依赖关系（例如任务 $u$ 的输出格式与任务 $v$ 的输入格式相匹配）。任务规划即在任务图上选择一条路径或连通子图。从这个角度看，任务规划与图上的传统决策问题（例如最短路径规划）颇为相似。与传统规划相比，语言智能体中的任务规划由于用户个性化请求的多样性，涉及多样且开放式的目标。例如，在 HuggingFace 这类平台上，用户的意图横跨视频、文本和图像领域。相反，经典规划对于给定领域有固定目标，且通常由数学公式显式表达 [55, 36]。
+
+\subsection{大语言模型在规划中的失败：实证发现}
+
+有了任务图，我们在图~\ref{fig:2} 中对大语言模型的任务规划能力进行诊断。我们采用 HuggingGPT [46] 工作中所述的实验设置，其中提示已专门针对 HuggingFace 上的任务规划进行了优化。评测指标通过计算 F1 分数来衡量大语言模型所识别任务相对于真值任务的准确性。此外，我们报告两个与任务图相关的指标：节点幻觉率（node hallucination ratio）和边幻觉率（edge hallucination ratio）。这两个指标分别衡量大语言模型输出中不存在的节点（即任务）和不存在的边（即依赖关系）出现的频率，反映了模型对图输入的误解程度。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\linewidth]{cand_p04_k00.pdf}
+\caption{（a）HuggingGPT 中大语言模型的规划性能与幻觉，以及（b）幻觉与任务图规模的关系示意图。}
+\label{fig:2}
+\end{figure}
+
+我们的实证发现揭示：（1）大语言模型表现出一定的幻觉率；（2）幻觉率与规划性能之间存在很强的相关性。这表明大语言模型难以准确解读任务图，而任务图正是性能的关键。我们进一步探究幻觉的发生是否与子任务数量相关。HuggingGPT 数据集包含 23 个子任务，我们将分析扩展到包含 260 个子任务的 UltraTool 数据集 [20]。图~\ref{fig:2}b 表明，幻觉率随任务图规模的增大而升高。
+
+\subsection{大语言模型在规划中的失败：理论洞见}
+
+在本小节中，我们就大语言模型在处理任务图方面的局限性提供理论洞见。与以往针对图决策问题的图学习方法不同，大语言模型通过将图输入展平（flatten）为序列来处理图，并使用自回归损失进行训练。我们将分别考察这两个因素的影响。
+
+\paragraph{顺序图输入如何影响表达能力？}
+我们考虑可以用动态规划（dynamic programming, DP）求解的一般图决策问题，如式~(2) 所述。输入由边列表和初始状态组成：
+\begin{equation}
+\underbrace{u_1\ v_1\ c[u_1][v_1]\ u_1\ v_2\ c[u_1][v_2]\ \ldots}_{\text{边列表}}\ \underbrace{u_1\ \mathrm{Answer}[0][u_1]\ \ldots\ u_n\ \mathrm{Answer}[0][u_n]}_{\text{初始状态}}
+\end{equation}
+期望的输出格式为 $u_1\ \mathrm{Answer}[k][u_1]\ \ldots\ u_n\ \mathrm{Answer}[k][u_n]$。在现有研究中，任务图通常以式~(1) 的形式呈现，其中边列表由自然语言描述，初始状态为每个任务节点的任务描述，详见 [45] 的附录 A.9。
+
+如前一小节所述，任务规划是任务图上的决策问题。图上的决策问题通常由 DP [3] 求解，其一般形式为
+\begin{equation}
+\mathrm{Answer}[k][i] = f\!\left(\square_{j\in T(i)}\, g(\mathrm{Answer}[k-1][j],\, c[i][j])\right),
+\end{equation}
+其中 $\mathrm{Answer}[k][i]$ 是第 $k$ 次迭代中状态 $i$ 的解，$c[i][j]$ 是与状态 $i$ 和 $j$ 相关联的代价，$T(i)$ 是能够转移到 $i$ 的状态集合，$\square_{j\in T(i)}$ 是诸如 MAX 或 SUM 这样的聚合函数，$f, g$ 是任务特定的更新函数。我们在附录 D.1 中给出了典型 DP 算法（包括一些 NPC 问题）的形式化表达。对于文本属性图上的决策问题（例如任务规划），可以将其概念化为特征空间中的 DP，如 [68] 所讨论。
+
+令我们意外的是，尽管边列表输入并不直接反映图的几何结构，但从表达能力的角度看，它仍使 Transformer 能够高效地模拟 DP，如下面的定理所示。
+
+\begin{theorem}[大语言模型具有足够的表达能力]
+假设输入格式如式~(1) 给出，且 DP 更新式~(2) 中的 $f, g, \square$ 满足附录中的假设 1 和假设 2。则存在一个对数精度（log-precision）、常数深度（constant-depth）且常数宽度（constant-width）的 Transformer，能够模拟式~(2) 中 DP 更新的一步。因此，存在一个对数精度、$O(k)$ 深度且常数宽度的 Transformer，能够模拟式~(2) 中 DP 更新的 $k$ 步。
+\end{theorem}
+
+证明见附录 D.2。然而，该证明构造中的某些方面在已基于自然语言预训练的 Transformer 中难以实现。首先，嵌入过程必须经过精心筛选，以确保在图同构下的不变性。这一不变性属性与自然语言固有的归纳偏置不一致，因而难以实现。因此，如果一个大语言模型能够对特定的节点排序准确给出正确答案，那么在节点被重新排序之后，它可能无法保持这一准确性（实验见附录 D.3）。其次，每个 token 需要与所有共享相同 token ID 的其他 token 同步其隐藏状态，这一开销为 $O(|V|)$ 量级。在实践中，从自然语言训练得到的注意力通常是稀疏的 [66]，从而引发难以处理（intractability）的问题。形式化的下界由以下命题给出，证明见附录 D.4。
+
+\begin{proposition}[语言的归纳偏置妨碍表达能力]
+假设输入格式如式~(1) 所述，且注意力机制被限制为只能关注常数数量的 token。则至少存在一个一步 DP 更新的实例，使得没有任何对数精度、常数宽度、常数深度的 Transformer 能够模拟它。
+\end{proposition}
+
+\paragraph{自回归损失如何影响泛化能力？}
+我们的研究接下来聚焦于自回归损失，并考虑如下场景：给定一个固定的任务图，收集用户数据以使用下一个 token 预测（next-token-prediction）损失进行指令微调（instruction tuning）。为便于进行可处理的理论分析，我们将该问题概念化为一个路径规划（path-planning）问题，因为任务规划的输出本质上就是一条路径。我们考虑训练数据集由形如 $s\ t\ s\ v_1\ v_2\ \cdots\ t$ 的输入序列组成，其中 $s$ 表示源节点，$t$ 表示目标节点，序列 $s\ v_1\ v_2\ \cdots\ t$ 是一条满足指定约束的路径。在测试时，给定初始节点和目标节点 $s$ 与 $t$，模型应当生成一条满足相同约束的路径。我们的发现表明，自回归损失会导致一种基于频率的虚假相关性（frequency-based spurious correlation），如下面的定理所证实，证明见附录 D.5。
+
+\begin{theorem}[自回归损失的虚假相关性]
+假设（1）所采用的损失是利用交叉熵（cross-entropy）的下一个 token 预测损失，在训练时应用于子序列 $v_1\ v_2\ \cdots\ t$；（2）输出 logits 由目标节点 $t$ 和当前节点 $v_{i-1}$ 决定。令 $N_{t,v_{i-1},u}$ 为训练数据集中满足如下条件的次数：$t$ 是目标节点，$v_{i-1}$ 是当前节点，且 $v_i = u$ 是下一个节点。则从当前节点 $v_{i-1}$ 朝向目标节点 $t$ 预测下一个节点 $u$ 的最优 logits 为
+\[
+\hat{v}_i[u] = \frac{N_{t,v_{i-1},u}}{\sum_u N_{t,v_{i-1},u}}\quad \text{若}\ \sum_u N_{t,v_{i-1},u} > 0.
+\]
+若 $\sum_u N_{t,v_{i-1},u} = 0$，则 $\hat{v}_i[u]$ 可以是任意满足 $\sum_u \hat{v}_i[u] = 1$ 的非负数。
+\end{theorem}
+
+在我们的设定中，$s\ t$ 是指令，而第三个 token 是第一个 token 的副本。将这些 token 排除在损失计算之外是合理的，这即为第一条假设。第二条假设假定输出仅依赖于当前节点和目标节点，这是路径相关问题的最低要求。对于 DP 问题，基于频率的预测与基于取值（value-based）的真值相矛盾。我们接下来给出一个示例，说明自回归损失甚至无法找到一条有效路径。
+
+\begin{example}
+考虑一个由足够多有效路径组成的训练数据集。假设该数据集包含两条路径 $a\ b\ c$ 和 $b\ c\ d$，且不存在其他路径满足 $t = d$ 且当前节点 $v_i = a$（对所有 $i$）。那么对于所有 $u$ 都有 $N_{d,a,u} \equiv 0$，下一个节点的 logits 可以是任意值。这导致模型在给定 $a$ 作为源节点、$d$ 作为目标节点时，无法预测 $a$ 的下一个节点。
+\end{example}
+
+对于人类而言，找到一条从 $a$ 到 $d$ 的路径只需将路径 $a\ b\ c$ 与 $b\ c\ d$ 拼接起来即可。然而，自回归损失在这种情形下会失败。在任务规划数据集中，我们确实观察到，微调后的大语言模型的性能不如在同一数据集上训练的 GNNs，如图~\ref{fig:3}b 所示。
+
+\section{为规划整合 GNNs 与 LLMs}
+\subsection{动机}
+
+在上一节中，我们发现相当一部分规划失败可归因于大语言模型无法准确辨识任务图的结构，这是由幻觉、注意力的归纳偏置以及下一个 token 预测损失造成的。与大语言模型不同，GNNs 可以严格地在任务图上操作，从而避免幻觉。此外，它们以图结构作为输入，而非将图展平为序列，从而克服了前文所讨论的理论局限。再者，GNNs 在处理图决策问题方面已被证明在理论和实践上都很在行 [68, 11, 24]。因此，最简单的修正方法就是将 GNNs 整合到任务规划算法中。
+
+在接下来的小节中，我们提出无需训练和需要训练两种方法来提升性能。当可用任务持续变化、或不断有新任务涌现时，无需训练的方法是必要的。这种情形在任务规划模块部署于新系统时很常见。一旦任务规划模块部署一段时间后，便有可能收集用户请求并标注其中一小部分数据，从而启用轻量级的、基于训练的方法。
+
+\subsection{一种无需训练的基于 GNN 的方法}
+
+正如我们在第 2.2 节所讨论的，当前的任务规划解决方案包含两个阶段。第一阶段要求具备理解用户自然语言请求并将其分解为具体指令的能力，这是大语言模型独有的能力。第二阶段是在任务图上选择一条路径，其中每个节点对应一个分解后的步骤。因此，我们可以在这一阶段整合 GNNs。我们框架的示意图见附录中的图~\ref{fig:7}。
+
+对于第一阶段输出的每个分解步骤，我们使用一个 GNN 在任务图中选择对应的节点。假设我们正在为第 $i$ 个分解步骤选择节点。首先，我们利用一个小型预训练语言模型 e5-335M [62] 来嵌入第 $i$ 个分解步骤，所得嵌入记为 $x_i^{\text{step}}$。其次，对于任务图，我们首先用同一个预训练语言模型 e5-335M 将每个节点的描述转换为嵌入，记为节点特征 $h_v^0$，其中上标表示层数，下标表示节点。然后，我们采用一个 $K$ 层的 SGC [65] 来计算最终的节点嵌入，得到 $h_v = h_v^{(K)}$。给定一个先前已选定的任务节点序列 $\{v_1, \cdots, v_{i-1}\}$，下一个节点 $v_i$ 按如下方式选择：$v_i = \argmax_{v\in\mathcal{N}(v_{i-1})}\langle h_v, x_i^{\text{step}}\rangle$，其中 $h_v$ 是最终的节点嵌入，$\mathcal{N}(v_{i-1})$ 表示任务图中节点 $v_{i-1}$ 的邻居。特别地，$v_1$ 可以从整个图中选择。由于 e5-335M 是预训练好的且 SGC 无参数，所提方法无需额外训练，可以以零样本（zero-shot）方式有效应用。
+
+\subsection{一种需要训练的基于 GNN 的方法}
+
+需要训练的方法的推理过程与无需训练的方法相同，区别在于用带参数的 GNN（例如 GAT [57] 或 GraphSAGE [15]）替代了无参数的 GNN。这里我们具体说明 GNNs 的训练过程。
+
+\paragraph{数据准备：}我们假设任务规划数据集中的每个条目都包含一个用户请求、一个分解步骤序列以及对应的真值任务，记为 $(\text{request}, \{s_1, \ldots, s_n\}, \{v_1, \ldots, v_n\})$。如果数据集不符合这一格式，我们会使用 GPT-4 据此重新格式化，详见附录 C.2。需要注意的是，数据集中步骤与任务之间存在一一对应关系。因此，训练数据集可以表示为 $\{(s_i, v_i)\}_{i=1}^n$，其中 $s_i$ 是以自然语言描述的步骤，$v_i$ 是其对应的被调用任务。
+
+\paragraph{训练损失：}数据集中的问题可以被视为一个二元排序（binary ranking）问题，其中被标注的节点为 1，其他节点为 0。因此，我们采用为带二元排序的推荐任务设计的贝叶斯个性化排序（BPR）损失 [41]。损失函数为
+\[
+\ell = \sum_{(x^{\text{step}},v,v')} -\log \sigma\!\left(\langle h_v, x^{\text{step}}\rangle - \langle h_{v'}, x^{\text{step}}\rangle\right),
+\]
+其中 $x^{\text{step}}$ 表示由 e5-335M 生成的步骤文本描述的嵌入，$v$ 是真值任务，$v'$ 是一个负任务（negative task）。我们选择在文本上与正任务相似的负任务，并为了计算效率，每个正任务至多选取 2 个负任务。可训练参数可以仅包含 GNNs，也可以同时包含 GNNs 和 e5-335M，其示意配置见附录中的图~\ref{fig:8}。
+
+\section{实验与分析}
+\subsection{实验设置}
+
+\paragraph{数据集：}我们使用了跨两个任务规划基准的四个数据集：来自 TaskBench [45] 的 HuggingFace tasks、Multimedia tasks 和 Daily Life API tasks，以及来自 RestBench [50] 的 TMDB API tasks。HuggingFace 数据集包含 HuggingFace 上的 AI 模型。Multimedia 数据集提供了广泛的以用户为中心的任务，例如文件下载和视频编辑。Daily Life API 面向网页搜索和购物功能等日常服务。TMDB 聚焦于与电影相关的搜索和检索任务。各数据集的统计信息见表~\ref{tab:7}，示意性样例见附录中的图~\ref{fig:4}。其他基准（例如 ToolBench [39] 和 ToolAlpaca [54]）不太适合我们的实验，原因在于：（1）缺乏详细刻画任务及其依赖关系的、定义良好的任务图；（2）涉及多任务规划的样本稀少，其重点在于单任务检索。
+
+\paragraph{评测：}对于来自 TaskBench 的数据集，我们划分 3000 个样本用于训练、500 个样本用于测试，每个样本都包含一条至少含两个任务的调用路径。对于 TMDB 数据集，我们首先筛选出包含两个或更多被调用任务的样本，然后随机选取一个样本作为上下文学习（in-context learning）示例。剩余的 94 个样本用于测试。我们采用 TaskBench [45] 和 HuggingGPT [46] 中的评测指标，即节点 F1 分数（Node F1-Score, n-F1）和链接 F1 分数（Link F1-Score, l-F1），分别衡量被调用任务和被调用依赖关系的准确性。此外，准确率（Accuracy, Acc）可以从任务层面衡量成功率。我们还将 token 消耗量（\# tok）作为效率指标。
+
+\paragraph{大语言模型的选择：}我们考虑闭源（close-sourced）大语言模型，即 GPT-3.5-turbo 和 GPT-4-turbo，以及不同参数规模的开源（open-sourced）大语言模型，包括 CodeLlama-13B（或 7B）-Instruct-hf [42]、Mistral-7B-Instruct-v0.2 [23]、Vicuna-13B-v1.5 [72] 和 Baichuan2-13B-Chat [69]。
+
+\paragraph{GNN 的选择：}为了全面考察不同图学习方法在任务规划中的有效性，我们考虑了广泛的图神经网络，包括 SGC [65]、GCN [26]、GAT [57]、GraphSAGE [15]、GIN [67] 和 Graph Transformers [47]。
+
+\subsection{无需训练方法的性能}
+
+我们比较了三种无需训练方法的性能：（1）大语言模型直接推理（LLM's Direct Inference），见第 2.2 节介绍；（2）GraphSearch [33, 52, 32] 利用经典的图搜索方法生成候选节点，并使用大语言模型为节点选择打分。给定一个步骤，GreedySearch 始终选择得分最高且与前一任务节点相邻的节点；AdaptiveSearch 选择得分高于固定阈值的节点，以自适应方式调整搜索空间的宽度；BeamSearch 保留得分最高的 $k$ 个节点。（3）SGC [65] 基于分解后的任务步骤，采用无需训练的 SGC 进行任务检索。基线的细节见第 E.1 节，并在图~\ref{fig:6} 中加以说明。表~\ref{tab:1} 同时展示了整体性能和 token 消耗成本，准确率（Acc）的结果移至附录的表~\ref{tab:9}。
+
+与直接推理相比，整合 SGC 持续提升了性能，凸显了所提方法的有效性。GraphSearch 类方法依赖束搜索（beam search）来识别路径，并采用大语言模型进行评估，其中较长的处理时间通常带来更好的结果。值得注意的是，我们所提方法取得了与 BeamSearch 相当或更优的性能（表~\ref{tab:1} 和表~\ref{tab:9}），同时所需的 token 数量（表~\ref{tab:1}）和推理时间（表~\ref{tab:10}）减少为其 1/5 到 1/10。案例研究见附录 H。然而，我们观察到对于 GPT-4-turbo 仅有微弱的提升。GPT-4-turbo 的一个独特之处在于它能够管理 ChatGPT 插件，并且可能已经在任务规划数据集上经过专门训练。此外，SGC 中用于特征提取的预训练语言模型是 e5-335M，它可能不够强大，无法有效分析 GPT-4 的输出。关于涉及 GPT-4 的案例的详细诊断分析见附录中的图~\ref{fig:11}。
+
+\begin{table}[H]\centering
+\caption{无需训练方法的比较：整体性能（Node-F1 和 Link-F1，单位 \%）与 token 消耗（单位 $\times 10^3$）。其他大语言模型的性能见表~\ref{tab:8}。}
+\label{tab:1}
+\small
+\setlength{\tabcolsep}{3.2pt}
+\begin{tabular}{llccc ccc ccc ccc}
+\toprule
+& & \multicolumn{9}{c}{TaskBench} & \multicolumn{3}{c}{RestBench}\\
+\cmidrule(lr){3-11}\cmidrule(lr){12-14}
+\multirow{2}{*}{LLM} & \multirow{2}{*}{方法} & \multicolumn{3}{c}{HuggingFace} & \multicolumn{3}{c}{Multimedia} & \multicolumn{3}{c}{Daily Life} & \multicolumn{3}{c}{TMDB}\\
+& & n-F1$\uparrow$ & l-F1$\uparrow$ & \#Tok$\downarrow$ & n-F1$\uparrow$ & l-F1$\uparrow$ & \#Tok$\downarrow$ & n-F1$\uparrow$ & l-F1$\uparrow$ & \#Tok$\downarrow$ & n-F1$\uparrow$ & l-F1$\uparrow$ & \#Tok$\downarrow$\\
+\midrule
+\multirow{5}{*}{\makecell[l]{Vicuna\\13B}}
+& Direct & 50.46 & 21.27 & 2.50 & 53.57 & 23.19 & 2.64 & 73.70 & 45.80 & 3.82 & 44.66 & 14.01 & 2.02\\
+& GreedySearch & 52.94 & 25.73 & 6.23 & 46.99 & 23.11 & 5.55 & 42.98 & 13.33 & 7.18 & 45.22 & 13.69 & 3.42\\
+& AdaptiveSearch & 54.36 & 25.67 & 9.81 & 51.24 & 24.32 & 11.25 & 62.71 & 31.15 & 13.92 & 41.32 & 7.02 & 6.51\\
+& BeamSearch & 56.64 & 26.93 & 24.11 & 54.09 & 26.19 & 25.42 & 54.55 & 23.60 & 24.86 & 46.91 & 15.41 & 7.79\\
+& SGC & 59.62 & 31.98 & 2.31 & 61.78 & 37.60 & 2.43 & 83.33 & 63.77 & 3.82 & 48.79 & 15.99 & 1.89\\
+\midrule
+\multirow{5}{*}{\makecell[l]{Mistral\\7B}}
+& Direct & 60.60 & 30.23 & 2.49 & 69.83 & 39.85 & 2.64 & 84.26 & 53.63 & 3.77 & 62.23 & 22.02 & 1.96\\
+& GreedySearch & 65.91 & 38.13 & 6.52 & 58.92 & 34.72 & 6.26 & 75.18 & 49.47 & 8.27 & 60.64 & 23.18 & 4.38\\
+& AdaptiveSearch & 67.30 & 38.90 & 7.68 & 71.59 & 44.84 & 10.66 & 86.39 & 63.65 & 10.92 & 54.04 & 21.35 & 9.99\\
+& BeamSearch & 67.13 & 36.73 & 25.66 & 73.55 & 47.12 & 31.10 & 85.87 & 61.53 & 39.16 & 63.41 & 26.79 & 11.26\\
+& SGC & 67.43 & 42.08 & 2.32 & 74.07 & 49.90 & 2.43 & 87.13 & 66.49 & 3.54 & 64.72 & 25.67 & 1.89\\
+\midrule
+\multirow{5}{*}{\makecell[l]{CodeLlama\\13B}}
+& Direct & 57.55 & 28.88 & 2.45 & 68.57 & 41.79 & 2.59 & 91.20 & 76.07 & 3.88 & 68.91 & 43.74 & 2.02\\
+& GreedySearch & 61.67 & 34.02 & 5.95 & 67.98 & 42.04 & 4.95 & 91.50 & 76.56 & 5.54 & 66.67 & 42.16 & 3.81\\
+& AdaptiveSearch & 60.85 & 31.66 & 11.10 & 68.14 & 41.71 & 6.77 & 91.34 & 76.09 & 7.18 & 63.74 & 37.17 & 8.16\\
+& BeamSearch & 62.65 & 34.31 & 20.14 & 69.53 & 43.35 & 19.51 & 91.74 & 76.60 & 19.19 & 68.08 & 42.92 & 8.88\\
+& SGC & 65.51 & 39.44 & 2.31 & 73.32 & 53.28 & 2.43 & 92.96 & 79.57 & 3.64 & 71.40 & 47.55 & 1.90\\
+\midrule
+\multirow{5}{*}{\makecell[l]{GPT-\\3.5-turbo}}
+& Direct & 73.85 & 45.73 & 2.14 & 82.85 & 62.07 & 2.26 & 96.09 & 83.65 & 3.36 & 81.70 & 57.52 & 1.67\\
+& GreedySearch & 67.75 & 43.88 & 5.29 & 81.11 & 63.02 & 4.92 & 93.77 & 81.26 & 7.36 & 76.19 & 50.11 & 3.06\\
+& AdaptiveSearch & 72.18 & 47.55 & 7.47 & 81.86 & 62.71 & 5.71 & 93.79 & 81.41 & 8.53 & 77.57 & 53.65 & 5.89\\
+& BeamSearch & 75.51 & 49.62 & 14.22 & 83.57 & 64.50 & 12.91 & 95.66 & 82.72 & 22.05 & 81.24 & 57.98 & 6.42\\
+& SGC & 76.37 & 50.04 & 2.02 & 83.65 & 63.65 & 2.09 & 96.38 & 86.19 & 3.16 & 82.63 & 59.15 & 1.61\\
+\midrule
+\multirow{5}{*}{\makecell[l]{GPT-\\4-turbo}}
+& Direct & 77.60 & 52.18 & 2.19 & 88.29 & 69.38 & 2.28 & 97.36 & 84.58 & 3.37 & 82.56 & 56.67 & 1.75\\
+& GreedySearch & 74.75 & 50.44 & 5.78 & 86.81 & 69.80 & 5.52 & 97.36 & 85.78 & 7.37 & 75.34 & 49.95 & 3.73\\
+& AdaptiveSearch & 76.17 & 51.30 & 8.94 & 88.02 & 69.99 & 7.14 & 97.30 & 85.80 & 9.04 & 81.78 & 55.15 & 6.35\\
+& BeamSearch & 77.56 & 52.54 & 8.98 & 88.16 & 70.39 & 6.90 & 97.35 & 85.78 & 8.99 & 80.11 & 51.00 & 5.18\\
+& SGC & 77.79 & 52.20 & 2.03 & 88.54 & 69.83 & 2.10 & 97.35 & 85.76 & 3.16 & 82.27 & 56.37 & 1.62\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{基于训练方法的性能}
+
+\paragraph{设置：}我们进一步在三个 TaskBench 数据集上探究基于训练的 GNNs 的有效性。TMDB 数据集因其样本量有限而被排除。在整个实验中，我们训练了一系列 GNN 变体，包括与不与小型语言模型（即 e5-335M，其作用是根据任务名称和描述生成节点嵌入）协同训练（co-training）两种情形。由于篇幅限制，我们在正文中仅展示 GraphSAGE 的性能，将所有情形的详细比较移至附录的表~\ref{tab:11} 和表~\ref{tab:12}。
+
+\paragraph{比较方法：}由于缺乏专门针对任务规划的基于训练的基线方法，我们改编了两种现有的结合 LLMs 与 GNNs 处理图相关任务的方法，包括：（1）TAPE [16] 采用 LLM $\to$ LM $\to$ GNN 的架构用于节点分类任务。在该框架中，大语言模型为每个被预测的节点生成高质量的解释性文本，随后由一个 LM 微调以生成节点嵌入，最后由一个 GNN 完成下游分类。我们将任务规划重新表述为把用户请求分类为任务图中相应的节点标签，从而把 TAPE 改编用于任务规划。（2）GraphToken [38] 使用 GNNs 将图节点标记化（tokenize），随后将其输入大语言模型以生成文本输出。在我们针对任务规划的改编中，我们把用户请求作为输入问题，把期望的规划作为生成的答案。更多实现细节见附录 F.2。
+
+\paragraph{观察：}从表~\ref{tab:2} 中，我们观察到采用基于训练的 GraphSAGE 方法相比无需训练方法在性能上有显著提升。然而，GNNs 与 e5-335M 的协同训练并未带来明显改善，这表明消息传递（message passing）才是提升性能的关键要素。对广泛 GNN 谱系的进一步分析（如表~\ref{tab:11} 和表~\ref{tab:12} 所示）揭示，强大的 GNNs（例如 GINs）与被认为不那么复杂的网络（例如 GCNs）表现相近，甚至不如 GraphSAGE。这一模式表明，该任务的挑战可能不在于模型的表达能力，而在于其泛化能力。至于基线，TAPE 不适合任务规划，因为其分类方法将任务规划简化了，忽略了任务依赖关系。尽管 GraphToken 的性能优于大语言模型的直接推理，但我们注意到存在轻微幻觉的情形。这一观察表明 GraphToken 对任务图的理解尚不完美。此外，GraphToken 仅限于开源大语言模型。除此之外，我们所提方法还大幅提升了参数预测性能，如附录 G 所示（例如对 GPT-3.5-turbo 提升 9\%，对 GPT-4-turbo 提升 3\%）。
+
+\paragraph{效率：}训练时间的细节见表~\ref{tab:13}。由于我们使用 e5-335M [62] 作为 GNNs 的文本嵌入模型，训练成本非常低。如果可训练参数仅限于 GNNs，训练通常在 3 分钟内完成。此外，当 GNNs 与 e5-335M 模型联合训练时，训练时长也仅延长至 15 分钟。这一效率与微调开源大语言模型所需的 10--20 小时形成鲜明对比。
+
+\begin{table}[H]\centering
+\caption{与基于训练方法的比较：Node-F1、Link-F1 和准确率（Accuracy）均以 \% 报告。TAPE [16] 是为节点分类任务设计的，无法预测链接，因此我们将 Link-F1 报告为“NA”。GraphToken [38] 需要微调大语言模型，与闭源大语言模型不兼容。其他 GNNs 和 LLMs 的性能见附录的表~\ref{tab:11} 和表~\ref{tab:12}。}
+\label{tab:2}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{llccc ccc ccc}
+\toprule
+& & \multicolumn{3}{c}{HuggingFace} & \multicolumn{3}{c}{Multimedia} & \multicolumn{3}{c}{Daily Life}\\
+\cmidrule(lr){3-5}\cmidrule(lr){6-8}\cmidrule(lr){9-11}
+LLM & 方法 & n-F1$\uparrow$ & l-F1$\uparrow$ & Acc$\uparrow$ & n-F1$\uparrow$ & l-F1$\uparrow$ & Acc$\uparrow$ & n-F1$\uparrow$ & l-F1$\uparrow$ & Acc$\uparrow$\\
+\midrule
+\multirow{5}{*}{Vicuna-13B}
+& Direct & 50.46 & 21.27 & 8.72 & 53.57 & 23.19 & 11.20 & 73.70 & 45.80 & 24.43\\
+& TAPE & 59.47 & NA & 5.07 & 54.97 & NA & 2.07 & 73.26 & NA & 12.50\\
+& GraphToken & 63.37 & 31.54 & 15.61 & 65.40 & 36.38 & 19.87 & 81.65 & 48.29 & 43.37\\
+& GraphSAGE & 61.86 & 35.68 & 20.08 & 63.71 & 39.88 & 21.37 & 86.07 & 67.63 & 48.64\\
+& GraphSAGE\textsubscript{co-train} & 62.82 & 37.04 & 19.68 & 65.89 & 42.18 & 21.58 & 84.23 & 65.44 & 47.81\\
+\midrule
+\multirow{5}{*}{Mistral-7B}
+& Direct & 60.60 & 30.23 & 16.36 & 69.83 & 39.85 & 25.05 & 84.26 & 53.63 & 44.52\\
+& TAPE & 61.82 & NA & 6.13 & 58.92 & NA & 3.29 & 76.40 & NA & 16.44\\
+& GraphToken & 64.42 & 32.04 & 18.60 & 72.31 & 42.60 & 30.31 & 86.82 & 57.06 & 53.99\\
+& GraphSAGE & 68.12 & 43.09 & 25.77 & 75.51 & 52.94 & 34.29 & 87.51 & 66.57 & 52.74\\
+& GraphSAGE\textsubscript{co-train} & 67.61 & 43.14 & 27.20 & 76.96 & 55.46 & 33.26 & 87.61 & 66.75 & 52.97\\
+\midrule
+\multirow{5}{*}{CodeLlama-13B}
+& Direct & 57.55 & 28.88 & 14.29 & 68.57 & 41.79 & 24.10 & 91.20 & 76.07 & 66.40\\
+& TAPE & 64.03 & NA & 8.05 & 58.27 & NA & 2.01 & 77.74 & NA & 17.37\\
+& GraphToken & 62.15 & 32.55 & 20.08 & 74.57 & 47.60 & 35.06 & 92.50 & 73.57 & 69.42\\
+& GraphSAGE & 67.30 & 42.41 & 26.56 & 74.93 & 54.52 & 38.55 & 93.84 & 80.38 & 73.60\\
+& GraphSAGE\textsubscript{co-train} & 68.92 & 44.85 & 29.58 & 76.28 & 55.41 & 37.75 & 93.30 & 79.51 & 74.00\\
+\midrule
+\multirow{4}{*}{GPT-3.5-turbo}
+& Direct & 73.85 & 45.73 & 28.95 & 82.85 & 62.07 & 47.96 & 96.09 & 83.65 & 81.30\\
+& TAPE & 68.00 & NA & 8.83 & 62.43 & NA & 3.87 & 70.67 & NA & 8.92\\
+& GraphSAGE & 77.90 & 52.68 & 35.11 & 85.29 & 65.80 & 53.55 & 96.43 & 86.26 & 83.13\\
+& GraphSAGE\textsubscript{co-train} & 77.87 & 53.04 & 35.32 & 85.51 & 66.56 & 55.91 & 96.34 & 86.09 & 83.13\\
+\midrule
+\multirow{4}{*}{GPT-4-turbo}
+& Direct & 77.60 & 52.18 & 33.68 & 88.29 & 69.38 & 60.56 & 97.36 & 84.58 & 86.77\\
+& TAPE & 68.82 & NA & 9.50 & 63.94 & NA & 4.02 & 71.51 & NA & 9.40\\
+& GraphSAGE & 78.76 & 52.53 & 34.09 & 88.63 & 69.65 & 60.36 & 97.34 & 85.67 & 86.97\\
+& GraphSAGE\textsubscript{co-train} & 78.49 & 52.62 & 33.88 & 88.86 & 70.25 & 62.37 & 97.42 & 85.80 & 86.57\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]\centering
+\caption{SGC 与 GraphSAGE 在 UltraTool 基准 [20] 上的性能比较。在更大的任务图上，整合 GNNs 能为大语言模型带来更显著的提升。}
+\label{tab:3}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{llcccc cccc}
+\toprule
+& & \multicolumn{4}{c}{0-shot} & \multicolumn{4}{c}{1-shot}\\
+\cmidrule(lr){3-6}\cmidrule(lr){7-10}
+LLM & 方法 & n-F1$\uparrow$ & l-F1$\uparrow$ & Acc$\uparrow$ & \#Tok$\downarrow$ & n-F1$\uparrow$ & l-F1$\uparrow$ & Acc$\uparrow$ & \#Tok$\downarrow$\\
+\midrule
+\multirow{4}{*}{CodeLlama-13B}
+& Direct & 38.88 & 16.42 & 13.58 & 10{,}535 & 57.64 & 30.44 & 26.25 & 10{,}737\\
+& BeamSearch & 49.71 & 22.51 & 17.08 & 26{,}008 & 64.93 & 36.23 & 33.47 & 23{,}023\\
+& SGC & 61.07 & 37.61 & 25.31 & 10{,}456 & 71.64 & 44.00 & 39.68 & 10{,}658\\
+& GraphSAGE & 63.78 & 39.91 & 27.98 & 10{,}456 & 72.81 & 45.26 & 43.49 & 10{,}658\\
+\midrule
+\multirow{4}{*}{GPT-3.5-turbo}
+& Direct & 54.35 & 21.35 & 18.33 & 8{,}462 & 63.58 & 30.85 & 25.00 & 8{,}614\\
+& BeamSearch & 55.40 & 28.02 & 19.76 & 21{,}979 & 63.41 & 34.05 & 26.28 & 20{,}813\\
+& SGC & 59.80 & 37.82 & 25.87 & 8{,}352 & 64.96 & 37.96 & 29.70 & 8{,}504\\
+& GraphSAGE & 63.97 & 42.26 & 30.35 & 8{,}352 & 70.49 & 47.79 & 39.74 & 8{,}504\\
+\midrule
+\multirow{4}{*}{GPT-4-turbo}
+& Direct & 68.63 & 40.01 & 27.20 & 8{,}513 & 69.54 & 41.79 & 28.17 & 8{,}693\\
+& BeamSearch & 71.29 & 43.99 & 30.40 & 18{,}793 & 71.99 & 44.54 & 31.62 & 20{,}515\\
+& SGC & 70.87 & 44.01 & 31.60 & 8{,}346 & 70.46 & 44.82 & 33.00 & 8{,}504\\
+& GraphSAGE & 70.67 & 43.83 & 34.40 & 8{,}346 & 70.75 & 47.68 & 37.22 & 8{,}504\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{扩展到大规模任务图}
+
+为了证明我们方法对更大任务图的可扩展性，我们在新发布的规划基准 UltraTool [20] 上进行了补充实验，该基准具有一个相对较大的任务图，含 260 个节点。处理该数据集的细节见附录 C.3。我们在表~\ref{tab:3} 中给出了 GNN 模型（无需训练的 SGC 和需要训练的 GraphSAGE）与 BeamSearch 等强基线的性能比较。在这些指标中，准确率（Acc）基于预测任务是否与真值任务匹配来计算，衡量每个案例层面的成功率。在这样的条件下，整合 GNN 显著提升了性能并缓解了规划失败，例如引入 GraphSAGE 后 GPT-4-turbo 的准确率提升了 9.05\%。
+
+结果表明：（1）大语言模型的性能容易受任务图规模的影响；（2）所提方法的性能增益随任务图的增大而增加。
+
+\subsection{改进的提示与微调后的大语言模型}
+
+在本小节中，我们表明所提方法与两种主流方法（即提示工程和微调）相互正交。
+
+\paragraph{与改进的提示正交：}我们考察 GNN 在应用于改进的提示模板（即经过策略性设计、能增强大语言模型任务规划能力的提示）时的有效性。具体而言，我们考虑两类提示：（1）增加示例的上下文学习 [45]。在主实验中，我们对大语言模型的直接推理始终保持一致的 1-shot 上下文学习示例。为实现进一步提升，我们将示例数量增加到 2 个，该设置下的结果记为“2-shot Prompt”；（2）像图一样规划（Plan like a Graph, PlaG）[30]。我们采用 [30] 中的提示来促使大语言模型以类似图的方式进行思考和规划。具体而言，我们将整个任务图转换为纯文本，然后整合 PlaG 指令以增强大语言模型的规划能力。该提示模板下的结果记为“PlaG Prompt”。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\linewidth]{fig3.pdf}
+\caption{对改进的提示和微调后的大语言模型均具有正交的有效性。}
+\label{fig:3}
+\end{figure}
+
+从图~\ref{fig:3}a 所示的结果中（我们在 HuggingFace 上对 CodeLlama-13B 和 Mistral-7B 应用了三种不同的提示），可以清楚地看到，将 GraphSAGE 应用于改进的提示（其中任务步骤被更简洁地分解、预测也更准确）同样能够提升性能。
+
+\paragraph{与大语言模型的微调正交：}为了探究我们的框架在已习得数据集特定任务规划能力的微调后大语言模型上是否仍然有效，我们进行了进一步的实验。对于每个数据集，我们使用 LoRA [19] 基于与 GNNs 相同的训练数据，微调了两个不同参数规模的大语言模型，包括 CodeLlama-7B 和 Vicuna-13B。微调过程的细节见附录 F.3。微调后的模型在图~\ref{fig:3}b 中命名为“FT-CodeLlama”和“FT-Vicuna”。
+
+图~\ref{fig:3}b 所示的结果表明，微调显著增强了大语言模型的任务规划能力。此外，将 GraphSAGE 应用于大语言模型的分解任务，进一步提升了任务规划的准确性。
+
+\section{结论}
+
+本文对语言智能体中基于图学习的任务规划方法进行了初步探索。通过理论分析，我们证明了注意力机制的归纳偏置和自回归损失的作用会妨碍其在任务规划中的有效性。我们提出整合 GNNs 来分析任务图，这在一系列大语言模型和规划基准上都带来了性能提升。
+
+\paragraph{局限性：}尽管取得了令人鼓舞的性能，但仍存在一些局限，它们也凸显了重要的改进机会。首先，我们所提的方法虽然有效，但较为简单；更复杂的基于图学习的决策算法或许能带来进一步的提升。其次，任务图的构建目前需要人工投入。研究面向多样应用的自动化图生成技术，是另一个有前景的未来研究方向。
+
+\section*{致谢}
+
+本工作部分得到中国香港特别行政区研究资助局（Research Grants Council of the Hong Kong Special Administrative Region, China）的资助（编号 CUHK 14217622）。
+
+\section*{参考文献}
+\begin{enumerate}[leftmargin=2em]
+\item Andrew G Barto, Steven J Bradtke, and Satinder P Singh. Learning to act using real-time dynamic programming. \textit{Artificial intelligence}, 72(1-2):81--138, 1995.
+\item Timothy EJ Behrens, Timothy H Muller, James CR Whittington, Shirley Mark, Alon B Baram, Kimberly L Stachenfeld, and Zeb Kurth-Nelson. What is a cognitive map? organizing knowledge for flexible behavior. \textit{Neuron}, 100(2):490--509, 2018.
+\item Richard Bellman. Dynamic programming. \textit{science}, 153(3731):34--37, 1966.
+\item Maciej Besta, Nils Blach, Ales Kubicek, Robert Gerstenberger, Michal Podstawski, Lukas Gianinazzi, Joanna Gajda, Tomasz Lehmann, Hubert Niewiadomski, Piotr Nyczyk, et al. Graph of thoughts: Solving elaborate problems with large language models. In \textit{Proceedings of the AAAI Conference on Artificial Intelligence}, volume 38, pp. 17682--17690, 2024.
+\item Daniil A Boiko, Robert MacKnight, Ben Kline, and Gabe Gomes. Autonomous chemical research with large language models. \textit{Nature}, 624(7992):570--578, 2023.
+\item Blai Bonet and Hector Geffner. Labeled rtdp: Improving the convergence of real-time dynamic programming. In \textit{ICAPS}, volume 3, pp. 12--21, 2003.
+\item S\'ebastien Bubeck, Varun Chandrasekaran, Ronen Eldan, Johannes Gehrke, Eric Horvitz, Ece Kamar, Peter Lee, Yin Tat Lee, Yuanzhi Li, Scott Lundberg, et al. Sparks of artificial general intelligence: Early experiments with gpt-4. \textit{arXiv preprint arXiv:2303.12712}, 2023.
+\item Quentin Cappart, Didier Ch\'etelat, Elias B Khalil, Andrea Lodi, Christopher Morris, and Petar Veli\v{c}kovi\'c. Combinatorial optimization and reasoning with graph neural networks. \textit{Journal of Machine Learning Research}, 24(130):1--61, 2023.
+\item Ziwei Chai, Tianjie Zhang, Liang Wu, Kaiqiao Han, Xiaohai Hu, Xuanwen Huang, and Yang Yang. GraphLLM: Boosting graph reasoning ability of large language model. \textit{arXiv preprint arXiv:2310.05845}, 2023.
+\item Dillon Z Chen, Sylvie Thi\'ebaux, and Felipe Trevizan. Learning domain-independent heuristics for grounded and lifted planning. In \textit{Proceedings of the AAAI Conference on Artificial Intelligence}, volume 38, pp. 20078--20086, 2024.
+\item Andrew J Dudzik and Petar Veli\v{c}kovi\'c. Graph neural networks are dynamic programmers. \textit{Advances in neural information processing systems}, 35:20635--20647, 2022.
+\item Guhao Feng, Bohang Zhang, Yuntian Gu, Haotian Ye, Di He, and Liwei Wang. Towards revealing the mystery behind chain of thought: a theoretical perspective. \textit{Advances in Neural Information Processing Systems}, 36, 2024.
+\item Maxime Gasse, Didier Ch\'etelat, Nicola Ferroni, Laurent Charlin, and Andrea Lodi. Exact combinatorial optimization with graph convolutional neural networks. \textit{Advances in neural information processing systems}, 32, 2019.
+\item Jiayan Guo, Lun Du, and Hengyu Liu. Gpt4graph: Can large language models understand graph structured data? an empirical evaluation and benchmarking. \textit{arXiv preprint arXiv:2305.15066}, 2023.
+\item William L. Hamilton, Rex Ying, and Jure Leskovec. Inductive representation learning on large graphs. In \textit{NIPS}, 2017.
+\item Xiaoxin He, Xavier Bresson, Thomas Laurent, Adam Perold, Yann LeCun, and Bryan Hooi. Harnessing explanations: Llm-to-lm interpreter for enhanced text-attributed graph representation learning, 2023.
+\item Xiaoxin He, Yijun Tian, Yifei Sun, Nitesh V Chawla, Thomas Laurent, Yann LeCun, Xavier Bresson, and Bryan Hooi. G-retriever: Retrieval-augmented generation for textual graph understanding and question answering. \textit{arXiv preprint arXiv:2402.07630}, 2024.
+\item Malte Helmert and Carmel Domshlak. Landmarks, critical paths and abstractions: what's the difference anyway? In \textit{Proceedings of the International Conference on Automated Planning and Scheduling}, volume 19, pp. 162--169, 2009.
+\item J. Edward Hu, Yelong Shen, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean Wang, and Weizhu Chen. Lora: Low-rank adaptation of large language models. \textit{ArXiv}, abs/2106.09685, 2021.
+\item Shijue Huang, Wanjun Zhong, Jianqiao Lu, Qi Zhu, Jiahui Gao, Weiwen Liu, Yutai Hou, Xingshan Zeng, Yasheng Wang, Lifeng Shang, Xin Jiang, Ruifeng Xu, and Qun Liu. Planning, creation, usage: Benchmarking llms for comprehensive tool utilization in real-world complex scenarios, 2024.
+\item Wenlong Huang, Pieter Abbeel, Deepak Pathak, and Igor Mordatch. Language models as zero-shot planners: Extracting actionable knowledge for embodied agents. In \textit{International Conference on Machine Learning}, pp. 9118--9147. PMLR, 2022.
+\item Xu Huang, Weiwen Liu, Xiaolong Chen, Xingmei Wang, Hao Wang, Defu Lian, Yasheng Wang, Ruiming Tang, and Enhong Chen. Understanding the planning of llm agents: A survey. \textit{arXiv preprint arXiv:2402.02716}, 2024.
+\item Albert Qiaochu Jiang, Alexandre Sablayrolles, Arthur Mensch, Chris Bamford, Devendra Singh Chaplot, Diego de Las Casas, Florian Bressand, Gianna Lengyel, Guillaume Lample, Lucile Saulnier, L'elio Renard Lavaud, Marie-Anne Lachaux, Pierre Stock, Teven Le Scao, Thibaut Lavril, Thomas Wang, Timoth\'ee Lacroix, and William El Sayed. Mistral 7b. \textit{ArXiv}, abs/2310.06825, 2023.
+\item Elias Khalil, Hanjun Dai, Yuyu Zhang, Bistra Dilkina, and Le Song. Learning combinatorial optimization algorithms over graphs. \textit{Advances in neural information processing systems}, 30, 2017.
+\item Diederik P. Kingma and Jimmy Ba. Adam: A method for stochastic optimization. \textit{CoRR}, abs/1412.6980, 2014.
+\item Thomas N. Kipf and Max Welling. Semi-supervised classification with graph convolutional networks. In \textit{International Conference on Learning Representations (ICLR)}, 2017.
+\item Yuhan Li, Zhixun Li, Peisong Wang, Jia Li, Xiangguo Sun, Hong Cheng, and Jeffrey Xu Yu. A survey of graph meets large language model: Progress and future directions. \textit{arXiv preprint arXiv:2311.12399}, 2023.
+\item Yuhan Li, Peisong Wang, Zhixun Li, Jeffrey Xu Yu, and Jia Li. Zerog: Investigating cross-dataset zero-shot transferability in graphs. \textit{arXiv preprint arXiv:2402.11235}, 2024.
+\item Zhuwen Li, Qifeng Chen, and Vladlen Koltun. Combinatorial optimization with graph convolutional networks and guided tree search. \textit{Advances in neural information processing systems}, 31, 2018.
+\item Fangru Lin, Emanuele La Malfa, Valentin Hofmann, Elle Michelle Yang, Anthony Cohn, and Janet B. Pierrehumbert. Graph-enhanced large language models in asynchronous plan reasoning. \textit{ArXiv}, abs/2402.02805, 2024.
+\item Bo Liu, Yuqian Jiang, Xiaohan Zhang, Qiang Liu, Shiqi Zhang, Joydeep Biswas, and Peter Stone. Llm+ p: Empowering large language models with optimal planning proficiency. \textit{arXiv preprint arXiv:2304.11477}, 2023.
+\item Xukun Liu, Zhiyuan Peng, Xiaoyuan Yi, Xing Xie, Lirong Xiang, Yuchen Liu, and Dongkuan Xu. Toolnet: Connecting large language models with massive tools via tool graph. \textit{ArXiv}, abs/2403.00839, 2024.
+\item Zhaoyang Liu, Zeqiang Lai, Zhangwei Gao, Erfei Cui, Xizhou Zhu, Lewei Lu, Qifeng Chen, Yu Qiao, Jifeng Dai, and Wenhai Wang. Controlllm: Augment language models with tools by searching on graphs. \textit{ArXiv}, abs/2310.17796, 2023.
+\item Zihan Luo, Xiran Song, Hong Huang, Jianxun Lian, Chenhao Zhang, Jinqi Jiang, Xing Xie, and Hai Jin. Graphinstruct: Empowering large language models with graph understanding and reasoning capability. \textit{arXiv preprint arXiv:2403.04483}, 2024.
+\item Jiayuan Mao, Tom\'as Lozano-P\'erez, Josh Tenenbaum, and Leslie Kaelbling. What planning problems can a relational neural network solve? \textit{Advances in Neural Information Processing Systems}, 36, 2023.
+\item Jiayuan Mao, Tomas Lozano-Perez, Joshua B. Tenenbaum, and Leslie Pack Kaelbing. What Planning Problems Can A Relational Neural Network Solve? In \textit{Advances in Neural Information Processing Systems (NeurIPS)}, 2023.
+\item Ida Momennejad, Hosein Hasanbeig, Felipe Vieira Frujeri, Hiteshi Sharma, Nebojsa Jojic, Hamid Palangi, Robert Ness, and Jonathan Larson. Evaluating cognitive maps and planning in large language models with CogEval. \textit{Advances in Neural Information Processing Systems}, 36, 2023.
+\item Bryan Perozzi, Bahare Fatemi, Dustin Zelle, Anton Tsitsulin, Mehran Kazemi, Rami Al-Rfou, and Jonathan Halcrow. Let your graph do the talking: Encoding structured data for llms, 2024.
+\item Yujia Qin, Shihao Liang, Yining Ye, Kunlun Zhu, Lan Yan, Yaxi Lu, Yankai Lin, Xin Cong, Xiangru Tang, Bill Qian, Sihan Zhao, Runchu Tian, Ruobing Xie, Jie Zhou, Mark Gerstein, Dahai Li, Zhiyuan Liu, and Maosong Sun. Toolllm: Facilitating large language models to master 16000+ real-world apis, 2023.
+\item Nils Reimers and Iryna Gurevych. Sentence-bert: Sentence embeddings using siamese bert-networks. In \textit{Conference on Empirical Methods in Natural Language Processing}, 2019.
+\item Steffen Rendle, Christoph Freudenthaler, Zeno Gantner, and Lars Schmidt-Thieme. Bpr: Bayesian personalized ranking from implicit feedback. \textit{arXiv preprint arXiv:1205.2618}, 2012.
+\item Baptiste Rozi\`ere, Jonas Gehring, Fabian Gloeckle, Sten Sootla, Itai Gat, Xiaoqing Tan, Yossi Adi, Jingyu Liu, Tal Remez, J\'er\'emy Rapin, Artyom Kozhevnikov, I. Evtimov, Joanna Bitton, Manish P Bhatt, Cristian Cant\'on Ferrer, Aaron Grattafiori, Wenhan Xiong, Alexandre D'efossez, Jade Copet, Faisal Azhar, Hugo Touvron, Louis Martin, Nicolas Usunier, Thomas Scialom, and Gabriel Synnaeve. Code llama: Open foundation models for code. \textit{ArXiv}, abs/2308.12950, 2023.
+\item Timo Schick, Jane Dwivedi-Yu, Roberto Dess\`i, Roberta Raileanu, Maria Lomeli, Eric Hambro, Luke Zettlemoyer, Nicola Cancedda, and Thomas Scialom. Toolformer: Language models can teach themselves to use tools. \textit{Advances in Neural Information Processing Systems}, 36, 2024.
+\item William Shen, Felipe Trevizan, and Sylvie Thi\'ebaux. Learning domain-independent planning heuristics with hypergraph networks. In \textit{Proceedings of the International Conference on Automated Planning and Scheduling}, volume 30, pp. 574--584, 2020.
+\item Yongliang Shen, Kaitao Song, Xu Tan, Wenqi Zhang, Kan Ren, Siyu Yuan, Weiming Lu, Dongsheng Li, and Yueting Zhuang. Taskbench: Benchmarking large language models for task automation. \textit{arXiv preprint arXiv:2311.18760}, 2023.
+\item Yongliang Shen, Kaitao Song, Xu Tan, Dongsheng Li, Weiming Lu, and Yueting Zhuang. Hugginggpt: Solving ai tasks with chatgpt and its friends in hugging face. \textit{Advances in Neural Information Processing Systems}, 36, 2024.
+\item Yunsheng Shi, Zhengjie Huang, Wenjin Wang, Hui Zhong, Shikun Feng, and Yu Sun. Masked label prediction: Unified massage passing model for semi-supervised classification. In \textit{Proceedings of the Thirtieth International Joint Conference on Artificial Intelligence (IJCA)}, 2021.
+\item Noah Shinn, Federico Cassano, Ashwin Gopinath, Karthik Narasimhan, and Shunyu Yao. Reflexion: Language agents with verbal reinforcement learning. \textit{Advances in Neural Information Processing Systems}, 36, 2024.
+\item Ishika Singh, Valts Blukis, Arsalan Mousavian, Ankit Goyal, Danfei Xu, Jonathan Tremblay, Dieter Fox, Jesse Thomason, and Animesh Garg. Progprompt: Generating situated robot task plans using large language models. In \textit{2023 IEEE International Conference on Robotics and Automation (ICRA)}, pp. 11523--11530. IEEE, 2023.
+\item Yifan Song, Weimin Xiong, Dawei Zhu, Wenhao Wu, Han Qian, Mingbo Song, Hailiang Huang, Cheng Li, Ke Wang, Rong Yao, Ye Tian, and Sujian Li. Restgpt: Connecting large language models with real-world restful apis, 2023.
+\item Simon St\aa hlberg, Blai Bonet, and Hector Geffner. Learning general optimal policies with graph neural networks: Expressive power, transparency, and limits. In \textit{Proceedings of the International Conference on Automated Planning and Scheduling}, volume 32, pp. 629--637, 2022.
+\item Jiashuo Sun, Chengjin Xu, Lumingyuan Tang, Sai Wang, Chen Lin, Yeyun Gong, Lionel M. Ni, Heung yeung Shum, and Jian Guo. Think-on-graph: Deep and responsible reasoning of large language model on knowledge graph. 2023.
+\item Jiabin Tang, Yuhao Yang, Wei Wei, Lei Shi, Lixin Su, Suqi Cheng, Dawei Yin, and Chao Huang. GraphGPT: Graph instruction tuning for large language models. \textit{arXiv preprint arXiv:2310.13023}, 2023.
+\item Qiaoyu Tang, Ziliang Deng, Hongyu Lin, Xianpei Han, Qiao Liang, and Le Sun. Toolalpaca: Generalized tool learning for language models with 3000 simulated cases, 2023.
+\item Sam Toyer, Felipe W. Trevizan, Sylvie Thi\'ebaux, and Lexing Xie. Asnets: Deep learning for generalised planning. \textit{ArXiv}, abs/1908.01362, 2019.
+\item Trieu H Trinh, Yuhuai Wu, Quoc V Le, He He, and Thang Luong. Solving Olympiad geometry without human demonstrations. \textit{Nature}, 625(7995):476--482, 2024.
+\item Petar Veli\v{c}kovi\'c, Guillem Cucurull, Arantxa Casanova, Adriana Romero, Pietro Li\`o, and Yoshua Bengio. Graph attention networks. \textit{International Conference on Learning Representations}, 2018.
+\item Guanzhi Wang, Yuqi Xie, Yunfan Jiang, Ajay Mandlekar, Chaowei Xiao, Yuke Zhu, Linxi Fan, and Anima Anandkumar. Voyager: An open-ended embodied agent with large language models. \textit{arXiv preprint arXiv:2305.16291}, 2023.
+\item Heng Wang, Shangbin Feng, Tianxing He, Zhaoxuan Tan, Xiaochuang Han, and Yulia Tsvetkov. Can language models solve graph problems in natural language? \textit{Advances in Neural Information Processing Systems}, 36, 2023.
+\item Lei Wang, Wanyu Xu, Yihuai Lan, Zhiqiang Hu, Yunshi Lan, Roy Ka-Wei Lee, and Ee-Peng Lim. Plan-and-solve prompting: Improving zero-shot chain-of-thought reasoning by large language models. \textit{arXiv preprint arXiv:2305.04091}, 2023.
+\item Lei Wang, Chen Ma, Xueyang Feng, Zeyu Zhang, Hao Yang, Jingsen Zhang, Zhiyuan Chen, Jiakai Tang, Xu Chen, Yankai Lin, et al. A survey on large language model based autonomous agents. \textit{Frontiers of Computer Science}, 18(6):1--26, 2024.
+\item Liang Wang, Nan Yang, Xiaolong Huang, Binxing Jiao, Linjun Yang, Daxin Jiang, Rangan Majumder, and Furu Wei. Text embeddings by weakly-supervised contrastive pre-training. \textit{ArXiv}, abs/2212.03533, 2022.
+\item Jason Wei, Xuezhi Wang, Dale Schuurmans, Maarten Bosma, Fei Xia, Ed Chi, Quoc V Le, Denny Zhou, et al. Chain-of-thought prompting elicits reasoning in large language models. \textit{Advances in neural information processing systems}, 35:24824--24837, 2022.
+\item James CR Whittington, Timothy H Muller, Shirley Mark, Guifen Chen, Caswell Barry, Neil Burgess, and Timothy EJ Behrens. The tolman-eichenbaum machine: unifying space and relational memory through generalization in the hippocampal formation. \textit{Cell}, 183(5):1249--1263, 2020.
+\item Felix Wu, Amauri Souza, Tianyi Zhang, Christopher Fifty, Tao Yu, and Kilian Weinberger. Simplifying graph convolutional networks. In \textit{International conference on machine learning}, pp. 6861--6871. PMLR, 2019.
+\item Guangxuan Xiao, Yuandong Tian, Beidi Chen, Song Han, and Mike Lewis. Efficient streaming language models with attention sinks. \textit{arXiv preprint arXiv:2309.17453}, 2023.
+\item Keyulu Xu, Weihua Hu, Jure Leskovec, and Stefanie Jegelka. How powerful are graph neural networks? In \textit{International Conference on Learning Representations}, 2019.
+\item Keyulu Xu, Jingling Li, Mozhi Zhang, Simon S Du, Ken-ichi Kawarabayashi, and Stefanie Jegelka. What can neural networks reason about? \textit{arXiv preprint arXiv:1905.13211}, 2019.
+\item Ai Ming Yang, Bin Xiao, and et al. Baichuan 2: Open large-scale language models. \textit{ArXiv}, abs/2309.10305, 2023.
+\item Kai Yang, Jan Ackermann, Zhenyu He, Guhao Feng, Bohang Zhang, Yunzhen Feng, Qiwei Ye, Di He, and Liwei Wang. Do efficient transformers really save computation? \textit{arXiv preprint arXiv:2402.13934}, 2024.
+\item Shunyu Yao, Dian Yu, Jeffrey Zhao, Izhak Shafran, Tom Griffiths, Yuan Cao, and Karthik Narasimhan. Tree of thoughts: Deliberate problem solving with large language models. \textit{Advances in Neural Information Processing Systems}, 36, 2024.
+\item Lianmin Zheng, Wei-Lin Chiang, Ying Sheng, Siyuan Zhuang, Zhanghao Wu, Yonghao Zhuang, Zi Lin, Zhuohan Li, Dacheng Li, Eric P. Xing, Haotong Zhang, Joseph Gonzalez, and Ion Stoica. Judging llm-as-a-judge with mt-bench and chatbot arena. \textit{ArXiv}, abs/2306.05685, 2023.
+\item Wanjun Zhong, Lianghong Guo, Qiqi Gao, He Ye, and Yanlin Wang. Memorybank: Enhancing large language models with long-term memory. In \textit{Proceedings of the AAAI Conference on Artificial Intelligence}, volume 38, pp. 19724--19731, 2024.
+\end{enumerate}
+
+\appendix
+\renewcommand{\thesection}{\Alph{section}}
+
+\section{相关工作与讨论}
+\subsection{大语言模型中的规划算法}
+
+现有关于任务规划方法的研究可分为若干方向，包括任务分解（task decomposition）、多方案选择（multi-plan selection）、外部规划器（external planners）的使用、反思（reflection）以及记忆辅助规划（memory-aided planning）[22]。任务分解方法（例如链式思维（chain-of-thought）方法 [63]）采用分而治之（divide-and-conquer）策略，利用大语言模型同时进行任务分解和子任务规划。该方法在任务规划中的应用详见第 2.2 节，在基线比较中被称为“Direct”。多方案选择策略（以思维树（tree-of-thought）[71] 和思维图（graph-of-thought）[4] 为代表）利用基于搜索的方法生成方案，随后由大语言模型评估这些方案以选出最有效的一个。我们基线中使用的“GraphSearch”方法属于这一类。外部规划器方法 [31] 使用大语言模型将问题转换为规划领域定义语言（Planning Domain Definition Language, PDDL），然后采用经典求解器来求解规划问题。PDDL 需要一个预定义的目标，例如将方块从一种状态移动到另一种状态。然而，语言智能体中所研究的任务规划目标更为灵活和个性化，横跨视频、文本和图像处理等个人需求。将这些目标转化为形式化的 PDDL 非常困难。我们转而证明，在这一应用中 GNNs 可以充当一个有效的外部规划器。基于反思的方法 [48] 侧重于对经验进行反思以优化方案，而记忆辅助规划方法 [73] 利用外部经验（例如来自搜索引擎的经验）。这些方法部署在交互式环境中，与本文正交。
+
+\subsection{传统人工智能中的任务规划}
+
+除语言智能体中的任务规划之外，传统人工智能中也有一个称为任务规划的领域 [1, 6, 18, 55, 44, 51, 35, 10]。传统人工智能中的任务规划被定义为 $(S, A, T, C, G, s_0)$，其中 $S$ 是状态，$A$ 是动作空间，$T: S\times S\times A\to[0,1]$，代价函数 $C: S\times A\to[0,\infty)$，目标状态集合 $G\subseteq S$，以及初始状态 $s_0$。遵循策略 $\pi: A\times S\to[0,1]$ 的智能体从状态 $s_0$ 出发，然后反复选择一个动作 $a\sim\pi(a|s)$ 并执行它，以到达新状态 $s'\sim T(s'|s,a)$，并沿途产生代价 $C(s,a)$。最优策略 $\pi^*(a|s)$ 是以概率 1 到达目标状态、同时最小化总期望代价的策略。传统上，任务规划通过强化学习方法 [6] 和启发式 $A^*$ 方法 [18] 求解。基于神经网络的方法被用来加速计算并提升性能 [55, 44, 51, 35, 10]。
+
+语言智能体中的任务规划是一种不同的应用。它无法作为约束满足问题（constraint satisfaction problem）求解，因为任务图的特征和用户请求都是以自然语言表达的。与传统规划相比，语言智能体的任务规划由于用户多样化的个人需求，涉及多样且开放式的目标。例如，在 HuggingFace 这类平台上，用户的意图横跨视频、文本和图像领域。相反，经典规划对于给定领域有固定目标，例如在 $n$-puzzle（数字华容道）[55] 中，目标被形式化地表述为按数字顺序摆放方块。在这一新的应用领域中，尽管现有研究主要关注预训练大语言模型的提示设计，我们的工作强调了传统规划方法（例如 GNNs）在补充大语言模型方面的重要性。
+
+\subsection{智能体与神经科学中的规划}
+
+规划是智能体和神经科学（neuroscience）中的一个关键主题，图在其中扮演着不可或缺的角色。我们相信，本文所提出的概念和洞见对这些领域是有用的。
+
+本文使用的 TaskBench、RestBench 和 UltraTool 数据集属于工具智能体（tool agents）。数学智能体 AlphaGeometry 利用大语言模型在几何中生成辅助构造 [56]。将引理（lemma）视为节点、将它们的相互依赖关系视为边，那么证明一个定理的过程就类似于：在由潜在引理节点及表示其相互依赖关系的边所构成的图中，寻找一条通往定理节点的路径。在游戏智能体 [58]、具身智能体（embodied agents）[21] 和代码智能体（code agents）[48] 中，并不存在显式的任务图。这些领域的核心策略是在大语言模型内部采用言语强化学习（verbal reinforcement learning）。强化学习中的状态和转移可以被建模为图中的节点和边。此外，在这些智能体应用中还有针对具体情形的图模型。例如，在代码智能体中，可以将类（class）视为节点、将依赖关系视为边。在具身智能体中，可以将环境中的物体视为节点。
+
+在神经科学中，动物的规划通常通过迷宫中的路径规划来评估 [2, 64]。受这些动物实验的启发，研究者为大语言模型开发了规划测试基准 [37]。一种被称为 Tolman-Eichenbaum Machine (TEM) 的计算模型被提出，用于解读动物在各种环境（例如迷宫）中进行通用规划的机制 [64]。TEM 模型假设：海马体细胞（hippocampal cells，包括位置细胞和地标细胞）在不同环境之间重新映射（remap），而内嗅皮层细胞（entorhinal cells）则表现出一系列反映空间响应的特性，包括网格细胞、条带细胞、边界细胞和物体向量细胞。本质上，海马体细胞将感觉输入映射到抽象图中的位置并进行重映射，而内嗅皮层细胞执行图操作。
+
+\subsection{面向图的大语言模型}
+
+随着大语言模型的突破，将大语言模型应用于图相关问题的兴趣激增 [27, 28]。GPT4Graph [14] 和 NLGraph [59] 是两个旨在评估大语言模型在图任务背景下性能的著名基准。它们涵盖了广泛的挑战、各种输入格式和最先进的提示技术，表明大语言模型具备基本的图处理能力。重要的是，提示和格式的选择会显著影响性能。然而，这些基准也暴露出模型易受图中虚假相关性的影响。例如，即使使用复杂的提示，GPT-4 在最短路径任务上的准确率也仅为约 50\%。GraphInstruct [34] 尝试在图论相关任务上微调大语言模型，虽然性能有所提升，但仍远未令人满意。尽管有这些实证努力，但对这些评测结果的理论理解仍然有限。第 3.3 节中的分析旨在揭示这些研究中报告的实证观察。
+
+考虑到这些负面结果，一条新的研究路线应运而生，它将 GNNs 的输出用作大语言模型的 token，例如 GraphGPT [53]、GraphLLM [9]、GraphToken [38] 和 G-Retriever [17]。这些方法在 GNN 相关任务上展现出显著的性能提升。然而，由于缺乏大量的训练数据，它们尚未被应用于任务规划。一个有前景的未来方向是：利用 GPT 生成的任务规划数据来微调图基础模型（graph foundation models，例如 GraphGPT [53]），并将其应用于任务规划。本文提出将任务规划作为这一研究路线的新基准。
+
+\subsection{推理的理论分析}
+
+推理与任务规划和决策密切相关。神经网络推理能力的理论探索由 [68] 开创。该工作将各类推理任务（例如直觉物理、视觉问答和最短路径计算）统一为 DP 问题，然后分析了 MLPs、DeepSets 和 GNNs 的泛化能力。结果表明，GNNs 表现出最佳的泛化界，这归因于其架构与擅长求解 DP 问题的 Bellman-Ford 算法的相似性。在大语言模型的推理能力方面，[12] 考察了链式思维（CoT）方法如何在不涉及图的情况下帮助求解算术和 DP 问题。通过将具有挑战性的问题分解为更简单的子问题，CoT 将 Transformer 的表达能力从 $\mathrm{TC}^0$ 扩展到 $\mathrm{P}$。这一分析在 [70] 中被进一步应用于线性和稀疏 Transformer。
+
+我们对定理 1 的证明建立在 [12] 中定理 4.7 的证明之上。然而，[12] 处理的是不含图结构的 DP 问题，而定理 1 专门关注以图边列表为输入的 DP 问题。此外，与 [12] 顺序地分解和求解 DP 问题不同，定理 1 提出了一种在边列表上并行模拟 DP 的方法。除此之外，我们还分析了由注意力机制和自回归损失的归纳偏置所产生的负面结果。这些理论贡献是新颖的，有望对一般的推理和规划任务具有价值。
+
+\subsection{用于组合优化的 GNNs 与 GraphSearch}
+
+GNNs 是求解图上决策问题的流行方法。所研究的问题通常是 NP 难（NP-hard）的，例如最小顶点覆盖、最大割和旅行商问题 [8]。基本方法是以满足约束的方式逐个选择节点 [24]。在本文中，我们采用这一方法来顺序选择任务节点。此外，强化学习可以用来将 GNNs 的性能提升到仅靠监督标签所能达到的水平之上 [24]。在 [24] 中，仅选择得分最高的节点。相反，[29] 采用束搜索，通过在单次迭代中选择得分最高的 $k$ 个节点来提升性能。此外，GNNs 还被用作组合优化问题精确求解的穷举搜索中变量选择的方法 [13]。本文将任务规划概念化为一个基于图的决策问题。贪婪搜索和束搜索算法均已被用于任务规划 [33, 32]。鉴于这一联系，一个有前景的未来方向是将 GNNs 重新用于任务规划应用中的决策方法。
+
+\section{提示（Prompts）}
+
+\begin{table}[H]\centering
+\caption{大语言模型直接推理的提示模板 [45]。}
+\label{tab:4}
+\fbox{\includegraphics[width=0.86\linewidth]{cand_p20_k00.pdf}}
+\end{table}
+
+\begin{table}[H]\centering
+\caption{GraphSearch 的提示模板 [33]。}
+\label{tab:5}
+\fbox{\includegraphics[width=0.92\linewidth]{cand_p21_k00.pdf}}
+\end{table}
+
+\begin{table}[H]\centering
+\caption{大语言模型填充调用参数的提示模板 [45]。}
+\label{tab:6}
+\fbox{\includegraphics[width=0.86\linewidth]{cand_p22_k00.pdf}}
+\end{table}
+
+\section{数据集（Datasets）}
+\subsection{概述}
+
+我们在表~\ref{tab:7} 中提供了来自三个任务规划基准的实验数据集的统计信息。每个数据集的示意性样例如图~\ref{fig:4} 所示。对于来自 TaskBench [45] 的数据集，每个样本由原始用户请求、相应的分解任务步骤以及真值任务调用路径组成。由于 RestBench [50] 和 UltraTool [20] 仅包含用户请求和相应的 API 调用序列，我们提示 GPT-4 推断出与每个被调用 API 对齐的分解任务步骤，从而最终确定数据集。
+
+\begin{table}[H]\centering
+\caption{实验数据集的统计信息。}
+\label{tab:7}
+\small
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{llccccc}
+\toprule
+& & \multicolumn{3}{c}{TaskBench} & \multicolumn{1}{c}{RestBench} & \multirow{2}{*}{UltraTool}\\
+\cmidrule(lr){3-5}\cmidrule(lr){6-6}
+类型 & 统计量 & HuggingFace & Multimedia & Daily Life & TMDB & \\
+\midrule
+\multirow{3}{*}{任务图}
+& \# 节点 & 23 & 40 & 40 & 46 & 260\\
+& \# 链接 & 225 & 449 & 1560 & 979 & 611\\
+& 链接类型 & Resource & Resource & Temporal & Resource / Category & Resource\\
+\midrule
+全部数据 & \# 样本 & 7{,}546 & 5{,}584 & 4{,}320 & 100 & 3{,}527\\
+\midrule
+\multirow{3}{*}{测试集}
+& \# 样本 & 500 & 500 & 500 & 94 & 500\\
+& \# 平均节点数 & 3.81 & 3.92 & 4.05 & 2.33 & 2.38\\
+& \# 平均链接数 & 2.81 & 2.92 & 3.05 & 1.33 & 1.38\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{RestBench 的重新格式化细节}
+
+来自 RestBench 的 TMDB 数据集聚焦于与电影相关的搜索和推荐功能。为使 RestBench 与我们的实验对齐，我们实施了以下处理步骤：
+
+\paragraph{通过分配唯一的任务名称和描述来重新格式化原始 API：}RestBench 中的 API 由请求路径表示，例如“GET /movie/top\_rated”，指代在 TMDB 上检索评分最高电影的 API。为增强 API 之间的语义区分度，我们首先提示 GPT-4 为每个 API 分配一个唯一的名称和详细的功能描述。这些名称和描述随后经过人工验证和优化。例如，前面提到的 API 被重命名为“Get Top-Rated Movies”，描述为：“This API retrieves a list of the highest-rated movies.”需要注意的是，尽管原始 TMDB 数据集包含 54 个 API，但其中一些从未在任何数据样例中被调用。因此，我们只关注那些至少在一个用户请求中出现过的 API，最终得到一个精炼后的 46 个 API 的集合。
+
+\paragraph{构建任务图：}每个 API 被视为一个唯一的任务节点，我们从两个方面刻画它们之间的关系：（1）类别关联；（2）资源依赖。例如，提供电影相关功能的 API（例如检索电影详情或推荐影片）被归入电影类别。相反，聚焦于人物相关功能的 API（例如搜索演员）被归入人物类别。此外，如果两个 API 共享一个公共参数（例如 move\_id），我们就在它们之间建立一条链接，以表示资源依赖。
+
+\paragraph{重新格式化原始数据样例：}RestBench 中的原始数据样本包含单个查询及其相应的 API 调用序列。为将这些数据重新格式化为路径结构，我们将每个被调用的 API 视为一个节点，将调用序列视为从一个 API 到下一个 API 的有向链接。例如，一个 TMDB 数据样本由查询“Who was the lead actor in the movie The Dark Knight”及相应的真值 API 解 [\texttt{"GET /search/movie"}, \texttt{"GET /movie/\{movie\_id\}/credits"}] 组成。我们将该解转换为任务调用路径：\texttt{"\{ "task\_nodes": ["Search Movie", "Get Movie Credit"], "task\_links": [\{"source": "Search Movie", "target": "Get Movie Credit"\}]\}"}。
+
+\subsection{UltraTool 的重新格式化细节}
+
+\paragraph{动机：}在我们使用 TaskBench [45] 和 RestBench [50] 的主实验中，我们观察到 GPT-4-turbo 这类强大的大语言模型已经表现良好。这可能归因于两个因素：（1）GPT-4-turbo 的训练很可能包含了与这些基准相关的知识，因为二者都在 GPT-4 之前发布，并使用了 HuggingFace 和 TMDB 等流行平台；（2）任务图相对较小，包含不超过 50 个任务，落在大语言模型的能力范围之内。因此，我们旨在于一个更具挑战性的场景中评估规划性能以及 GNN 的有效性，即一个需要超出大语言模型训练范围的特定知识、并涉及可能超出其记忆和推理能力的更大任务图的场景。
+
+\paragraph{构建任务图：}我们使用了 2024 年 3 月发布的 UltraTool [20]，它具有横跨数千个任务的复杂规划场景，包括旅行、旅游和其他日常生活领域。原始的 UltraTool 包含 5{,}824 个样本，涵盖 22 个不同领域的 2{,}032 个可用任务。然而，我们观察到有些任务仅在一个样本中出现，使其相当罕见。因此，我们按如下方式过滤该数据集：首先，我们只考虑在所有样本中出现超过 5 次的任务，聚焦于更常见的、面向日常生活的任务。接下来，我们保留那些纳入了这些过滤后任务的样本，并确保被调用任务的数量超过 2，以满足多任务规划场景。经过这一过滤，我们识别出 260 个不同的任务。然后，我们通过将每个任务视为一个节点、并在数据集中按顺序被调用的任务之间添加链接，构建任务图。对于每个任务，我们进一步验证和优化其功能描述，以确保语义上的适宜性。
+
+\paragraph{重新格式化原始数据样例：}我们分配了 500 个样本用于测试、3{,}000 个样本用于 GNN 训练。尽管原始 UltraTool 提供了分解步骤，但我们发现它们过于粗粒度，难以将步骤描述与合适的任务对齐。因此，我们采用类似的策略，提示 GPT-4 推断出与每个被调用任务对齐的分解任务步骤。最终，每个数据样本由用户请求、相应步骤和真值被调用任务组成，确保了 GNN 训练的高质量。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.99\linewidth]{cand_p24_k00.pdf}
+\caption{实验数据集的示意性细节。}
+\label{fig:4}
+\end{figure}
+
+\section{理论结果的补充材料}
+\subsection{动态规划}
+
+\paragraph{最长递增子序列（Longest Increasing Subsequence）：}最长递增子序列（Longest Increasing Subsequence, LIS）问题是一个经典的动态规划问题，它涉及在给定数组 $arr$ 中寻找元素严格递增的最长子序列的长度。LIS 问题的状态转移函数可表示为：
+\[
+\mathrm{Answer}[k][i] = \max_{j\in T(i)}\left(\mathrm{Answer}[k-1][j] + (\mathbb{I}(j\neq i)\times 1)\right),
+\]
+其中 $T(i) = \{i\}\cup\{j\,|\,j<i\ \text{且}\ arr[j]<arr[i]\}$ 表示能够转移到状态 $i$ 的状态集合，聚合函数 $g(x,y)$ 实现为 $\max(x,y)$，对于那些不等于状态 $i$ 的候选状态，其代价 $c[i][j]$ 为 1（因为加入该元素会得到更长的子序列），而对于状态自身则为 0。
+
+\paragraph{Bellman-Ford 算法：}Bellman-Ford 算法也是一种经典的动态规划算法，用于在带权图中寻找从单一源顶点到所有其他顶点的最短路径。Bellman-Ford 算法背后的核心思想是：从源顶点到目标顶点的距离，可以计算为从源到目标任一邻居顶点的最小距离，再加上连接该邻居与目标的边的权重。因此，Bellman-Ford 算法的状态转移函数可表示为：
+\[
+\mathrm{Answer}[k][i] = \min_{j\in T(i)}\left(\mathrm{Answer}[k-1][j] + w[j][i]\right),
+\]
+其中 $\mathrm{Answer}[k][i]$ 表示第 $k$ 次迭代时从源顶点到节点 $i$ 的最短路径长度，$T(i) = N^-(i)$ 表示节点 $i$ 的入邻居（in-neighbors）集合，$w[j][i]$ 表示从节点 $j$ 到 $i$ 的权重。由于我们试图寻找最短路径，聚合函数 $g(x,y)$ 实现为 $\min(x,y)$。
+
+\paragraph{旅行商问题（Travelling Salesman Problem, TSP）：}该问题定义为：给定一组城市以及每对城市之间的距离，寻找一条访问每个城市恰好一次并返回起点的最短可能路线。如果我们将已访问城市集合 $S$ 且终止于第 $i$ 个城市的状态视为当前状态，那么能够转移到当前状态的状态就是那些其终止城市可到达 $i$ 的状态。因此，TSP 问题的状态转移函数可表示为：
+\[
+\mathrm{Answer}[k][i][S] = \min_{j\in S, j\neq i}\left(\mathrm{Answer}[k-1][j][S\setminus\{i\}] + w[j][i]\right),
+\]
+其中 $\mathrm{Answer}[k][i][S]$ 表示访问集合 $S$ 中所有城市并终止于第 $i$ 个城市的最短巡回的代价，由于我们旨在寻找最短路径，聚合函数 $g(x,y)$ 仍然实现为 $\min(x,y)$，$w[j][i]$ 表示从城市 $j$ 到城市 $i$ 的距离。
+
+\subsection{定理 1 的证明}
+
+\begin{assumption}
+式~(2) 中的每个函数 $f, g$ 都可以由常数规模的 MLP 近似。
+\end{assumption}
+\begin{assumption}
+式~(2) 中的聚合函数 $\square$ 是 $\min$、$\max$、$\mathrm{sum}$、$\mathrm{mean}$ 之一。
+\end{assumption}
+
+第一条假设是温和的，因为 MLPs 是通用近似器（universal approximators）。第二条假设也是温和的，因为这些是最常用的聚合函数。
+
+\begin{theorem}[表达能力]
+假设输入格式如式~(1) 给出，且 DP 更新式~(2) 中的 $f, g, \square$ 满足假设 1 和假设 2。则存在一个对数精度、常数深度且常数宽度的 Transformer，能够模拟式~(2) 中 DP 更新的 1 步。因此，存在一个对数精度、$O(k)$ 深度且常数宽度的 Transformer，能够模拟式~(2) 中 DP 更新的 $k$ 步。
+\end{theorem}
+
+\begin{proof}
+\textbf{Token 嵌入与位置嵌入：}三维 token 嵌入包括：token 类型 $e^{type1}$（0 表示 answer；1 表示 node；2 表示 edge cost）、细化的 token 类型 $e^{type2}$（0 表示 answer，1 表示初始状态中的 node token，2 表示边列表中的目标 node token，3 表示边列表中的源 node token，4 表示 edge cost），以及 token 标识 $e^{token}$（从 0 到 $|V|-1$）。二维位置嵌入包括：初始状态 token 的嵌入 $e^{pos1}$（0 表示边列表 token，1 表示初始状态的前两个元素，2 表示初始状态的第二组两个元素，以此类推）、边列表 token 的嵌入 $e^{pos2}$（0 表示初始状态 token，1 表示边列表的前三个元素，2 表示边列表的第二组三个元素，以此类推）。此外还有常数维度的占位符（placeholders）用于存放 DP 的状态。
+
+\textbf{Block 1 —— 初始状态广播：}第一个 Block 的目标是将初始状态从初始状态 token 广播到 node token。（1）若 $e_k^{type}==0$，则用 MLPs 恢复 answer token 的数字位并将其放入第一个占位符；（2）使用引理 1 中的 COPY，并设置 $S_k = \{j\,|\,(e_k^{pos1}-e_j^{pos1})^2<\delta\}$，将第一个占位符从 answer token 复制到其前一个 node token；（3）使用引理 1 中的 SUM，并设置 $S_k = \{j\,|\,(e_k^{type1}-e_j^{type1})^2+(e_k^{token}-e_j^{token})^2<\delta\}$，广播第一个占位符。此时每个 node token $u_i$ 的状态为 $[e^{type1}, e^{type2}, e^{token}, e^{pos1}, e^{pos2}, \mathrm{Answer}[0][u_i]]$。
+
+\textbf{Block 2 —— 边特征操作：}第二个 Block 的目标是将边特征从边特征 token 复制到对应的 node token。（1）若 $e^{type1}==2$，则用 MLPs 恢复边特征 token 的数字位并将其放入第二个占位符；（2）使用引理 1 中的 SUM，并设置 $S_k = \{j\,|\,(e_k^{pos2}-e_j^{pos2})^2<\delta\}$，将第二个占位符从边特征 token 复制到 node token。此时第 $i$ 条边的每个 node token $u_i$ 的状态为 $[e^{type1}, e^{type2}, e^{token}, e^{pos1}, e^{pos2}, \mathrm{Answer}[0][u_i], c[u_i][v_i]]$。
+
+\textbf{Block 3 —— 消息准备：}（1）用 MLPs 计算 $g$ 并将结果放入第三个占位符。此时第 $i$ 条边的每个 node token $u_i$ 的状态为 $[e^{type1}, e^{type2}, e^{token}, e^{pos1}, e^{pos2}, \mathrm{Answer}[0][u_i], c[u_i][v_i], g(\mathrm{Answer}[0][u_i], c[u_i][v_i])]$；（2）用 MLPs 清理第一个和第二个占位符。此时每个 node token $u_i$ 的状态为 $[e^{type1}, e^{type2}, e^{token}, e^{pos1}, e^{pos2}, g(\mathrm{Answer}[0][u_i], c[u_i][v_i])]$。
+
+\textbf{Block 4 —— 消息传递：}第四个 Block 的目标是计算 $\square$ 和 $f$。（1）使用一个或两个注意力头（对 $\max$、$\min$、$\mathrm{mean}$ 聚合用一个，对 $\mathrm{sum}$ 聚合用两个）执行聚合操作。这通过对第一个占位符使用 MEAN 或 MAX 或 SUM、并设置 $S_k = \{j\,|\,(e_k^{token}-e_j^{token})^2+(e_k^{type2}-e_j^{type2})^2<\delta\}$ 来实现。此时每个 node token $u_i$ 的状态为 $[e^{type1}, e^{type2}, e^{token}, e^{pos1}, e^{pos2}, \square_{v_j\in T(u_i)} g(\mathrm{Answer}[0][u_i], c[u_i][v_j])]$；（2）用 MLPs 计算 $f$。此时每个 node token 的状态为 $[e^{type1}, e^{type2}, e^{token}, e^{pos1}, e^{pos2}, f(\square_{v_j\in T(i)} g(\mathrm{Answer}[0][u_i], c[u_i][v_j]))]$。
+
+经过四个 Block 之后，每个 node token $u_i$ 的最终状态为 $[e^{type1}, e^{type2}, e^{token}, e^{pos1}, e^{pos2}, \mathrm{Answer}[1][u_i]]$。$\mathrm{Answer}[k][u_i]$ 可以通过将上述四个 Block 重复 $k$ 次来获得。
+\end{proof}
+
+\begin{lemma}[\,{[12]}\,]
+设 $n\in\mathbb{N}$ 为整数，$x_1, \cdots, x_n$ 为一个向量序列，其中 $x_i = (\tilde{x}_i, r_i, 1)\in[-M, M]^{d+2}$，$M$ 是一个大常数。设 $K, Q, V\in\mathbb{R}^{d'\times(d+2)}$ 为任意满足 $\|V\|_\infty\leq 1$ 的矩阵，并设 $0<\rho, \delta<M$ 为任意实数。记 $q_i = Qx_i$，$k_j = Kx_i$，$v_j = Vx_j$。定义匹配集 $S = \{j\,|\,|q_i^T k_j|\leq\rho\}$。定义以下两种操作：
+\begin{itemize}[leftmargin=2em]
+    \item COPY：输出为向量序列 $u_1, \cdots, u_n$，其中 $u_i = v_{\mathrm{pos}(i)}$，$\mathrm{pos}(i) = \arg\max_{j\in S_i} r_j$。
+    \item MEAN、MAX、SUM：输出为向量序列 $u_1, \cdots, u_n$，其中 $u_i = \square_{j\in S_i} v_j$，$\square$ 为 $\min$、$\max$、$\mathrm{sum}$ 或 $\mathrm{mean}$。
+\end{itemize}
+具体而言，对于任意向量序列 $x_1, x_2, \cdots, x_n$，记注意力层的对应输出为 $o_1, o_2, \cdots, o_n$。则对所有 $i\in[n]$ 且 $S\neq\emptyset$，我们有 $\|u_i - o_i\|_\infty\leq\epsilon$。
+\end{lemma}
+
+\subsection{大语言模型的置换不变性测试}
+
+我们测试大语言模型在图问题中是否遵守置换不变性（permutation invariance）属性，结果如图~\ref{fig:5} 所示。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{fig5.pdf}
+\caption{大语言模型在置换（即节点重排序）下无法求解图计算问题的示意性样例。实验进行了 30 次。}
+\label{fig:5}
+\end{figure}
+
+\subsection{命题 1 的证明}
+
+\begin{proposition}
+假设输入格式如式~(1) 所述，且注意力机制被限制为只能关注常数数量的 token。则至少存在一个一步 DP 更新的实例，使得没有任何对数精度、常数宽度、常数深度的 Transformer 能够模拟它。
+\end{proposition}
+
+\begin{proof}
+我们采用反证法。假设一个具有常数深度、常数宽度和对数精度的 Transformer 中的某个 token 只能关注常数数量的节点。在此假设下，该 Transformer 架构中该 token 可访问的总信息量为 $O(\log n)$ 比特。然而，对于一个含 $|V|$ 个节点的图，执行一步 DP 可能产生的结果数量为 $O(e^{|V|})$，这需要 $\Theta(|V|)$ 比特来表示。根据鸽巢原理（pigeonhole principle），这种情形不可避免地导致至少两个不同的 DP 结果被模型生成的同一个输出序列所表示，从而构成矛盾。
+\end{proof}
+
+\subsection{定理 2 的证明}
+
+\begin{theorem}[自回归损失的虚假相关性]
+假设（1）所采用的损失是利用交叉熵的下一个 token 预测损失，在训练时应用于子序列 $v_1\ v_2\ \cdots\ t$；（2）输出 logits 由目标节点 $t$ 和当前节点 $v_{i-1}$ 决定。令 $N_{t,v_{i-1},u}$ 为训练数据集中满足如下条件的次数：$t$ 是目标节点，$v_{i-1}$ 是当前节点，且 $v_i = u$ 是下一个节点。则从当前节点 $v_{i-1}$ 朝向目标节点 $t$ 预测下一个节点 $u$ 的最优 logits 为 $\hat{v}_i[u] = \frac{N_{t,v_{i-1},u}}{\sum_u N_{t,v_{i-1},u}}$，若 $\sum_u N_{t,v_{i-1},u} > 0$。若 $\sum_u N_{t,v_{i-1},u} = 0$，则 $\hat{v}_i[u]$ 可以是任意满足 $\sum_u \hat{v}_i[u] = 1$ 的非负数。
+\end{theorem}
+
+\begin{proof}
+我们记 $\mathcal{D}$ 为训练数据集，$L_i$ 为数据集中第 $i$ 个序列的序列长度，$v_{i,j}$ 为第 $i$ 个训练序列中第 $j$ 个 token 的独热（one-hot）嵌入，$\hat{v}_{i,j,u}$ 为第 $i$ 个序列中第 $j$ 个 token 处的第 $u$ 个 logit。交叉熵损失为
+\begin{align}
+&-\sum_{i\in[|\mathcal{D}|]}\sum_{j=4}^{L_i} v_{i,j,u}\log\hat{v}_{i,j,u}
+= -\sum_{i\in[|\mathcal{D}|]}\sum_{j=4}^{L_i} \mathbb{I}_{u=v_{i,j}}\log\hat{v}_{i,j,u}
+\overset{(a)}{=} -\sum_{t,v_{j-1}}\sum_u N_{t,v_{j-1},u}\log\hat{v}_{i,j,u}\notag\\
+&\overset{(b)}{=} -\sum_{t,v_{j-1},u}\left(\sum_u N_{t,v_{j-1},u}\right)\left[\left(\frac{N_{t,v_{j-1},u}}{\sum_u N_{t,v_{j-1},u}}\right)\log\hat{v}_{i,j,u}\right],\notag
+\end{align}
+其中 $(a)$ 利用了输出 logits 由目标节点 $t$ 和当前节点 $v_{i-1}$ 决定这一假设。在 $(b)$ 中，我们假设 $\sum_u N_{t,v_{i-1},u}\neq 0$。当 $\hat{v}_{i,j,u} = \frac{N_{t,v_{j-1},u}}{\sum_u N_{t,v_{j-1},u}}$ 时交叉熵取得最小值。若 $\sum_u N_{t,v_{i-1},u} = 0$，则相应的 logits 不会影响损失函数，$\hat{v}_{i,j,u}$ 可以取任意值。
+\end{proof}
+
+\section{无需训练方法的补充材料}
+\subsection{基线的实现}
+
+在本小节中，我们给出无需训练基线的实现细节，包括大语言模型直接推理、GraphSearch 以及我们的 SGC。方法示意图见图~\ref{fig:6}。
+
+\paragraph{大语言模型直接推理：}大语言模型直接推理的提示模板见表~\ref{tab:4}。在实验中，我们对大语言模型直接推理任务调用路径统一采用 1-shot 上下文学习。对于开源大语言模型，温度（temperature）参数设置为 0.2。
+
+\paragraph{GraphSearch：}GraphSearch 的提示模板见表~\ref{tab:5}。该算法在任务图上进行迭代搜索，以识别一条能够最好地满足给定请求的最优任务调用路径。在每次迭代中，将上一个被选定任务的邻居作为候选。这些候选由大语言模型评估其对当前步骤的适用性（任务评估，Task Assessment）。搜索过程遵循深度优先（depth-first）方法。在最后一步的任务评估之后，会生成一组潜在的调用路径。随后，提示大语言模型从这些选项中选出最合适的路径（路径选择，Path Selection）。GraphSearch 算法实现为三种不同的变体，每种采用一种独特的任务选择策略：
+
+\begin{itemize}[leftmargin=2em]
+\item GreedySearch 在每一步始终选择得分最高的任务节点。尽管快速且简单，但这种方法可能导致级联错误（cascading errors），从而使性能下降。
+\item AdaptiveSearch 选择得分高于固定阈值的任务，以自适应方式调整搜索空间的宽度。在实验中，我们经验性地将得分阈值设置为 3。
+\item BeamSearch 在候选中保留大语言模型评估得分最高的前 $k$ 个任务。束搜索可以扩展搜索空间，但会略微降低效率。我们统一将束宽（beam width）设置为 2。
+\end{itemize}
+
+\paragraph{我们的 SGC：}关于 LM 骨干网络的选择，在将 GPT-3.5-turbo 和 GPT-4-turbo 与 SGC 整合时，Roberta-355M [40] 充当文本编码器。对于所有其他数据集和大语言模型，则采用 e5-335M [62] 配置。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.97\linewidth]{fig6.pdf}
+\caption{大语言模型直接推理与 GraphSearch 方法的示意图。}
+\label{fig:6}
+\end{figure}
+
+\subsection{所有大语言模型的结果}
+
+表~\ref{tab:8} 在表~\ref{tab:1} 的基础上补充了其他大语言模型。所提方法的表现始终更优。
+
+\begin{table}[H]\centering
+\caption{无需训练方法的比较：整体性能（Node-F1 和 Link-F1，单位 \%）与 token 消耗（单位 $\times 10^3$）。}
+\label{tab:8}
+\scriptsize
+\setlength{\tabcolsep}{2.6pt}
+\begin{tabular}{llccc ccc ccc ccc}
+\toprule
+& & \multicolumn{9}{c}{TaskBench} & \multicolumn{3}{c}{RestBench}\\
+\cmidrule(lr){3-11}\cmidrule(lr){12-14}
+\multirow{2}{*}{LLM} & \multirow{2}{*}{方法} & \multicolumn{3}{c}{HuggingFace} & \multicolumn{3}{c}{Multimedia} & \multicolumn{3}{c}{Daily Life} & \multicolumn{3}{c}{TMDB}\\
+& & n-F1$\uparrow$ & l-F1$\uparrow$ & \#Tok$\downarrow$ & n-F1$\uparrow$ & l-F1$\uparrow$ & \#Tok$\downarrow$ & n-F1$\uparrow$ & l-F1$\uparrow$ & \#Tok$\downarrow$ & n-F1$\uparrow$ & l-F1$\uparrow$ & \#Tok$\downarrow$\\
+\midrule
+\multirow{5}{*}{\makecell[l]{Baichuan2\\13B}}
+& Direct & 45.85 & 19.00 & 2.43 & 47.57 & 4.08 & 2.59 & 33.45 & 9.52 & 3.72 & 30.87 & 9.92 & 1.96\\
+& GreedySearch & 30.58 & 4.89 & 6.42 & 18.74 & 4.45 & 5.69 & 15.60 & 1.61 & 5.91 & 22.52 & 2.98 & 3.62\\
+& AdaptiveSearch & 39.30 & 10.41 & 10.81 & 33.24 & 9.22 & 11.17 & 34.39 & 12.73 & 16.71 & 30.33 & 10.00 & 8.71\\
+& BeamSearch & 41.06 & 9.59 & 24.69 & 32.24 & 9.09 & 21.60 & 36.18 & 13.18 & 23.83 & 30.97 & 7.61 & 9.08\\
+& SGC & 56.53 & 29.94 & 2.28 & 56.75 & 31.62 & 2.43 & 62.31 & 36.69 & 3.53 & 32.97 & 9.11 & 1.84\\
+\midrule
+\multirow{5}{*}{\makecell[l]{Vicuna\\13B}}
+& Direct & 50.46 & 21.27 & 2.50 & 53.57 & 23.19 & 2.64 & 73.70 & 45.80 & 3.82 & 44.66 & 14.01 & 2.02\\
+& GreedySearch & 52.94 & 25.73 & 6.23 & 46.99 & 23.11 & 5.55 & 42.98 & 13.33 & 7.18 & 45.22 & 13.69 & 3.42\\
+& AdaptiveSearch & 54.36 & 25.67 & 9.81 & 51.24 & 24.32 & 11.25 & 62.71 & 31.15 & 13.92 & 41.32 & 7.02 & 6.51\\
+& BeamSearch & 56.64 & 26.93 & 24.11 & 54.09 & 26.19 & 25.42 & 54.55 & 23.60 & 24.86 & 46.91 & 15.41 & 7.79\\
+& SGC & 59.62 & 31.98 & 2.31 & 61.78 & 37.60 & 2.43 & 83.33 & 63.77 & 3.82 & 48.79 & 15.99 & 1.89\\
+\midrule
+\multirow{5}{*}{\makecell[l]{CodeLlama\\7B}}
+& Direct & 58.06 & 29.39 & 2.44 & 59.44 & 30.83 & 2.57 & 84.12 & 62.89 & 3.82 & 65.67 & 41.99 & 1.94\\
+& GreedySearch & 58.71 & 31.56 & 5.84 & 62.83 & 38.12 & 5.35 & 82.51 & 63.83 & 7.08 & 65.51 & 42.60 & 3.12\\
+& AdaptiveSearch & 60.42 & 33.18 & 6.84 & 62.32 & 36.81 & 5.50 & 83.42 & 64.15 & 7.83 & 65.37 & 40.64 & 5.00\\
+& BeamSearch & 60.34 & 31.36 & 17.95 & 64.12 & 38.99 & 21.48 & 83.25 & 63.48 & 24.48 & 64.60 & 40.50 & 5.78\\
+& SGC & 63.98 & 39.27 & 2.30 & 67.04 & 45.04 & 2.43 & 87.73 & 70.49 & 3.59 & 66.15 & 42.62 & 1.88\\
+\midrule
+\multirow{5}{*}{\makecell[l]{Mistral\\7B}}
+& Direct & 60.60 & 30.23 & 2.49 & 69.83 & 39.85 & 2.64 & 84.26 & 53.63 & 3.77 & 62.23 & 22.02 & 1.96\\
+& GreedySearch & 65.91 & 38.13 & 6.52 & 58.92 & 34.72 & 6.26 & 75.18 & 49.47 & 8.27 & 60.64 & 23.18 & 4.38\\
+& AdaptiveSearch & 67.30 & 38.90 & 7.68 & 71.59 & 44.84 & 10.66 & 86.39 & 63.65 & 10.92 & 54.04 & 21.35 & 9.99\\
+& BeamSearch & 67.13 & 36.73 & 25.66 & 73.55 & 47.12 & 31.10 & 85.87 & 61.53 & 39.16 & 63.41 & 26.79 & 11.26\\
+& SGC & 67.43 & 42.08 & 2.32 & 74.07 & 49.90 & 2.43 & 87.13 & 66.49 & 3.54 & 64.72 & 25.67 & 1.89\\
+\midrule
+\multirow{5}{*}{\makecell[l]{CodeLlama\\13B}}
+& Direct & 57.55 & 28.88 & 2.45 & 68.57 & 41.79 & 2.59 & 91.20 & 76.07 & 3.88 & 68.91 & 43.74 & 2.02\\
+& GreedySearch & 61.67 & 34.02 & 5.95 & 67.98 & 42.04 & 4.95 & 91.50 & 76.56 & 5.54 & 66.67 & 42.16 & 3.81\\
+& AdaptiveSearch & 60.85 & 31.66 & 11.10 & 68.14 & 41.71 & 6.77 & 91.34 & 76.09 & 7.18 & 63.74 & 37.17 & 8.16\\
+& BeamSearch & 62.65 & 34.31 & 20.14 & 69.53 & 43.35 & 19.51 & 91.74 & 76.60 & 19.19 & 68.08 & 42.92 & 8.88\\
+& SGC & 65.51 & 39.44 & 2.31 & 73.32 & 53.28 & 2.43 & 92.96 & 79.57 & 3.64 & 71.40 & 47.55 & 1.90\\
+\midrule
+\multirow{5}{*}{\makecell[l]{GPT-\\3.5-turbo}}
+& Direct & 73.85 & 45.73 & 2.14 & 82.85 & 62.07 & 2.26 & 96.09 & 83.65 & 3.36 & 81.70 & 57.52 & 1.67\\
+& GreedySearch & 67.75 & 43.88 & 5.29 & 81.11 & 63.02 & 4.92 & 93.77 & 81.26 & 7.36 & 76.19 & 50.11 & 3.06\\
+& AdaptiveSearch & 72.18 & 47.55 & 7.47 & 81.86 & 62.71 & 5.71 & 93.79 & 81.41 & 8.53 & 77.57 & 53.65 & 5.89\\
+& BeamSearch & 75.51 & 49.62 & 14.22 & 83.57 & 64.50 & 12.91 & 95.66 & 82.72 & 22.05 & 81.24 & 57.98 & 6.42\\
+& SGC & 76.37 & 50.04 & 2.02 & 83.65 & 63.65 & 2.09 & 96.38 & 86.19 & 3.16 & 82.63 & 59.15 & 1.61\\
+\midrule
+\multirow{5}{*}{\makecell[l]{GPT-\\4-turbo}}
+& Direct & 77.60 & 52.18 & 2.19 & 88.29 & 69.38 & 2.28 & 97.36 & 84.58 & 3.37 & 82.56 & 56.67 & 1.75\\
+& GreedySearch & 74.75 & 50.44 & 5.78 & 86.81 & 69.80 & 5.52 & 97.36 & 85.78 & 7.37 & 75.34 & 49.95 & 3.73\\
+& AdaptiveSearch & 76.17 & 51.30 & 8.94 & 88.02 & 69.99 & 7.14 & 97.30 & 85.80 & 9.04 & 81.78 & 55.15 & 6.35\\
+& BeamSearch & 77.56 & 52.54 & 8.98 & 88.16 & 70.39 & 6.90 & 97.35 & 85.78 & 8.99 & 80.11 & 51.00 & 5.18\\
+& SGC & 77.79 & 52.20 & 2.03 & 88.54 & 69.83 & 2.10 & 97.35 & 85.76 & 3.16 & 82.27 & 56.37 & 1.62\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{无需训练方法的准确率结果}
+
+由于篇幅限制，我们在正文中仅给出无需训练方法的 Node-F1 和 Link-F1 分数。这里，我们在表~\ref{tab:9} 中提供准确率（Accuracy）结果。这些结果表明，整合 SGC 显著提升了不同大语言模型在所有数据集上的准确率，使先前无法求解的规划场景变得可处理且能够成功。
+
+\begin{table}[H]\centering
+\caption{补充指标的结果：无需训练方法在 TaskBench 上的准确率（\%）。若预测任务与真值任务集匹配则准确率为 1，否则为 0。}
+\label{tab:9}
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{llccc@{\hskip 1.5em}llccc}
+\toprule
+LLM & 方法 & HuggingFace & Multimedia & DailyLife & LLM & 方法 & HuggingFace & Multimedia & DailyLife\\
+\midrule
+\multirow{5}{*}{\makecell[l]{Vicuna\\13B}}
+& Direct & 8.72 & 11.20 & 24.43 & \multirow{5}{*}{\makecell[l]{CodeLlama\\7B}} & Direct & 15.00 & 15.19 & 47.69\\
+& GreedySearch & 10.95 & 9.34 & 3.76 & & GreedySearch & 16.20 & 20.04 & 45.07\\
+& AdaptiveSearch & 10.55 & 10.37 & 13.15 & & AdaptiveSearch & 18.79 & 19.41 & 46.48\\
+& BeamSearch & 12.58 & 12.03 & 11.06 & & BeamSearch & 17.00 & 21.10 & 45.67\\
+& SGC & 16.02 & 20.12 & 42.17 & & SGC & 21.20 & 29.32 & 55.33\\
+\midrule
+\multirow{5}{*}{\makecell[l]{Mistral\\7B}}
+& Direct & 16.36 & 25.05 & 44.52 & \multirow{5}{*}{\makecell[l]{CodeLlama\\13B}} & Direct & 14.29 & 24.10 & 66.40\\
+& GreedySearch & 20.45 & 16.02 & 29.22 & & GreedySearch & 19.11 & 24.90 & 67.00\\
+& AdaptiveSearch & 21.88 & 26.90 & 49.32 & & AdaptiveSearch & 17.30 & 24.10 & 66.80\\
+& BeamSearch & 20.45 & 29.36 & 45.89 & & BeamSearch & 19.92 & 25.70 & 67.20\\
+& SGC & 25.15 & 33.68 & 52.28 & & SGC & 22.54 & 36.75 & 70.80\\
+\midrule
+\multirow{5}{*}{\makecell[l]{GPT-\\3.5-turbo}}
+& Direct & 28.95 & 47.96 & 81.30 & \multirow{5}{*}{\makecell[l]{GPT-\\4-turbo}} & Direct & 33.68 & 60.56 & 86.77\\
+& GreedySearch & 26.90 & 52.47 & 73.17 & & GreedySearch & 33.68 & 61.37 & 86.77\\
+& AdaptiveSearch & 29.36 & 51.61 & 74.59 & & AdaptiveSearch & 33.47 & 61.17 & 86.77\\
+& BeamSearch & 32.03 & 52.47 & 80.87 & & BeamSearch & 33.26 & 61.57 & 86.57\\
+& SGC & 32.44 & 51.61 & 83.13 & & SGC & 34.09 & 60.97 & 86.77\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{计算成本分析}
+
+在本小节中，我们就无需训练方法的推理时间给出全面的效率研究，结果如表~\ref{tab:10} 所示。
+
+\begin{table}[H]\centering
+\caption{无需训练方法的计算成本分析。由于表格篇幅有限，部分大语言模型采用缩写，例如以“GPT-3.5”代表“GPT-3.5-turbo”。}
+\label{tab:10}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lccccccc}
+\toprule
+\multicolumn{8}{c}{在 HuggingFace 上的推理时间比较（秒）}\\
+方法 & Baichuan & Vicuna & CodeLlama-7B & Mistral & CodeLlama-13B & GPT-3.5 & GPT-4\\
+\midrule
+Direct & 6.0 & 3.6 & 10.9 & 4.5 & 9.7 & 2.7 & 26.1\\
+GreedySearch & 30.7 & 45.7 & 23.1 & 109.8 & 29.1 & 7.4 & 55.6\\
+AdaptiveSearch & 50.2 & 79.4 & 27.2 & 28.2 & 52.4 & 9.4 & 87.0\\
+BeamSearch & 102.0 & 55.0 & 60.8 & 85.5 & 92.3 & 14.9 & 270.2\\
+SGC & 6.1 & 3.7 & 10.7 & 4.6 & 9.5 & 3.0 & 24.4\\
+\midrule
+\multicolumn{8}{c}{在 Multimedia 上的推理时间比较（秒）}\\
+\midrule
+Direct & 9.7 & 3.3 & 13.2 & 4.5 & 14.6 & 2.9 & 25.1\\
+GreedySearch & 52.3 & 54.3 & 37.0 & 109.7 & 9.9 & 8.8 & 52.2\\
+AdaptiveSearch & 98.1 & 142.5 & 25.7 & 41.6 & 25.6 & 9.6 & 84.2\\
+BeamSearch & 122.3 & 69.8 & 103.0 & 92.0 & 84.4 & 15.0 & 70.9\\
+SGC & 9.5 & 3.4 & 12.9 & 4.5 & 14.1 & 3.1 & 23.5\\
+\midrule
+\multicolumn{8}{c}{在 Daily Life 上的推理时间比较（秒）}\\
+\midrule
+Direct & 10.0 & 6.5 & 19.4 & 5.6 & 18.6 & 3.4 & 31.0\\
+GreedySearch & 62.7 & 49.8 & 29.3 & 198.3 & 37.6 & 13.2 & 124.3\\
+AdaptiveSearch & 133.3 & 97.6 & 30.5 & 69.1 & 45.5 & 16.5 & 209.0\\
+BeamSearch & 196.9 & 54.1 & 106.9 & 195.9 & 64.9 & 89.4 & 161.7\\
+SGC & 9.9 & 6.5 & 18.6 & 5.7 & 17.9 & 3.6 & 29.5\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+开源大语言模型使用 FastChat 框架\footnote{\url{https://github.com/lm-sys/FastChat}} 部署为本地 API 服务，运行在单块 A100-80G GPU 上。这一配置能够实现更快且并行的推理。在此设置下，大语言模型的直接推理每个请求需要 3--15 秒。GPT-3.5-turbo 和 GPT-4-turbo 通过 API 访问，后者通常需要更多时间。GraphSearch 由于其在任务图上的穷举搜索，完成一个请求需要数分钟，从而影响了效率。相比之下，SGC 实现了与大语言模型直接推理相当的效率，因为它仅需一次大语言模型查询，且 LM 和 SGC 的前向传播过程都极其高效（通常在数秒内完成）。需要注意的是，所报告时间中的一些差异（例如 Mistral-7B 的 GreedySearch 比其他模式耗时更长）可能归因于不同 A100 服务之间部署的差异。
+
+\section{基于训练方法的补充材料}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.97\linewidth]{fig7.pdf}
+\caption{我们的 GNN 增强任务规划的示意图。首先，大语言模型将用户请求解读为若干可管理的步骤。然后，我们利用 GNNs 进行任务检索，依次将每个步骤描述与一个合适的任务相匹配，最终生成调用路径。}
+\label{fig:7}
+\end{figure}
+
+\subsection{基于训练的 GNNs 的实现}
+
+\paragraph{LM 与 GNN 配置：}对于基于训练的 GNNs，我们统一使用 e5-335M 模型 [62] 作为 LM 骨干网络。对于图编码器，我们的设置包括单层、隐藏维度为 1024。在模型训练过程中，我们将批大小（batch size）设置为 512，运行 20 个轮次（epochs），学习率为 $1e-3$。我们使用 Adam 优化器 [25]，并实施耐心值（patience）为 5 个轮次的提前停止（early stopping）机制以防止过拟合。所有实验均在单块 NVIDIA A100-80G GPU 上进行。
+
+\paragraph{训练数据准备：}我们从 TaskBench 的每个数据集中随机选取 3{,}000 个样本来构建训练集。原始数据包含具体的任务步骤和相应的任务调用路径。因此，我们首先采用拓扑排序（topological sort）将每个任务步骤准确地与对应任务对齐，形成“<step, ground-truth task>”对。然后，对于每一对，我们随机采样两个负任务，构成用于模型训练的“<step, positive task, negative task>”三元组。这些负样本是根据其与正样本在文本上的相似程度选取的，从而为模型制造了一个稳健的区分挑战。
+
+\paragraph{不同配置的选择：}我们的基于训练的模型提供两种配置选项：仅训练 GNN 而保持 LM 冻结，或同时协同训练 LM 和 GNN。这些配置的示意图见图~\ref{fig:8}。第一种配置旨在探索 GNN 在任务检索中的能力。后者则利用 LM 的数据集特定语义嵌入来提升性能。对于协同训练设置，我们使用 $2e-5$ 的学习率和 10 个轮次的训练时长。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{fig8.pdf}
+\caption{LM+GNN 配置。我们提供两种配置：仅训练 GNN 而保持 LM 冻结（表~\ref{tab:11}），或协同训练 LM 和 GNN（表~\ref{tab:12}）。}
+\label{fig:8}
+\end{figure}
+
+\subsection{TAPE 和 GraphToken 的实现}
+
+我们将 TAPE [16] 和 GraphToken [38] 改编为任务规划的需训练基线。这里，我们详述每种方法的改编过程。
+
+\paragraph{TAPE：}为将 TAPE 改编用于任务规划，我们将规划任务重新表述为一个节点分类问题，旨在将用户请求分类为任务图中合适的任务标签。首先，大语言模型通过生成高质量的解释性文本（即链式思维推理）来解读用户请求，以理解每个请求。然后，一个微调后的 LM 将这些链式思维文本编码为潜在嵌入。微调过程基于文本描述及其对应真值任务的成对数据。最后，GNNs 通过同时利用生成的文本嵌入和任务嵌入来选择合适的任务。为进行公平的性能比较，我们将 LM 微调为 e5-335M，并将 GNN 配置为隐藏维度为 1024 的 2 层 GraphSAGE。LM 和 GNNs 的训练数据保持一致，使用训练数据集的同一划分。
+
+\paragraph{GraphToken：}为改编 GraphToken，我们首先通过将每个节点的描述性文本输入预训练 LM（e5-335M）来计算其表示 $x_v$，从而编码任务图 $G(V, E, X)$。然后，一个 GNN 将初始节点嵌入矩阵转换为 $H$。该 GNN 配置为隐藏维度为 1024 的 2 层 GraphSAGE。进一步对节点嵌入应用均值池化（mean pooling）操作，以获得图的整体表示 $h_G = \text{Mean-Pooling}(H)$。最后，将 $h_G$ 以及输入指令和用户请求的文本嵌入拼接起来，输入大语言模型以生成输出规划结果。在此过程中，骨干大语言模型被冻结，仅调整 GNN 的参数。对于每个数据集，我们使用由 <user request, ground-truth planning> 对组成的同样 3{,}000 个训练样本，训练 4 个轮次。批大小设置为 16，对于 HuggingFace 和 Multimedia 数据集，最大输入长度为 512、最大输出长度为 300，对于 DailyLife 数据集，最大输出长度为 600。学习率配置为 $1e-5$。
+
+\subsection{微调大语言模型的实现}
+
+为探究我们所提框架在微调后大语言模型上的有效性，我们对 CodeLlama-7B 和 Vicuna-13B 模型采用监督微调（Supervised Fine-Tuning, SFT）。我们使用来自 GNN 训练的同一组 3{,}000 个样本作为大语言模型的微调数据。在使用 LoRA [19] 微调大语言模型时，我们将 lora\_r 参数（LoRA 更新矩阵的维度）设置为 8，lora\_alpha（缩放因子）设置为 16。dropout 比率设置为 0.1，批大小设置为 2，我们训练 2 个轮次，学习率为 $1e-5$。对于 HuggingFace 数据集，最大输入长度设置为 800，最大输出长度为 400。对于包含更多任务且需要更长文本输入的 Multimedia 和 Daily Life 数据集，我们将最大输入和输出长度分别设置为 1000 和 500。我们使用 2 块 NVIDIA A100-80G GPU 来微调大语言模型。
+
+\subsection{基于训练的 GNNs 的完整结果}
+
+在表~\ref{tab:11} 中，我们给出所有基于训练的 GNNs 的全面结果，包括 GCN [26]、GAT [57]、GraphSAGE [15]、GIN [67] 和 Graph Transformer [47]。为凸显 GNNs 带来的提升，我们还纳入了最强基线 BeamSearch 的结果。
+
+从结果中可以明显看出，所有 GNN 编码器都显著增强了任务规划能力。例如，在 HuggingFace 数据集上应用于 Vicuna-13B 时，引入 GCN 带来 17.83\% 的性能提升，GAT 贡献 17.48\% 的提升，GraphSAGE 带来 22.59\% 的提升，GraphTransformer 使预测提升 18.0\%。这一结论可以推广到各种大语言模型和数据集，证明了 GNNs 的稳健能力。
+
+\begin{table}[H]\centering
+\caption{基于训练的 GNNs 的性能。我们还给出了 GraphSearch 方法中最强的变体 BeamSearch 的结果，以提供全面比较。所有 GNNs 都在多种大语言模型和数据集上持续增强任务规划性能，展现了其有效性。}
+\label{tab:11}
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{llcc cc cc}
+\toprule
+& & \multicolumn{2}{c}{HuggingFace Tools} & \multicolumn{2}{c}{Multimedia Tools} & \multicolumn{2}{c}{Daily Life APIs}\\
+\cmidrule(lr){3-4}\cmidrule(lr){5-6}\cmidrule(lr){7-8}
+LLM & 方法 & n-F1$\uparrow$ & l-F1$\uparrow$ & n-F1$\uparrow$ & l-F1$\uparrow$ & n-F1$\uparrow$ & l-F1$\uparrow$\\
+\midrule
+\multirow{7}{*}{Baichuan-13B}
+& Direct & 45.85 & 19.00 & 47.57 & 4.08 & 33.45 & 9.52\\
+& BeamSearch & 41.06 & 9.59 & 32.24 & 9.09 & 36.18 & 13.18\\
+& GCN & 57.67 & 31.47 & 55.51 & 30.16 & 62.11 & 37.05\\
+& GAT & 57.74 & 31.87 & 54.95 & 29.24 & 62.11 & 37.05\\
+& GraphSAGE & 59.32 & 34.36 & 56.15 & 31.60 & 65.18 & 40.49\\
+& GIN & 57.38 & 31.17 & 55.08 & 30.04 & 62.11 & 37.05\\
+& GraphTransformer & 59.15 & 34.36 & 56.06 & 31.12 & 64.52 & 40.14\\
+\midrule
+\multirow{7}{*}{Vicuna-13B}
+& Direct & 50.46 & 21.27 & 53.57 & 23.19 & 73.70 & 45.80\\
+& BeamSearch & 56.64 & 26.93 & 54.09 & 26.19 & 54.55 & 23.60\\
+& GCN & 59.46 & 33.14 & 62.48 & 38.89 & 83.05 & 62.95\\
+& GAT & 59.28 & 33.39 & 62.96 & 39.24 & 83.05 & 62.95\\
+& GraphSAGE & 61.86 & 35.68 & 63.71 & 39.88 & 86.07 & 67.63\\
+& GIN & 59.14 & 32.33 & 62.61 & 38.82 & 83.05 & 62.95\\
+& GraphTransformer & 59.57 & 33.47 & 63.32 & 39.38 & 85.41 & 66.28\\
+\midrule
+\multirow{7}{*}{CodeLlama-7B}
+& Direct & 58.06 & 29.39 & 59.44 & 30.83 & 84.12 & 62.89\\
+& BeamSearch & 60.34 & 31.36 & 64.12 & 38.99 & 83.25 & 63.48\\
+& GCN & 65.07 & 40.50 & 67.46 & 45.84 & 87.23 & 69.27\\
+& GAT & 65.20 & 40.93 & 67.41 & 46.46 & 87.23 & 69.27\\
+& GraphSAGE & 66.67 & 43.03 & 67.97 & 46.31 & 88.53 & 72.02\\
+& GIN & 65.52 & 40.98 & 66.89 & 45.41 & 87.23 & 69.27\\
+& GraphTransformer & 65.83 & 42.58 & 68.90 & 47.20 & 88.36 & 71.72\\
+\midrule
+\multirow{7}{*}{Mistral-7B}
+& Direct & 60.60 & 30.23 & 69.83 & 39.85 & 84.26 & 53.63\\
+& BeamSearch & 67.13 & 36.73 & 73.55 & 47.12 & 85.87 & 61.53\\
+& GCN & 66.54 & 40.74 & 73.34 & 50.76 & 86.39 & 65.49\\
+& GAT & 66.77 & 40.74 & 73.36 & 50.20 & 86.39 & 65.49\\
+& GraphSAGE & 68.12 & 43.09 & 75.51 & 52.94 & 87.51 & 66.57\\
+& GIN & 66.69 & 40.79 & 72.89 & 50.44 & 86.39 & 65.49\\
+& GraphTransformer & 68.26 & 43.08 & 73.80 & 51.45 & 88.25 & 67.84\\
+\midrule
+\multirow{7}{*}{CodeLlama-13B}
+& Direct & 57.55 & 28.88 & 68.57 & 41.79 & 91.20 & 76.07\\
+& BeamSearch & 62.65 & 34.31 & 69.53 & 43.35 & 91.74 & 76.60\\
+& GCN & 66.22 & 41.05 & 72.99 & 52.18 & 91.83 & 77.88\\
+& GAT & 66.29 & 41.28 & 74.08 & 53.56 & 91.83 & 77.88\\
+& GraphSAGE & 67.30 & 42.41 & 74.93 & 54.52 & 93.84 & 80.38\\
+& GIN & 66.40 & 40.89 & 73.62 & 53.15 & 91.83 & 77.88\\
+& GraphTransformer & 66.70 & 42.07 & 74.72 & 54.10 & 93.81 & 80.44\\
+\midrule
+\multirow{7}{*}{GPT-3.5-turbo}
+& Direct & 73.85 & 45.73 & 82.85 & 62.07 & 96.09 & 83.65\\
+& BeamSearch & 75.51 & 49.62 & 83.57 & 64.50 & 95.66 & 82.72\\
+& GCN & 76.93 & 51.43 & 84.92 & 65.05 & 96.38 & 86.15\\
+& GAT & 75.63 & 49.36 & 84.77 & 65.48 & 96.38 & 86.15\\
+& GraphSAGE & 77.90 & 52.68 & 85.29 & 65.80 & 96.43 & 86.26\\
+& GIN & 76.86 & 51.00 & 84.14 & 64.30 & 96.38 & 86.15\\
+& GraphTransformer & 77.61 & 52.30 & 84.21 & 64.32 & 96.38 & 86.19\\
+\midrule
+\multirow{7}{*}{GPT-4-turbo}
+& Direct & 77.60 & 52.18 & 88.29 & 69.38 & 97.36 & 84.58\\
+& BeamSearch & 77.56 & 52.54 & 88.16 & 70.39 & 97.35 & 85.78\\
+& GCN & 77.01 & 50.49 & 88.56 & 69.60 & 97.10 & 85.22\\
+& GAT & 76.41 & 49.66 & 88.43 & 69.52 & 97.10 & 85.22\\
+& GraphSAGE & 78.76 & 52.53 & 88.63 & 69.65 & 97.34 & 85.67\\
+& GIN & 77.74 & 51.02 & 88.05 & 69.13 & 97.36 & 84.58\\
+& GraphTransformer & 78.47 & 52.17 & 88.07 & 68.71 & 97.32 & 85.57\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{LM+GNN 协同训练模式的性能}
+
+在我们的主实验中，LM 骨干网络保持冻结，仅训练 GNN，以自动学习隐式步骤描述与合适任务之间的对齐，从而辅助任务检索。在本小节中，我们进行一项补充研究，在模型训练期间同时调整预训练 LM 的参数与 GNN。模型配置如图~\ref{fig:8} 所示，结果见表~\ref{tab:12}。
+
+结果表明，与仅 GNN 可调模式相比，协同训练 LM+GNN 能带来进一步的性能提升。这一增强的原因在于，语言模型习得了任务特定的语义，使得表示更具区分性，并提升了 GNN 在任务检索中的有效性。此外，值得注意的是，在协同训练设置下，各种 GNN 编码器之间的差异相对较小，特定大语言模型在任何数据集上跨 GNNs 的性能波动均保持在 2\% 以内。
+
+\begin{table}[H]\centering
+\caption{LM+GNN 协同训练模式下基于训练的 GNNs 的性能。同时训练 LM 和 GNN 带来显著的性能提升。}
+\label{tab:12}
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{llcc cc cc}
+\toprule
+& & \multicolumn{2}{c}{HuggingFace Tools} & \multicolumn{2}{c}{Multimedia Tools} & \multicolumn{2}{c}{Daily Life APIs}\\
+\cmidrule(lr){3-4}\cmidrule(lr){5-6}\cmidrule(lr){7-8}
+LLM & 方法 & n-F1$\uparrow$ & l-F1$\uparrow$ & n-F1$\uparrow$ & l-F1$\uparrow$ & n-F1$\uparrow$ & l-F1$\uparrow$\\
+\midrule
+\multirow{7}{*}{Baichuan-13B}
+& Direct & 45.85 & 19.00 & 47.57 & 4.08 & 33.45 & 9.52\\
+& SGC & 60.97 & 36.12 & 56.02 & 31.36 & 64.84 & 40.00\\
+& GCN & 60.68 & 36.31 & 57.82 & 32.87 & 64.73 & 38.92\\
+& GAT & 60.39 & 35.37 & 57.24 & 32.19 & 64.46 & 40.14\\
+& GraphSAGE & 59.76 & 35.59 & 57.97 & 33.29 & 63.21 & 38.10\\
+& GIN & 60.31 & 35.82 & 56.62 & 31.53 & 63.55 & 38.19\\
+& GraphTransformer & 60.76 & 36.82 & 56.82 & 31.40 & 64.88 & 40.23\\
+\midrule
+\multirow{7}{*}{Vicuna-13B}
+& Direct & 50.46 & 21.27 & 53.57 & 23.19 & 73.70 & 45.80\\
+& SGC & 64.40 & 38.97 & 65.12 & 41.63 & 84.74 & 65.90\\
+& GCN & 62.06 & 35.49 & 65.02 & 40.63 & 85.22 & 66.93\\
+& GAT & 63.06 & 36.97 & 64.58 & 40.30 & 85.63 & 67.11\\
+& GraphSAGE & 62.82 & 37.04 & 65.89 & 42.18 & 84.23 & 65.44\\
+& GIN & 62.09 & 35.33 & 64.44 & 40.67 & 85.31 & 66.83\\
+& GraphTransformer & 62.11 & 36.01 & 64.57 & 40.17 & 85.42 & 66.55\\
+\midrule
+\multirow{7}{*}{CodeLlama-7B}
+& Direct & 58.06 & 29.39 & 59.44 & 30.83 & 84.12 & 62.89\\
+& SGC & 67.47 & 43.58 & 69.61 & 48.24 & 87.98 & 70.63\\
+& GCN & 67.03 & 43.24 & 69.33 & 47.60 & 87.88 & 70.40\\
+& GAT & 67.12 & 42.96 & 68.62 & 46.17 & 88.59 & 71.64\\
+& GraphSAGE & 67.19 & 42.94 & 70.00 & 48.28 & 87.81 & 70.20\\
+& GIN & 66.62 & 42.34 & 69.00 & 47.72 & 88.45 & 71.53\\
+& GraphTransformer & 67.12 & 43.08 & 69.27 & 47.96 & 88.43 & 71.59\\
+\midrule
+\multirow{7}{*}{Mistral-7B}
+& Direct & 60.60 & 30.23 & 69.83 & 39.85 & 84.26 & 53.63\\
+& SGC & 69.04 & 44.22 & 76.09 & 54.91 & 87.58 & 66.70\\
+& GCN & 67.72 & 43.02 & 76.79 & 54.90 & 87.87 & 67.13\\
+& GAT & 67.54 & 43.56 & 76.26 & 53.94 & 87.86 & 67.30\\
+& GraphSAGE & 67.61 & 43.14 & 76.96 & 55.46 & 87.61 & 66.75\\
+& GIN & 68.95 & 43.97 & 76.47 & 54.95 & 87.75 & 67.07\\
+& GraphTransformer & 67.94 & 43.52 & 77.06 & 55.39 & 87.76 & 67.00\\
+\midrule
+\multirow{7}{*}{CodeLlama-13B}
+& Direct & 57.55 & 28.88 & 68.57 & 41.79 & 91.20 & 76.07\\
+& SGC & 70.14 & 45.20 & 75.65 & 55.45 & 93.45 & 79.89\\
+& GCN & 69.39 & 45.18 & 76.03 & 55.22 & 93.38 & 79.74\\
+& GAT & 69.68 & 45.57 & 75.24 & 54.99 & 94.06 & 80.96\\
+& GraphSAGE & 68.92 & 44.85 & 76.28 & 55.41 & 93.30 & 79.51\\
+& GIN & 69.01 & 44.76 & 74.72 & 53.91 & 94.24 & 81.23\\
+& GraphTransformer & 69.52 & 45.68 & 75.46 & 55.14 & 93.98 & 81.06\\
+\midrule
+\multirow{7}{*}{GPT-3.5-turbo}
+& Direct & 73.85 & 45.73 & 82.85 & 62.07 & 96.09 & 83.65\\
+& SGC & 77.87 & 52.86 & 85.95 & 66.95 & 96.39 & 86.16\\
+& GCN & 77.72 & 52.58 & 85.84 & 66.92 & 96.33 & 86.06\\
+& GAT & 77.49 & 52.30 & 85.81 & 66.97 & 96.38 & 86.15\\
+& GraphSAGE & 77.87 & 53.04 & 85.51 & 66.56 & 96.34 & 86.09\\
+& GIN & 77.73 & 52.36 & 85.63 & 66.69 & 96.38 & 86.19\\
+& GraphTransformer & 77.78 & 52.79 & 86.09 & 67.26 & 96.33 & 86.06\\
+\midrule
+\multirow{7}{*}{GPT-4-turbo}
+& Direct & 77.60 & 52.18 & 88.29 & 69.38 & 97.36 & 84.58\\
+& SGC & 78.44 & 52.84 & 89.09 & 70.52 & 97.38 & 85.85\\
+& GCN & 78.33 & 52.75 & 89.00 & 70.24 & 97.34 & 85.67\\
+& GAT & 78.37 & 52.43 & 88.99 & 70.48 & 97.32 & 85.56\\
+& GraphSAGE & 78.49 & 52.62 & 88.86 & 70.25 & 97.42 & 85.80\\
+& GIN & 78.45 & 53.07 & 88.74 & 69.84 & 97.42 & 85.80\\
+& GraphTransformer & 78.30 & 52.27 & 88.90 & 70.24 & 97.42 & 85.80\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{计算成本分析}
+
+在本小节中，我们提供基于训练方法的计算成本：GNN 或 LM+GNN 协同训练的训练时间，以及微调大语言模型所需的资源。结果如表~\ref{tab:13} 所示。
+
+\begin{table}[H]\centering
+\caption{基于训练方法的计算成本分析。我们给出 GNN 和 LM+GNN 协同训练两种模式的总训练时间，以及微调大语言模型所需的资源。}
+\label{tab:13}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{llcccc}
+\toprule
+\multicolumn{6}{c}{训练 GNNs}\\
+\multirow{2}{*}{模式} & \multirow{2}{*}{配置} & \multirow{2}{*}{\# 参数量} & \multicolumn{3}{c}{时间（秒）}\\
+\cmidrule(lr){4-6}
+& & & HuggingFace & Multimedia & Daily Life\\
+\midrule
+\multirow{5}{*}{仅 GNN}
+& GCN & 1{,}049{,}600 & 136.5 & 136.1 & 237.7\\
+& GAT & 1{,}051{,}648 & 136.9 & 151.8 & 237.8\\
+& GraphSAGE & 2{,}098{,}176 & 134.2 & 149.8 & 233.8\\
+& GIN & 2{,}099{,}200 & 134.2 & 134.9 & 233.6\\
+& GraphTransformer & 4{,}198{,}400 & 135.0 & 150.2 & 233.7\\
+\midrule
+\multirow{6}{*}{\makecell[l]{LM+GNN\\协同训练}}
+& LM+SGC & 335{,}141{,}889 & 743.1 & 323.3 & 384.7\\
+& LM+GCN & 336{,}191{,}488 & 482.8 & 567.8 & 384.2\\
+& LM+GAT & 336{,}193{,}536 & 741.3 & 812.3 & 384.4\\
+& LM+GraphSAGE & 337{,}240{,}064 & 741.2 & 406.8 & 381.7\\
+& LM+GIN & 337{,}241{,}088 & 735.6 & 361.8 & 382.9\\
+& LM+GraphTransformer & 339{,}340{,}288 & 741.0 & 362.7 & 405.8\\
+\midrule
+\multicolumn{6}{c}{微调大语言模型}\\
+\multirow{2}{*}{LLM} & \multicolumn{2}{l}{\multirow{2}{*}{\# 参数量（\# 可训练参数）}} & \multicolumn{3}{c}{设备与时间（小时）}\\
+\cmidrule(lr){4-6}
+& & & HuggingFace & Multimedia & Daily Life\\
+\midrule
+CodeLlama-7B & \multicolumn{2}{l}{6{,}742{,}740{,}992 (4{,}194{,}304)} & 2$\times$A100\,7.0 & 1$\times$A100\,13.8 & 2$\times$A100\,9.5\\
+Vicuna-13B & \multicolumn{2}{l}{13{,}022{,}417{,}920 (6{,}553{,}600)} & 1$\times$A100\,17.8 & 2$\times$A100\,10.3 & 2$\times$A100\,19.0\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{训练 GNNs 的效率：}在实验中，每个数据集共享相同的 GNN 配置：单层、隐藏维度为 1024。因此，对于每个 GNN，其参数量在各数据集间保持一致。GNN 变体的参数规模在 1M 到 4M 之间，每个数据集的总训练时间仅需 2--4 分钟，与 GraphSearch 完成单个请求所需的时间相当。对于 LM+GNN 协同训练模式（其中 e5-335M [62] 充当 LM 骨干网络），训练时间增加到约 6--12 分钟。总之，两种模式都展现出高效率，总训练时间以分钟计，展示了它们快速适应新任务规划场景的能力。
+
+\paragraph{微调大语言模型的效率：}使用 3{,}000 个训练样本对一个大语言模型微调 2 个轮次需要大量时间，通常在一块或两块 A100-80G GPU 设备上需要 10--20 小时。
+
+\section{任务参数预测实验}
+
+为评估任务规划的质量，我们主要关注预测的任务及其依赖关系，而未讨论调用这些任务的参数。由于大语言模型直接推理仅用于预测任务已被证明不令人满意（图~\ref{fig:2}），仅依靠大语言模型直接预测这些参数是不可靠的。在本节中，我们将首先证明：在给定一个已规划的任务序列后，让大语言模型填充参数是相当直接的，这是我们框架的一个简单扩展。此外，我们将通过实证表明：有了更准确规划的任务（即由 GNNs 检索的任务），大语言模型能够智能地填充参数。
+
+\subsection{提示大语言模型填充参数}
+
+\paragraph{流程：}回顾一下，我们的框架能够为特定用户请求生成更准确的被调用任务序列，例如 $\{v_1, \ldots, v_n\}$。为最终确定调用序列，只需添加一次额外的大语言模型查询即可补全每个任务的调用参数。具体而言，通过提供原始用户请求、已规划任务以及包含每个任务输入和输出要求的详细描述，可以智能地提示大语言模型为每个已规划任务填充调用参数，从而得到一个结构良好、可供执行的调用序列。提示见表~\ref{tab:6}。
+
+\paragraph{示例：}以图~\ref{fig:1} 所示的请求为例，即“Please generate an image where a girl is reading a book, and her pose is the same as the boy in `example.jpg'. Then, please describe the new image with your voice.”假设 GNN 的已规划任务包括 \{Pose Detection, Pose-to-Image, Image-to-Text, Text-to-Speech\}。大语言模型可以智能地填充调用参数如下：[ \{``task'': Pose Detection, ``arguments'': [`example.jpg'] \}, \{``task'': Pose-to-Image, ``arguments'': [output pose from Pose Detection] \}, \{``task'': Image-to-Text, ``arguments'': [output image from Pose-to-Image] \}, \{``task'': Text-to-Speech, ``arguments'': [output text from Image-to-Text]\}]。
+
+\subsection{大语言模型预测参数的实证结果}
+
+\paragraph{实验设置：}我们在来自 TaskBench [45] 的 HuggingFace 数据集上进行这一补充实验。具体而言，我们将大语言模型直接预测的调用参数（记为 Direct）与大语言模型使用我们 GNN 检索的任务自动填充的参数（查询提示见表~\ref{tab:6}）进行比较。对于 GNNs，我们同时考虑无需训练的 SGC 和需要训练的 GraphSAGE。值得注意的是，对于 SGC，由于补全参数的查询同样无需训练，整个流程可以在不进行任何大量模型训练或标注数据的情况下部署。我们采用 TaskBench 的评测指标，包括参数类型 F1 分数（Parameter-Type F1-Score, Param t-F1）和参数取值 F1 分数（Parameter-Value F1-Score, Param v-F1）。这些指标分别衡量预测参数类型和具体取值的准确性。例如，在填充 Pose Detection 的调用时，真值参数类型为 Image，真值取值为 `example.jpg'。
+
+\begin{table}[H]\centering
+\caption{在 HuggingFace 数据集上任务参数预测的性能（单位 \%）。}
+\label{tab:14}
+\small
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{llcc@{\hskip 2em}llcc}
+\toprule
+LLM & 方法 & t-F1$\uparrow$ & v-F1$\uparrow$ & LLM & 方法 & t-F1$\uparrow$ & v-F1$\uparrow$\\
+\midrule
+\multirow{3}{*}{Mistral-7B}
+& Direct & 38.77 & 18.56 & \multirow{3}{*}{CodeLlama-13B} & Direct & 44.62 & 33.24\\
+& SGC & 58.13\textsubscript{+19.36} & 39.64\textsubscript{+21.08} & & SGC & 57.74\textsubscript{+13.21} & 43.21\textsubscript{+9.97}\\
+& GraphSAGE & 59.07\textsubscript{+20.30} & 41.40\textsubscript{+22.84} & & GraphSAGE & 59.49\textsubscript{+14.87} & 45.54\textsubscript{+12.30}\\
+\midrule
+\multirow{3}{*}{GPT-3.5-turbo}
+& Direct & 62.42 & 48.27 & \multirow{3}{*}{GPT-4-turbo} & Direct & 70.73 & 55.54\\
+& SGC & 68.13\textsubscript{+5.71} & 54.34\textsubscript{+6.07} & & SGC & 72.91\textsubscript{+2.18} & 58.02\textsubscript{+2.48}\\
+& GraphSAGE & 71.19\textsubscript{+8.77} & 56.83\textsubscript{+8.56} & & GraphSAGE & 73.09\textsubscript{+2.36} & 58.20\textsubscript{+2.66}\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{观察：}从表~\ref{tab:14} 所示的结果中，我们可以得出结论：（1）大语言模型直接推理调用参数并不令人满意。即使对于最强的大语言模型 GPT-4-turbo，参数取值 F1 分数也仅为 55\%，远未达到预期。（2）有了 GNNs 提供的准确规划，大语言模型可以利用其固有的推理能力来分析上下文并正确填充参数。在四个大语言模型上，可以观察到 3\% 到 23\% 的提升，凸显了 GNN 增强规划的优势。（3）我们的方法非常适合无需训练的场景，因为由无需训练的 SGC 检索的任务已经能让大语言模型有效推断参数，相比需要训练的 GraphSAGE 仅有微小的性能差距。
+
+\section{案例研究}
+
+\paragraph{GNNs 的有效性：}我们在图~\ref{fig:9} 中展示两个案例，其中比较了大语言模型直接推理、BeamSearch 和 GraphSAGE 的结果。由于篇幅限制以及大语言模型输出内容解码错误或路径无效等问题，我们仅展示 BeamSearch 在任务图上搜索到的前四条有效路径。从这些案例中，我们可以得出结论：BeamSearch 依赖于大语言模型固有的推理能力。尽管大语言模型可以在任务图上探索到真值调用路径，但其最终解通常并非最优，原因是它们由于有限的指令遵循和推理能力而包含幻觉或错误调用的任务。相反，GNN 能够有效地将分解步骤与合适的任务对齐，准确地达到真值结果并增强任务规划。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.96\linewidth]{fig9.pdf}
+\caption{GNN 有效性的案例研究。粉色和红色着色的节点分别表示错误预测的任务和幻觉的任务。由于篇幅限制，我们仅展示 BeamSearch 的前四条有效搜索路径作为示意。尽管大语言模型可以在搜索过程中探索到真值路径，但它们缺乏某些指令遵循和推理能力，无法始终选择最优路径。相反，GNN 能够正确地将分解步骤与合适的任务对齐，命中真值结果。}
+\label{fig:9}
+\end{figure}
+
+\paragraph{GNNs 的失败案例：}我们还展示了 GNN 性能相比直接推理出现下降的失败案例，以便对我们的方法进行全面讨论。我们的结论是：该方法对分解任务步骤的质量很敏感，因为一个模糊的步骤可能误导 GNN 错误地选择任务，而由于任务在任务图上是顺序选择的，这类错误可能级联放大。如图~\ref{fig:10} 所示的案例中，步骤 2 被模糊地描述为“Segment the image and identify the tabular data（分割图像并识别表格数据）”，这实际上包含了两个不同的步骤。这种模糊性导致 GNN 选择了不合适的 Tabular Classification，而非正确的 Image Segmentation。由于任务在任务图上是顺序选择的，下一个任务是当前选择的邻居，这样的错误会阻碍对下一个合适任务的探索，因为它可能不是当前这个错误选择的邻居。我们还展示了 BeamSearch 探索的路径及其最终解，其中它命中了真值结果。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.98\linewidth]{fig10.pdf}
+\caption{GNN 的失败案例。我们的框架在很大程度上依赖于分解任务步骤的质量。模糊的步骤（步骤 2 实际上包含了两个步骤）可能误导 GNN 选择错误的任务。}
+\label{fig:10}
+\end{figure}
+
+\paragraph{用 GPT-4-turbo 诊断 GraphSearch：}在我们的实验中，GraphSearch 在大多数实验数据集上为 GPT-4-turbo 带来的提升微弱甚至下降，这与当前研究 [33, 32] 相矛盾——后者认为穷举搜索策略可以增强更强大的大语言模型的性能。为提供详细分析，我们在图~\ref{fig:11} 中展示三类案例：成功案例（Successful cases）、失败案例（Failure cases）以及维持案例（Maintaining cases）：
+
+\begin{itemize}[leftmargin=2em]
+\item \textbf{成功案例：}如图所示，尽管任务分解存在不准确（GPT-4 相比三步真值多预测了一步），但其固有的推理能力以及沿任务图探索到的知识能够修正这些错误，命中真值。
+\item \textbf{失败案例：}在失败案例中，尽管 GPT-4 在搜索过程中识别出了真值解，但最终决策包含了一个错误的任务。这是因为最终解的选择需要大语言模型具备复杂的推理能力，因为上下文包含来自不同方面的长文本信息：完整的任务图、用户请求、所有搜索到的路径以及相关指令。这种苛刻的上下文和推理挑战超出了 GPT-4 的能力，导致错误。
+\item \textbf{维持案例：}当 GraphSearch 仅仅复现大语言模型直接推理的结果时即发生这种情况，表明探索任务图并未带来额外收益。在这些情形中，尽管在图上进行了导航，大语言模型由于固有的推理局限性仍无法自我纠正不准确之处。
+\end{itemize}
+
+我们强调，GPT-4-turbo 的 GraphSearch 结果倾向于“维持”案例。在这样的条件下，即使是少数失败也会拉低整体性能，这解释了为何 GraphSearch 无法持续提升 GPT-4-turbo 的性能。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.98\linewidth]{fig11.pdf}
+\caption{为 GPT-4 诊断 GraphSearch。我们提供三类案例：成功案例，其中 GPT-4 可以利用固有的推理能力选择最优调用路径，甚至可能修正错误分解的任务步骤；失败案例，其中 GPT-4 在包含完整任务图、所有搜索路径和指令的极长上下文中迷失，选择了不令人满意的路径；维持案例，其中搜索结果与直接推理结果相同，那些错误预测的任务即使在穷举搜索下仍无法被优化。}
+\label{fig:11}
+\end{figure}
+
+\end{document}

@@ -1,0 +1,426 @@
+\documentclass[11pt,UTF8,fontset=fandol]{ctexart}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx,float,caption,subcaption}
+\usepackage{booktabs,array,multirow,makecell}
+\usepackage{geometry,enumitem,xcolor}
+\usepackage[hidelinks]{hyperref}
+\usepackage{url}
+\geometry{margin=2.3cm}
+\graphicspath{{/Users/yye/project/论文/assets/g1/}}
+\captionsetup{font=small,labelfont=bf}
+\setlength{\parskip}{0.4em}
+\hypersetup{pdftitle={G1 中文精读导读},pdfauthor={Guo et al.}}
+
+% 小白知识卡片：上下加线 + 粗体标签，稳健不挑内容
+\newenvironment{tip}[1]{%
+  \par\smallskip\noindent\rule{\linewidth}{0.4pt}\par\nobreak
+  \noindent\textbf{【小白补丁】#1}\par\nobreak\noindent\ignorespaces
+}{%
+  \par\noindent\rule{\linewidth}{0.4pt}\par\smallskip
+}
+
+\title{G1 中文精读导读：用强化学习教大模型“在图上推理”}
+\author{原文：Xiaojun Guo, Ang Li, Yifei Wang, Stefanie Jegelka, Yisen Wang（NeurIPS 2025）}
+\date{}
+
+\begin{document}
+\maketitle
+\begin{center}\small\textit{本导读为面向初学者的中文学习笔记：含要点翻译、公式精讲与图表解读。}\end{center}
+
+\section*{论文卡片}
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{标题} & G1: Teaching LLMs to Reason on Graphs with Reinforcement Learning \\
+            & （教大语言模型用强化学习在图上做推理） \\
+\textbf{作者} & Xiaojun Guo, Ang Li, Yifei Wang, Stefanie Jegelka, Yisen Wang \\
+\textbf{机构} & 北京大学、MIT、慕尼黑工业大学（TUM） \\
+\textbf{会议} & NeurIPS 2025（神经信息处理系统大会） \\
+\textbf{arXiv} & 2505.18499 \\
+\textbf{代码} & \url{https://github.com/PKU-ML/G1} \\
+\textbf{模型/数据} & Hugging Face 合集 PKU-ML/G1（含 Erdős 数据集与 G1 模型权重） \\
+\textbf{方向} & 图（Graph）$\times$ 大模型 $\times$ 后训练（强化学习 RL 路线） \\
+\textbf{一句话} & 第一个用\emph{强化学习}（可程序验证的规则奖励）教大模型做\\
+              & 图论推理的工作；RL 微调后 3B 小模型反超 24 倍大的模型。 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{一、这篇论文在解决什么问题}
+
+大语言模型（Large Language Model, LLM，如 GPT、Qwen、Llama）已经很会写文章、解数学题、写代码了。
+但作者指出：它们在\textbf{“图（graph）推理”}上还很弱。所谓图，就是由\textbf{节点}（点）和\textbf{边}
+（连线）组成的结构，比如社交网络、地图、知识图谱、分子结构。很多现实问题本质上都是图问题，
+例如“两个城市之间最短怎么走”“这张网络里有没有环”“哪些点彼此相连”。
+
+问题有多严重？文中提到：连 OpenAI 的 o1 这种顶尖模型，在最基础的\textbf{“判断图里两点是否连通”}
+任务上，准确率也低到只有 58.49\%（差不多和瞎猜一半对一半）。这说明 LLM 并不能可靠地“看懂图”。
+
+已有人尝试过几条路，但作者认为都有明显短板：
+
+\begin{enumerate}[leftmargin=2em]
+  \item \textbf{换“图的写法”}：研究怎么把一张图“翻译”成文字（邻接矩阵、边列表等）喂给 LLM，
+        但提升很有限，没有哪种写法在所有任务上都最好。
+  \item \textbf{指令微调 / 偏好微调}：用人工整理的图题数据集去“教”模型（如 GraphWiz）。
+        但高质量图题数据又贵又难造；而且这种“照着标准答案背”的训练容易让模型\textbf{只会死记套路}、
+        换个题型或换种问法就崩（作者在实验里证明了这一点）。
+  \item \textbf{从头预训练“图基础模型”}：受限于“缺乏大规模、通用的图表示数据”，难以推广。
+\end{enumerate}
+
+\textbf{本文的核心主张}：在互联网海量数据上预训练过的 LLM，其实\textbf{本身就潜藏着图推理能力}，
+我们不需要喂它人类标注的答案，只要\textbf{让它自己反复试错、答对了就奖励它}，就能把这份能力\emph{激发}出来。
+这条路就是\textbf{强化学习（Reinforcement Learning, RL）}。这正是 DeepSeek-R1 在数学和代码上大获成功的配方，
+本文第一次把它搬到\textbf{图推理}上。
+
+\begin{tip}{为什么偏偏选“图论问题”当试验场}
+RL 训练有个硬性前提：得能\textbf{自动判断模型答得对不对}，才能给出奖励。
+图论问题天生满足这一点——比如“最短路径”“有没有哈密顿路径”，都可以用程序（如 NetworkX 库）
+\textbf{一键算出标准答案或验证一个解是否合法}。这就像下围棋（AlphaGo）输赢有明确规则一样，
+不需要请人来打分，避免了人工标注的昂贵与偏差。所以图论是检验“RL 能不能教会图推理”的\textbf{完美沙盒}。
+\end{tip}
+
+\section{二、摘要中译}
+
+\begin{quote}
+尽管大语言模型（LLM）已取得显著进展，它们在图相关任务上的能力仍明显有限，
+阻碍了真正通用模型的发展。已有尝试——包括预训练图基础模型或采用监督微调——
+常面临诸多挑战，例如缺乏大规模、可统一表示的图数据。我们提出 \textbf{G1}，
+一种简单而有效的方法，证明在\textbf{合成的图论任务}上施加\textbf{强化学习（RL）}
+能显著扩展 LLM 的图推理能力。为支持 RL 训练，我们构建了 \textbf{Erdős}——
+迄今规模最大的图推理数据集，包含 50 个难度各异的图论任务、10 万条训练数据与 5 千条测试数据，
+全部源自真实世界的图。借助在 Erdős 上的 RL，G1 在图推理上取得大幅提升：
+我们微调后的 \textbf{3B 模型甚至超过了体量为其 24 倍的 Qwen2.5-72B-Instruct}。
+经 RL 训练的模型还表现出强大的\textbf{零样本泛化}能力，可迁移到未见过的任务、领域和图编码方式，
+包括其他图论基准以及真实世界的节点分类、链接预测任务，\textbf{且不损害其通用推理能力}。
+我们的发现为构建强大的图推理器提供了一条高效、可扩展的路径：在图论任务上用 RL 微调 LLM，
+将预训练 LLM 的能力与海量、可自动生成的合成数据相结合，表明 LLM 本就具备图理解能力、
+而 RL 能成功地将其激发出来。代码已开源于 \url{https://github.com/PKU-ML/G1}，
+模型与数据集托管在 Hugging Face 合集 PKU-ML/G1。
+\end{quote}
+
+\section{三、四大核心贡献}
+\begin{enumerate}[leftmargin=2em]
+  \item \textbf{首次把 RL 用于图推理}：提出 G1，证明“适当微调过的 LLM 能变成更强的图推理器”，
+        在大量合成图论任务上显著提升能力。
+  \item \textbf{提出 Erdős 数据集}：迄今规模最大、覆盖最全的图论数据集（50 个难度各异的任务，
+        且独特地\textbf{从真实世界的图采样构造}），为图推理的训练与评测提供可靠平台。
+  \item \textbf{实证大幅领先}：在 Erdős 上相比基线最高提升约 46\%；G1-7B 媲美 o3-mini 等顶尖推理模型，
+        G1-3B 明显反超 Qwen2.5-72B-Instruct。
+  \item \textbf{强零样本泛化、不损通用能力}：在未见过的图任务/领域（GraphWiz、GraphArena、Cora、PubMed）
+        上提升，同时\textbf{不削弱}数学与综合推理能力（GSM8K、MATH、MMLU-Pro），体现协同增益。
+\end{enumerate}
+
+\section{四、预备知识（小白先看这里）}
+
+这一节把全文最关键的几个概念讲清楚。看不懂公式没关系，先建立直觉。
+
+\begin{tip}{什么是强化学习（RL）？它和“普通训练”有何不同}
+普通的\textbf{监督学习}是“给题+给标准答案，让模型照着学”——本质是\textbf{模仿}。
+\textbf{强化学习（RL）}不一样：它只给\textbf{题}和一个\textbf{打分器（奖励）}，让模型\textbf{自己生成答案}，
+答得好就加分、答得差就扣分，模型据此\textbf{调整自己以后更可能给出高分答案}。
+打个比方：监督学习像“抄范文背下来”，RL 像“自己反复做题，老师只告诉你对错，你自己摸索出解法”。
+本文发现：RL 这种“自己摸索”的方式，比“背范文”更能学到\textbf{真正会迁移}的解题能力。
+\end{tip}
+
+\begin{tip}{什么是“可验证奖励”（RLVR）}
+RLVR = Reinforcement Learning from Verifiable Rewards（基于可验证奖励的强化学习）。
+意思是：奖励不是靠人打分、也不是靠另一个 LLM 当裁判（那样既贵又可能被“钻空子”），
+而是用\textbf{确定性的程序规则}来判对错。本文用 NetworkX 库当“裁判”：
+模型答“最短路径是 [6,1,3,7,4]”，程序就能立刻验证这条路径是否真的存在且最短。
+对就给 $+1$，错就给 $0$。这种奖励\textbf{客观、便宜、无法作弊}，是本文方法能成立的基石。
+\end{tip}
+
+\begin{tip}{GRPO 与 PPO：RL 怎么“调整模型”}
+PPO（Proximal Policy Optimization，近端策略优化）是经典的 RL 算法，但它需要额外训练一个
+“价值网络”来估计每步的好坏，开销大。\textbf{GRPO}（Group Relative Policy Optimization，
+\textbf{组相对策略优化}）是 DeepSeek 提出的简化版：对同一道题，让模型\textbf{一次采样一组（比如 5 个）答案}，
+直接拿\textbf{这组答案的平均分当基准}——比平均分高的答案就“鼓励”，比平均分低的就“抑制”。
+这样\textbf{不需要价值网络}，省一半开销。本文就用 GRPO。直觉：同一道题做 5 遍，
+对的那几遍以后多写、错的那几遍以后少写。
+\end{tip}
+
+\begin{tip}{RL 与 SFT（监督微调）的区别——本文反复对比的两条路}
+\textbf{SFT}（Supervised Fine-Tuning，监督微调）= 拿“题+答案”直接让模型拟合，是\textbf{模仿/记忆}。
+\textbf{RL} = 让模型自己探索、用奖励引导，是\textbf{激发/泛化}。
+本文有一个很重要的发现（呼应 Chu et al.\ 的名言“SFT 记忆，RL 泛化”）：
+SFT 在图任务上分数也能不低，但它\textbf{会损害模型原本的数学/通用能力}（因为死记了图题套路）；
+而 RL\textbf{既能提升图推理、又能保住甚至略微提升通用能力}。这是 RL 路线最大的卖点。
+\end{tip}
+
+\noindent\textbf{其他速记}：\textbf{零样本（zero-shot）}指模型\emph{没在这种任务上训练过}就直接去做；
+\textbf{CoT（Chain-of-Thought，思维链）}指让模型把推理过程\emph{一步步写出来}再给答案；
+\textbf{rollout（轨迹/采样）}指模型针对一道题生成的一条完整回答。
+
+\section{五、Erdős 数据集：先有“题库”才能训练与比拼}
+
+要做 RL，先得有海量、可自动判分的题。作者构建了 \textbf{Erdős} 数据集（取名纪念图论大师 Paul Erdős），
+是迄今\textbf{规模最大、覆盖最全}的图论推理数据集。它既是\textbf{训练集}，也是\textbf{评测基准}。
+关键设计有三点：
+
+\begin{itemize}[leftmargin=2em]
+  \item \textbf{50 个任务、四档难度}：从最简单的“数节点个数”，到 NP 难的“最大独立集 / 旅行商问题”。
+        训练集共 \textbf{10 万}条（每任务 2000 条），另留 \textbf{5 千}条测试。
+  \item \textbf{答案可程序生成与验证}：用 NetworkX 的标准求解器生成标准答案；若一题有多个正确解，
+        就写程序\textbf{验证}模型给的解是否合法（避免人工标注，也避免 LLM 裁判的偏差）。
+  \item \textbf{图来自真实世界、统一用边列表描述}：不像以往多用随机图，作者从 Network Repository
+        （含 30 多个领域的真实网络）采样，再用“带重启的随机游走”抽出 5$\sim$35 个节点的子图。
+        图统一写成\textbf{边列表}形式，例如 \texttt{(1, 2), (2, 3), \dots}。
+\end{itemize}
+
+下表（数据源自原文 Table 1）展示了四档难度的任务分布，以及基座模型 Qwen2.5-7B-Instruct 与
+RL 训练后 G1-7B 的准确率对比——\textbf{这一栏对比最直观地说明了 RL 的威力}：
+
+\begin{table}[H]\centering
+\caption{Erdős 的四档难度任务及 RL 前后准确率（数据源自原文 Table 1，10 万训练/5 千测试）。}
+\begin{tabular}{lccc}
+\toprule
+\textbf{难度} & \textbf{任务占比} & \textbf{基座 Qwen2.5-7B} & \textbf{G1-7B（RL 后）} \\
+\midrule
+Easy（简单，如数节点、BFS、有无环）        & 29.16\% & 57.16\% & \textbf{95.07\%} \\
+Medium（中等，如聚类系数、二部匹配）       & 22.91\% & 42.55\% & \textbf{88.91\%} \\
+Hard（困难，如最短路、直径、旅行商）        & 33.33\% & 18.87\% & \textbf{50.44\%} \\
+Challenging（挑战，如图同构、最大流、哈密顿路径）& 14.58\% & \phantom{0}3.29\% & \textbf{23.57\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{tip}{为什么从“真实图”采样很重要}
+以往数据集多用 Erdős–Rényi 等\textbf{随机图模型}造图，但这些图和现实里遇到的图差别很大
+（现实网络往往有社区结构、长尾度分布等特性）。在真实图上训练，模型学到的能力\textbf{更贴近实用}，
+也更能泛化。这是 Erdős 区别于以往基准的一大特色。
+\end{tip}
+
+\section{六、训练方法：怎么用 RL 教会图推理}
+
+G1 的训练流程\textbf{刻意保持简单}（和 DeepSeek-R1 一致），就两部分：
+一个\textbf{必做的 RL 阶段}（用 GRPO 算法奖励正确回答）+ 一个\textbf{可选的 SFT 热身阶段}
+（只在开头给模型“补补基础”）。如果跳过 SFT 热身，得到的模型叫 \textbf{G1-Zero}。
+
+\subsection{第一步：为图任务设计“规则奖励”}
+
+不同任务答案类型不同（有的是一个数、有的是一个集合、有的是一条路径），作者设计了三种判分规则：
+
+\begin{itemize}[leftmargin=2em]
+  \item \textbf{严格数值匹配}：答案是唯一确定值时（如“节点数”），只有和标准答案\textbf{完全相等}才给 $+1$，
+        否则 $0$（且会做归一化，例如 $0.5$ 与 $1/2$ 视为相等）。
+  \item \textbf{Jaccard 集合匹配}：答案是\textbf{无序集合}时（如“两点的共同邻居”），按
+        $|s\cap\hat s|/|s\cup\hat s|$ 给\textbf{部分分}（交集越大分越高）。这让“答对一半”也能拿到中间奖励，
+        训练信号更平滑。
+  \item \textbf{算法验证}：答案有\textbf{多个合法解}且无法穷举时（如“最短路径”“哈密顿路径”），
+        写程序\textbf{验证合法性}——比如检查路径上每条边都存在、每个点恰好走一次。
+\end{itemize}
+
+\subsection{第二步：用 GRPO 做强化学习（核心公式）}
+
+对训练集里的每个问题 $q$，GRPO 先让当前模型 $\pi_\theta$ \textbf{采样出一组 $G$ 个回答}
+$\{o_i\}_{i=1}^{G}$，它们各自拿到奖励 $\{r_i\}_{i=1}^{G}$。然后算出每个回答的\textbf{“组内相对优势”}
+$A_i$——也就是\textbf{它比这组的平均水平好多少}（再除以标准差做归一化）：
+\begin{equation*}
+  A_i = \frac{r_i - \mathrm{mean}(\{r_1, r_2, \cdots, r_G\})}{\mathrm{std}(\{r_1, r_2, \cdots, r_G\})}. \tag{1}
+\end{equation*}
+直觉：$A_i>0$ 表示这个回答“优于平均”，应该\textbf{鼓励}（提高它被生成的概率）；$A_i<0$ 则\textbf{抑制}。
+关键是\textbf{用同组的平均分当基准}，所以不需要额外的价值网络。
+
+接着，更新模型参数 $\theta$，使下面这个目标 $J_{\mathrm{GRPO}}(\theta)$ \textbf{最大化}：
+\begin{equation*}
+  J_{\mathrm{GRPO}}(\theta) = \mathbb{E}_{q,\{o_i\}}
+  \frac{1}{G}\sum_{i=1}^{G}\left[
+  \min\!\left(\frac{\pi_\theta(o_i|q)}{\pi_{\theta_{\mathrm{old}}}(o_i|q)}A_i,\
+  \mathrm{clip}\!\left(\frac{\pi_\theta(o_i|q)}{\pi_{\theta_{\mathrm{old}}}(o_i|q)},\,1-\epsilon,\,1+\epsilon\right)A_i\right)
+  - \beta\, D_{\mathrm{KL}}(\pi_\theta\,\|\,\pi_{\mathrm{ref}})\right]. \tag{2}
+\end{equation*}
+
+\begin{tip}{把公式 (2) 拆开来读（不必硬背，理解三件事即可）}
+\textbf{(1) 概率比 $\dfrac{\pi_\theta(o_i|q)}{\pi_{\theta_{\mathrm{old}}}(o_i|q)}$}：
+新模型相比旧模型，\emph{更/更不}倾向于生成回答 $o_i$。乘上优势 $A_i$，就实现了“好答案多写、坏答案少写”。\\
+\textbf{(2) $\mathrm{clip}(\cdots,1-\epsilon,1+\epsilon)$ 与 $\min$}：给这个概率比\textbf{加一个“安全带”}，
+不让模型一步迈太大（$\epsilon$ 控制幅度，文中取 $0.2$）。这是 PPO/GRPO 训练稳定的关键技巧。\\
+\textbf{(3) $-\beta\,D_{\mathrm{KL}}(\pi_\theta\|\pi_{\mathrm{ref}})$}：
+一个\textbf{“别跑太偏”的拉绳}。$D_{\mathrm{KL}}$ 衡量新模型与原始基座模型 $\pi_{\mathrm{ref}}$ 的差距，
+$\beta$ 是力度（文中取 $0.001$）。它防止模型为了刷图题分而\textbf{遗忘原本的语言/通用能力}
+——这也是 G1 “不损通用能力”的机制保障。
+\end{tip}
+
+训练规模（源自附录）：从 Qwen2.5-Instruct（3B/7B）出发，用 \textbf{8 张 A800 GPU}、批大小 512、
+\textbf{仅训练 300 步}就取得大幅提升，可见这条路\textbf{数据高效}。
+
+\subsection{第三步：可选的 SFT 热身（应对最难的任务）}
+
+对极难任务（如“图同构映射”），基座模型初始正确率几乎为 0——\textbf{全是错答案，RL 就没有正向信号可学}
+（因为组内没有一个“高于平均”的好样本可鼓励）。解法是先做一小段 SFT 热身，教会模型基本套路。两种方式：
+\begin{itemize}[leftmargin=2em]
+  \item \textbf{Direct-SFT}：直接拿“问题 $q$ + 最终答案 $a$”微调，\textbf{不含推理过程}。简单，但教不会“怎么想”。
+  \item \textbf{CoT-SFT}：用更强的模型（Qwen2.5-32B-Instruct）生成\textbf{带思维链}的解题轨迹 $(q,c,a)$，
+        \textbf{只保留通过验证的正确轨迹}（这叫“拒绝采样微调 RFT”），约 4500 条，再用它微调。
+        \textbf{本文默认的 G1 用的就是“CoT-SFT 热身 + RL”}。
+\end{itemize}
+
+\section{七、实验与结果：3B 反超 72B 是怎么回事}
+
+\textbf{实验设置}：基座用 Qwen2.5-Instruct（3B、7B）。对比对象包括闭源模型（GPT-4o-mini、o3-mini）、
+开源指令模型（Qwen2.5 系列 3B/7B/72B、Llama-3 系列）、蒸馏推理模型（DeepSeek-R1-Distill-Qwen-7B）、
+以及专门训过图题的 GraphWiz（RFT/DPO 两版）。指标是\textbf{在 Erdős 各难度上的平均准确率}。
+
+\subsection{主结果：小模型大逆袭}
+
+\begin{table}[H]\centering
+\caption{不同 LLM 在 Erdős 上的测试准确率（\%）对比（数据源自原文 Table 2；越高越好，加粗为本文模型）。
+括号内为相对基座模型的提升。}
+\begin{tabular}{lccccc}
+\toprule
+\textbf{模型} & \textbf{Easy} & \textbf{Medium} & \textbf{Hard} & \textbf{Challenging} & \textbf{平均} \\
+\midrule
+\multicolumn{6}{l}{\textit{闭源（参数未知）}} \\
+GPT-4o-mini                 & 76.20 & 72.07 & 28.81 & \phantom{0}3.34 & 47.60 \\
+OpenAI o3-mini（带工具）      & 74.83 & 83.49 & 59.28 & 43.22 & 64.90 \\
+\midrule
+\multicolumn{6}{l}{\textit{3B 量级}} \\
+Qwen2.5-3B-Instruct（基座）  & 45.71 & 30.18 & \phantom{0}9.44 & \phantom{0}1.29 & 22.72 \\
+Direct-SFT-3B（本文）        & 74.43 & 75.27 & 43.69 & 14.43 & 53.78 \\
+\textbf{G1-3B（本文）}       & 94.86 & 84.64 & 41.25 & \phantom{0}7.57 & \textbf{59.76 (+37.04)} \\
+\midrule
+\multicolumn{6}{l}{\textit{7B 量级}} \\
+Qwen2.5-7B-Instruct（基座）  & 57.36 & 42.55 & 18.87 & \phantom{0}3.29 & 32.06 \\
+DeepSeek-R1-Distill-Qwen-7B & 71.79 & 73.73 & 39.12 & 16.57 & 51.64 \\
+GraphWiz-7B-DPO             & 20.36 & 19.09 & \phantom{0}1.44 & \phantom{0}0.78 & 10.59 \\
+\textbf{G1-7B（本文）}       & 95.07 & 88.91 & 50.44 & 23.57 & \textbf{66.16 (+34.10)} \\
+\midrule
+\multicolumn{6}{l}{\textit{70B 量级}} \\
+Llama-3.1-70B-Instruct      & 68.07 & 55.45 & 31.87 & \phantom{0}4.44 & 42.28 \\
+Qwen2.5-72B-Instruct        & 71.71 & 67.81 & 33.37 & \phantom{0}8.22 & 47.16 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{怎么读这张表（几个关键数字）}：
+\begin{itemize}[leftmargin=2em]
+  \item \textbf{3B 反超 72B}：G1-3B 平均 \textbf{59.76\%}，明显高于 Qwen2.5-72B-Instruct 的 47.16\%
+        和 Llama-3.1-70B-Instruct 的 42.28\%——\textbf{一个 3B 小模型，打赢了体量约 20$\sim$24 倍的大模型}。
+  \item \textbf{7B 媲美 o3-mini}：G1-7B 平均 \textbf{66.16\%}，已经追平顶尖推理模型 o3-mini（64.90\%）、
+        并超过 GPT-4o-mini（47.60\%）约 18.56 个百分点——而 o3-mini 的训练成本远高于 G1。
+  \item \textbf{RL 提升巨大}：G1-3B 相对其基座（22.72\%）提升 \textbf{+37.04}，G1-7B 相对基座（32.06\%）
+        提升 \textbf{+34.10}。在 Easy 任务上 G1-7B 高达 95.07\%。
+  \item \textbf{专门训图的 GraphWiz 反而很差}：GraphWiz-7B-DPO 平均仅 10.59\%。作者解释：
+        它靠死记套路，\textbf{换个题型/格式就崩}——反衬出 RL 路线的泛化优势。
+\end{itemize}
+
+\subsection{一张图看懂“RL 的作用”与“SFT 热身的加成”}
+
+图~\ref{fig:bar} 是全文最直观的一张结果图：在 3B 量级上，对比三者——\textbf{基座}（Qwen2.5-3B-Instruct）、
+\textbf{G1-Zero-3B}（只做 RL，不热身）、\textbf{G1-3B}（CoT-SFT 热身 + RL）。
+
+\begin{figure}[H]\centering
+  \includegraphics[width=0.78\linewidth]{fig1.pdf}
+  \caption{G1-3B 与 G1-Zero-3B 在 Erdős 各难度上的准确率对比（原文 Figure 1，图内英文为原文保留）。
+  三组柱子从左到右：粉色=Qwen2.5-3B-Instruct（基座，未训练）、橙色=G1-Zero-3B（仅 RL）、
+  蓝色=G1-3B（CoT-SFT 热身后再 RL）。横轴为难度（Easy/Medium/Hard/Challenging/平均），纵轴为准确率(\%)。}
+  \label{fig:bar}
+\end{figure}
+
+\textbf{这张图说明两件事}：
+\begin{enumerate}[leftmargin=2em]
+  \item \textbf{光靠 RL 就已经脱胎换骨}：橙色（G1-Zero-3B）远高于粉色基座——平均从 22.7\% 飙到 50.1\%，
+        \textbf{完全不用任何人工标注答案}，只靠“自己试错+规则奖励”。这印证了作者的核心假设：
+        图推理能力\textbf{本就潜藏在 LLM 里，RL 能把它激发出来}（与 DeepSeek-R1-Zero 的发现一致）。
+  \item \textbf{SFT 热身锦上添花}：蓝色（G1-3B）在各难度上又稳稳高于橙色，平均 59.8\% vs 50.1\%，
+        且\textbf{越难的任务提升越明显}。说明“先用 CoT-SFT 教点基础、再 RL”能学得更好、推理更规整。
+\end{enumerate}
+
+\subsection{泛化能力：换任务、换领域、换格式都能打}
+
+这是本文\textbf{最有分量}的部分——证明 G1 学到的不是“死套路”，而是\textbf{可迁移的图推理能力}（全部\textbf{零样本}，
+即没在这些新任务上训练过）：
+
+\begin{itemize}[leftmargin=2em]
+  \item \textbf{其他图论基准}：在 GraphWiz 上 G1-7B 取得最高 57.11\%，\textbf{甚至超过专门在 GraphWiz 上训过的
+        GraphWiz-7B-RFT（49.61\%）}；在 GraphArena 上（该基准\textbf{用人名而非整数表示节点}，换了图的写法）
+        G1-7B 也大幅领先（41.10\% vs 基座 28.84\%）。说明 G1 能适应\textbf{没见过的图编码格式与题型}。
+  \item \textbf{真实世界图任务}：在 Cora/PubMed 引文网络上做\textbf{节点分类}与\textbf{链接预测}
+        （这类任务要同时用图结构\emph{和}文本属性，和训练时的纯图论题很不一样），G1-7B 平均 87.29\% 拿下最高分，
+        G1-3B 也比基座大幅提升（Cora 链接预测 +16.82\%）。
+  \item \textbf{不损通用能力（关键！）}：见下表。CoT-SFT 会\textbf{拉低}数学/通用分数（死记套路的副作用），
+        但\textbf{后续的 RL 阶段把它救了回来}，G1-7B 在三项基准上\textbf{全面超过}原始基座。
+\end{itemize}
+
+\begin{table}[H]\centering
+\caption{图外的通用推理基准上的准确率（\%）（数据源自原文 Table 8）。
+重点看 CoT-SFT 掉分、而 G1（RL 后）回升甚至超过基座。}
+\begin{tabular}{lccc}
+\toprule
+\textbf{模型} & \textbf{GSM8K（数学）} & \textbf{MATH（数学）} & \textbf{MMLU-pro（综合）} \\
+\midrule
+Qwen2.5-7B-Instruct（基座）  & 86.27 & 69.80 & 45.75 \\
+CoT-SFT-7B（仅热身，掉分）   & 83.85 & 65.80 & 44.79 \\
+\textbf{G1-7B（RL 后，回升）} & \textbf{87.49} & \textbf{71.80} & \textbf{48.56} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{tip}{为什么“不损通用能力”这么值得强调}
+很多“专精微调”都会付出代价：把模型练成某领域的专家，却让它在别处变笨（叫“灾难性遗忘”）。
+本文展示了一个反直觉而美好的结果：\textbf{只在图任务上做 RL，却连数学、经济学等不相关科目都一起变强了}
+（如 MMLU-Pro 的经济学从 46.87 涨到 68.76）。作者推测 RL 提升的是\textbf{底层的“数值计算与信息利用”等通用推理素质}，
+而非死记某类题。公式 (2) 里那个 KL 拉绳也帮了忙——它拦住了模型“跑偏遗忘”。
+\end{tip}
+
+\subsection{两个有意思的分析}
+
+\textbf{(1) 数据配比}：G1-3B 在最难的两档上略逊于 Direct-SFT-3B。作者发现这是因为\textbf{奖励信号不均衡}
+——简单题更容易答对、拿奖励，RL 就\textbf{把“注意力”更多分给了简单题}。证据：单独只用难题训练的
+G1-Hard-3B，在 Hard/Challenging 上反超（48.50\% / 17.43\%），且\textbf{学难题还能顺带提升简单题}
+（“学会解难题，简单题自然会”）。
+
+\textbf{(2) RL 改变了“解题策略”}：以“最短路径”为例（见原文 Figure 2 的案例对比），基座模型爱用复杂的
+\textbf{Dijkstra 算法}，但因要维护优先队列、容易算错（图中它甚至误判“节点 4 没有边”而答错）。
+而 RL 训练后的模型\textbf{放弃了笨重的 Dijkstra，转而采用更轻便的 BFS（广度优先搜索）+ 直觉式探索}，
+反而又快又准。作者的洞见：\textbf{RL 引导模型选择“与自身能力相适配”的策略}，而不是硬套教科书算法。
+
+\section{八、附录里值得一看的补充}
+\begin{itemize}[leftmargin=2em]
+  \item \textbf{扩展到 32B}（Table 15）：G1-Zero-32B 平均从 47.10\% 提升到 \textbf{75.06\%}（+27.96），
+        且数学能力不降反升（MATH +4.00），证明方法可\textbf{规模化}。
+  \item \textbf{扩展到更大的图}（Table 12）：在 36$\sim$100 节点的更大图上（训练时只见过 5$\sim$35 节点），
+        G1 仍\textbf{零样本}大幅领先基座，说明能力可外推到训练分布之外（更大的图受限于 LLM 上下文窗口）。
+  \item \textbf{稳健性}：32 个随机种子重跑、以及 GPT-4o 改写的 3 种等价提示，标准差都\textbf{小于 1.5\%}，
+        说明结果稳定、对“换种问法”不敏感。
+  \item \textbf{关键超参}（附录 A.3）：GRPO 取 $\epsilon=0.2$、$\beta=0.001$、组大小 $G=5$、上下文 4096，
+        额外加权重 0.001 的熵损失鼓励探索；训练 300 步。
+\end{itemize}
+
+\section{九、小白知识点卡片（速查）}
+\begin{itemize}[leftmargin=2em]
+  \item \textbf{图论任务（graph-theoretic task）}：只关心结构的题，如连通性、最短路、环、哈密顿路径。
+  \item \textbf{强化学习（RL）}：让模型自己试错、用奖励引导，是“激发”而非“模仿”。
+  \item \textbf{RLVR（可验证奖励的 RL）}：奖励由\emph{确定性程序}判定（对/错），客观且无法作弊。
+  \item \textbf{GRPO}：用“同一题一组答案的平均分”当基准的简化 RL 算法，无需价值网络。
+  \item \textbf{PPO}：经典 RL 算法，需额外价值网络；GRPO 是其轻量替代。
+  \item \textbf{SFT（监督微调）}：拿“题+答案”直接拟合，倾向\emph{记忆}；本文证明易损通用能力。
+  \item \textbf{CoT（思维链）}：让模型把推理过程一步步写出来。
+  \item \textbf{零样本泛化（zero-shot generalization）}：没在新任务上训练就能做对。
+  \item \textbf{KL 散度（$D_{\mathrm{KL}}$）}：衡量新旧模型差距的“拉绳”，防止跑偏遗忘。
+  \item \textbf{NetworkX}：Python 图处理库，本文用它生成标准答案与验证解。
+  \item \textbf{NP 难 / NP 完全}：一类计算上很难的问题（如旅行商、最大独立集），没有已知的快速精确算法。
+\end{itemize}
+
+\section{十、一句话总结与定位}
+
+\textbf{一句话}：G1 第一次证明——\textbf{不喂人工答案，只让 LLM 在“可程序验证”的图论题上反复试错、答对就奖励}
+（用 GRPO 做强化学习），就能把模型潜藏的图推理能力\textbf{激发}出来；结果一个 3B 小模型反超 24 倍大的对手、
+7B 媲美 o3-mini，还\textbf{零样本泛化到没见过的图任务、且不损通用能力}。
+
+\textbf{在“图 $\times$ 后训练”谱系里的位置}：G1 是这一谱系中\textbf{“强化学习（RL）”路线的代表作}。
+对照本系列其他工作\emph{“把图的信息塞进 LLM”的不同方式}：
+\begin{itemize}[leftmargin=2em]
+  \item \textbf{G-Retriever} 走\emph{“检索 + 轻量后训练（软提示）”}——检索相关子图当外部知识；
+  \item \textbf{LLaGA} 走\emph{“投影器对齐”}——把图编码成向量对齐进 LLM；
+  \item \textbf{InstructGraph / GraphWiz} 走\emph{“指令微调 + 偏好优化（DPO）”}——用标注数据教；
+  \item \textbf{G1（本文）} 走\emph{“强化学习”}——\textbf{不教标准答案，让模型自己摸索}。
+\end{itemize}
+本文特别地\textbf{反衬出 SFT/指令微调路线的局限}（GraphWiz 在跨任务时崩盘、SFT 损害通用能力），
+而 RL 路线\textbf{泛化更好、不伤本领}——这也呼应了 “SFT 记忆、RL 泛化” 的观点，
+预示着图推理乃至更广义的结构化推理，可能正从“堆数据做监督微调”转向“用合成可验证任务做 RL”。
+
+\textbf{动手复现}：官方代码 \url{https://github.com/PKU-ML/G1}，数据集与模型权重在 Hugging Face 合集
+PKU-ML/G1（含 Erdős 全部任务提示、思维链样例与解答验证程序），是入门“图推理 + RL 后训练”的优质练手项目。
+
+\end{document}

@@ -1,0 +1,1186 @@
+{
+ "pdf": "LoRA.pdf",
+ "slug": "lora",
+ "page_count": 26,
+ "page_size": [
+  612.0,
+  792.0
+ ],
+ "pages": [
+  {
+   "page": 1,
+   "candidates": [
+    {
+     "id": "cand_p01_k00",
+     "kind": "vector",
+     "bbox": [
+      390.3,
+      528.1,
+      502.2,
+      626.2
+     ],
+     "pdf": "cand_p01_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      389.2,
+      637.5,
+      504.0,
+      647.4
+     ],
+     "text": "Figure 1: Our reparametriza-",
+     "label": "Figure 1"
+    }
+   ],
+   "overlay": "assets/lora/_pages/p01.png"
+  },
+  {
+   "page": 2,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/lora/_pages/p02.png"
+  },
+  {
+   "page": 3,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/lora/_pages/p03.png"
+  },
+  {
+   "page": 4,
+   "candidates": [
+    {
+     "id": "cand_p04_k00",
+     "kind": "table",
+     "bbox": [
+      127.8,
+      82.1,
+      484.2,
+      166.4
+     ],
+     "pdf": "cand_p04_k00.pdf"
+    },
+    {
+     "id": "cand_p04_k01",
+     "kind": "table",
+     "bbox": [
+      127.8,
+      139.7,
+      484.2,
+      166.4
+     ],
+     "pdf": "cand_p04_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      176.8,
+      504.0,
+      186.8
+     ],
+     "text": "Table 1: Infernece latency of a single forward pass in GPT-2 medium measured in milliseconds, av-",
+     "label": "Table 1"
+    }
+   ],
+   "overlay": "assets/lora/_pages/p04.png"
+  },
+  {
+   "page": 5,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/lora/_pages/p05.png"
+  },
+  {
+   "page": 6,
+   "candidates": [
+    {
+     "id": "cand_p06_k00",
+     "kind": "table",
+     "bbox": [
+      111.2,
+      82.1,
+      500.8,
+      272.3
+     ],
+     "pdf": "cand_p06_k00.pdf"
+    },
+    {
+     "id": "cand_p06_k01",
+     "kind": "table",
+     "bbox": [
+      111.2,
+      110.8,
+      500.8,
+      164.2
+     ],
+     "pdf": "cand_p06_k01.pdf"
+    },
+    {
+     "id": "cand_p06_k02",
+     "kind": "table",
+     "bbox": [
+      111.2,
+      167.2,
+      500.8,
+      189.1
+     ],
+     "pdf": "cand_p06_k02.pdf"
+    },
+    {
+     "id": "cand_p06_k03",
+     "kind": "table",
+     "bbox": [
+      111.2,
+      192.2,
+      500.8,
+      247.3
+     ],
+     "pdf": "cand_p06_k03.pdf"
+    },
+    {
+     "id": "cand_p06_k04",
+     "kind": "table",
+     "bbox": [
+      111.2,
+      250.3,
+      500.8,
+      272.3
+     ],
+     "pdf": "cand_p06_k04.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      282.8,
+      504.0,
+      294.3
+     ],
+     "text": "Table 2: RoBERTabase, RoBERTalarge, and DeBERTaXXL with different adaptation methods on the",
+     "label": "Table 2"
+    }
+   ],
+   "overlay": "assets/lora/_pages/p06.png"
+  },
+  {
+   "page": 7,
+   "candidates": [
+    {
+     "id": "cand_p07_k00",
+     "kind": "table",
+     "bbox": [
+      112.9,
+      82.1,
+      499.1,
+      259.3
+     ],
+     "pdf": "cand_p07_k00.pdf"
+    },
+    {
+     "id": "cand_p07_k01",
+     "kind": "table",
+     "bbox": [
+      112.9,
+      112.8,
+      499.1,
+      196.7
+     ],
+     "pdf": "cand_p07_k01.pdf"
+    },
+    {
+     "id": "cand_p07_k02",
+     "kind": "table",
+     "bbox": [
+      112.9,
+      199.7,
+      499.1,
+      259.3
+     ],
+     "pdf": "cand_p07_k02.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      269.7,
+      504.0,
+      279.7
+     ],
+     "text": "Table 3: GPT-2 medium (M) and large (L) with different adaptation methods on the E2E NLG",
+     "label": "Table 3"
+    }
+   ],
+   "overlay": "assets/lora/_pages/p07.png"
+  },
+  {
+   "page": 8,
+   "candidates": [
+    {
+     "id": "cand_p08_k00",
+     "kind": "table",
+     "bbox": [
+      146.6,
+      82.1,
+      465.4,
+      210.2
+     ],
+     "pdf": "cand_p08_k00.pdf"
+    },
+    {
+     "id": "cand_p08_k01",
+     "kind": "table",
+     "bbox": [
+      146.6,
+      112.8,
+      465.4,
+      183.1
+     ],
+     "pdf": "cand_p08_k01.pdf"
+    },
+    {
+     "id": "cand_p08_k02",
+     "kind": "table",
+     "bbox": [
+      146.6,
+      186.2,
+      465.4,
+      210.2
+     ],
+     "pdf": "cand_p08_k02.pdf"
+    },
+    {
+     "id": "cand_p08_k03",
+     "kind": "table",
+     "bbox": [
+      113.9,
+      457.1,
+      498.1,
+      578.2
+     ],
+     "pdf": "cand_p08_k03.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      220.7,
+      504.0,
+      230.6
+     ],
+     "text": "Table 4: Performance of different adaptation methods on GPT-3 175B. We report the logical form",
+     "label": "Table 4"
+    },
+    {
+     "bbox": [
+      108.0,
+      588.3,
+      504.0,
+      598.3
+     ],
+     "text": "Figure 2: GPT-3 175B validation accuracy vs. number of trainable parameters of several adaptation",
+     "label": "Figure 2"
+    }
+   ],
+   "overlay": "assets/lora/_pages/p08.png"
+  },
+  {
+   "page": 9,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/lora/_pages/p09.png"
+  },
+  {
+   "page": 10,
+   "candidates": [
+    {
+     "id": "cand_p10_k00",
+     "kind": "table",
+     "bbox": [
+      117.6,
+      244.0,
+      494.4,
+      314.7
+     ],
+     "pdf": "cand_p10_k00.pdf"
+    },
+    {
+     "id": "cand_p10_k01",
+     "kind": "table",
+     "bbox": [
+      117.6,
+      263.7,
+      494.4,
+      287.6
+     ],
+     "pdf": "cand_p10_k01.pdf"
+    },
+    {
+     "id": "cand_p10_k02",
+     "kind": "table",
+     "bbox": [
+      130.7,
+      491.8,
+      481.3,
+      584.4
+     ],
+     "pdf": "cand_p10_k02.pdf"
+    },
+    {
+     "id": "cand_p10_k03",
+     "kind": "table",
+     "bbox": [
+      130.7,
+      549.4,
+      481.3,
+      584.4
+     ],
+     "pdf": "cand_p10_k03.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      325.2,
+      504.0,
+      335.1
+     ],
+     "text": "Table 5: Validation accuracy on WikiSQL and MultiNLI after applying LoRA to different types of",
+     "label": "Table 5"
+    },
+    {
+     "bbox": [
+      108.0,
+      594.6,
+      504.0,
+      604.8
+     ],
+     "text": "Table 6: Validation accuracy on WikiSQL and MultiNLI with different rank r. To our surprise, a",
+     "label": "Table 6"
+    },
+    {
+     "bbox": [
+      108.0,
+      639.0,
+      504.0,
+      649.2
+     ],
+     "text": "Table 6 shows that, surprisingly, LoRA already performs competitively with a very small r (more",
+     "label": "Table 6"
+    }
+   ],
+   "overlay": "assets/lora/_pages/p10.png"
+  },
+  {
+   "page": 11,
+   "candidates": [
+    {
+     "id": "cand_p11_k00",
+     "kind": "vector",
+     "bbox": [
+      113.9,
+      268.1,
+      498.1,
+      389.9
+     ],
+     "pdf": "cand_p11_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      399.7,
+      504.0,
+      411.4
+     ],
+     "text": "Figure 3: Subspace similarity between column vectors of Ar=8 and Ar=64 for both ∆Wq and ∆Wv.",
+     "label": "Figure 3"
+    }
+   ],
+   "overlay": "assets/lora/_pages/p11.png"
+  },
+  {
+   "page": 12,
+   "candidates": [
+    {
+     "id": "cand_p12_k00",
+     "kind": "table",
+     "bbox": [
+      149.8,
+      358.7,
+      462.8,
+      419.2
+     ],
+     "pdf": "cand_p12_k00.pdf"
+    },
+    {
+     "id": "cand_p12_k01",
+     "kind": "table",
+     "bbox": [
+      194.7,
+      389.4,
+      462.8,
+      403.1
+     ],
+     "pdf": "cand_p12_k01.pdf"
+    },
+    {
+     "id": "cand_p12_k02",
+     "kind": "table",
+     "bbox": [
+      194.7,
+      406.1,
+      462.8,
+      419.2
+     ],
+     "pdf": "cand_p12_k02.pdf"
+    },
+    {
+     "id": "cand_p12_k03",
+     "kind": "vector",
+     "bbox": [
+      123.8,
+      81.9,
+      488.2,
+      209.6
+     ],
+     "pdf": "cand_p12_k03.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      219.4,
+      503.5,
+      230.2
+     ],
+     "text": "Figure 4: Left and Middle: Normalized subspace similarity between the column vectors of Ar=64",
+     "label": "Figure 4"
+    },
+    {
+     "bbox": [
+      108.0,
+      428.9,
+      504.0,
+      441.1
+     ],
+     "text": "Table 7: The Frobenius norm of U ⊤WqV ⊤where U and V are the left/right top r singular vector",
+     "label": "Table 7"
+    }
+   ],
+   "overlay": "assets/lora/_pages/p12.png"
+  },
+  {
+   "page": 13,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/lora/_pages/p13.png"
+  },
+  {
+   "page": 14,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/lora/_pages/p14.png"
+  },
+  {
+   "page": 15,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/lora/_pages/p15.png"
+  },
+  {
+   "page": 16,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/lora/_pages/p16.png"
+  },
+  {
+   "page": 17,
+   "candidates": [
+    {
+     "id": "cand_p17_k00",
+     "kind": "table",
+     "bbox": [
+      163.5,
+      82.1,
+      446.5,
+      125.8
+     ],
+     "pdf": "cand_p17_k00.pdf"
+    },
+    {
+     "id": "cand_p17_k01",
+     "kind": "vector",
+     "bbox": [
+      127.8,
+      367.4,
+      484.2,
+      563.5
+     ],
+     "pdf": "cand_p17_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      114.4,
+      136.3,
+      497.6,
+      146.3
+     ],
+     "text": "Table 8: Fine-tuning signiﬁcantly outperforms few-shot learning on GPT-3 (Brown et al., 2020).",
+     "label": "Table 8"
+    },
+    {
+     "bbox": [
+      108.0,
+      573.4,
+      504.0,
+      583.6
+     ],
+     "text": "Figure 5: Percentage slow-down of inference latency compared to the no-adapter (r = 0) baseline.",
+     "label": "Figure 5"
+    }
+   ],
+   "overlay": "assets/lora/_pages/p17.png"
+  },
+  {
+   "page": 18,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/lora/_pages/p18.png"
+  },
+  {
+   "page": 19,
+   "candidates": [
+    {
+     "id": "cand_p19_k00",
+     "kind": "table",
+     "bbox": [
+      108.9,
+      82.1,
+      503.1,
+      546.4
+     ],
+     "pdf": "cand_p19_k00.pdf"
+    },
+    {
+     "id": "cand_p19_k01",
+     "kind": "table",
+     "bbox": [
+      108.9,
+      135.7,
+      503.1,
+      197.4
+     ],
+     "pdf": "cand_p19_k01.pdf"
+    },
+    {
+     "id": "cand_p19_k02",
+     "kind": "table",
+     "bbox": [
+      108.9,
+      200.5,
+      503.1,
+      262.2
+     ],
+     "pdf": "cand_p19_k02.pdf"
+    },
+    {
+     "id": "cand_p19_k03",
+     "kind": "table",
+     "bbox": [
+      108.9,
+      265.3,
+      503.1,
+      327.0
+     ],
+     "pdf": "cand_p19_k03.pdf"
+    },
+    {
+     "id": "cand_p19_k04",
+     "kind": "table",
+     "bbox": [
+      108.9,
+      330.0,
+      503.1,
+      381.8
+     ],
+     "pdf": "cand_p19_k04.pdf"
+    },
+    {
+     "id": "cand_p19_k05",
+     "kind": "table",
+     "bbox": [
+      108.9,
+      384.8,
+      503.1,
+      436.6
+     ],
+     "pdf": "cand_p19_k05.pdf"
+    },
+    {
+     "id": "cand_p19_k06",
+     "kind": "table",
+     "bbox": [
+      108.9,
+      439.7,
+      503.1,
+      491.4
+     ],
+     "pdf": "cand_p19_k06.pdf"
+    },
+    {
+     "id": "cand_p19_k07",
+     "kind": "table",
+     "bbox": [
+      108.9,
+      494.5,
+      503.1,
+      546.4
+     ],
+     "pdf": "cand_p19_k07.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      147.7,
+      556.9,
+      464.3,
+      566.8
+     ],
+     "text": "Table 9: The hyperparameters we used for RoBERTa on the GLUE benchmark.",
+     "label": "Table 9"
+    }
+   ],
+   "overlay": "assets/lora/_pages/p19.png"
+  },
+  {
+   "page": 20,
+   "candidates": [
+    {
+     "id": "cand_p20_k00",
+     "kind": "table",
+     "bbox": [
+      108.6,
+      82.1,
+      503.4,
+      217.5
+     ],
+     "pdf": "cand_p20_k00.pdf"
+    },
+    {
+     "id": "cand_p20_k01",
+     "kind": "table",
+     "bbox": [
+      108.6,
+      100.8,
+      503.4,
+      132.7
+     ],
+     "pdf": "cand_p20_k01.pdf"
+    },
+    {
+     "id": "cand_p20_k02",
+     "kind": "table",
+     "bbox": [
+      108.6,
+      135.7,
+      503.4,
+      217.5
+     ],
+     "pdf": "cand_p20_k02.pdf"
+    },
+    {
+     "id": "cand_p20_k03",
+     "kind": "table",
+     "bbox": [
+      193.0,
+      253.2,
+      419.0,
+      465.4
+     ],
+     "pdf": "cand_p20_k03.pdf"
+    },
+    {
+     "id": "cand_p20_k04",
+     "kind": "table",
+     "bbox": [
+      193.0,
+      288.9,
+      419.0,
+      411.4
+     ],
+     "pdf": "cand_p20_k04.pdf"
+    },
+    {
+     "id": "cand_p20_k05",
+     "kind": "table",
+     "bbox": [
+      193.0,
+      414.5,
+      419.0,
+      427.4
+     ],
+     "pdf": "cand_p20_k05.pdf"
+    },
+    {
+     "id": "cand_p20_k06",
+     "kind": "table",
+     "bbox": [
+      193.0,
+      430.4,
+      419.0,
+      465.4
+     ],
+     "pdf": "cand_p20_k06.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      116.5,
+      228.0,
+      495.5,
+      238.0
+     ],
+     "text": "Table 10: The hyperparameters for DeBERTa XXL on tasks included in the GLUE benchmark.",
+     "label": "Table 10"
+    },
+    {
+     "bbox": [
+      147.2,
+      475.9,
+      464.8,
+      485.9
+     ],
+     "text": "Table 11: The hyperparameters for GPT-2 LoRA on E2E, WebNLG and DART.",
+     "label": "Table 11"
+    }
+   ],
+   "overlay": "assets/lora/_pages/p20.png"
+  },
+  {
+   "page": 21,
+   "candidates": [
+    {
+     "id": "cand_p21_k00",
+     "kind": "table",
+     "bbox": [
+      116.9,
+      82.1,
+      495.1,
+      176.0
+     ],
+     "pdf": "cand_p21_k00.pdf"
+    },
+    {
+     "id": "cand_p21_k01",
+     "kind": "table",
+     "bbox": [
+      192.3,
+      502.7,
+      419.7,
+      526.6
+     ],
+     "pdf": "cand_p21_k01.pdf"
+    },
+    {
+     "id": "cand_p21_k02",
+     "kind": "table",
+     "bbox": [
+      192.3,
+      540.6,
+      419.7,
+      612.2
+     ],
+     "pdf": "cand_p21_k02.pdf"
+    },
+    {
+     "id": "cand_p21_k03",
+     "kind": "table",
+     "bbox": [
+      192.3,
+      626.2,
+      419.7,
+      685.7
+     ],
+     "pdf": "cand_p21_k03.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      186.5,
+      504.0,
+      196.4
+     ],
+     "text": "Table 12: The training hyperparameters used for different GPT-3 adaption methods. We use the",
+     "label": "Table 12"
+    },
+    {
+     "bbox": [
+      108.0,
+      696.2,
+      504.0,
+      706.2
+     ],
+     "text": "Table 13: GPT-2 with different adaptation methods on DART. The variances of MET and TER are",
+     "label": "Table 13"
+    }
+   ],
+   "overlay": "assets/lora/_pages/p21.png"
+  },
+  {
+   "page": 22,
+   "candidates": [
+    {
+     "id": "cand_p22_k00",
+     "kind": "table",
+     "bbox": [
+      127.2,
+      82.1,
+      484.8,
+      279.9
+     ],
+     "pdf": "cand_p22_k00.pdf"
+    },
+    {
+     "id": "cand_p22_k01",
+     "kind": "table",
+     "bbox": [
+      127.2,
+      123.7,
+      484.8,
+      206.3
+     ],
+     "pdf": "cand_p22_k01.pdf"
+    },
+    {
+     "id": "cand_p22_k02",
+     "kind": "table",
+     "bbox": [
+      127.2,
+      209.4,
+      484.8,
+      279.9
+     ],
+     "pdf": "cand_p22_k02.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      290.3,
+      504.0,
+      300.3
+     ],
+     "text": "Table 14: GPT-2 with different adaptation methods on WebNLG. The variances of MET and TER",
+     "label": "Table 14"
+    }
+   ],
+   "overlay": "assets/lora/_pages/p22.png"
+  },
+  {
+   "page": 23,
+   "candidates": [
+    {
+     "id": "cand_p23_k00",
+     "kind": "table",
+     "bbox": [
+      109.0,
+      82.1,
+      503.0,
+      462.7
+     ],
+     "pdf": "cand_p23_k00.pdf"
+    },
+    {
+     "id": "cand_p23_k01",
+     "kind": "table",
+     "bbox": [
+      109.0,
+      117.8,
+      503.0,
+      174.5
+     ],
+     "pdf": "cand_p23_k01.pdf"
+    },
+    {
+     "id": "cand_p23_k02",
+     "kind": "table",
+     "bbox": [
+      109.0,
+      177.6,
+      503.0,
+      234.3
+     ],
+     "pdf": "cand_p23_k02.pdf"
+    },
+    {
+     "id": "cand_p23_k03",
+     "kind": "table",
+     "bbox": [
+      109.0,
+      237.4,
+      503.0,
+      294.1
+     ],
+     "pdf": "cand_p23_k03.pdf"
+    },
+    {
+     "id": "cand_p23_k04",
+     "kind": "table",
+     "bbox": [
+      109.0,
+      297.2,
+      503.0,
+      408.7
+     ],
+     "pdf": "cand_p23_k04.pdf"
+    },
+    {
+     "id": "cand_p23_k05",
+     "kind": "table",
+     "bbox": [
+      109.0,
+      411.7,
+      503.0,
+      446.6
+     ],
+     "pdf": "cand_p23_k05.pdf"
+    },
+    {
+     "id": "cand_p23_k06",
+     "kind": "table",
+     "bbox": [
+      109.0,
+      449.6,
+      503.0,
+      462.7
+     ],
+     "pdf": "cand_p23_k06.pdf"
+    },
+    {
+     "id": "cand_p23_k07",
+     "kind": "table",
+     "bbox": [
+      114.9,
+      532.3,
+      497.1,
+      598.0
+     ],
+     "pdf": "cand_p23_k07.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      473.2,
+      504.0,
+      483.1
+     ],
+     "text": "Table 15: Hyperparameter analysis of different adaptation approaches on WikiSQL and MNLI. Both",
+     "label": "Table 15"
+    },
+    {
+     "bbox": [
+      108.0,
+      608.4,
+      504.0,
+      618.4
+     ],
+     "text": "Table 16: Validation accuracy of different methods on subsets of MNLI using GPT-3 175B. MNLI-",
+     "label": "Table 16"
+    }
+   ],
+   "overlay": "assets/lora/_pages/p23.png"
+  },
+  {
+   "page": 24,
+   "candidates": [
+    {
+     "id": "cand_p24_k00",
+     "kind": "table",
+     "bbox": [
+      114.7,
+      82.1,
+      497.3,
+      256.4
+     ],
+     "pdf": "cand_p24_k00.pdf"
+    },
+    {
+     "id": "cand_p24_k01",
+     "kind": "table",
+     "bbox": [
+      114.7,
+      101.8,
+      497.3,
+      158.6
+     ],
+     "pdf": "cand_p24_k01.pdf"
+    },
+    {
+     "id": "cand_p24_k02",
+     "kind": "table",
+     "bbox": [
+      114.7,
+      161.6,
+      497.3,
+      207.4
+     ],
+     "pdf": "cand_p24_k02.pdf"
+    },
+    {
+     "id": "cand_p24_k03",
+     "kind": "table",
+     "bbox": [
+      114.7,
+      210.4,
+      497.3,
+      256.4
+     ],
+     "pdf": "cand_p24_k03.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      120.3,
+      266.6,
+      491.7,
+      276.8
+     ],
+     "text": "Table 17: The hyperparameters used for different GPT-3 adaptation methods on MNLI(m)-n.",
+     "label": "Table 17"
+    }
+   ],
+   "overlay": "assets/lora/_pages/p24.png"
+  },
+  {
+   "page": 25,
+   "candidates": [
+    {
+     "id": "cand_p25_k00",
+     "kind": "vector",
+     "bbox": [
+      110.0,
+      81.7,
+      502.0,
+      443.2
+     ],
+     "pdf": "cand_p25_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      453.1,
+      504.0,
+      464.7
+     ],
+     "text": "Figure 6: Normalized subspace similarity between the column vectors of Ar=8 and Ar=64 for both",
+     "label": "Figure 6"
+    }
+   ],
+   "overlay": "assets/lora/_pages/p25.png"
+  },
+  {
+   "page": 26,
+   "candidates": [
+    {
+     "id": "cand_p26_k00",
+     "kind": "table",
+     "bbox": [
+      151.6,
+      312.0,
+      460.4,
+      453.8
+     ],
+     "pdf": "cand_p26_k00.pdf"
+    },
+    {
+     "id": "cand_p26_k01",
+     "kind": "table",
+     "bbox": [
+      153.4,
+      331.2,
+      460.4,
+      453.8
+     ],
+     "pdf": "cand_p26_k01.pdf"
+    },
+    {
+     "id": "cand_p26_k02",
+     "kind": "vector",
+     "bbox": [
+      110.0,
+      83.0,
+      502.0,
+      258.5
+     ],
+     "pdf": "cand_p26_k02.pdf"
+    },
+    {
+     "id": "cand_p26_k03",
+     "kind": "vector",
+     "bbox": [
+      110.0,
+      540.2,
+      502.0,
+      674.9
+     ],
+     "pdf": "cand_p26_k03.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      268.3,
+      504.0,
+      280.0
+     ],
+     "text": "Figure 7: Normalized subspace similarity between the column vectors of Ar=64 from two randomly",
+     "label": "Figure 7"
+    },
+    {
+     "bbox": [
+      108.0,
+      464.3,
+      504.0,
+      474.3
+     ],
+     "text": "Table 18: Validation loss and test set metrics on E2E NLG Challenge achieved by LoRA with",
+     "label": "Table 18"
+    },
+    {
+     "bbox": [
+      108.0,
+      684.7,
+      503.3,
+      696.4
+     ],
+     "text": "Figure 8: Normalized subspace similarity between the singular directions of Wq and those of ∆Wq",
+     "label": "Figure 8"
+    }
+   ],
+   "overlay": "assets/lora/_pages/p26.png"
+  }
+ ]
+}

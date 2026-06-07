@@ -1,0 +1,692 @@
+{
+ "pdf": "SREGym.pdf",
+ "slug": "sregym",
+ "page_count": 26,
+ "page_size": [
+  612.0,
+  792.0
+ ],
+ "pages": [
+  {
+   "page": 1,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/sregym/_pages/p01.png"
+  },
+  {
+   "page": 2,
+   "candidates": [
+    {
+     "id": "cand_p02_k00",
+     "kind": "vector",
+     "bbox": [
+      123.0,
+      84.8,
+      290.8,
+      170.2
+     ],
+     "pdf": "cand_p02_k00.pdf"
+    },
+    {
+     "id": "cand_p02_k01",
+     "kind": "vector",
+     "bbox": [
+      310.7,
+      93.0,
+      500.7,
+      179.1
+     ],
+     "pdf": "cand_p02_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      118.0,
+      213.0,
+      494.0,
+      222.9
+     ],
+     "text": "Figure 1: An SRE problem in SREGYM and the trajectories of two agents when addressing it.",
+     "label": "Figure 1"
+    }
+   ],
+   "overlay": "assets/sregym/_pages/p02.png"
+  },
+  {
+   "page": 3,
+   "candidates": [
+    {
+     "id": "cand_p03_k00",
+     "kind": "table",
+     "bbox": [
+      108.5,
+      326.2,
+      182.0,
+      435.5
+     ],
+     "pdf": "cand_p03_k00.pdf"
+    },
+    {
+     "id": "cand_p03_k01",
+     "kind": "table",
+     "bbox": [
+      197.9,
+      325.4,
+      500.3,
+      434.8
+     ],
+     "pdf": "cand_p03_k01.pdf"
+    },
+    {
+     "id": "cand_p03_k02",
+     "kind": "table",
+     "bbox": [
+      227.3,
+      372.5,
+      393.5,
+      384.9
+     ],
+     "pdf": "cand_p03_k02.pdf"
+    },
+    {
+     "id": "cand_p03_k03",
+     "kind": "table",
+     "bbox": [
+      294.9,
+      390.6,
+      406.9,
+      434.5
+     ],
+     "pdf": "cand_p03_k03.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      284.9,
+      504.0,
+      295.0
+     ],
+     "text": "Figure 2 provides an overview of SREGYM in terms of its components. We will present the main",
+     "label": "Figure 2"
+    },
+    {
+     "bbox": [
+      163.7,
+      449.3,
+      448.3,
+      459.2
+     ],
+     "text": "Figure 2: Overview of the SREGYM framework and benchmark suites.",
+     "label": "Figure 2"
+    }
+   ],
+   "overlay": "assets/sregym/_pages/p03.png"
+  },
+  {
+   "page": 4,
+   "candidates": [
+    {
+     "id": "cand_p04_k00",
+     "kind": "table",
+     "bbox": [
+      117.7,
+      78.6,
+      506.2,
+      163.3
+     ],
+     "pdf": "cand_p04_k00.pdf"
+    },
+    {
+     "id": "cand_p04_k01",
+     "kind": "table",
+     "bbox": [
+      117.2,
+      178.8,
+      506.2,
+      229.6
+     ],
+     "pdf": "cand_p04_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      237.8,
+      301.8,
+      247.8
+     ],
+     "text": "Figure 3: Implementing a problem in SREGYM",
+     "label": "Figure 3"
+    },
+    {
+     "bbox": [
+      311.5,
+      72.0,
+      501.3,
+      82.1
+     ],
+     "text": "Table 1: Fault and noise injectors in SREGYM",
+     "label": "Table 1"
+    }
+   ],
+   "overlay": "assets/sregym/_pages/p04.png"
+  },
+  {
+   "page": 5,
+   "candidates": [
+    {
+     "id": "cand_p05_k00",
+     "kind": "table",
+     "bbox": [
+      56.4,
+      51.9,
+      559.5,
+      249.1
+     ],
+     "pdf": "cand_p05_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      131.9,
+      173.1,
+      479.8,
+      183.0
+     ],
+     "text": "Figure 4: SRE problems that create scenarios with different failure modes in SREGYM",
+     "label": "Figure 4"
+    }
+   ],
+   "overlay": "assets/sregym/_pages/p05.png"
+  },
+  {
+   "page": 6,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      323.6,
+      350.4,
+      499.9,
+      360.4
+     ],
+     "text": "Table 2: Pairwise inter-evaluator agreement.",
+     "label": "Table 2"
+    },
+    {
+     "bbox": [
+      108.0,
+      356.9,
+      311.4,
+      367.0
+     ],
+     "text": "Table 2 validates the oracle’s verdicts on a strati-",
+     "label": "Table 2"
+    }
+   ],
+   "overlay": "assets/sregym/_pages/p06.png"
+  },
+  {
+   "page": 7,
+   "candidates": [
+    {
+     "id": "cand_p07_k00",
+     "kind": "table",
+     "bbox": [
+      119.3,
+      126.9,
+      492.7,
+      223.4
+     ],
+     "pdf": "cand_p07_k00.pdf"
+    },
+    {
+     "id": "cand_p07_k01",
+     "kind": "table",
+     "bbox": [
+      119.3,
+      154.0,
+      492.7,
+      173.8
+     ],
+     "pdf": "cand_p07_k01.pdf"
+    },
+    {
+     "id": "cand_p07_k02",
+     "kind": "table",
+     "bbox": [
+      243.9,
+      178.2,
+      374.2,
+      197.6
+     ],
+     "pdf": "cand_p07_k02.pdf"
+    },
+    {
+     "id": "cand_p07_k03",
+     "kind": "table",
+     "bbox": [
+      243.9,
+      202.3,
+      374.2,
+      221.8
+     ],
+     "pdf": "cand_p07_k03.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      107.7,
+      72.0,
+      504.0,
+      82.1
+     ],
+     "text": "Table 3: Overall benchmark results on SREGYM. TTD and TTM are capped at the 1800-second",
+     "label": "Table 3"
+    },
+    {
+     "bbox": [
+      107.7,
+      323.1,
+      505.2,
+      333.1
+     ],
+     "text": "Table 3 shows the overall results. SREGYM presents challenges to frontier AI agents and models,",
+     "label": "Table 3"
+    },
+    {
+     "bbox": [
+      107.7,
+      608.7,
+      504.0,
+      618.8
+     ],
+     "text": "Table 4 partitions SREGYM’s problems by failure scenarios. We find that problems ported from",
+     "label": "Table 4"
+    }
+   ],
+   "overlay": "assets/sregym/_pages/p07.png"
+  },
+  {
+   "page": 8,
+   "candidates": [
+    {
+     "id": "cand_p08_k00",
+     "kind": "table",
+     "bbox": [
+      111.0,
+      115.1,
+      501.1,
+      241.1
+     ],
+     "pdf": "cand_p08_k00.pdf"
+    },
+    {
+     "id": "cand_p08_k01",
+     "kind": "table",
+     "bbox": [
+      111.0,
+      171.7,
+      501.1,
+      191.0
+     ],
+     "pdf": "cand_p08_k01.pdf"
+    },
+    {
+     "id": "cand_p08_k02",
+     "kind": "table",
+     "bbox": [
+      111.0,
+      195.8,
+      501.1,
+      215.1
+     ],
+     "pdf": "cand_p08_k02.pdf"
+    },
+    {
+     "id": "cand_p08_k03",
+     "kind": "table",
+     "bbox": [
+      111.0,
+      219.9,
+      501.1,
+      239.3
+     ],
+     "pdf": "cand_p08_k03.pdf"
+    },
+    {
+     "id": "cand_p08_k04",
+     "kind": "table",
+     "bbox": [
+      274.3,
+      255.1,
+      504.0,
+      356.1
+     ],
+     "pdf": "cand_p08_k04.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      107.7,
+      79.1,
+      504.3,
+      89.0
+     ],
+     "text": "Table 4: Benchmark results partitioned into three problem types. “Ported” refers to problems directly",
+     "label": "Table 4"
+    },
+    {
+     "bbox": [
+      107.7,
+      255.1,
+      143.0,
+      265.2
+     ],
+     "text": "Table 5:",
+     "label": "Table 5"
+    },
+    {
+     "bbox": [
+      274.3,
+      363.1,
+      505.7,
+      373.1
+     ],
+     "text": "Figure 5: The average number of tool calls per SRE prob-",
+     "label": "Figure 5"
+    }
+   ],
+   "overlay": "assets/sregym/_pages/p08.png"
+  },
+  {
+   "page": 9,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      203.4,
+      504.3,
+      213.3
+     ],
+     "text": "Figure 5 classifies tool calls in the agent trajectories (Appendix E shows more details). The majority",
+     "label": "Figure 5"
+    }
+   ],
+   "overlay": "assets/sregym/_pages/p09.png"
+  },
+  {
+   "page": 10,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/sregym/_pages/p10.png"
+  },
+  {
+   "page": 11,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/sregym/_pages/p11.png"
+  },
+  {
+   "page": 12,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/sregym/_pages/p12.png"
+  },
+  {
+   "page": 13,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/sregym/_pages/p13.png"
+  },
+  {
+   "page": 14,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/sregym/_pages/p14.png"
+  },
+  {
+   "page": 15,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/sregym/_pages/p15.png"
+  },
+  {
+   "page": 16,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/sregym/_pages/p16.png"
+  },
+  {
+   "page": 17,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      107.7,
+      97.3,
+      504.0,
+      107.3
+     ],
+     "text": "Table 6 lists the full checklist used by the diagnosis oracle (§2.5). Each question requires a Yes/No",
+     "label": "Table 6"
+    },
+    {
+     "bbox": [
+      107.7,
+      148.9,
+      505.7,
+      158.8
+     ],
+     "text": "Table 6: Full diagnosis evaluation checklist. Each question is answered Yes/No by the LLM evaluator.",
+     "label": "Table 6"
+    }
+   ],
+   "overlay": "assets/sregym/_pages/p17.png"
+  },
+  {
+   "page": 18,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/sregym/_pages/p18.png"
+  },
+  {
+   "page": 19,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      107.7,
+      201.1,
+      504.0,
+      211.1
+     ],
+     "text": "Table 7: Fault-target compatibility classes. “# Faults” refers to the number of fault primitives in",
+     "label": "Table 7"
+    }
+   ],
+   "overlay": "assets/sregym/_pages/p19.png"
+  },
+  {
+   "page": 20,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/sregym/_pages/p20.png"
+  },
+  {
+   "page": 21,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      228.0,
+      415.8,
+      383.7,
+      425.8
+     ],
+     "text": "Table 8: Tool call category breakdown.",
+     "label": "Table 8"
+    },
+    {
+     "bbox": [
+      107.7,
+      567.4,
+      504.0,
+      578.0
+     ],
+     "text": "Table 9: kubectl read/write analysis. Ratio is total reads divided by total writes. “Reads →First",
+     "label": "Table 9"
+    }
+   ],
+   "overlay": "assets/sregym/_pages/p21.png"
+  },
+  {
+   "page": 22,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      124.6,
+      79.1,
+      487.1,
+      89.3
+     ],
+     "text": "Table 10: Top-3 kubectl read subcommands per agent (% of all read-only kubectl calls)",
+     "label": "Table 10"
+    },
+    {
+     "bbox": [
+      124.3,
+      241.6,
+      487.4,
+      251.8
+     ],
+     "text": "Table 11: Top-5 kubectl write subcommands per agent (% of all mutating kubectl calls)",
+     "label": "Table 11"
+    },
+    {
+     "bbox": [
+      107.7,
+      412.0,
+      504.0,
+      422.0
+     ],
+     "text": "Table 12: Mitigation retry analysis (Stratus variants only). The number of total mitigation attempts",
+     "label": "Table 12"
+    },
+    {
+     "bbox": [
+      108.0,
+      598.0,
+      504.7,
+      607.8
+     ],
+     "text": "Figure 6 plots mean total tokens per run against end-to-end success rate for each (agent, model, noise)",
+     "label": "Figure 6"
+    }
+   ],
+   "overlay": "assets/sregym/_pages/p22.png"
+  },
+  {
+   "page": 23,
+   "candidates": [
+    {
+     "id": "cand_p23_k00",
+     "kind": "table",
+     "bbox": [
+      157.5,
+      72.0,
+      454.5,
+      283.3
+     ],
+     "pdf": "cand_p23_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      290.0,
+      505.2,
+      300.4
+     ],
+     "text": "Figure 6: Mean total tokens per run versus end-to-end success rate (P(D ∧M)) for each (agent,",
+     "label": "Figure 6"
+    }
+   ],
+   "overlay": "assets/sregym/_pages/p23.png"
+  },
+  {
+   "page": 24,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/sregym/_pages/p24.png"
+  },
+  {
+   "page": 25,
+   "candidates": [
+    {
+     "id": "cand_p25_k00",
+     "kind": "image",
+     "bbox": [
+      108.0,
+      72.0,
+      504.0,
+      719.8
+     ],
+     "pdf": "cand_p25_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      167.5,
+      726.8,
+      444.5,
+      736.8
+     ],
+     "text": "Figure 7: Per-problem end-to-end success rate with no noise injected.",
+     "label": "Figure 7"
+    }
+   ],
+   "overlay": "assets/sregym/_pages/p25.png"
+  },
+  {
+   "page": 26,
+   "candidates": [
+    {
+     "id": "cand_p26_k00",
+     "kind": "image",
+     "bbox": [
+      108.0,
+      72.0,
+      504.0,
+      719.8
+     ],
+     "pdf": "cand_p26_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      165.9,
+      726.8,
+      446.1,
+      736.8
+     ],
+     "text": "Figure 8: Per-problem end-to-end success rate under noisy conditions.",
+     "label": "Figure 8"
+    }
+   ],
+   "overlay": "assets/sregym/_pages/p26.png"
+  }
+ ]
+}

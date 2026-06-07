@@ -1,0 +1,371 @@
+{
+ "pdf": "KG-Agent.pdf",
+ "slug": "kgagent",
+ "page_count": 16,
+ "page_size": [
+  595.3,
+  841.9
+ ],
+ "pages": [
+  {
+   "page": 1,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/kgagent/_pages/p01.png"
+  },
+  {
+   "page": 2,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/kgagent/_pages/p02.png"
+  },
+  {
+   "page": 3,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/kgagent/_pages/p03.png"
+  },
+  {
+   "page": 4,
+   "candidates": [
+    {
+     "id": "cand_p04_k00",
+     "kind": "table",
+     "bbox": [
+      70.5,
+      81.5,
+      530.5,
+      321.4
+     ],
+     "pdf": "cand_p04_k00.pdf"
+    },
+    {
+     "id": "cand_p04_k01",
+     "kind": "table",
+     "bbox": [
+      72.6,
+      223.3,
+      164.7,
+      293.4
+     ],
+     "pdf": "cand_p04_k01.pdf"
+    },
+    {
+     "id": "cand_p04_k02",
+     "kind": "table",
+     "bbox": [
+      422.8,
+      241.3,
+      525.3,
+      259.3
+     ],
+     "pdf": "cand_p04_k02.pdf"
+    },
+    {
+     "id": "cand_p04_k03",
+     "kind": "table",
+     "bbox": [
+      422.8,
+      265.3,
+      525.3,
+      320.7
+     ],
+     "pdf": "cand_p04_k03.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      70.9,
+      333.5,
+      524.4,
+      343.5
+     ],
+     "text": "Figure 1: The overview of our proposed KG-Agent. The top half is the workflow of our agent, and the bottom",
+     "label": "Figure 1"
+    }
+   ],
+   "overlay": "assets/kgagent/_pages/p04.png"
+  },
+  {
+   "page": 5,
+   "candidates": [
+    {
+     "id": "cand_p05_k00",
+     "kind": "table",
+     "bbox": [
+      70.9,
+      71.3,
+      290.3,
+      167.8
+     ],
+     "pdf": "cand_p05_k00.pdf"
+    },
+    {
+     "id": "cand_p05_k01",
+     "kind": "table",
+     "bbox": [
+      70.9,
+      100.2,
+      290.3,
+      152.2
+     ],
+     "pdf": "cand_p05_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      70.6,
+      178.9,
+      289.1,
+      188.9
+     ],
+     "text": "Table 1: Comparison of different methods. Work Flow",
+     "label": "Table 1"
+    }
+   ],
+   "overlay": "assets/kgagent/_pages/p05.png"
+  },
+  {
+   "page": 6,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      70.6,
+      304.7,
+      524.4,
+      314.8
+     ],
+     "text": "Table 2: The results on the test set of WebQSP and CWQ, and dev set of GrailQA, which are based on Freebase",
+     "label": "Table 2"
+    }
+   ],
+   "overlay": "assets/kgagent/_pages/p06.png"
+  },
+  {
+   "page": 7,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      70.6,
+      209.8,
+      525.7,
+      219.8
+     ],
+     "text": "Table 3: The accuracy on the test set of KQA Pro, which is based on Wikidata KG. The results of Davinci-002,",
+     "label": "Table 3"
+    },
+    {
+     "bbox": [
+      70.6,
+      366.5,
+      289.1,
+      376.4
+     ],
+     "text": "Table 4: The results on the subsets of the dev sets from",
+     "label": "Table 4"
+    },
+    {
+     "bbox": [
+      224.3,
+      505.4,
+      290.9,
+      516.2
+     ],
+     "text": "Table 2 and Ta-",
+     "label": "Table 2"
+    },
+    {
+     "bbox": [
+      305.8,
+      366.5,
+      524.4,
+      376.4
+     ],
+     "text": "Table 5: The results on the three subsets of MetaQA. We",
+     "label": "Table 5"
+    }
+   ],
+   "overlay": "assets/kgagent/_pages/p07.png"
+  },
+  {
+   "page": 8,
+   "candidates": [
+    {
+     "id": "cand_p08_k00",
+     "kind": "table",
+     "bbox": [
+      303.2,
+      67.4,
+      527.8,
+      182.4
+     ],
+     "pdf": "cand_p08_k00.pdf"
+    },
+    {
+     "id": "cand_p08_k01",
+     "kind": "table",
+     "bbox": [
+      73.3,
+      71.3,
+      286.7,
+      132.4
+     ],
+     "pdf": "cand_p08_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      70.6,
+      143.7,
+      289.3,
+      153.5
+     ],
+     "text": "Table 6: The F1 scores on three in-domain datasets after",
+     "label": "Table 6"
+    },
+    {
+     "bbox": [
+      306.1,
+      189.7,
+      524.4,
+      199.7
+     ],
+     "text": "Figure 2: The F1 (Left) and Hits@1 (Right) scores of",
+     "label": "Figure 2"
+    }
+   ],
+   "overlay": "assets/kgagent/_pages/p08.png"
+  },
+  {
+   "page": 9,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/kgagent/_pages/p09.png"
+  },
+  {
+   "page": 10,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/kgagent/_pages/p10.png"
+  },
+  {
+   "page": 11,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/kgagent/_pages/p11.png"
+  },
+  {
+   "page": 12,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/kgagent/_pages/p12.png"
+  },
+  {
+   "page": 13,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/kgagent/_pages/p13.png"
+  },
+  {
+   "page": 14,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/kgagent/_pages/p14.png"
+  },
+  {
+   "page": 15,
+   "candidates": [
+    {
+     "id": "cand_p15_k00",
+     "kind": "table",
+     "bbox": [
+      77.3,
+      78.6,
+      518.0,
+      729.4
+     ],
+     "pdf": "cand_p15_k00.pdf"
+    },
+    {
+     "id": "cand_p15_k01",
+     "kind": "table",
+     "bbox": [
+      77.3,
+      242.5,
+      518.0,
+      384.1
+     ],
+     "pdf": "cand_p15_k01.pdf"
+    },
+    {
+     "id": "cand_p15_k02",
+     "kind": "table",
+     "bbox": [
+      77.3,
+      387.4,
+      518.0,
+      539.0
+     ],
+     "pdf": "cand_p15_k02.pdf"
+    },
+    {
+     "id": "cand_p15_k03",
+     "kind": "table",
+     "bbox": [
+      77.3,
+      542.3,
+      518.0,
+      693.9
+     ],
+     "pdf": "cand_p15_k03.pdf"
+    },
+    {
+     "id": "cand_p15_k04",
+     "kind": "table",
+     "bbox": [
+      77.3,
+      697.2,
+      518.0,
+      729.4
+     ],
+     "pdf": "cand_p15_k04.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      70.6,
+      740.7,
+      524.4,
+      750.6
+     ],
+     "text": "Table 7: The prompts used for each dataset when evaluating the ChatGPT, Davinci-003, and GPT-4 models. When",
+     "label": "Table 7"
+    }
+   ],
+   "overlay": "assets/kgagent/_pages/p15.png"
+  },
+  {
+   "page": 16,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      182.6,
+      627.8,
+      412.4,
+      637.8
+     ],
+     "text": "Table 8: The detailed definition and usage of all the tools.",
+     "label": "Table 8"
+    }
+   ],
+   "overlay": "assets/kgagent/_pages/p16.png"
+  }
+ ]
+}

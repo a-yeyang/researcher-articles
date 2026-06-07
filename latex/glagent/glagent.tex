@@ -1,0 +1,853 @@
+\documentclass[11pt,UTF8,fontset=fandol]{ctexart}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx,float,caption,subcaption}
+\usepackage{booktabs,array,multirow,makecell}
+\usepackage{geometry,enumitem,xcolor}
+\usepackage[hidelinks]{hyperref}
+\usepackage{url}
+\usepackage{bm}
+\geometry{margin=2.3cm}
+\graphicspath{{/Users/yye/project/论文/assets/glagent/}}
+\captionsetup{font=small,labelfont=bf}
+\setlength{\parskip}{0.4em}
+
+% 提示词展示框样式
+\usepackage{tcolorbox}
+\tcbuselibrary{breakable,skins}
+\newtcolorbox{promptbox}[1][]{
+  breakable, enhanced, colback=gray!5, colframe=gray!55,
+  boxrule=0.5pt, left=4pt, right=4pt, top=3pt, bottom=3pt,
+  fonttitle=\bfseries, #1}
+
+\title{\textbf{通过基于大语言模型的智能体实现通用图学习方法（GL-Agent）}}
+
+\author{Lanning Wei\textsuperscript{1,2}，~Huan Zhao\textsuperscript{3,$*$}，~Xiaohan Zheng\textsuperscript{4}，~Zhiqiang He\textsuperscript{1,5}，~Quanming Yao\textsuperscript{4,$*$}%
+\thanks{\textsuperscript{1}中国科学院计算技术研究所（Institute of Computing Technology, Chinese Academy of Sciences）；\textsuperscript{2}中国科学院大学（University of Chinese Academy of Sciences）；\textsuperscript{3}Noumena AI；\textsuperscript{4}清华大学电子工程系（Department of Electronic Engineering, Tsinghua University）；\textsuperscript{5}联想（Lenovo）。地址：中国北京。}%
+\thanks{电子邮件：weilanning@163.com；zhaohuan@noumena.com.cn；qyaoaa@tsinghua.edu.cn。}%
+\thanks{\textsuperscript{$*$} 通讯作者。}%
+}
+
+\date{}
+\begin{document}
+\maketitle
+
+\begin{abstract}
+设计通用的图学习（graph learning）方法具有重要意义，因为现实世界的应用中存在多种多样的图与任务。已有方法尝试通过自动机器学习（automated machine learning, AutoML）技术、预训练与微调（pre-training and fine-tuning）策略以及大语言模型（large language models, LLMs）来实现这一目标。然而，这些方法在图学习上还不够通用，因为它们要么只适用于有限类型的图，要么只能处理单一任务。本文提出借助基于大语言模型的智能体（LLM-based agents）来探索通用的图学习方法，其核心思路是针对多样的图与任务定制图学习流程（procedure）。为此，我们开发了若干基于大语言模型的智能体，它们配备了多样的画像（profile）、工具（tool）、函数（function）和人类经验。这些智能体相互协作，逐步地以任务特定（task-specific）和数据特定（data-specific）的设置配置每个流程，从而得到通用的解决方案，所提出的方法被命名为 GL-Agent。通过在多样的任务与图上进行评估，智能体输出的正确结果及其可比拟的性能展示了所提方法的通用性，尤其是在复杂场景中。较低的资源开销以及使用开源大语言模型的潜力则凸显了 GL-Agent 的高效性。
+\end{abstract}
+
+\section{引言}
+
+图结构数据（graph-structured data）已被广泛应用于各种现实世界领域，如社交网络 [16]、电子商务图 [28] 以及化学或生物医学分子 [12, 69]。这些基于图的应用，在图所包含的领域知识（domain knowledge）和学习任务方面表现出显著的多样性。图与学习任务上的这些多样性，要求在图学习流程中采用不同的设置，以实现有效的图挖掘 [11, 33, 59, 61]。
+
+\textbf{已有方法在图学习上还不够通用。} 具体而言，自动机器学习（AutoML）技术已被用于处理多样的图，但仅针对单一任务 [11, 31, 49, 61, 70]。它通过以数据驱动（data-driven）的方式定制机器学习流水线（pipeline）来实现，从而缓解了面对多样图时的繁重工作量。为处理多样的图学习任务，预训练与微调范式 [29]，尤其是大语言模型（LLMs）中的提示微调（prompt tuning）策略 [27, 37]，近年来得到了广泛探索。预训练模型可以通过使用任务特定数据进行微调，从而适配各种下游任务。此外，受大语言模型中涌现能力（emergent ability）[2, 5, 41] 的启发，基于扁平化（flatten-based）的方法将图学习问题转化为自然语言的问答问题，然后使用大语言模型来获得预测结果 [8, 22]。考虑到大语言模型有限的上下文长度（context length），这些方法在描述大规模图时存在困难。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\linewidth]{cand_p02_k01.pdf}
+\caption{为通过基于大语言模型的智能体定制图学习流程而设计的框架。}
+\label{fig:1}
+\end{figure}
+
+本文提出 GL-Agent，它利用大语言模型的通用性（versatility）这一洞见，来探索通用的图学习方法。在多样的任务与图上进行学习，需要在机器学习流水线中采用不同的设置，如图~\ref{fig:1} 所示，即基于人类专业知识为数据、模型和超参数（hyper-parameter）设计不同的策略。这表明，通过以任务特定和数据特定的设置来配置流水线，可以获得通用的解决方案。然而，由于流程复杂，难以直接通过大语言模型实现这一目标 [42, 51]。考虑到这一点，我们在每个流程中设计基于大语言模型的智能体，以逐步配置并完成流水线，所提出的方法被命名为 GL-Agent（Graph Learning Agent，图学习智能体）。
+
+如图~\ref{fig:1} 所示，从用户给出的图学习需求指令（instruction）开始，管理智能体（manager agent）从指令中提取图学习关键词，例如数据、学习目标、模型设计偏好。随后，在图学习流程中，由于自动机器学习（AutoML）在设计数据特定方法方面的有效性，我们采用了它 [11, 32, 59]。我们提供了四个图学习智能体，分别专门负责数据、AutoML 配置、数据特定的模型选择以及超参数优化。最终的响应基于图学习结果生成，之后用户便可根据给定的指令获得响应。在执行给定流程时，智能体配备了定义良好的画像、外部工具、可能用到的函数以及专业知识描述。如此一来，大语言模型便能够逐步配置并完成该流程。
+
+为验证所提出的 GL-Agent，我们采用了 11 个在节点（node）、链接（link）和图（graph）层面上广泛使用的数据集。通过这些数据集上正确的智能体输出和可比拟的模型性能，证明了其通用性与有效性，尤其是在复杂的非同配性（non-homophilous）图和复杂指令上。设计通用图学习解决方案所涉及的较低时间与经济成本，体现了 GL-Agent 的高效性。
+
+主要贡献总结如下：1）我们提出了一种方法 GL-Agent，借助基于大语言模型的智能体来探索通用的图学习方法。2）针对多样的任务与图，我们开发了配备完善的管理智能体、图学习智能体和响应智能体（response agent），以逐步配置并执行图学习流程，从而得到通用的图学习解决方案。3）我们在多样的任务与图上进行了大量实验。可比拟的性能和正确的智能体输出证明了所提出的 GL-Agent 的通用性与有效性。较低的资源开销以及使用开源大语言模型的潜力则凸显了所提方法的高效性。
+
+\section{相关工作}
+
+\subsection{通用图学习方法}
+
+已有方法在处理图学习问题中多样的任务与数据方面已有广泛探索。
+
+1）\textbf{AutoML} 是通过设计数据特定解决方案来处理不同数据的代表性技术 [59]。已有方法探索了数据特定的特征选择（feature selection）策略 [31, 49] 以及特征维度设计方法 [13, 24, 73]。图神经网络（graph neural networks, GNNs）从操作（operation）[9, 50, 54, 61, 71, 72] 和跳跃连接（skip-connection）[21, 53] 等方面被自动设计。如表~\ref{tab:1} 所示，这些方法具备处理不同图的能力，但局限于单一任务。2）\textbf{预训练与微调范式}，尤其是提示微调，受大语言模型通用性的启发，近年来被广泛用于处理不同的图学习任务 [25, 26, 29, 57]。这些方法在微调阶段利用下游任务数据学习任务特定的向量，随后预训练模型便可应用于不同的图学习任务 [27, 37, 38, 63]。然而，两个阶段之间的差距较大，这表明它们在处理多样的图方面存在不足。3）\textbf{基于扁平化的图预测方法}受大语言模型涌现能力的启发被提出 [8, 22, 44]。这些方法用自然语言描述图，然后使用大语言模型来预测结果。考虑到上下文窗口（context window）的长度限制，它们在大规模图上存在局限。
+
+与这些方法相比，所设计的 GL-Agent 在处理不同的任务与图时，既能受益于 AutoML 技术，又能受益于大语言模型的通用性。这是通过在基于大语言模型的智能体的协助下，以任务特定和数据特定的设置来配置图学习流程而实现的。
+
+\begin{table}[H]\centering
+\caption{已有方法在处理多样任务与图方面的对比。}
+\label{tab:1}
+\begin{tabular}{lcc}
+\toprule
+方法 & 多样任务 & 多样图 \\
+\midrule
+GL-Agent & \checkmark & \checkmark \\
+AutoML & $\times$ & \checkmark \\
+预训练与微调 & \checkmark & $\times$ \\
+基于扁平化的方法 & \checkmark & \checkmark（小规模） \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{大语言模型赋能的机器学习}
+
+大语言模型凭借其实现类人智能（human-like intelligence）的能力，在广泛的应用中取得了巨大成功 [15, 20, 46, 55]。它们被用作现实世界中卓越的通用人工智能（artificial general intelligence, AGI），应用涵盖自然语言处理任务中的问答、计算机视觉任务的自动求解，以及图属性的推理 [14, 36, 40, 46, 66]。
+
+一方面，大语言模型可以通过自动分解并完成复杂任务来赋能机器学习任务，它们被提出用于在面对多样的应用与任务时带来更便捷、更全面、更可靠的决策 [36, 46, 64, 65, 68]。例如，HuggingGPT [36] 通过任务规划、模型选择、模型执行和响应生成等流程来响应用户请求，其中每一步都在基于大语言模型的智能体的管理下自动执行。类似地，AutoML-GPT [68] 通过从数据处理到模型架构、超参数调优开展实验，自动处理多样的数据集与任务，这些流程同样由大语言模型管理。另一方面，大语言模型可以从模型的角度增强机器学习任务，这在图学习上也被广泛使用，包括但不限于更好地理解图 [14, 66]、设计神经架构（neural architecture）[45, 62, 68, 74]，或直接用大语言模型预测标签 [3, 10, 39, 66]。
+
+本文提出探索通用的图学习方法，利用基于大语言模型的智能体来逐步配置并执行图学习流水线，从而为用户带来灵活性。
+
+\section{方法}
+
+对于具有不同任务与图的图学习问题，它们拥有相同的学习流水线，但配置不同，如图~\ref{fig:1} 所示 [59]。受大语言模型通用性的启发，我们提出借助大语言模型，用从用户、任务与图中学到的特定设置来配置流水线，从而设计通用的图学习方法。考虑到复杂的学习流程以及专业知识的缺失，借助大语言模型实现这一点并非易事 [36, 42, 51]。为此，我们提出通过为每个流程提供配备完善的基于大语言模型的智能体，来逐步完成复杂的流水线，从而应对这一挑战。在大语言模型的协助下，具有不同任务与图的图学习问题可以遵循用户的指令求解，而不必严重依赖人力。
+
+如图~\ref{fig:2} 所示，一组配备完善的智能体相互协作，沿着黑色箭头执行图学习流程。首先，管理智能体从指令中提取图学习信息，在此基础上，现实世界的学习信息被转化为可供后续智能体使用的通用图学习设置。随后，部署四个图学习智能体，即数据智能体（data agent）、配置智能体（configuration agent）、搜索智能体（searching agent）和调优智能体（tuning agent），以协助图学习流程。最后，由所提出的响应智能体基于搜索结果与指令为用户生成响应。对于这些智能体，我们提供了执行流程所需的画像、函数、工具和专业知识。如此一来，智能体便可被配置并执行，以产生最终响应。在以下各节中，我们将介绍每个智能体，更多细节可在附录~A 中找到。
+
+\subsection{技术支持预备知识}
+
+所设计的流程要求智能体能够理解请求、调用 API 和函数、使用外部插件工具、执行代码，并基于文档进行问题推理。本文采用 LangChain\footnote{\url{https://github.com/langchain-ai/langchain}}（一种由大语言模型驱动的工具）来开发智能体，并与外部资源和模型交互，以协助图学习中的不同流程。此外，我们在图学习流水线中使用 PyG\footnote{\url{https://github.com/pyg-team/pytorch_geometric}}、HyperOPT 和 PyTorch 等软件包，与这些软件包的交互通过大语言模型实现。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{cand_p04_k00.pdf}
+\caption{在图上学习时所使用的流程与智能体介绍。}
+\label{fig:2}
+\end{figure}
+
+\subsection{指令与管理智能体}
+
+图学习流水线首先从现实世界应用中提取学习任务，并设计后续流程中使用的图学习技术。用户的指令可能包含各种关键词，包括但不限于对数据、学习任务、评估指标（evaluation metric）、学习任务上的人类专业知识以及硬件设备的描述。关于指令的更多细节可在附录~A.1 中找到。
+
+管理智能体负责从用户指令中提取相关信息。凭借预定义的画像和图学习关键词方面的专业知识，该智能体能够提取并总结自然语言指令。结果被格式化为结构化的 Python 字典（dictionary），并保存在一个供后续智能体使用的文件中。
+
+\subsection{图学习智能体}
+
+我们提供了四个由 AutoML 协助的图学习智能体，以针对多样的任务与图生成图学习解决方案，理由如下：（1）考虑到大语言模型训练数据陈旧，让其直接生成有效的图学习解决方案是一项挑战（即实验中的 “LLM-GNN” 基线）；（2）AutoML 在设计数据特定且有效的图学习解决方案方面具有优势 [48, 70]，这是通过像人类那样保留多样的候选项然后从中选择一个来实现的 [61]。因此，我们使用基于大语言模型的智能体在 AutoML 框架下配置图学习流程，从而兼顾有效性与通用性。如图~\ref{fig:2} 所示，我们设计了四个图学习智能体，分别执行图处理、AutoML 配置、模型搜索和超参数微调流程。
+
+\subsubsection{数据智能体}
+数据智能体旨在为图学习流水线准备数据并执行特征工程（feature engineering）过程。根据学习任务和评估指标，该智能体的目标是选择合适的特征工程策略。该智能体浏览 PyG 文档的网页，决定调用正确的特征工程 API，然后像人类专家那样将决策保存在供后续智能体使用的记忆（memory）中。
+
+\subsubsection{配置智能体}
+遵循基于 AutoML 设计架构时的通用流水线，即神经架构搜索（neural architecture search, NAS），我们首先需要设置搜索空间（search space）和搜索算法（search algorithm）的配置。该智能体通过浏览文档和记忆来协助配置流程，然后像人类专家那样做出决策。
+\begin{itemize}[leftmargin=1.4em]
+\item \textbf{搜索空间。} 搜索空间通过在所设计的架构骨干（backbone）中准备一组候选操作来构建，其中智能体在做决策时起着关键作用。如图~\ref{fig:2} 所示，我们设计了四个函数来用基于大语言模型的智能体配置搜索空间。（1）\textit{模块选择（Module selection）}。智能体基于学习任务 $T$ 选择合适的操作模块来构建模型，例如为节点分类（node classification）任务选择聚合（aggregation）和激活（activation）模块。这是通过对大语言模型中维护的海量知识进行推理来实现的。（2）\textit{操作准备（Operation preparation）}。为所选模块准备潜在的操作，智能体在 PyG 中查找相应的文档。然后便可提取每个模块中可用的候选操作，例如为聚合模块收集 PyG 提供的所有已实现的卷积（convolution）操作。（3）\textit{候选选择（Candidate selection）}。考虑到硬件设备不同的偏好 $P$ 和约束 $C$ 可能会影响模型设计，每个模块中使用的候选操作将基于这些约束进行选择，如图~\ref{fig:3} 所示，这依赖于大语言模型做出类人决策的能力。（4）\textit{格式化输出（Formatting output）}。基于所选的候选操作，将结果格式化并保存到一个新文件中。借助前一函数的结果，这四个函数被依次执行，以获得配置好的搜索空间，即每个所选模块中的一组候选项，如图~\ref{fig:2} 所示。
+\item \textbf{搜索算法。} 搜索算法被提出用于探索所设计的搜索空间，并在给定约束下找到合适的架构 [7, 76]。如图~\ref{fig:2} 所示，我们在该智能体中定义了两个函数来配置搜索算法。（1）\textit{识别需求（Identifying requirements）}。智能体查阅指令并总结效率需求。（2）\textit{算法选择（Algorithm selection）}。为简单起见，我们在搜索算法中提供两种变体：随机搜索（random search）和可微搜索（differentiable search）算法，后者更高效，但对搜索空间有约束。智能体基于总结出的需求和所设计的搜索空间来选择搜索算法。
+\end{itemize}
+
+\subsubsection{搜索智能体}
+基于搜索空间与算法的配置，我们在搜索空间内构建并搜索数据特定的模型。给定 AutoML 代码，搜索智能体协助配置参数、执行代码，并构造供后续智能体使用的输出。如图~\ref{fig:2} 所示，搜索智能体中实现了四个步骤。（1）\textit{参数配置（Arguments configuration）}。搜索智能体加载 AutoML 代码，然后将配置格式化为参数。（2）\textit{代码执行（Code execution）}。基于配置好的参数，智能体协助执行代码。（3）\textit{模型构建（Model construction）}。代码执行完成后，搜索智能体通过查找日志文件来提取数据特定的模型。（4）\textit{摘要生成（Summary generation）}。基于搜索到的模型和日志文件，基于大语言模型的搜索智能体总结此流程，然后将结果保存在一个新文档中。通过这些协作步骤，我们得到了满足指定设计目标与需求的搜索架构。
+
+\subsubsection{调优智能体}
+在获得搜索到的图神经网络后，我们可以微调超参数以获得最终结果。与搜索智能体类似，调优智能体也具有如图~\ref{fig:2} 所示的步骤。为简单起见，我们利用 HyperOPT [1] 来协助调优智能体。然后，在参数配置中，学习率（learning rate）、丢弃比例（dropout ratio）、权重衰减比例（weight decay ratio）和归一化（normalization）等超参数将基于指令和搜索到的模型进行配置，这是通过智能体读取代码并匹配参数来实现的。随后，提供类似的代码执行、超参数准备（Hyper-parameter preparation）和摘要生成步骤，以执行代码并生成最终输出。最后，我们便可遵循用户指令获得最终性能。
+
+\subsection{响应智能体}
+
+在从已完成的图学习流程中获得搜索到的模型及其相应性能后，我们利用一个响应智能体，基于这些智能体的共享记忆和日志文件生成全面的摘要。该摘要可能包含用户指令、搜索到的模型 $\bm{\alpha}$、超参数 $\mathcal{H}$、预测性能 $\mathcal{R}$ 等。
+
+\subsection{讨论}
+
+GL-Agent 被提出用于针对多样的任务与图、借助大语言模型的洞见来探索通用的图学习方法。除了第~2.1~节介绍的通用性之外，GL-Agent 在灵活性（flexibility）和可扩展性（extensibility）方面还提供了额外的优势。
+
+\textbf{灵活性。} 与已有方法在处理图学习问题时需要大量人力相比，GL-Agent 仅凭指令便可实现目标。这种方式对用户更加灵活，并能为不熟悉图学习的非专家用户降低学习和使用门槛。
+
+\textbf{可扩展性。} GL-Agent 在设计图学习解决方案时使用 AutoML 技术，并由基于大语言模型的智能体配置。这表明该方法可以扩展到新的图，从而获得数据特定且有效的图学习解决方案。此外，本文考虑了广泛使用的图学习软件包 PyG。因此，基于 PyG 实现的用户自定义图神经网络可以集成到该方法中，这意味着可以扩展用户特定的专业知识。
+
+\section{实验}
+
+在实验中，我们首先从智能体输出以及在不同任务与图上的性能这两个角度，评估 GL-Agent 的通用性。然后，我们展示 GL-Agent 处理复杂场景的能力，包括在大规模非同配性图上的预测以及对复杂指令的使用。最后，我们展示资源开销以及使用其他大语言模型的潜力。
+
+\subsection{实现实例}
+
+本文开发了基于大语言模型的智能体，借助 AutoML 技术来协助图学习流水线的配置与执行。我们针对三类任务提供了三个 AutoML 实现实例：a）\textbf{节点层面（Node-level）}。该实例基于可微的自动图神经网络设计方法 F2GNN [53] 构建，它专注于设计聚合操作和图神经网络拓扑（topology），即这些聚合操作之间的连接。b）\textbf{图层面（Graph-level）}。图层面的实现实例基于 LRGNN [52] 构建，它通过深层堆叠的图神经网络进行搜索，以捕获长程依赖（long-range dependency）。该框架由若干单元（cell）构成，其中提供了选择（selection）、融合（fusion）和聚合模块。框架末端提供一个读出（readout）模块，为该任务生成图表示（graph representation）。c）\textbf{链接层面（Link-level）}。对于链接层面，该实例基于方法 Prof-CF [48] 构建，它搜索基于图神经网络的双塔协同过滤（two-tower collaborative filtering）函数。该框架包含多样的设计模块，包括消息函数（message function）、聚合、层组合（layer combination），并通过剪枝操作来设计搜索空间。管理智能体根据用户指令选择相应的实例，这些智能体的详细介绍见附录~B.1。
+
+\subsection{实验设置}
+
+\subsubsection{数据集}
+为评估所设计的 GL-Agent 在处理多样任务与图方面的通用性，本文采用节点分类、图分类（graph classification）以及推荐系统中的物品排序（item ranking）任务。我们采用了广泛使用的数据集：（a）节点分类：Cora [34]、Physics [35]，以及来自 [35] 的 Computers 和 Photo 数据集，还有大规模非同配性数据集 genius [23]；（b）图分类：来自 [6] 的 DD 和 PROTEINS 数据集，以及来自 [43] 的 NCI1 和 NCI109 数据集；（c）物品排序任务：Epinions 和 Amazon-Sports。这些数据集的详细介绍见附录~B.2。
+
+\subsubsection{基线}
+本文中，基于大语言模型的智能体专注于利用 AutoML 技术来提取信息、配置、执行并总结图学习流程。为评估所提出的 GL-Agent，我们针对每个任务采用三类方法作为基线，即人类设计的方法、基于 NAS 的方法，以及由大语言模型建议的基线。在节点分类任务中，我们采用人类设计的方法 GCN、GIN、GPR-GNN [4] 和 ACM-GCN [30]，以及基于 NAS 的方法 SANE [72] 和 F2GNN [53]。在图分类任务中，我们采用人类设计的方法 GCN、GIN、DGCNN [67] 和 DiffPool [60]，以及基于 NAS 的方法 LRGNN [52]。在物品排序任务中，我们采用人类设计的方法 NCF [19]、NGCF [47] 和 LightGCN [18]，以及基于 NAS 的方法 Prof-CF [50]。这些方法以及 LLM-GNN 的详细介绍见附录~B.3。
+
+如第~3.1~节所述，所提出的 GL-Agent 基于 LangChain 和 PyG 构建。我们使用 GPT-3.5-turbo 作为智能体中的部署模型。智能体详细的提示词与回答见附录~A。
+
+\subsection{通用性评估}
+
+GL-Agent 借助基于大语言模型的智能体，为多样的任务与图探索通用的图学习解决方案。我们通过展示在三类任务的不同数据集上的智能体输出和性能来评估其通用性。
+
+\subsubsection{智能体输出的正确性}
+如表~\ref{tab:2} 所示，我们对比了图学习中面对不同任务与图时的智能体结果。为简单起见，我们仅提供管理智能体的指令和输出，以及配置好的搜索空间。显然，智能体能够像人类专家一样准确地提取有用信息并做出正确预测，这证明了它基于多样指令处理不同学习任务与数据的通用性。智能体的细节见附录~A，不同任务上完整的案例研究（case study）见附录~B.5。
+
+\begin{table}[H]\centering
+\caption{不同任务上智能体输出的对比。}
+\label{tab:2}
+\includegraphics[width=\linewidth]{cand_p06_k00.pdf}
+\end{table}
+
+\subsubsection{不同任务上的性能对比}
+我们展示与基线的性能对比，以评估 GL-Agent 的有效性。如表~\ref{tab:3} 所示，在节点层面任务上，GL-Agent 取得了与基于 AutoML 的方法 F2GNN 可比拟的性能。由于 GL-Agent 是基于 F2GNN 实现的，这种可比拟的性能体现了智能体在理解和处理节点层面任务方面的能力。对于 LLM-GNN（其图神经网络和超参数由大语言模型直接建议），由于超参数不合适，其性能逊于 GCN 基线。这凸显了大语言模型在处理不同图和不同图学习流程时所面临的挑战。如表~\ref{tab:4} 和表~\ref{tab:5} 所示，我们可以得到相同的结论：在图分类和物品排序任务上，GL-Agent 分别与其基础的基于 AutoML 的方法 LRGNN 和 Prof-CF [50] 具有可比拟的性能。这一结论在三类任务的全部数据集上是一致的，不同任务上的详细结果与分析见附录~B.4。
+
+总之，所提出的 GL-Agent 针对多样的任务与图探索通用的图学习方法。所提出的智能体能够生成任务特定和数据特定的结果，以配置图学习流程，并取得与这些基线可比拟或更高的性能。这些结果凸显了 GL-Agent 在处理复杂指令内不同任务与数据方面的通用性与有效性。
+
+\begin{table}[H]\centering
+\caption{节点分类任务上的性能对比。我们报告 10 次随机划分（random split）下的平均测试准确率和标准差。}
+\label{tab:3}
+\begin{tabular}{lccc}
+\toprule
+ & Cora & Photo & genius \\
+节点数（\# Nodes） & 2,708 & 7,487 & 421,961 \\
+\midrule
+GL-Agent & 86.81(0.40) & 96.40(0.16) & 90.51(0.15) \\
+GCN & 85.68(0.61) & 93.13(0.27) & 89.10(0.13) \\
+GIN & 83.83(1.36) & 92.67(0.57) & 85.61(0.06) \\
+GPRGNN & 87.62(0.48) & 91.93(0.26) & 90.05(0.31) \\
+ACM-GCN & 86.67(0.14) & 94.35(0.65) & 90.08(0.05) \\
+SANE & 86.40(0.38) & 94.53(0.22) & OOM \\
+F2GNN & 87.42(0.42) & 95.38(0.30) & 90.93(0.02) \\
+LLM-GNN & 84.64(1.04) & 93.73(0.38) & 89.31(0.17) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]\centering
+\caption{图分类任务上的性能对比。我们报告基于 10 折交叉验证（10-fold cross-validation）数据的平均测试准确率和标准差。}
+\label{tab:4}
+\begin{tabular}{lcc}
+\toprule
+ & Proteins & DD \\
+\midrule
+GL-Agent & 75.38(5.03) & 78.10(3.21) \\
+GCN & 74.84(3.07) & 73.59(4.17) \\
+GIN & 74.50(4.10) & 74.62(2.74) \\
+DGCNN & 73.95(3.04) & 61.63(5.33) \\
+DiffPool & 75.11(2.14) & 77.85(3.53) \\
+LRGNN & 75.39(4.40) & 78.18(2.02) \\
+LLM-GNN & 74.47(3.65) & 75.12(3.44) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]\centering
+\caption{物品排序任务上的性能对比。我们报告基于 10 次重复的平均测试 Recall@20 和标准差。}
+\label{tab:5}
+\begin{tabular}{lcc}
+\toprule
+ & Epinions & Amazon-Sports \\
+\midrule
+GL-Agent & 0.0453(0.0018) & 0.0829(0.0006) \\
+NCF & 0.0344(0.0007) & 0.0636(0.0011) \\
+NGCF & 0.0290(0.0002) & 0.0609(0.0011) \\
+LightGCN & 0.0321(0.0003) & 0.0776(0.0006) \\
+Prof-CF & 0.0472(0.0011) & 0.1023(0.0021) \\
+LLM-GNN & 0.0379(0.0014) & 0.0151(0.0001) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{复杂场景下的评估}
+
+我们展示 GL-Agent 完成需要高水平人类专业知识的复杂任务的能力，并据此评估其鲁棒性（robustness）。
+
+\subsubsection{复杂图学习任务上的评估}
+我们考虑大规模非同配性场景，即相连的节点具有不同的标签，这对设计有效的模型而言是一项挑战 [30, 75]。如表~\ref{tab:3} 所示，对于大规模数据集 genius，即使我们在指令中加入了数据集描述和实验观察（见附录~B.3 介绍），LLM-GNN 也仅取得与 GCN 基线可比拟的性能。然而，基于 AutoML 的方法，即 F2GNN 和 GL-Agent，能够通过设计数据特定的解决方案取得更高的性能。因此，通过使用 AutoML 方法，其处理多样图的有效性已被拓展到所提出的 GL-Agent 中。
+
+\subsubsection{复杂指令上的评估}
+在所提出的框架中，指令包含关于数据和学习任务的所有信息。指令的清晰度将对智能体的输出产生很大影响。为此，我们受 [56] 启发提供三种策略来评估在复杂指令上的鲁棒性。1）\textit{简单（Simple）}：用简化的句子组织指令，保持智能体输出不变；2）\textit{复杂（Complex）}：使用 GPT-4 对指令和智能体输出进行改写，使其语义相似但用词复杂；3）\textit{误导（Misleading）}：使用 GPT-4 向原始指令和输出中添加误导性信息。如表~\ref{tab:6} 所示，我们展示了面对不同指令与输入时智能体输出的准确率。我们可以清楚地观察到，简单变体与复杂变体之间的性能可比拟，这证明了所提出的 GL-Agent 从输入中提取有用信息的鲁棒性。此外，由于配置智能体具有复杂的工具和函数，误导性信息对其影响很大。可以预期通过基于反思（reflection）或人类专家反馈来修订输出能够带来进一步改进，这将在未来工作中加以考虑。详细的指令与结果可在附录的表~24 中找到。
+
+\subsection{资源开销评估}
+
+GL-Agent 使用闭源大语言模型 GPT-3.5-Turbo 设计通用的图学习解决方案，其时间与经济成本不可忽视。为此，我们实证评估了 GL-Agent 在使用 API 时的搜索成本。如表~\ref{tab:6} 所示，智能体生成输出所需的时间不到一分钟，与代码执行所需的较长时间相比可以忽略不计。此外，执行一个流程的成本为 0.31 美元，这在经济上也是高效的。这些结果表明，GL-Agent 能够以高效且经济的方式处理具有多样任务与图的图学习问题。
+
+\begin{table}[H]\centering
+\caption{不同指令上的性能对比，以及不同智能体上的资源开销对比。}
+\label{tab:6}
+\begin{tabular}{lccc|ccc}
+\toprule
+ & \multicolumn{3}{c|}{指令（Instructions）} & \multicolumn{3}{c}{资源开销（Resource Cost）} \\
+智能体 & 简单 & 复杂 & 误导 & 时间(秒) & Token & 费用(美元) \\
+\midrule
+管理（Manager） & 0.7 & 0.6 & 0.5 & 3.23 & 683.5 & 0.014 \\
+数据（Data） & 1.0 & 1.0 & 0.9 & 4.95 & 1054 & 0.021 \\
+配置（Configuration） & 0.7 & 0.6 & 0.3 & 11.57 & 6672.4 & 0.133 \\
+搜索（Searching） & 0.6 & 0.7 & 0.7 & 93.29 & 6462.5 & 0.129 \\
+调优（Tuning） & 0.6 & 0.7 & 0.7 & 329.12 & 711.1 & 0.014 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+为进一步降低成本，我们考察了不同的大语言模型在探索通用图学习解决方案中的表现。如表~\ref{tab:7} 所示，我们展示了与 LLaMA2 7B 的对比，并聚焦于在这些大语言模型之间产生不一致答案的流程。由于 LLaMA2 70B 和 GPT-4 得到了正确结果，我们将这些对比移至附录的表~26。基于精心设计的函数与工具，智能体在大多数流程中都能给出准确的预测，唯一例外是以灰色高亮的单元格，这可能是由于参数较少（7B）所致。这表明我们可以用更经济实惠的开源大语言模型替代 GPT-3.5-turbo，它们在我们的方法中能提供可比拟的性能。
+
+\begin{table}[H]\centering
+\caption{基于不同大语言模型的智能体结果对比（节选）。完整对比见附录表~26。}
+\label{tab:7}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{p{0.20\linewidth} p{0.36\linewidth} p{0.34\linewidth}}
+\toprule
+函数（Functions） & LLaMA2-7B & GPT-3.5-turbo + LangChain（本文） \\
+\midrule
+模块选择 & Possible operations: Aggregation: $\cdots$, Pooling: $\cdots$, Readout: $\cdots$ & The response list is [`aggregation', `pooling', `readout', `selection', `fusion'] \\
+操作准备；候选选择 & To address your request: 1. Justification: $\cdots$, 2. Finding the corresponding class: $\cdots$, 3. Returning the class name and module name $\cdots$. & `ChebConv', `torch\_geometric.nn.conv.cheb\_conv.ChebConv' \\
+识别需求；算法选择 & Firstly, let me clarify the difference between them. $\cdots$. Then, Lets evaluate the options based on these principles. $\cdots$ & You should use ``differentiable search algorithm". \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{结论}
+
+我们提出了一种方法 GL-Agent，以针对现实世界应用中不同的任务与图探索通用的图学习解决方案。首先，我们提出了配备画像、函数、外部工具和人类经验的管理智能体、四个图学习智能体以及响应智能体。然后，基于用户指令，这些配备完善的智能体以自然语言理解用户需求，逐步配置并完成图学习流程。最后，我们获得了具有任务特定和数据特定设置的定制化图学习流程。在实验中，GL-Agent 能够在不同任务上做出正确决策，取得与基线可比拟的性能，即使在复杂场景下也是如此。此外，较低的资源开销以及使用开源大语言模型的潜力证明了它在完成图学习任务方面的高效性。未来，我们将提升 GL-Agent 的鲁棒性与可靠性。更具体地说，通过在框架中加入反思和多轮对话（multi-round dialogue），智能体将根据人类反馈修订其输出，以实现目标。
+
+\section*{参考文献}
+\begin{enumerate}[leftmargin=2em,labelsep=0.5em]
+\item James Bergstra, Daniel Yamins, and David Cox. 2013. Making a science of model search: Hyperparameter optimization in hundreds of dimensions for vision architectures. In \textit{International conference on machine learning}. PMLR, 115--123.
+\item Tom Brown, Benjamin Mann, Nick Ryder, Melanie Subbiah, Jared D Kaplan, Prafulla Dhariwal, Arvind Neelakantan, Pranav Shyam, Girish Sastry, Amanda Askell, et al. 2020. Language models are few-shot learners. \textit{Advances in neural information processing systems} 33 (2020), 1877--1901.
+\item Zhikai Chen, Haitao Mao, Hang Li, Wei Jin, Hongzhi Wen, Xiaochi Wei, Shuaiqiang Wang, Dawei Yin, Wenqi Fan, Hui Liu, et al. 2023. Exploring the potential of large language models (llms) in learning on graphs. arXiv preprint arXiv:2307.03393 (2023).
+\item Eli Chien, Jianhao Peng, Pan Li, and Olgica Milenkovic. 2021. Adaptive universal generalized pagerank graph neural network. \textit{ICLR} (2021).
+\item Aakanksha Chowdhery, Sharan Narang, Jacob Devlin, Maarten Bosma, Gaurav Mishra, Adam Roberts, Paul Barham, Hyung Won Chung, Charles Sutton, Sebastian Gehrmann, et al. 2022. Palm: Scaling language modeling with pathways. arXiv preprint arXiv:2204.02311 (2022).
+\item Paul D Dobson and Andrew J Doig. 2003. Distinguishing enzyme structures from non-enzymes without alignments. \textit{Journal of molecular biology (JMB)} 330, 4 (2003), 771--783.
+\item Thomas Elsken, Jan Hendrik Metzen, and Frank Hutter. 2019. Neural architecture search: A survey. \textit{The Journal of Machine Learning Research} 20, 1 (2019), 1997--2017.
+\item Bahare Fatemi, Jonathan Halcrow, and Bryan Perozzi. 2023. Talk like a graph: Encoding graphs for large language models. arXiv preprint arXiv:2310.04560 (2023).
+\item Hongyang Gao and Shuiwang Ji. 2019. Graph u-nets. \textit{ICML}, 2083--2092.
+\item Jun Gao, Huan Zhao, Changlong Yu, and Ruifeng Xu. 2023. Exploring the feasibility of chatgpt for event extraction. arXiv preprint arXiv:2303.03836 (2023).
+\item Yang Gao, Hong Yang, Peng Zhang, Chuan Zhou, and Yue Hu. 2020. Graphnas: Graph neural architecture search with reinforcement learning. In \textit{IJCAI}.
+\item Justin Gilmer, Samuel S Schoenholz, Patrick F Riley, Oriol Vinyals, and George E Dahl. 2017. Neural Message Passing for Quantum Chemistry. In \textit{ICML}. 1263--1272.
+\item Antonio A Ginart, Maxim Naumov, Dheevatsa Mudigere, Jiyan Yang, and James Zou. 2021. Mixed dimension embeddings with application to memory-efficient recommendation systems. In \textit{2021 IEEE International Symposium on Information Theory (ISIT)}. IEEE, 2786--2791.
+\item Jiayan Guo, Lun Du, and Hengyu Liu. 2023. GPT4Graph: Can Large Language Models Understand Graph Structured Data? An Empirical Evaluation and Benchmarking. arXiv preprint arXiv:2305.15066 (2023).
+\item Siyuan Guo, Cheng Deng, Ying Wen, Hechang Chen, Yi Chang, and Jun Wang. 2024. DS-Agent: Automated Data Science by Empowering Large Language Models with Case-Based Reasoning. \textit{ICML}.
+\item Will Hamilton, Zhitao Ying, and Jure Leskovec. 2017. Inductive representation learning on large graphs. In \textit{NeurIPS}. 1024--1034.
+\item Ruining He and Julian McAuley. 2016. Ups and downs: Modeling the visual evolution of fashion trends with one-class collaborative filtering. In \textit{proceedings of the 25th international conference on world wide web}. 507--517.
+\item Xiangnan He, Kuan Deng, Xiang Wang, Yan Li, Yongdong Zhang, and Meng Wang. 2020. Lightgcn: Simplifying and powering graph convolution network for recommendation. In \textit{Proceedings of the 43rd International ACM SIGIR conference on research and development in Information Retrieval}. 639--648.
+\item Xiangnan He, Lizi Liao, Hanwang Zhang, Liqiang Nie, Xia Hu, and Tat-Seng Chua. 2017. Neural collaborative filtering. In \textit{Proceedings of the 26th international conference on world wide web}. 173--182.
+\item Sirui Hong, Xiawu Zheng, Jonathan Chen, Yuheng Cheng, Jinlin Wang, Ceyao Zhang, Zili Wang, Steven Ka Shing Yau, Zijuan Lin, Liyang Zhou, et al. 2024. Metagpt: Meta programming for multi-agent collaborative framework. \textit{ICLR} (2024).
+\item Yaoman Li and Irwin King. 2020. AutoGraph: Automated Graph Neural Network. In \textit{ICONIP}. 189--201.
+\item Yuhan Li, Zhixun Li, Peisong Wang, Jia Li, Xiangguo Sun, Hong Cheng, and Jeffrey Xu Yu. 2023. A survey of graph meets large language model: Progress and future directions. arXiv preprint arXiv:2311.12399 (2023).
+\item Derek Lim, Xiuyu Li, Felix Hohne, and Ser-Nam Lim. 2021. New benchmarks for learning on non-homophilous graphs. arXiv preprint arXiv:2104.01404 (2021).
+\item Haochen Liu, Xiangyu Zhao, Chong Wang, Xiaobing Liu, and Jiliang Tang. 2020. Automated embedding size search in deep recommender systems. In \textit{Proceedings of the 43rd International ACM SIGIR Conference on Research and Development in Information Retrieval}. 2307--2316.
+\item Jiawei Liu, Cheng Yang, Zhiyuan Lu, Junze Chen, Yibo Li, Mengmei Zhang, Ting Bai, Yuan Fang, Lichao Sun, Philip S Yu, et al. 2023. Towards graph foundation models: A survey and beyond. arXiv preprint arXiv:2310.11829 (2023).
+\item Pengfei Liu, Weizhe Yuan, Jinlan Fu, Zhengbao Jiang, Hiroaki Hayashi, and Graham Neubig. 2023. Pre-train, prompt, and predict: A systematic survey of prompting methods in natural language processing. \textit{Comput. Surveys} 55, 9 (2023), 1--35.
+\item Zemin Liu, Xingtong Yu, Yuan Fang, and Xinming Zhang. 2023. Graphprompt: Unifying pre-training and downstream tasks for graph neural networks. In \textit{Proceedings of the ACM Web Conference 2023}. 417--428.
+\item Linyuan L\"u, Mat\'u\v{s} Medo, Chi Ho Yeung, Yi-Cheng Zhang, Zi-Ke Zhang, and Tao Zhou. 2012. Recommender systems. \textit{Physics reports} 519, 1 (2012), 1--49.
+\item Yuanfu Lu, Xunqiang Jiang, Yuan Fang, and Chuan Shi. 2021. Learning to pre-train graph neural networks. In \textit{Proceedings of the AAAI conference on artificial intelligence}, Vol. 35. 4276--4284.
+\item Sitao Luan, Chenqing Hua, Qincheng Lu, Jiaqi Zhu, Mingde Zhao, Shuyuan Zhang, Xiao-Wen Chang, and Doina Precup. 2022. Revisiting Heterophily For Graph Neural Networks. In \textit{NeurIPS}.
+\item Yuanfei Luo, Mengshuo Wang, Hao Zhou, Quanming Yao, Wei-Wei Tu, Yuqiang Chen, Wenyuan Dai, and Qiang Yang. 2019. Autocross: Automatic feature crossing for tabular data in real-world applications. In \textit{Proceedings of the 25th ACM SIGKDD International Conference on Knowledge Discovery \& Data Mining}. 1936--1945.
+\item Hieu Pham, Melody Guan, Barret Zoph, Quoc Le, and Jeff Dean. 2018. Efficient Neural Architecture Search via Parameter Sharing. In \textit{ICML}. 4092--4101.
+\item Emanuele Rossi, Fabrizio Frasca, Ben Chamberlain, Davide Eynard, Michael Bronstein, and Federico Monti. 2020. Sign: Scalable inception graph neural networks. arXiv preprint arXiv:2004.11198 7 (2020), 15.
+\item Prithviraj Sen, Galileo Namata, Mustafa Bilgic, Lise Getoor, Brian Galligher, and Tina Eliassi-Rad. 2008. Collective classification in network data. \textit{AI magazine} 29, 3 (2008), 93--93.
+\item Oleksandr Shchur, Maximilian Mumme, Aleksandar Bojchevski, and Stephan G\"unnemann. 2018. Pitfalls of graph neural network evaluation. arXiv preprint arXiv:1811.05868 (2018).
+\item Yongliang Shen, Kaitao Song, Xu Tan, Dongsheng Li, Weiming Lu, and Yueting Zhuang. 2023. Hugginggpt: Solving ai tasks with chatgpt and its friends in huggingface. arXiv preprint arXiv:2303.17580 (2023).
+\item Mingchen Sun, Kaixiong Zhou, Xin He, Ying Wang, and Xin Wang. 2022. Gppt: Graph pre-training and prompt tuning to generalize graph neural networks. In \textit{Proceedings of the 28th ACM SIGKDD Conference on Knowledge Discovery and Data Mining}. 1717--1727.
+\item Xiangguo Sun, Hong Cheng, Jia Li, Bo Liu, and Jihong Guan. 2023. All in one: Multi-task prompting for graph neural networks. In \textit{Proceedings of the 29th ACM SIGKDD Conference on Knowledge Discovery and Data Mining}. 2120--2131.
+\item Xiaofei Sun, Xiaoya Li, Jiwei Li, Fei Wu, Shangwei Guo, Tianwei Zhang, and Guoyin Wang. 2023. Text Classification via Large Language Models. arXiv preprint arXiv:2305.08377 (2023).
+\item Alexander Tornede, Difan Deng, Theresa Eimer, Joseph Giovanelli, Aditya Mohan, Tim Ruhkopf, Sarah Segel, Daphne Theodorakopoulos, Tanja Tornede, Henning Wachsmuth, et al. 2023. AutoML in the Age of Large Language Models: Current Challenges, Future Opportunities and Risks. arXiv preprint arXiv:2306.08107 (2023).
+\item Hugo Touvron, Thibaut Lavril, Gautier Izacard, Xavier Martinet, Marie-Anne Lachaux, Timoth\'ee Lacroix, Baptiste Rozi\`ere, Naman Goyal, Eric Hambro, Faisal Azhar, et al. 2023. Llama: Open and efficient foundation language models. arXiv preprint arXiv:2302.13971 (2023).
+\item Karthik Valmeekam, Matthew Marquez, Alberto Olmo, Sarath Sreedharan, and Subbarao Kambhampati. 2024. Planbench: An extensible benchmark for evaluating large language models on planning and reasoning about change. \textit{Advances in Neural Information Processing Systems} 36 (2024).
+\item N Wale and G Karypis. 2006. Comparison of Descriptor Spaces for Chemical Compound Retrieval and Classification. In \textit{ICDM}. 678--689.
+\item Heng Wang, Shangbin Feng, Tianxing He, Zhaoxuan Tan, Xiaochuang Han, and Yulia Tsvetkov. 2024. Can language models solve graph problems in natural language? \textit{Advances in Neural Information Processing Systems} 36 (2024).
+\item Haishuai Wang, Yang Gao, Xin Zheng, Peng Zhang, Hongyang Chen, and Jiajun Bu. 2023. Graph Neural Architecture Search with GPT-4. arXiv preprint arXiv:2310.01436 (2023).
+\item Lei Wang, Chen Ma, Xueyang Feng, Zeyu Zhang, Hao Yang, Jingsen Zhang, Zhiyuan Chen, Jiakai Tang, Xu Chen, Yankai Lin, et al. 2023. A Survey on Large Language Model based Autonomous Agents. arXiv preprint arXiv:2308.11432 (2023).
+\item Xiang Wang, Xiangnan He, Meng Wang, Fuli Feng, and Tat-Seng Chua. 2019. Neural graph collaborative filtering. In \textit{Proceedings of the 42nd international ACM SIGIR conference on Research and development in Information Retrieval}. 165--174.
+\item Xin Wang, Ziwei Zhang, and Wenwu Zhu. 2022. Automated Graph Machine Learning: Approaches, Libraries and Directions. arXiv preprint arXiv:2201.01288 (2022).
+\item Yejing Wang, Xiangyu Zhao, Tong Xu, and Xian Wu. 2022. Autofield: Automating feature selection in deep recommender systems. In \textit{Proceedings of the ACM Web Conference 2022}. 1977--1986.
+\item Zhenyi Wang, Huan Zhao, and Chuan Shi. 2022. Profiling the Design Space for Graph Neural Networks based Collaborative Filtering. In \textit{WSDM}. 1109--1119.
+\item Jason Wei, Xuezhi Wang, Dale Schuurmans, Maarten Bosma, Fei Xia, Ed Chi, Quoc V Le, Denny Zhou, et al. 2022. Chain-of-thought prompting elicits reasoning in large language models. \textit{Advances in neural information processing systems} 35 (2022), 24824--24837.
+\item Lanning Wei, Zhiqiang He, Huan Zhao, and Quanming Yao. 2023. Search to Capture Long-range Dependency with Stacking GNNs for Graph Classification. In \textit{Proceedings of the ACM Web Conference 2023}. 588--598.
+\item Lanning Wei, Huan Zhao, and Zhiqiang He. 2022. Designing the Topology of Graph Neural Networks: A Novel Feature Fusion Perspective. In \textit{The WebConf}. 1381--1391.
+\item Lanning Wei, Huan Zhao, Quanming Yao, and Zhiqiang He. 2021. Pooling architecture search for graph classification. In \textit{CIKM}. 2091--2100.
+\item Lilian Weng. June 23, 2023. LLM Powered Autonomous Agents. \url{https://lilianweng.github.io/posts/2023-06-23-agent/}.
+\item Miao Xiong, Zhiyuan Hu, Xinyang Lu, Yifei Li, Jie Fu, Junxian He, and Bryan Hooi. 2024. Can llms express their uncertainty? an empirical evaluation of confidence elicitation in llms. \textit{ICLR} (2024).
+\item Siheng Xiong, Ali Payani, Ramana Kompella, and Faramarz Fekri. 2024. Large language models can learn temporal reasoning. arXiv preprint arXiv:2401.06853 (2024).
+\item Keyulu Xu, Chengtao Li, Yonglong Tian, Tomohiro Sonobe, Ken-ichi Kawarabayashi, and Stefanie Jegelka. 2018. Representation learning on graphs with jumping knowledge networks. In \textit{ICML}. 5453--5462.
+\item Quanming Yao, Mengshuo Wang, Yuqiang Chen, Wenyuan Dai, Yu-Feng Li, Wei-Wei Tu, Qiang Yang, and Yang Yu. 2018. Taking human out of learning applications: A survey on automated machine learning. arXiv preprint arXiv:1810.13306 (2018).
+\item Zhitao Ying, Jiaxuan You, Christopher Morris, Xiang Ren, Will Hamilton, and Jure Leskovec. 2018. Hierarchical graph representation learning with differentiable pooling. In \textit{NeurIPS}. 4800--4810.
+\item Jiaxuan You, Rex Ying, and Jure Leskovec. 2020. Design Space for Graph Neural Networks. In \textit{NeurIPS}.
+\item Caiyang Yu, Xianggen Liu, Chenwei Tang, Wentao Feng, and Jiancheng Lv. 2023. GPT-NAS: Neural Architecture Search with the Generative Pre-Trained Model. arXiv preprint arXiv:2305.05351 (2023).
+\item Xingtong Yu, Chang Zhou, Yuan Fang, and Xinming Zhang. 2024. MultiGPrompt for Multi-Task Pre-Training and Prompting on Graphs. \textit{The WebConf}.
+\item Quan Yuan, Mehran Kazemi, Xin Xu, Isaac Noble, Vaiva Imbrasaite, and Deepak Ramachandran. 2023. TaskLAMA: Probing the Complex Task Understanding of Language Models. arXiv preprint arXiv:2308.15299 (2023).
+\item Hongxin Zhang, Weihua Du, Jiaming Shan, Qinhong Zhou, Yilun Du, Joshua B Tenenbaum, Tianmin Shu, and Chuang Gan. 2023. Building Cooperative Embodied Agents Modularly with Large Language Models. arXiv preprint arXiv:2307.02485 (2023).
+\item Jiawei Zhang. 2023. Graph-ToolFormer: To Empower LLMs with Graph Reasoning Ability via Prompt Augmented by ChatGPT. arXiv preprint arXiv:2304.11116 (2023).
+\item Muhan Zhang, Zhicheng Cui, Marion Neumann, and Yixin Chen. 2018. An end-to-end deep learning architecture for graph classification. In \textit{AAAI}.
+\item Shujian Zhang, Chengyue Gong, Lemeng Wu, Xingchao Liu, and Mingyuan Zhou. 2023. AutoML-GPT: Automatic Machine Learning with GPT. arXiv preprint arXiv:2305.02499 (2023).
+\item Xuan Zhang, Limei Wang, Jacob Helwig, Youzhi Luo, Cong Fu, Yaochen Xie, Meng Liu, Yuchao Lin, Zhao Xu, Keqiang Yan, et al. 2023. Artificial Intelligence for Science in Quantum, Atomistic, and Continuum Systems. arXiv preprint arXiv:2307.08423 (2023).
+\item Ziwei Zhang, Xin Wang, and Wenwu Zhu. 2021. Automated Machine Learning on Graphs: A Survey. arXiv preprint arXiv:2103.00742 (2021).
+\item Huan Zhao, Lanning Wei, and Quanming Yao. 2020. Simplifying Architecture Search for Graph Neural Network.
+\item Huan Zhao, Quanming Yao, and Weiwei Tu. 2021. Search to aggregate neighborhood for graph neural network. In \textit{ICDE}.
+\item Xiangyu Zhao, Haochen Liu, Wenqi Fan, Hui Liu, Jiliang Tang, Chong Wang, Ming Chen, Xudong Zheng, Xiaobing Liu, and Xiwang Yang. 2021. Autoemb: Automated embedding dimensionality search in streaming recommendations. In \textit{2021 IEEE International Conference on Data Mining (ICDM)}. IEEE, 896--905.
+\item Mingkai Zheng, Xiu Su, Shan You, Fei Wang, Chen Qian, Chang Xu, and Samuel Albanie. 2023. Can GPT-4 Perform Neural Architecture Search? arXiv preprint arXiv:2304.10970 (2023).
+\item Jiong Zhu, Yujun Yan, Lingxiao Zhao, Mark Heimann, Leman Akoglu, and Danai Koutra. 2020. Beyond homophily in graph neural networks: Current limitations and effective designs. In \textit{NeurIPS}.
+\item Barret Zoph and Quoc V Le. 2017. Neural architecture search with reinforcement learning. \textit{ICLR} (2017).
+\end{enumerate}
+
+\appendix
+
+\section{GL-Agent 中智能体的详细介绍}
+
+在本节中，我们提供 GL-Agent 框架内每个智能体的实现细节，以及它们如何协作以实现从用户指令自动生成图学习模型的过程。
+
+\subsection{指令}
+
+如表~\ref{tab:8} 所示，我们在构建指令时提供五个键（key），其中包含对数据、学习任务、评估指标和用户偏好的描述。需要说明的是，通过引入错误信息或更多个性化的键，可以构建更复杂的指令，这超出了本文的范围。
+
+\begin{table}[H]\centering
+\caption{用户指令中的关键词。}
+\label{tab:8}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{p{0.26\linewidth} p{0.62\linewidth}}
+\toprule
+关键词 & 内容 \\
+\midrule
+数据 $\mathcal{D}$ & 对图或所用数据集的介绍。 \\
+任务 $\mathcal{T}$ & 以自然语言表达的图上学习目标，例如向特定用户推荐物品，或预测特定分子图的性质。 \\
+评估指标 $\mathcal{M}$ & 对学习目标的评估。通常是测试性能或响应时间。 \\
+偏好 $\mathcal{P}$ & 用户在设置图学习流程时的先验知识，可以是关于特征工程、架构设计或超参数选择方面的。 \\
+约束 $\mathcal{C}$ & 对模型、设备或训练策略的约束。 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{管理智能体}
+
+管理智能体作为整个 GL-Agent 框架的起点，负责解析用户的自然语言指令，以提取关于图学习任务的关键信息。为实现这一目标，我们采用了一个名为 PromptTemplate 的结构化提示词模板（prompt template）。该模板的设计旨在引导大语言模型分析用户请求，并以预定义的格式生成响应。具体的提示词设计如表~\ref{tab:9} 所示，期望的大语言模型输出及其内容详见表~\ref{tab:8}。基于上述提示词，管理智能体将调用大语言模型从用户请求中提取相关信息，并将信息以键值对（key-value pair）的形式存储，供后续智能体使用。
+
+\subsection{图学习智能体}
+
+在数据智能体、配置智能体、搜索智能体和调优智能体中，我们同样使用上文提到的结构化提示词模板来引导并规范大语言模型的输出。
+
+\textbf{数据智能体}发挥着关键作用，它主动浏览 PyTorch Geometric（PyG）文档，以根据任务的具体需求识别并选择最合适的数据预处理方法和特征工程技术。这一步确保数据以最适合模型学习的形式提供，所用提示词如表~\ref{tab:10} 所示。
+
+在\textbf{配置智能体}中，我们首先根据用户偏好从 PyTorch Geometric（PyG）文档中选择合适的模块和操作，以配置搜索空间（具体的模块与操作见附录~B.1）。然后，使用配置好的搜索空间以及保存在共享记忆中的格式化指令，我们选择合适的搜索算法，所用提示词如表~\ref{tab:11} 所示。配置好的搜索空间和搜索算法也以键值对的形式存储在记忆中，供后续智能体使用。搜索到的图神经网络架构同样存储在记忆中以供后续使用。
+
+在\textbf{搜索智能体}中，我们创建 bash 脚本，以便在外部与 AutoML 方法交互。这些脚本专门用于调用 AutoML 的 API，基于配置智能体此前设置的搜索空间和搜索算法以及数据智能体选择的特征工程函数来执行神经架构搜索（NAS）。搜索过程完成后，我们解析生成的日志和输出文件，提取关于搜索到的图神经网络架构的详细信息，使用大语言模型总结搜索过程和结果，并生成易于理解的报告，所用提示词如表~\ref{tab:12} 所示。
+
+在搜索到最优架构之后，\textbf{调优智能体}继续通过生成 bash 脚本与 AutoML 交互来精调超参数，旨在进一步提升模型性能。微调过程完成后，通过大语言模型提取关键性能指标和模型配置。这包括微调过程中找到的最佳超参数组合、模型在验证集和测试集上的性能，以及任何特定的模型行为或观察到的问题。该智能体所用的提示词详见表~\ref{tab:13}。
+
+\subsection{响应智能体}
+
+最后，\textbf{响应智能体}负责整合前述各步骤的所有输出，并生成最终的模型摘要报告。该报告详细描述了模型的架构、超参数配置、性能评估结果以及可能的改进建议，为用户提供模型的全面概览，所用提示词如表~\ref{tab:14} 所示。
+
+% ====== 提示词设计表 9-14（保留英文原文）======
+\begin{table}[H]\centering
+\caption{管理智能体的提示词设计。}
+\label{tab:9}
+\begin{promptbox}
+\textbf{The Prompt Design of Manager Agent}\par\medskip
+\textbf{\# Profile}\\
+You are a Graph Learning Specialist with exceptional abilities in interpreting complex user instructions and translating them into structured, actionable data formats.\par\medskip
+\textbf{\# Objective}\\
+Your task is to deconstruct user instructions related to graph learning into detailed, executable plans, ensuring all elements of the request are accurately captured and clearly categorized.\par\medskip
+\textbf{\# Functions}\\
+1. \textbf{Task Plan Function}\\
+\hspace*{1em}-- \textbf{Purpose}: To meticulously parse and interpret user instructions, identifying key information pertinent to graph learning tasks.\\
+\hspace*{1em}-- \textbf{Input}: User instructions.\\
+\hspace*{1em}-- \textbf{Output}: A Python Dictionary of the task highlighting its level (node, link, or graph), type of learning task (classification, regression, etc.), the name of dataset, and evaluation metrics.\par\medskip
+\textbf{\# Human Expertise}\\
+Human expertise in this context involves a deep understanding of how to interpret complex user requests related to graph learning. The expertise includes:\\
+\hspace*{1em}1. \textbf{Task Categorization}: Identifying the level of graph learning tasks (node, link, or graph-level) based on the user's description.\\
+\hspace*{1em}2. \textbf{Task Type Determination}: Distinguishing between different types of learning tasks, such as classification or regression, based on the details provided in the user's request.\\
+\hspace*{1em}3. \textbf{Evaluation Metric Selection}: Selecting appropriate evaluation metrics.\\
+\hspace*{1em}4. \textbf{Preference Identification}: Noting any specific operational preferences mentioned by the user.\\
+\hspace*{1em}5. \textbf{Dataset Identification}: Accurately identifying the relevant datasets mentioned in the user's request.
+\end{promptbox}
+\end{table}
+
+\begin{table}[H]\centering
+\caption{数据智能体的提示词设计。}
+\label{tab:10}
+\begin{promptbox}
+\textbf{The Prompt Design of Data Agent.}\par\medskip
+\textbf{\# Profile}\\
+You are a Graph Learning Specialist with specialized skills in navigating and utilizing document structures for optimizing machine learning workflows. Your expertise includes extracting, parsing, and interpreting complex data from documents formats to assist in feature engineering.\par\medskip
+\textbf{\# Objective}\\
+Your task is to analyze the PyG documentation and user requests to identify and select appropriate feature engineering techniques that are most effective for the specified task plan. This involves extracting relevant techniques from the documentation that directly align with the user's objectives and requirements, thereby enhancing the model's performance.\par\medskip
+\textbf{\# Functions}\\
+1. \textbf{Feature Engineering Selection Function}\\
+\hspace*{1em}-- \textbf{Purpose}: To determine the best feature engineering techniques from the provided documentation that align with the user's request and task requirements.\\
+\hspace*{1em}-- \textbf{Input}: User request `user\_req', task plan details `task\_plan', and specific documentation content `content'.\\
+\hspace*{1em}-- \textbf{Output}: A list of up to three selected feature engineering techniques, formatted as a Python Dictionary ensuring they are directly applicable and beneficial for enhancing the model's performance.\par\medskip
+\textbf{\# Human Expertise}\\
+Human experts are crucial in the process of selecting effective feature engineering techniques from PyG documentation. Their expertise involves analyzing the task requirements, understanding the types of datasets involved, and comprehending detailed descriptions of feature engineering. This knowledge enables them to choose the most relevant and beneficial feature engineering functions that align with the specific needs of the task and enhance the overall performance of the model. These decisions are based on a deep understanding of how different techniques can affect the efficiency and effectiveness of graph neural network models in various contexts.
+\end{promptbox}
+\end{table}
+
+\begin{table}[H]\centering
+\caption{配置智能体的提示词设计。}
+\label{tab:11}
+\begin{promptbox}
+\textbf{The Prompt Design of Configuration Agent}\par\medskip
+\textbf{\# Profile}\\
+You are a Graph Learning Specialist specialized in navigating and utilizing configuration options. Your expertise allows you to effectively parse documentation, extract operational data, and apply this information to configure search space and search algorithm.\par\medskip
+\textbf{\# Objective}\\
+Your primary objective is to orchestrate the configuration process of graph neural networks by selecting appropriate modules, preparing operation candidates, evaluating these candidates, and finally selecting an optimal configuration that enhances the model's effectiveness and efficiency.\par\medskip
+\textbf{\# Functions}\\
+1. \textbf{Module Selection Function}: Aimed at identifying the best modules for inclusion in the graph neural network based on the task's specifics.\\
+\hspace*{1em}-- \textbf{Input}: Task requirements and available module options.\\
+\hspace*{1em}-- \textbf{Output}: List of modules deemed most suitable for the task.\par\smallskip
+2. \textbf{Operation Preparation Function}: Prepares the detailed list of operations from specific documentation content `content' that can be performed by the selected modules.\\
+\hspace*{1em}-- \textbf{Input}: Selected modules and specific documentation content.\\
+\hspace*{1em}-- \textbf{Output}: Detailed operations capable of being executed by these modules.\par\smallskip
+3. \textbf{Candidate Selection Function}: Evaluates the prepared operations and selects the most promising candidates for final deployment.\\
+\hspace*{1em}-- \textbf{Input}: List of prepared operations.\\
+\hspace*{1em}-- \textbf{Output}: Shortlist of candidate operations for search space.\par\smallskip
+4. \textbf{Construct Search Space Function}: Constructs a comprehensive search space where different configurations can be tested and evaluated.\\
+\hspace*{1em}-- \textbf{Input}: Candidate operations.\\
+\hspace*{1em}-- \textbf{Output}: A structured search space.\par\smallskip
+5. \textbf{Algorithm Selection Function}: Selects the most suitable algorithm through based on the identified requirements.\\
+\hspace*{1em}-- \textbf{Input}: The constructed search space, the task plan and the selected modules.\\
+\hspace*{1em}-- \textbf{Output}: The most effective search algorithm for finding the network architecture.\par\medskip
+\textbf{\# Human Expertise}\\
+The configuration of graph neural networks involves a sequential process. Initially, human experts select modules that align with the specific demands of the task. Following this, they outline potential operations for these modules and narrow down the choices to the most effective ones for candidate selection. The next step is constructing a search space based on the selected modules and selected candidates. Finally, human experts select an algorithm that best navigates this space to find the optimal architecture of the network. Throughout this process, human expertise ensures that each step is tailored to meet the task-specific goals and technical requirements efficiently.
+\end{promptbox}
+\end{table}
+
+\begin{table}[H]\centering
+\caption{搜索智能体的提示词设计。}
+\label{tab:12}
+\begin{promptbox}
+\textbf{The Prompt Design of Searching Agent}\par\medskip
+\textbf{\# Profile}\\
+You are a Graph Learning Specialist with advanced capabilities in automating neural architecture search (NAS) for graph neural networks. Your skills include configuring execution code, performing neural architecture searching operation, and generating insightful summaries from the search processes.\par\medskip
+\textbf{\# Objective}\\
+Your primary task is to streamline the process of efficiently executing search procedures to discover optimal network architectures, and effectively summarize the outcomes using the details derived from search logs.\par\medskip
+\textbf{\# Functions}\\
+1. \textbf{Argument Configuration}\\
+\hspace*{1em}-- \textbf{Purpose}: Sets up the parameters and arguments that control the search process.\\
+\hspace*{1em}-- \textbf{Input}: User-defined parameters including search space, feature engineering functions, GPU preferences.\\
+\hspace*{1em}-- \textbf{Output}: A configured execution script ready for the NAS (Neural Architecture Search) process.\par\smallskip
+2. \textbf{Code Execution}\\
+\hspace*{1em}-- \textbf{Purpose}: Employs advanced AutoML techniques to systematically explore network architectures.\\
+\hspace*{1em}-- \textbf{Input}: The configured execution script.\\
+\hspace*{1em}-- \textbf{Output}: Search log from the exploration of network architectures.\par\smallskip
+3. \textbf{Summary Generation}\\
+\hspace*{1em}-- \textbf{Purpose}: Analyzes logs from the NAS (Neural Architecture Search) process to construct detailed summaries.\\
+\hspace*{1em}-- \textbf{Input}: Logs and data generated during the NAS process.\\
+\hspace*{1em}-- \textbf{Output}: Summaries that capture key results and strategic insights, aiding in the evaluation of the search outcomes.\par\medskip
+\textbf{\# Human Expertise}\\
+Human experts are essential in setting up and configuring the execution codes tailored to the chosen feature engineering functions and the constructed search space. Following the completion of the AutoML process, they critically assess and interpret the log data to create comprehensive summaries that encapsulate the search findings and provide valuable insights into the effectiveness of the tested architectures.
+\end{promptbox}
+\end{table}
+
+\begin{table}[H]\centering
+\caption{调优智能体的提示词设计。}
+\label{tab:13}
+\begin{promptbox}
+\textbf{The Prompt Design of Tuning Agent}\par\medskip
+\textbf{\# Profile}\\
+You are a Graph Learning Specialist with advanced capabilities in automating the fine-tuning of the searched architectures for graph neural networks. Your expertise includes configuring execution parameters, managing fine-tuning processes, and synthesizing outcomes into actionable insights.\par\medskip
+\textbf{\# Objective}\\
+Your primary task is to automate the fine-tuning of neural architectures, setting up fine-tuning execution code, executing the fine-tuning code, and generating detailed summaries of the outcomes.\par\medskip
+\textbf{\# Functions}\\
+1. \textbf{Argument Configuration}\\
+\hspace*{1em}-- \textbf{Purpose}: Sets up the parameters and arguments that control the fine-tune process.\\
+\hspace*{1em}-- \textbf{Input}: The search space, feature engineering functions and other parameters.\\
+\hspace*{1em}-- \textbf{Output}: Configured execution script ready for fine-tuning execution.\par\smallskip
+2. \textbf{Code Execution}\\
+\hspace*{1em}-- \textbf{Purpose}: Runs the fine-tuning scripts to fine-tune the searched neural network.\\
+\hspace*{1em}-- \textbf{Input}: The configured execution script.\\
+\hspace*{1em}-- \textbf{Output}: Tuning log from the fine-tuning of the searched network architecture.\par\smallskip
+3. \textbf{Summary Generation}\\
+\hspace*{1em}-- \textbf{Purpose}: Synthesizes data from the fine-tuning process into insightful summaries.\\
+\hspace*{1em}-- \textbf{Input}: Logs and outputs generated during the fine-tuning phase.\\
+\hspace*{1em}-- \textbf{Output}: Reports summaries that highlight improvements, effectiveness, and optimization areas of the fine-tuned architectures.\par\medskip
+\textbf{\# Human Expertise}\\
+Human experts play a crucial role in configuring the execution codes to align with the selected feature engineering functions and the search space. After executing the fine-tuning process, they analyze the results to generate detailed summaries that highlight key outcomes and insights, thus providing a deeper understanding of the effectiveness of the tested network architectures.
+\end{promptbox}
+\end{table}
+
+\begin{table}[H]\centering
+\caption{响应智能体的提示词设计。}
+\label{tab:14}
+\begin{promptbox}
+\textbf{The Prompt Design of Response Agent}\par\medskip
+\textbf{\# Profile}\\
+You are a Graph Learning Specialist tasked with synthesizing various information from neural network tuning and architecture search into a structured format. Your capabilities include interpreting complex data outputs, generating comprehensive summaries, and structuring these into actionable insights.\par\medskip
+\textbf{\# Objective}\\
+Your primary objective is to consolidate the results of graph neural network tuning and architecture searches into a clear, structured summary that outlines prediction outcomes, architecture details, hyperparameters, and resource consumption.\par\medskip
+\textbf{\# Functions}\\
+1. \textbf{Response Generation}\\
+\hspace*{1em}-- \textbf{Purpose}: To aggregate and synthesize information and generate a comprehensive response.\\
+\hspace*{1em}-- \textbf{Input}: Data from tuning results, architecture files, and other relevant agents.\\
+\hspace*{1em}-- \textbf{Output}: A Python Dictionary that clearly delineates prediction results, architecture specifics, optimized hyperparameters, and resource usage.\par\medskip
+\textbf{\# Human Expertise}\\
+Human experts guide the process by ensuring the accurate interpretation of data, the applicability of the synthesized information, and the correctness of the output format.
+\end{promptbox}
+\end{table}
+
+\section{实验}
+
+\subsection{实现实例}
+
+\subsubsection{节点层面}
+该实例基于可微的自动图神经网络设计方法 F2GNN [53] 构建，它专注于设计聚合操作和图神经网络拓扑，即这些操作之间的连接。实现细节如下。
+
+\textbf{架构骨干。} 我们首先介绍为节点层面任务定制的架构骨干。如图~\ref{fig:3} 所示，F2GNN 提出了选择模块 $f_s$ 和融合模块 $f_f$ 来设计图神经网络拓扑，其中前者为每个聚合操作设计，用于从先前的操作中选择输入；后者用于整合这些输入，以供后续的聚合操作使用。最后，聚合操作用于更新节点表示 $H$，它与所有任务都相关。
+
+\begin{figure}[H]\centering
+\includegraphics[width=0.78\linewidth]{cand_p15_k01.pdf}
+\caption{来自 [53] 的所设计的架构骨干。}
+\label{fig:3}
+\end{figure}
+
+\textbf{搜索空间与超参数的配置。} 基于这些操作模块，我们在表~\ref{tab:15} 中预定义基本操作，配置智能体可对其进一步扩展或修改。如图~\ref{fig:2} 所示，配置智能体通过选择合适的模块、然后根据相应文档修订其候选项来构建搜索空间和超参数。与已有基于 NAS 的方法所使用的固定搜索空间相比，所提出的方法可以根据用户指令中的先验知识自动配置搜索空间，从而对现实世界数据具有更好的泛化能力。
+
+面对节点层面任务时，我们基于方法 F2GNN [53] 实现 GL-Agent。模块中使用的基本操作见表~\ref{tab:15}。
+
+\begin{table}[H]\centering
+\caption{节点层面任务中使用的架构与超参数候选项。}
+\label{tab:15}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{llc}
+\toprule
+\multicolumn{2}{c}{} & 候选项 \\
+\midrule
+\multirow{3}{*}{模型} & 聚合（Aggregation） & GCN, SAGE \\
+ & 选择（Selection） & ZERO, IDENTITY \\
+ & 融合（Fusion） & sum, mean \\
+\midrule
+\multirow{4}{*}{超参数} & 学习率（Learning rate） & [0.001, 0.005] \\
+ & 权重衰减（Weight decay） & [0.0001, 0.0005] \\
+ & 丢弃率（Dropout rate） & [0, 0.5] \\
+ & 激活（Activation） & ReLU \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{图层面}
+图层面的实现实例基于方法 LRGNN [52] 构建，它通过深层堆叠的图神经网络进行搜索，以捕获长程依赖。如图~\ref{fig:4} 所示，该框架由若干单元构成，其中以与图~\ref{fig:3} 相同的方式提供了选择、融合和聚合模块。框架末端提供一个读出模块，为该任务生成图表示。
+
+\begin{figure}[H]\centering
+\includegraphics[width=0.85\linewidth]{cand_p15_k02.pdf}
+\caption{LRGNN [52] 中使用的框架，其中黄色节点表示预处理和后处理操作，绿色节点表示选择、融合和聚合模块。}
+\label{fig:4}
+\end{figure}
+
+基于给定的框架，我们设置如表~\ref{tab:16} 所示的基本操作，基于大语言模型的配置智能体将根据用户指令在此基础上添加或移除操作。
+
+\begin{table}[H]\centering
+\caption{图层面任务中使用的架构与超参数候选项。}
+\label{tab:16}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{llc}
+\toprule
+\multicolumn{2}{c}{} & 候选项 \\
+\midrule
+\multirow{4}{*}{模型} & 聚合（Aggregation） & GCN, SAGE \\
+ & 选择（Selection） & ZERO, IDENTITY \\
+ & 融合（Fusion） & sum, mean \\
+ & 读出（Readout） & global\_sum, Global\_mean \\
+\midrule
+\multirow{4}{*}{超参数} & 学习率（Learning rate） & [0.01, 0.05] \\
+ & 权重衰减（Weight decay） & [0.001, 0.005] \\
+ & 丢弃率（Dropout rate） & [0, 0.5] \\
+ & 激活（Activation） & ReLU \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{链接层面}
+对于链接层面，该实例基于方法 Prof-CF [48] 构建，它搜索基于图神经网络的双塔协同过滤函数。如图~\ref{fig:5} 所示，该框架包含多样的设计模块，包括每个图神经网络层中的消息函数、聚合和激活，以及层之外使用的层组合、组件组合（component combination）和交互函数（interaction function）。基于该框架以及 Prof-CF 中构建的搜索空间，我们设计了如表~\ref{tab:17} 所示的基本候选项，配置智能体将在此基础上根据指令更新候选项。
+
+\begin{figure}[H]\centering
+\includegraphics[width=0.82\linewidth]{cand_p16_k04.pdf}
+\caption{Prof-CF [50] 中使用的框架。}
+\label{fig:5}
+\end{figure}
+
+\begin{table}[H]\centering
+\caption{链接层面任务中使用的架构与超参数候选项。}
+\label{tab:17}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{llc}
+\toprule
+\multicolumn{2}{c}{} & 候选项 \\
+\midrule
+\multirow{7}{*}{模型} & 消息函数（Message Function） & Identity, Hadamard \\
+ & 聚合（Aggregation） & NONE, GCN, SAGE \\
+ & 层数（Layer Number） & 1, 3 \\
+ & 层组合（Layer Combination） & STACK, SUM \\
+ & 组件数（Component Number） & 1, 2, 3, 4 \\
+ & 组件组合（Component Combination） & MEAN \\
+ & 交互函数（Interaction Function） & DOT PRODUCT, CONCAT+MLP \\
+\midrule
+\multirow{4}{*}{超参数} & 学习率（Learning rate） & [0.01, 0.05] \\
+ & 权重衰减（Weight decay） & [0.001, 0.005] \\
+ & 丢弃率（Dropout rate） & [0, 0.5] \\
+ & 激活（Activation） & ReLU, IDENTITY \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{数据集}
+
+在节点分类任务中，Cora [34] 是引文网络（citation network），其中每个节点代表一篇论文，每条边代表两篇论文之间的引用关系；Computers 和 Photo [35] 是 Amazon 共同购买图（co-purchase graph），其中节点代表商品，如果这些商品经常被一起购买则由一条边相连；Physics [35] 是合著图（co-authorship graph），其中节点是作者，如果两位作者合著一篇论文则由一条边相连。这些数据集的统计信息见表~\ref{tab:20}。在图分类任务中，NCI1 和 NCI109 [43] 是化学化合物（chemical compound）数据集；DD 和 PROTEINS [6] 均为蛋白质图数据集。这些数据集的统计信息见表~\ref{tab:18}。在物品排序任务中，采用两个数据集。Epinions 是消费者评论图，其中节点代表用户，边代表用户之间的信任关系（trust relationship）。Amazon-Sports 是一个电子商务数据集，包含来自 [17] 的体育类别子集。这些数据集的统计信息见表~\ref{tab:19}。
+
+\begin{table}[H]\centering
+\caption{四个图分类数据集的统计信息。}
+\label{tab:18}
+\begin{tabular}{lccccc}
+\toprule
+数据集 & \#图 & \#特征 & \#类别 & 平均节点数 & 平均边数 \\
+\midrule
+NCI1 [43] & 4,110 & 89 & 2 & 29.87 & 32.3 \\
+NCI109 [43] & 4,127 & 38 & 2 & 29.69 & 32.13 \\
+DD [6] & 1,178 & 89 & 2 & 384.3 & 715.7 \\
+PROTEINS [6] & 1,113 & 3 & 2 & 39.1 & 72.8 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]\centering
+\caption{物品排序任务中使用的两个数据集的统计信息。}
+\label{tab:19}
+\begin{tabular}{lcc}
+\toprule
+ & Epinions & Amazon-Sports \\
+\midrule
+\#用户 & 40,163 & 11,435 \\
+\#物品 & 139,738 & 5,405 \\
+\#交互 & 664,824 & 108,004 \\
+评分范围 & [1,5] & [1,5] \\
+密度（Density） & 0.012\% & 0.17\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]\centering
+\caption{四个节点分类数据集的统计信息。}
+\label{tab:20}
+\begin{tabular}{lcccc}
+\toprule
+数据集 & \#节点 & \#边 & \#特征 & \#类别 \\
+\midrule
+Cora [34] & 2,708 & 5,278 & 1,433 & 7 \\
+Computers [35] & 13,381 & 245,778 & 767 & 10 \\
+Photo [35] & 7,487 & 238,162 & 745 & 8 \\
+Physics [35] & 34,493 & 495,924 & 8,415 & 5 \\
+genius [23] & 421,961 & 984,979 & 12 & 2 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{基线}
+
+本文使用三类基线来评估 GL-Agent 的通用性，即人类设计的、近两年广泛使用的基线和最先进（SOTA）方法；基于 AutoML 的方法；以及由大语言模型直接建议的基线。下面，我们介绍每个任务中使用的基线，然后分析每个数据集中 LLM-GNN 方法的构建。
+
+\textbf{节点层面。} 我们采用（1）人类设计的方法。四层 GCN 和 GIN 基线；基于广义 PageRank（generalized PageRank）学习各层权重的 GPR-GNN [4]，以及自适应混合低频/高频/全频通道信息的 ACM-GCN [30]，这两种方法的配置遵循原论文。（2）基于 NAS 的方法 SANE [72]，它基于 JKNet [58] 学习连接，以及 F2GNN [53]，它从特征融合的角度设计网络拓扑。我们使用官方代码，然后在目标数据集上搜索。
+
+\textbf{图层面。} 我们采用（1）人类设计的全局池化（global pooling）方法。带全局加法读出操作的四层 GCN 和 GIN 基线；基于选出的排名靠前节点学习图表示的 DGCNN [67]；以及学习图中层级本质的层次化池化方法 DiffPool [60]。（2）基于 NAS 的方法。设计网络拓扑以捕获长程依赖的 LRGNN [52]。实验基于该论文提供的官方代码进行。
+
+\textbf{链接层面。} 在物品排序任务中，我们采用（1）人类设计的方法。利用神经网络学习更具表达力的交互函数的 NCF [19]；NGCF [47] 和 LightGCN [18] 是代表性的基于图神经网络的协同过滤方法，前者在消息函数中采用哈达玛积（hadamard product），后者使用恒等函数（identity function）。（2）基于 NAS 的方法。Prof-CF [50] 旨在通过剪枝操作设计一个具有表达力的搜索空间。我们遵循该论文的设置并使用其提供的代码进行实验。
+
+\textbf{LLM-GNN 基线的构建。} 除此之外，我们提供 LLM-GNN 基线，其图神经网络和超参数由大语言模型（GPT-3.5-turbo）在给定数据集描述和统计信息的情况下建议，细节见表~\ref{tab:21}。它们基于以下提示词获得：
+
+\begin{promptbox}
+You are an expert on graph learning. Firstly, could you please describe the dataset \{D\} used in the task \{T\}. Then, you can suggest one GNN that could achieve better performance on this dataset. Here are the design dimensions you can refer to: the aggregation operation (message-passing layer), the activation function, the layer numbers of the designed GNN, the skip-connections beyond layer, the function that integrating the features from different layers, the hyper-parameters, and etc.
+\end{promptbox}
+
+对于非同配性数据集 genius，我们进一步提供数据集介绍和实验观察，如下所示：
+
+\begin{promptbox}
+This is a non-homophilous dataset that connected nodes may have different labels. For this dataset, using MLPs may have better performance than general GNNs.
+\end{promptbox}
+
+对于物品排序任务，我们在提示词中提供一句额外的话：
+
+\begin{promptbox}
+Multiple GNNs can be added when extracting the results, and then you can choose the numbers of GNNs and the combination function.
+\end{promptbox}
+
+\begin{table}[H]\centering
+\caption{LLM-GNN 基线中使用的建议解决方案（保留英文原文）。}
+\label{tab:21}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{p{0.13\linewidth} p{0.78\linewidth}}
+\toprule
+数据 & 建议（Suggestions） \\
+\midrule
+Cora & GNN: Two-layer stakcing-based GCN. Hyper-parameters: \{ hidden size:16, dropout ratio:0, learning rate:0.01, weight decay:5e-4 \} \\
+Computer & GNN: Two-layer stakcing-based GCN. Hyper-parameters: \{ `hidden':256, `dropout':0.1, `lr':0.01, `l2':5e-4 \} \\
+Photo & GNN: Two-layer GCN in which the aggregation results are concatenated to predict the node labels. Hyper-parameters: \{ `hidden':128, `dropout':0.1, `lr':0.005, `l2':5e-4 \} \\
+Physics & GNN: Two-layer GCN in which the aggregation results are concatenated to predict the node labels. Hyper-parameters: \{ `hidden':128, `dropout':0.1, `lr':0.005, `l2':5e-4 \} \\
+genius & GNN: Two-layer GraphSAGE with mean aggregator. Hyper-parameters: \{`activation': ReLU, hidden size: 128, lr: 0.01, `l2':5e-4\}. \\
+DD & GNN: Three-layer GIN in which the aggregation results are added, and graph representation vector is obtained with Global sum readout operation. Hyper-parameters: \{ `hidden':128, `dropout':0.1, `lr':0.01, `l2':5e-4 \}. \\
+PROTEINS & GNN: Two-layer stakcing-based GIN, and graph representation vector is obtained with Global sum readout operation. Hyper-parameters: \{ `hidden':32, `dropout':0, `lr':0.01, `l2':5e-4 \}. \\
+NCI1 & GNN: Three-layer GIN in which the aggregation results are added, and graph representation vector is obtained with Global sum readout operation. Hyper-parameters: \{ `hidden':64, `dropout':0.0, `lr':0.01, `l2':5e-4 \}. \\
+NCI109 & GNN: Three-layer GIN in which the aggregation results are added, and graph representation vector is obtained with Global sum readout operation. Hyper-parameters: \{ `hidden':128, `dropout':0.1, `lr':0.01, `l2':5e-4 \} \\
+Epinions & Three components are used in the GNN. In each component, two-layer stakcing-based GCN are employed, and these components are concatenated to obtain the node representations. The user and item representations are first concatenated or summed up, and then fed into an MLP for prediction. \\
+Amazon-Sports & GNN: Two-layer GAT in which the aggregation results are concatenated to formulate the final node representations. The Hadamard operation is adopted when calculating the messages. The final prediction is obtained based on the dot product of the user and item representations. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{性能对比}
+
+在本节中，我们展示与基线的性能对比，以评估所提方法以及实现实例在不同任务上的图学习有效性。如表~\ref{tab:22} 所示，我们的方法在四个节点分类数据集上均优于所有其他方法，即使与专注于架构拓扑或聚合操作的基于 NAS 的方法相比也是如此。对于 LLM-GNN（其图神经网络和超参数由大语言模型直接建议），由于超参数不合适，其性能逊于 GCN 基线。它们未能超越研究中提供的精心设计的基线，如本表中使用的 GPRGNN 和 ACM-GNN。这凸显了大语言模型在跟上图学习最新知识方面所面临的挑战。所建议的 GCN 基线性能欠佳，进一步支持了这一结论。相比之下，我们的方法在基于大语言模型的智能体和 AutoML 的协助下设计灵活而通用的图学习方法，而非仅依赖大语言模型，因而表现出更优的性能。在表~\ref{tab:23} 的图分类数据集中也观察到类似结果。LLM-GNN 难以超越已有方法，无论这些方法是忽略了层级信息，还是使用了深度不足的模型 [52, 54]。
+
+对于物品排序任务，我们在两个数据集上评估 Recall@20 性能，如表~\ref{tab:5} 所示。可以观察到，GL-Agent 取得了比人类设计的方法更高的性能，这证明了它的有效性。与 GL-Agent 所基于的 Prof-CF [50] 相比，由于它忽略了图神经网络中的多个组件（如表~2 所示），导致性能较差。此外，当我们使用大语言模型直接建议图神经网络时，我们在提示词中提到了多个组件，但只有 Epinions 在设计图神经网络时考虑了这一设计维度。这些发现实证地证明了大语言模型中维护的信息陈旧，以及它们基于最新先验知识设计更强大图神经网络的能力有限。
+
+在三类任务上进行的评估证明了 GL-Agent 在管理现实世界场景中可能出现的多样用户需求方面的可行性。它有潜力仅凭指令就取得优于或可比拟于人类设计方法的性能。这使其成为一个灵活且用户友好的工具。鉴于它对编码能力和图学习领域知识的要求较低，GL-Agent 尤其易于被非专家用户（包括不熟悉图学习的用户）使用。从这个角度来看，它是设计有效图学习解决方案的通用工具。
+
+\begin{table}[H]\centering
+\caption{节点分类任务上的性能对比。}
+\label{tab:22}
+\begin{tabular}{lccccc}
+\toprule
+ & Cora & Photo & Computer & Physics & 平均排名 \\
+\midrule
+GL-Agent & 86.81(0.40) & 96.40(0.16) & 92.47(0.20) & 96.93(0.98) & 2.25 \\
+GCN & 85.68(0.61) & 93.13(0.27) & 90.52(0.42) & 95.97(0.14) & 5.5 \\
+GIN & 83.83(1.36) & 92.67(0.57) & 88.67(1.21) & 95.79(0.16) & 7.5 \\
+GPRGNN & 87.62(0.48) & 91.93(0.26) & 88.90(0.37) & 97.51(0.21) & 4.5 \\
+ACM-GCN & 86.67(0.14) & 94.35(0.65) & 88.58(0.39) & 97.89(0.23) & 4.5 \\
+SANE & 86.40(0.38) & 94.53(0.22) & 90.25(0.31) & 98.28(0.13) & 3.25 \\
+F2GNN & 87.42(0.42) & 95.38(0.30) & 91.42(0.26) & 96.92(0.06) & 2.75 \\
+LLM-GNN & 84.64(1.04) & 93.73(0.38) & 89.20(1.16) & 96.34(0.11) & 5.75 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]\centering
+\caption{图分类任务上的性能对比。}
+\label{tab:23}
+\begin{tabular}{lccccc}
+\toprule
+ & Proteins & DD & NCI1 & NCI109 & 平均排名 \\
+\midrule
+GL-Agent & 75.38(5.03) & 78.10(3.21) & 82.14(1.74) & 81.25(1.53) & 2 \\
+GCN & 74.84(3.07) & 73.59(4.17) & 76.96(3.07) & 75.70(4.03) & 4.25 \\
+GIN & 74.50(4.10) & 74.62(2.74) & 77.95(1.95) & 73.25(2.67) & 4.5 \\
+DGCNN & 73.95(3.04) & 61.63(5.33) & 76.08(1.03) & 74.58(3.99) & 5.75 \\
+DiffPool & 75.11(2.14) & 77.85(3.53) & 75.04(1.98) & 71.48(2.46) & 4.75 \\
+LRGNN & 75.39(4.40) & 78.18(2.02) & 82.51(1.37) & 81.39(1.92) & 1 \\
+LLM-GNN & 74.47(3.65) & 75.12(3.44) & 71.70(2.58) & 73.04(3.65) & 5.75 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{案例研究}
+
+在本节中，我们将展示具体的案例研究，以证明 GL-Agent 框架的可行性与通用性。图~\ref{fig:6} 和图~\ref{fig:7} 描绘了从用户提出的具体请求到搜索得到的图神经网络模型最终结果的整个过程。在这些图中，我们清楚地观察到决策与执行的正确性。
+
+\begin{figure}[H]\centering
+\includegraphics[width=0.95\linewidth]{cand_p20_k00.pdf}
+\caption{Cora 数据集上的案例研究。}
+\label{fig:6}
+\end{figure}
+
+\begin{figure}[H]\centering
+\includegraphics[width=0.95\linewidth]{fig7.pdf}
+\caption{NCI1 数据集上的案例研究。}
+\label{fig:7}
+\end{figure}
+
+\begin{table}[H]\centering
+\caption{各种用户指令（保留英文原文）。}
+\label{tab:24}
+\includegraphics[width=\linewidth]{cand_p19_k00.pdf}
+\end{table}
+
+\subsection{图学习任务中决策的可解释性}
+
+用户需求可能涉及数据结构和多样的分析目标。基于大语言模型的智能体所做决策的可解释性，对于确保用户能够清楚理解模型推荐而言不言而喻地重要。因此，我们详细探究大语言模型在解析输入并据此制定策略时的思考。表~\ref{tab:25} 展示了每个智能体在处理不同任务时的决策过程。
+
+\begin{table}[H]\centering
+\caption{多样图学习场景中智能体决策的解释（保留英文原文）。}
+\label{tab:25}
+\includegraphics[width=\linewidth]{table25.pdf}
+\end{table}
+
+\begin{table}[H]\centering
+\caption{基于不同大语言模型的智能体结果对比（保留英文原文）。}
+\label{tab:26}
+\includegraphics[width=\linewidth]{table26.pdf}
+\end{table}
+
+\end{document}

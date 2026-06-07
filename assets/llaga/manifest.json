@@ -1,0 +1,341 @@
+{
+ "pdf": "llaga.pdf",
+ "slug": "llaga",
+ "page_count": 13,
+ "page_size": [
+  612.0,
+  792.0
+ ],
+ "pages": [
+  {
+   "page": 1,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/llaga/_pages/p01.png"
+  },
+  {
+   "page": 2,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/llaga/_pages/p02.png"
+  },
+  {
+   "page": 3,
+   "candidates": [
+    {
+     "id": "cand_p03_k00",
+     "kind": "vector",
+     "bbox": [
+      50.9,
+      53.7,
+      570.2,
+      345.8
+     ],
+     "pdf": "cand_p03_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      161.5,
+      263.9,
+      435.4,
+      272.9
+     ],
+     "text": "Figure 1. Illustration of LLaGA framework and its prompt design paradigm.",
+     "label": "Figure 1"
+    }
+   ],
+   "overlay": "assets/llaga/_pages/p03.png"
+  },
+  {
+   "page": 4,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/llaga/_pages/p04.png"
+  },
+  {
+   "page": 5,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      307.1,
+      255.4,
+      541.6,
+      265.5
+     ],
+     "text": "Table 1. Notably, when implementing the GNN-based or",
+     "label": "Table 1"
+    }
+   ],
+   "overlay": "assets/llaga/_pages/p05.png"
+  },
+  {
+   "page": 6,
+   "candidates": [
+    {
+     "id": "cand_p06_k00",
+     "kind": "table",
+     "bbox": [
+      59.7,
+      152.8,
+      537.2,
+      462.8
+     ],
+     "pdf": "cand_p06_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      54.9,
+      76.3,
+      541.4,
+      85.5
+     ],
+     "text": "Table 1. Performance comparison with baseline models on both node classification and link prediction under 4 settings. Single Focus",
+     "label": "Table 1"
+    },
+    {
+     "bbox": [
+      97.7,
+      479.3,
+      247.2,
+      488.3
+     ],
+     "text": "Table 2. Compare with Concurrent Work.",
+     "label": "Table 2"
+    }
+   ],
+   "overlay": "assets/llaga/_pages/p06.png"
+  },
+  {
+   "page": 7,
+   "candidates": [
+    {
+     "id": "cand_p07_k00",
+     "kind": "table",
+     "bbox": [
+      59.6,
+      402.5,
+      285.3,
+      518.9
+     ],
+     "pdf": "cand_p07_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      153.2,
+      76.3,
+      443.7,
+      85.3
+     ],
+     "text": "Table 3. Examples Demonstrating the Interpretability of the LLaGA Framework.",
+     "label": "Table 3"
+    },
+    {
+     "bbox": [
+      54.9,
+      351.7,
+      289.4,
+      360.6
+     ],
+     "text": "Table 4. Quantitative evaluation of the node description task using",
+     "label": "Table 4"
+    },
+    {
+     "bbox": [
+      355.6,
+      351.7,
+      493.2,
+      360.6
+     ],
+     "text": "Table 5. Zero-Shot on Link Prediction",
+     "label": "Table 5"
+    }
+   ],
+   "overlay": "assets/llaga/_pages/p07.png"
+  },
+  {
+   "page": 8,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      109.0,
+      76.3,
+      235.9,
+      85.3
+     ],
+     "text": "Table 6. Templates Ablation Study.",
+     "label": "Table 6"
+    }
+   ],
+   "overlay": "assets/llaga/_pages/p08.png"
+  },
+  {
+   "page": 9,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/llaga/_pages/p09.png"
+  },
+  {
+   "page": 10,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/llaga/_pages/p10.png"
+  },
+  {
+   "page": 11,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/llaga/_pages/p11.png"
+  },
+  {
+   "page": 12,
+   "candidates": [
+    {
+     "id": "cand_p12_k00",
+     "kind": "table",
+     "bbox": [
+      63.3,
+      342.9,
+      531.3,
+      474.7
+     ],
+     "pdf": "cand_p12_k00.pdf"
+    },
+    {
+     "id": "cand_p12_k01",
+     "kind": "table",
+     "bbox": [
+      63.3,
+      364.0,
+      531.3,
+      417.8
+     ],
+     "pdf": "cand_p12_k01.pdf"
+    },
+    {
+     "id": "cand_p12_k02",
+     "kind": "table",
+     "bbox": [
+      63.3,
+      420.8,
+      531.3,
+      474.7
+     ],
+     "pdf": "cand_p12_k02.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      251.8,
+      99.4,
+      345.1,
+      108.4
+     ],
+     "text": "Table 7. Dataset Statistics",
+     "label": "Table 7"
+    },
+    {
+     "bbox": [
+      222.4,
+      327.3,
+      374.5,
+      336.3
+     ],
+     "text": "Table 8. Zero-Shot on Node Classification",
+     "label": "Table 8"
+    }
+   ],
+   "overlay": "assets/llaga/_pages/p12.png"
+  },
+  {
+   "page": 13,
+   "candidates": [
+    {
+     "id": "cand_p13_k00",
+     "kind": "table",
+     "bbox": [
+      59.8,
+      148.0,
+      537.1,
+      255.6
+     ],
+     "pdf": "cand_p13_k00.pdf"
+    },
+    {
+     "id": "cand_p13_k01",
+     "kind": "table",
+     "bbox": [
+      59.8,
+      406.0,
+      537.1,
+      474.5
+     ],
+     "pdf": "cand_p13_k01.pdf"
+    },
+    {
+     "id": "cand_p13_k02",
+     "kind": "table",
+     "bbox": [
+      141.7,
+      623.1,
+      452.9,
+      693.2
+     ],
+     "pdf": "cand_p13_k02.pdf"
+    },
+    {
+     "id": "cand_p13_k03",
+     "kind": "table",
+     "bbox": [
+      141.7,
+      643.2,
+      452.9,
+      693.2
+     ],
+     "pdf": "cand_p13_k03.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      187.5,
+      129.3,
+      409.4,
+      138.2
+     ],
+     "text": "Table 9. LLaGA Trained with SBert and Roberta Embedding.",
+     "label": "Table 9"
+    },
+    {
+     "bbox": [
+      224.5,
+      395.9,
+      372.4,
+      404.8
+     ],
+     "text": "Table 10. Integration with Various LLMs",
+     "label": "Table 10"
+    },
+    {
+     "bbox": [
+      188.7,
+      607.6,
+      408.2,
+      616.5
+     ],
+     "text": "Table 11. Variance Information on Cora and Pubmed Dataset",
+     "label": "Table 11"
+    }
+   ],
+   "overlay": "assets/llaga/_pages/p13.png"
+  }
+ ]
+}

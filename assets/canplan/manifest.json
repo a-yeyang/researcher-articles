@@ -1,0 +1,932 @@
+{
+ "pdf": "Can Graph Learning Improve Planning in LLM-based Agents.pdf",
+ "slug": "canplan",
+ "page_count": 39,
+ "page_size": [
+  612.0,
+  792.0
+ ],
+ "pages": [
+  {
+   "page": 1,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/canplan/_pages/p01.png"
+  },
+  {
+   "page": 2,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/canplan/_pages/p02.png"
+  },
+  {
+   "page": 3,
+   "candidates": [
+    {
+     "id": "cand_p03_k00",
+     "kind": "vector",
+     "bbox": [
+      109.5,
+      72.4,
+      503.0,
+      159.2
+     ],
+     "pdf": "cand_p03_k00.pdf"
+    },
+    {
+     "id": "cand_p03_k01",
+     "kind": "vector",
+     "bbox": [
+      98.4,
+      226.0,
+      299.8,
+      278.6
+     ],
+     "pdf": "cand_p03_k01.pdf"
+    },
+    {
+     "id": "cand_p03_k02",
+     "kind": "vector",
+     "bbox": [
+      357.2,
+      195.0,
+      518.1,
+      300.1
+     ],
+     "pdf": "cand_p03_k02.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      129.4,
+      167.3,
+      482.6,
+      177.3
+     ],
+     "text": "Figure 1: Illustration of Task Planning in Language Agents (e.g., HuggingGPT [46])",
+     "label": "Figure 1"
+    },
+    {
+     "bbox": [
+      108.0,
+      228.1,
+      504.0,
+      238.2
+     ],
+     "text": "Figure 1 features the task planning in HuggingGPT, with the pre-defined tasks corresponding to",
+     "label": "Figure 1"
+    }
+   ],
+   "overlay": "assets/canplan/_pages/p03.png"
+  },
+  {
+   "page": 4,
+   "candidates": [
+    {
+     "id": "cand_p04_k00",
+     "kind": "table",
+     "bbox": [
+      143.0,
+      72.0,
+      465.6,
+      189.0
+     ],
+     "pdf": "cand_p04_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      206.1,
+      505.2,
+      216.2
+     ],
+     "text": "Figure 2: Illustration of (a) LLMs’ planning performance and hallucination in HuggingGPT,",
+     "label": "Figure 2"
+    }
+   ],
+   "overlay": "assets/canplan/_pages/p04.png"
+  },
+  {
+   "page": 5,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/canplan/_pages/p05.png"
+  },
+  {
+   "page": 6,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/canplan/_pages/p06.png"
+  },
+  {
+   "page": 7,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/canplan/_pages/p07.png"
+  },
+  {
+   "page": 8,
+   "candidates": [
+    {
+     "id": "cand_p08_k00",
+     "kind": "table",
+     "bbox": [
+      108.0,
+      101.0,
+      502.4,
+      317.8
+     ],
+     "pdf": "cand_p08_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      107.7,
+      79.0,
+      504.0,
+      89.0
+     ],
+     "text": "Table 1: Comparison of Training-free Methods: Overall Performance (Node-F1 and Link-F1 in",
+     "label": "Table 1"
+    }
+   ],
+   "overlay": "assets/canplan/_pages/p08.png"
+  },
+  {
+   "page": 9,
+   "candidates": [
+    {
+     "id": "cand_p09_k00",
+     "kind": "table",
+     "bbox": [
+      117.9,
+      133.8,
+      492.2,
+      363.4
+     ],
+     "pdf": "cand_p09_k00.pdf"
+    },
+    {
+     "id": "cand_p09_k01",
+     "kind": "table",
+     "bbox": [
+      117.9,
+      157.9,
+      492.2,
+      361.7
+     ],
+     "pdf": "cand_p09_k01.pdf"
+    },
+    {
+     "id": "cand_p09_k02",
+     "kind": "table",
+     "bbox": [
+      126.6,
+      409.0,
+      481.0,
+      545.7
+     ],
+     "pdf": "cand_p09_k02.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      107.7,
+      78.9,
+      504.0,
+      89.0
+     ],
+     "text": "Table 2: Comparison with Training-based Approaches: Node-F1, Link-F1, and Accuracy are",
+     "label": "Table 2"
+    },
+    {
+     "bbox": [
+      107.7,
+      386.9,
+      505.7,
+      396.9
+     ],
+     "text": "Table 3: Performance Comparison of SGC and GraphSAGE on the UltraTool Benchmark [20].",
+     "label": "Table 3"
+    }
+   ],
+   "overlay": "assets/canplan/_pages/p09.png"
+  },
+  {
+   "page": 10,
+   "candidates": [
+    {
+     "id": "cand_p10_k00",
+     "kind": "table",
+     "bbox": [
+      114.0,
+      58.9,
+      567.3,
+      343.4
+     ],
+     "pdf": "cand_p10_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      126.8,
+      203.4,
+      485.2,
+      213.5
+     ],
+     "text": "Figure 3: Orthogonal Effectiveness to both Improved Prompts and Fine-tuned LLMs",
+     "label": "Figure 3"
+    }
+   ],
+   "overlay": "assets/canplan/_pages/p10.png"
+  },
+  {
+   "page": 11,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/canplan/_pages/p11.png"
+  },
+  {
+   "page": 12,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/canplan/_pages/p12.png"
+  },
+  {
+   "page": 13,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/canplan/_pages/p13.png"
+  },
+  {
+   "page": 14,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/canplan/_pages/p14.png"
+  },
+  {
+   "page": 15,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/canplan/_pages/p15.png"
+  },
+  {
+   "page": 16,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/canplan/_pages/p16.png"
+  },
+  {
+   "page": 17,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/canplan/_pages/p17.png"
+  },
+  {
+   "page": 18,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/canplan/_pages/p18.png"
+  },
+  {
+   "page": 19,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/canplan/_pages/p19.png"
+  },
+  {
+   "page": 20,
+   "candidates": [
+    {
+     "id": "cand_p20_k00",
+     "kind": "vector",
+     "bbox": [
+      114.3,
+      121.0,
+      495.5,
+      426.4
+     ],
+     "pdf": "cand_p20_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      184.8,
+      110.0,
+      426.9,
+      120.1
+     ],
+     "text": "Table 4: Prompt template for LLM’s direct inference [45]",
+     "label": "Table 4"
+    }
+   ],
+   "overlay": "assets/canplan/_pages/p20.png"
+  },
+  {
+   "page": 21,
+   "candidates": [
+    {
+     "id": "cand_p21_k00",
+     "kind": "table",
+     "bbox": [
+      108.5,
+      90.3,
+      501.3,
+      585.1
+     ],
+     "pdf": "cand_p21_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      205.4,
+      79.0,
+      406.3,
+      89.0
+     ],
+     "text": "Table 5: Prompt templates of GraphSearch [33]",
+     "label": "Table 5"
+    }
+   ],
+   "overlay": "assets/canplan/_pages/p21.png"
+  },
+  {
+   "page": 22,
+   "candidates": [
+    {
+     "id": "cand_p22_k00",
+     "kind": "vector",
+     "bbox": [
+      114.3,
+      89.9,
+      495.5,
+      395.3
+     ],
+     "pdf": "cand_p22_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      151.6,
+      79.0,
+      460.1,
+      89.0
+     ],
+     "text": "Table 6: Prompt template for LLM’s filling in invocation parameters [45]",
+     "label": "Table 6"
+    }
+   ],
+   "overlay": "assets/canplan/_pages/p22.png"
+  },
+  {
+   "page": 23,
+   "candidates": [
+    {
+     "id": "cand_p23_k00",
+     "kind": "table",
+     "bbox": [
+      122.6,
+      90.2,
+      485.0,
+      183.3
+     ],
+     "pdf": "cand_p23_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      214.2,
+      79.0,
+      397.5,
+      89.0
+     ],
+     "text": "Table 7: Statistics of Experimental Datasets",
+     "label": "Table 7"
+    }
+   ],
+   "overlay": "assets/canplan/_pages/p23.png"
+  },
+  {
+   "page": 24,
+   "candidates": [
+    {
+     "id": "cand_p24_k00",
+     "kind": "vector",
+     "bbox": [
+      52.4,
+      38.2,
+      546.2,
+      334.5
+     ],
+     "pdf": "cand_p24_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      193.6,
+      263.6,
+      418.4,
+      273.7
+     ],
+     "text": "Figure 4: Illustrative details of experimental datasets.",
+     "label": "Figure 4"
+    }
+   ],
+   "overlay": "assets/canplan/_pages/p24.png"
+  },
+  {
+   "page": 25,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/canplan/_pages/p25.png"
+  },
+  {
+   "page": 26,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/canplan/_pages/p26.png"
+  },
+  {
+   "page": 27,
+   "candidates": [
+    {
+     "id": "cand_p27_k00",
+     "kind": "image",
+     "bbox": [
+      55.4,
+      51.9,
+      529.6,
+      360.1
+     ],
+     "pdf": "cand_p27_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      259.3,
+      504.2,
+      269.3
+     ],
+     "text": "Figure 5: Illustrative Examples of LLMs Failure to Solve Graph Computational Problems under",
+     "label": "Figure 5"
+    }
+   ],
+   "overlay": "assets/canplan/_pages/p27.png"
+  },
+  {
+   "page": 28,
+   "candidates": [
+    {
+     "id": "cand_p28_k00",
+     "kind": "vector",
+     "bbox": [
+      86.1,
+      66.7,
+      532.2,
+      317.6
+     ],
+     "pdf": "cand_p28_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      146.8,
+      267.2,
+      465.2,
+      277.2
+     ],
+     "text": "Figure 6: Illustration of LLM’s Direct Inference and GraphSearch Method.",
+     "label": "Figure 6"
+    },
+    {
+     "bbox": [
+      107.7,
+      712.4,
+      499.9,
+      722.4
+     ],
+     "text": "Table 8 supplements Table 1 with other LLMs. The proposed methods perform consistently better.",
+     "label": "Table 8"
+    }
+   ],
+   "overlay": "assets/canplan/_pages/p28.png"
+  },
+  {
+   "page": 29,
+   "candidates": [
+    {
+     "id": "cand_p29_k00",
+     "kind": "table",
+     "bbox": [
+      108.0,
+      101.0,
+      502.4,
+      394.6
+     ],
+     "pdf": "cand_p29_k00.pdf"
+    },
+    {
+     "id": "cand_p29_k01",
+     "kind": "table",
+     "bbox": [
+      108.5,
+      443.1,
+      502.5,
+      561.4
+     ],
+     "pdf": "cand_p29_k01.pdf"
+    },
+    {
+     "id": "cand_p29_k02",
+     "kind": "table",
+     "bbox": [
+      108.5,
+      456.1,
+      502.4,
+      560.0
+     ],
+     "pdf": "cand_p29_k02.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      107.7,
+      79.0,
+      504.7,
+      89.0
+     ],
+     "text": "Table 8: Comparison of Training-free Approaches: Overall Performance (Node-F1 and Link-F1",
+     "label": "Table 8"
+    },
+    {
+     "bbox": [
+      107.7,
+      420.9,
+      504.0,
+      431.1
+     ],
+     "text": "Table 9: Results of Supplementary Metric: Accuracy (%) for Training-free Methods on",
+     "label": "Table 9"
+    }
+   ],
+   "overlay": "assets/canplan/_pages/p29.png"
+  },
+  {
+   "page": 30,
+   "candidates": [
+    {
+     "id": "cand_p30_k00",
+     "kind": "table",
+     "bbox": [
+      126.6,
+      102.9,
+      481.0,
+      121.5
+     ],
+     "pdf": "cand_p30_k00.pdf"
+    },
+    {
+     "id": "cand_p30_k01",
+     "kind": "table",
+     "bbox": [
+      126.6,
+      131.7,
+      481.0,
+      298.1
+     ],
+     "pdf": "cand_p30_k01.pdf"
+    },
+    {
+     "id": "cand_p30_k02",
+     "kind": "table",
+     "bbox": [
+      126.6,
+      223.8,
+      481.0,
+      234.2
+     ],
+     "pdf": "cand_p30_k02.pdf"
+    },
+    {
+     "id": "cand_p30_k03",
+     "kind": "table",
+     "bbox": [
+      126.6,
+      287.2,
+      481.0,
+      296.2
+     ],
+     "pdf": "cand_p30_k03.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      107.7,
+      79.0,
+      504.0,
+      89.0
+     ],
+     "text": "Table 10: Computational Cost Analysis of Training-free Methods. Due to space constraints in the",
+     "label": "Table 10"
+    }
+   ],
+   "overlay": "assets/canplan/_pages/p30.png"
+  },
+  {
+   "page": 31,
+   "candidates": [
+    {
+     "id": "cand_p31_k00",
+     "kind": "table",
+     "bbox": [
+      123.3,
+      62.6,
+      578.2,
+      308.7
+     ],
+     "pdf": "cand_p31_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      239.6,
+      504.0,
+      249.7
+     ],
+     "text": "Figure 7: Illustration of our GNN-enhanced Task Planning. First, LLMs interpret user request",
+     "label": "Figure 7"
+    }
+   ],
+   "overlay": "assets/canplan/_pages/p31.png"
+  },
+  {
+   "page": 32,
+   "candidates": [
+    {
+     "id": "cand_p32_k00",
+     "kind": "vector",
+     "bbox": [
+      117.9,
+      12.0,
+      560.0,
+      260.7
+     ],
+     "pdf": "cand_p32_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      208.6,
+      504.0,
+      218.7
+     ],
+     "text": "Figure 8: LM+GNN Configuration. We offer two configurations: only training the GNN while",
+     "label": "Figure 8"
+    }
+   ],
+   "overlay": "assets/canplan/_pages/p32.png"
+  },
+  {
+   "page": 33,
+   "candidates": [
+    {
+     "id": "cand_p33_k00",
+     "kind": "table",
+     "bbox": [
+      108.0,
+      142.8,
+      501.7,
+      163.3
+     ],
+     "pdf": "cand_p33_k00.pdf"
+    },
+    {
+     "id": "cand_p33_k01",
+     "kind": "table",
+     "bbox": [
+      108.0,
+      178.8,
+      501.7,
+      692.3
+     ],
+     "pdf": "cand_p33_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      107.7,
+      106.6,
+      505.2,
+      116.7
+     ],
+     "text": "Table 11: Performance of training-based GNNs. We also presents the results of BeamSeaerch,",
+     "label": "Table 11"
+    }
+   ],
+   "overlay": "assets/canplan/_pages/p33.png"
+  },
+  {
+   "page": 34,
+   "candidates": [
+    {
+     "id": "cand_p34_k00",
+     "kind": "table",
+     "bbox": [
+      108.0,
+      136.8,
+      501.7,
+      157.4
+     ],
+     "pdf": "cand_p34_k00.pdf"
+    },
+    {
+     "id": "cand_p34_k01",
+     "kind": "table",
+     "bbox": [
+      108.0,
+      172.9,
+      501.7,
+      686.4
+     ],
+     "pdf": "cand_p34_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      107.7,
+      111.6,
+      505.7,
+      121.6
+     ],
+     "text": "Table 12: Performance of Training-based GNNs under the LM+GNN Co-trained Mode. Simul-",
+     "label": "Table 12"
+    }
+   ],
+   "overlay": "assets/canplan/_pages/p34.png"
+  },
+  {
+   "page": 35,
+   "candidates": [
+    {
+     "id": "cand_p35_k00",
+     "kind": "table",
+     "bbox": [
+      137.7,
+      323.9,
+      472.3,
+      516.3
+     ],
+     "pdf": "cand_p35_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      107.7,
+      275.2,
+      144.5,
+      285.2
+     ],
+     "text": "Table 13.",
+     "label": "Table 13"
+    },
+    {
+     "bbox": [
+      107.7,
+      301.7,
+      504.0,
+      311.9
+     ],
+     "text": "Table 13: Computational Cost Analysis of Training-based Methods. We present total training",
+     "label": "Table 13"
+    }
+   ],
+   "overlay": "assets/canplan/_pages/p35.png"
+  },
+  {
+   "page": 36,
+   "candidates": [
+    {
+     "id": "cand_p36_k00",
+     "kind": "table",
+     "bbox": [
+      108.0,
+      548.2,
+      502.0,
+      621.3
+     ],
+     "pdf": "cand_p36_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      118.2,
+      536.8,
+      493.5,
+      547.0
+     ],
+     "text": "Table 14: Performance (in %) of Task Parameters Prediction on the HuggingFace dataset",
+     "label": "Table 14"
+    }
+   ],
+   "overlay": "assets/canplan/_pages/p36.png"
+  },
+  {
+   "page": 37,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/canplan/_pages/p37.png"
+  },
+  {
+   "page": 38,
+   "candidates": [
+    {
+     "id": "cand_p38_k00",
+     "kind": "table",
+     "bbox": [
+      109.6,
+      115.7,
+      504.3,
+      736.2
+     ],
+     "pdf": "cand_p38_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      609.7,
+      504.4,
+      619.9
+     ],
+     "text": "Figure 9: Case Study of GNN’s Effectiveness. Nodes colored in pink and red denote wrongly",
+     "label": "Figure 9"
+    }
+   ],
+   "overlay": "assets/canplan/_pages/p38.png"
+  },
+  {
+   "page": 39,
+   "candidates": [
+    {
+     "id": "cand_p39_k00",
+     "kind": "table",
+     "bbox": [
+      62.7,
+      81.3,
+      561.0,
+      791.4
+     ],
+     "pdf": "cand_p39_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      229.6,
+      504.2,
+      239.6
+     ],
+     "text": "Figure 10: Failure cases of GNN. Our framework relies heavily on the quality of decomposed task",
+     "label": "Figure 10"
+    },
+    {
+     "bbox": [
+      108.0,
+      642.7,
+      504.0,
+      652.8
+     ],
+     "text": "Figure 11: Diagnosing GraphSearch for GPT-4. We provide three types of cases: Success Cases",
+     "label": "Figure 11"
+    }
+   ],
+   "overlay": "assets/canplan/_pages/p39.png"
+  }
+ ]
+}

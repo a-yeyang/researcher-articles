@@ -1,0 +1,945 @@
+{
+ "pdf": "Unifying Large Language Models and Knowledge Graphs.pdf",
+ "slug": "unifying-llms-and-kgs",
+ "page_count": 28,
+ "page_size": [
+  612.0,
+  792.0
+ ],
+ "pages": [
+  {
+   "page": 1,
+   "candidates": [
+    {
+     "id": "cand_p01_k00",
+     "kind": "image",
+     "bbox": [
+      312.0,
+      389.9,
+      564.0,
+      552.8
+     ],
+     "pdf": "cand_p01_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      312.0,
+      566.8,
+      564.0,
+      574.8
+     ],
+     "text": "Fig. 1. Summarization of the pros and cons for LLMs and KGs. LLM",
+     "label": "Fig. 1"
+    }
+   ],
+   "overlay": "assets/unifying-llms-and-kgs/_pages/p01.png"
+  },
+  {
+   "page": 2,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/unifying-llms-and-kgs/_pages/p02.png"
+  },
+  {
+   "page": 3,
+   "candidates": [
+    {
+     "id": "cand_p03_k00",
+     "kind": "vector",
+     "bbox": [
+      101.1,
+      52.8,
+      506.3,
+      255.1
+     ],
+     "pdf": "cand_p03_k00.pdf"
+    },
+    {
+     "id": "cand_p03_k01",
+     "kind": "vector",
+     "bbox": [
+      77.6,
+      333.1,
+      273.7,
+      418.6
+     ],
+     "pdf": "cand_p03_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      48.0,
+      291.6,
+      564.0,
+      299.6
+     ],
+     "text": "Fig. 2. Representative large language models (LLMs) in recent years. Open-source models are represented by solid squares, while closed source",
+     "label": "Fig. 2"
+    },
+    {
+     "bbox": [
+      48.0,
+      437.3,
+      300.0,
+      445.3
+     ],
+     "text": "Fig. 3. An illustration of the Transformer-based LLMs with self-attention",
+     "label": "Fig. 3"
+    }
+   ],
+   "overlay": "assets/unifying-llms-and-kgs/_pages/p03.png"
+  },
+  {
+   "page": 4,
+   "candidates": [
+    {
+     "id": "cand_p04_k00",
+     "kind": "vector",
+     "bbox": [
+      315.3,
+      44.8,
+      560.6,
+      206.2
+     ],
+     "pdf": "cand_p04_k00.pdf"
+    },
+    {
+     "id": "cand_p04_k01",
+     "kind": "vector",
+     "bbox": [
+      105.0,
+      44.6,
+      244.0,
+      213.6
+     ],
+     "pdf": "cand_p04_k01.pdf"
+    },
+    {
+     "id": "cand_p04_k02",
+     "kind": "vector",
+     "bbox": [
+      315.3,
+      219.9,
+      560.6,
+      339.0
+     ],
+     "pdf": "cand_p04_k02.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      48.0,
+      229.3,
+      237.2,
+      237.3
+     ],
+     "text": "Fig. 4. An example of sentiment classification prompt.",
+     "label": "Fig. 4"
+    },
+    {
+     "bbox": [
+      312.0,
+      367.3,
+      564.0,
+      375.3
+     ],
+     "text": "Fig. 5. Examples of different categories’ knowledge graphs, i.e., encyclo-",
+     "label": "Fig. 5"
+    }
+   ],
+   "overlay": "assets/unifying-llms-and-kgs/_pages/p04.png"
+  },
+  {
+   "page": 5,
+   "candidates": [
+    {
+     "id": "cand_p05_k00",
+     "kind": "table",
+     "bbox": [
+      48.0,
+      244.4,
+      300.0,
+      344.0
+     ],
+     "pdf": "cand_p05_k00.pdf"
+    },
+    {
+     "id": "cand_p05_k01",
+     "kind": "vector",
+     "bbox": [
+      399.7,
+      65.3,
+      537.3,
+      135.0
+     ],
+     "pdf": "cand_p05_k01.pdf"
+    },
+    {
+     "id": "cand_p05_k02",
+     "kind": "vector",
+     "bbox": [
+      93.8,
+      80.3,
+      180.9,
+      136.7
+     ],
+     "pdf": "cand_p05_k02.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      48.0,
+      182.8,
+      533.2,
+      190.8
+     ],
+     "text": "Fig. 6. The general roadmap of unifying KGs and LLMs. (a.) KG-enhanced LLMs. (b.) LLM-augmented KGs. (c.) Synergized LLMs + KGs.",
+     "label": "Fig. 6"
+    },
+    {
+     "bbox": [
+      158.5,
+      214.0,
+      189.5,
+      222.0
+     ],
+     "text": "TABLE 1",
+     "label": "TABLE 1"
+    },
+    {
+     "bbox": [
+      312.0,
+      436.0,
+      564.0,
+      445.5
+     ],
+     "text": "Fig. 6. In the roadmap, we identify three frameworks for",
+     "label": "Fig. 6"
+    }
+   ],
+   "overlay": "assets/unifying-llms-and-kgs/_pages/p05.png"
+  },
+  {
+   "page": 6,
+   "candidates": [
+    {
+     "id": "cand_p06_k00",
+     "kind": "vector",
+     "bbox": [
+      89.1,
+      44.4,
+      298.3,
+      268.2
+     ],
+     "pdf": "cand_p06_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      48.0,
+      284.8,
+      300.0,
+      292.8
+     ],
+     "text": "Fig. 7. The general framework of the Synergized LLMs + KGs, which",
+     "label": "Fig. 7"
+    }
+   ],
+   "overlay": "assets/unifying-llms-and-kgs/_pages/p06.png"
+  },
+  {
+   "page": 7,
+   "candidates": [
+    {
+     "id": "cand_p07_k00",
+     "kind": "table",
+     "bbox": [
+      312.0,
+      390.9,
+      562.8,
+      570.3
+     ],
+     "pdf": "cand_p07_k00.pdf"
+    },
+    {
+     "id": "cand_p07_k01",
+     "kind": "vector",
+     "bbox": [
+      95.1,
+      26.3,
+      517.6,
+      375.8
+     ],
+     "pdf": "cand_p07_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      48.0,
+      329.4,
+      471.4,
+      337.4
+     ],
+     "text": "Fig. 8. Fine-grained categorization of research on unifying large language models (LLMs) with knowledge graphs (KGs).",
+     "label": "Fig. 8"
+    },
+    {
+     "bbox": [
+      422.5,
+      360.6,
+      453.5,
+      368.6
+     ],
+     "text": "TABLE 2",
+     "label": "TABLE 2"
+    }
+   ],
+   "overlay": "assets/unifying-llms-and-kgs/_pages/p07.png"
+  },
+  {
+   "page": 8,
+   "candidates": [
+    {
+     "id": "cand_p08_k00",
+     "kind": "table",
+     "bbox": [
+      77.6,
+      62.1,
+      274.0,
+      133.2
+     ],
+     "pdf": "cand_p08_k00.pdf"
+    },
+    {
+     "id": "cand_p08_k01",
+     "kind": "vector",
+     "bbox": [
+      364.8,
+      48.9,
+      510.6,
+      195.5
+     ],
+     "pdf": "cand_p08_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      48.0,
+      172.2,
+      300.0,
+      180.2
+     ],
+     "text": "Fig. 9. Injecting KG information into LLMs training objective via text-",
+     "label": "Fig. 9"
+    },
+    {
+     "bbox": [
+      312.0,
+      232.0,
+      564.0,
+      240.0
+     ],
+     "text": "Fig. 10. Injecting KG information into LLMs inputs using graph structure.",
+     "label": "Fig. 10"
+    }
+   ],
+   "overlay": "assets/unifying-llms-and-kgs/_pages/p08.png"
+  },
+  {
+   "page": 9,
+   "candidates": [
+    {
+     "id": "cand_p09_k00",
+     "kind": "vector",
+     "bbox": [
+      362.0,
+      44.4,
+      551.2,
+      140.2
+     ],
+     "pdf": "cand_p09_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      312.0,
+      160.7,
+      562.9,
+      168.7
+     ],
+     "text": "Fig. 11. Retrieving external knowledge to enhance the LLM generation.",
+     "label": "Fig. 11"
+    }
+   ],
+   "overlay": "assets/unifying-llms-and-kgs/_pages/p09.png"
+  },
+  {
+   "page": 10,
+   "candidates": [
+    {
+     "id": "cand_p10_k00",
+     "kind": "image",
+     "bbox": [
+      85.8,
+      43.7,
+      262.2,
+      145.2
+     ],
+     "pdf": "cand_p10_k00.pdf"
+    },
+    {
+     "id": "cand_p10_k01",
+     "kind": "image",
+     "bbox": [
+      349.8,
+      43.7,
+      526.2,
+      161.5
+     ],
+     "pdf": "cand_p10_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      48.0,
+      159.3,
+      300.0,
+      167.3
+     ],
+     "text": "Fig. 12. The general framework of using knowledge graph for language",
+     "label": "Fig. 12"
+    },
+    {
+     "bbox": [
+      312.0,
+      175.5,
+      564.0,
+      183.5
+     ],
+     "text": "Fig. 13. The general framework of using knowledge graph for language",
+     "label": "Fig. 13"
+    }
+   ],
+   "overlay": "assets/unifying-llms-and-kgs/_pages/p10.png"
+  },
+  {
+   "page": 11,
+   "candidates": [
+    {
+     "id": "cand_p11_k00",
+     "kind": "table",
+     "bbox": [
+      48.0,
+      75.5,
+      298.8,
+      400.8
+     ],
+     "pdf": "cand_p11_k00.pdf"
+    },
+    {
+     "id": "cand_p11_k01",
+     "kind": "vector",
+     "bbox": [
+      358.3,
+      47.0,
+      519.2,
+      212.8
+     ],
+     "pdf": "cand_p11_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      158.5,
+      45.6,
+      189.5,
+      53.6
+     ],
+     "text": "TABLE 3",
+     "label": "TABLE 3"
+    },
+    {
+     "bbox": [
+      312.0,
+      228.8,
+      559.8,
+      236.8
+     ],
+     "text": "Fig. 14. LLMs as text encoder for knowledge graph embedding (KGE).",
+     "label": "Fig. 14"
+    }
+   ],
+   "overlay": "assets/unifying-llms-and-kgs/_pages/p11.png"
+  },
+  {
+   "page": 12,
+   "candidates": [
+    {
+     "id": "cand_p12_k00",
+     "kind": "table",
+     "bbox": [
+      74.1,
+      45.9,
+      273.8,
+      113.6
+     ],
+     "pdf": "cand_p12_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      48.0,
+      172.4,
+      262.0,
+      180.4
+     ],
+     "text": "Fig. 15. LLMs for joint text and knowledge graph embedding.",
+     "label": "Fig. 15"
+    }
+   ],
+   "overlay": "assets/unifying-llms-and-kgs/_pages/p12.png"
+  },
+  {
+   "page": 13,
+   "candidates": [
+    {
+     "id": "cand_p13_k00",
+     "kind": "table",
+     "bbox": [
+      91.5,
+      46.1,
+      258.0,
+      128.4
+     ],
+     "pdf": "cand_p13_k00.pdf"
+    },
+    {
+     "id": "cand_p13_k01",
+     "kind": "table",
+     "bbox": [
+      91.5,
+      137.9,
+      258.3,
+      182.2
+     ],
+     "pdf": "cand_p13_k01.pdf"
+    },
+    {
+     "id": "cand_p13_k02",
+     "kind": "table",
+     "bbox": [
+      401.2,
+      177.8,
+      484.8,
+      205.9
+     ],
+     "pdf": "cand_p13_k02.pdf"
+    },
+    {
+     "id": "cand_p13_k03",
+     "kind": "table",
+     "bbox": [
+      89.1,
+      200.1,
+      258.3,
+      241.4
+     ],
+     "pdf": "cand_p13_k03.pdf"
+    },
+    {
+     "id": "cand_p13_k04",
+     "kind": "vector",
+     "bbox": [
+      348.7,
+      46.5,
+      534.5,
+      86.9
+     ],
+     "pdf": "cand_p13_k04.pdf"
+    },
+    {
+     "id": "cand_p13_k05",
+     "kind": "vector",
+     "bbox": [
+      341.7,
+      97.3,
+      536.6,
+      139.8
+     ],
+     "pdf": "cand_p13_k05.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      48.0,
+      271.9,
+      300.0,
+      279.9
+     ],
+     "text": "Fig. 16. The general framework of adopting LLMs as encoders (PaE) for",
+     "label": "Fig. 16"
+    },
+    {
+     "bbox": [
+      312.0,
+      254.5,
+      564.0,
+      262.5
+     ],
+     "text": "Fig. 17. The general framework of adopting LLMs as decoders (PaG)",
+     "label": "Fig. 17"
+    }
+   ],
+   "overlay": "assets/unifying-llms-and-kgs/_pages/p13.png"
+  },
+  {
+   "page": 14,
+   "candidates": [
+    {
+     "id": "cand_p14_k00",
+     "kind": "vector",
+     "bbox": [
+      86.4,
+      44.7,
+      261.5,
+      204.0
+     ],
+     "pdf": "cand_p14_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      48.0,
+      219.7,
+      278.4,
+      227.7
+     ],
+     "text": "Fig. 18. The framework of prompt-based PaG for KG Completion.",
+     "label": "Fig. 18"
+    },
+    {
+     "bbox": [
+      312.0,
+      423.7,
+      564.0,
+      433.2
+     ],
+     "text": "Fig 19 presents the general framework of applying LLMs for",
+     "label": "Fig 19"
+    }
+   ],
+   "overlay": "assets/unifying-llms-and-kgs/_pages/p14.png"
+  },
+  {
+   "page": 15,
+   "candidates": [
+    {
+     "id": "cand_p15_k00",
+     "kind": "table",
+     "bbox": [
+      48.8,
+      63.4,
+      298.7,
+      235.9
+     ],
+     "pdf": "cand_p15_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      48.0,
+      268.1,
+      271.5,
+      276.1
+     ],
+     "text": "Fig. 19. The general framework of LLM-based KG construction.",
+     "label": "Fig. 19"
+    }
+   ],
+   "overlay": "assets/unifying-llms-and-kgs/_pages/p15.png"
+  },
+  {
+   "page": 16,
+   "candidates": [
+    {
+     "id": "cand_p16_k00",
+     "kind": "table",
+     "bbox": [
+      312.9,
+      64.9,
+      553.5,
+      119.2
+     ],
+     "pdf": "cand_p16_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      312.0,
+      151.7,
+      522.3,
+      159.7
+     ],
+     "text": "Fig. 20. The general framework of distilling KGs from LLMs.",
+     "label": "Fig. 20"
+    }
+   ],
+   "overlay": "assets/unifying-llms-and-kgs/_pages/p16.png"
+  },
+  {
+   "page": 17,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      48.0,
+      170.8,
+      248.4,
+      178.8
+     ],
+     "text": "Fig. 21. The general framework of KG-to-text generation.",
+     "label": "Fig. 21"
+    }
+   ],
+   "overlay": "assets/unifying-llms-and-kgs/_pages/p17.png"
+  },
+  {
+   "page": 18,
+   "candidates": [
+    {
+     "id": "cand_p18_k00",
+     "kind": "table",
+     "bbox": [
+      75.1,
+      44.5,
+      273.5,
+      195.7
+     ],
+     "pdf": "cand_p18_k00.pdf"
+    },
+    {
+     "id": "cand_p18_k01",
+     "kind": "table",
+     "bbox": [
+      312.0,
+      76.1,
+      564.2,
+      181.8
+     ],
+     "pdf": "cand_p18_k01.pdf"
+    },
+    {
+     "id": "cand_p18_k02",
+     "kind": "table",
+     "bbox": [
+      312.0,
+      93.5,
+      564.2,
+      131.5
+     ],
+     "pdf": "cand_p18_k02.pdf"
+    },
+    {
+     "id": "cand_p18_k03",
+     "kind": "table",
+     "bbox": [
+      312.0,
+      134.8,
+      564.2,
+      181.8
+     ],
+     "pdf": "cand_p18_k03.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      48.0,
+      220.3,
+      300.0,
+      228.3
+     ],
+     "text": "Fig. 22. The general framework of applying LLMs for knowledge graph",
+     "label": "Fig. 22"
+    },
+    {
+     "bbox": [
+      422.5,
+      45.6,
+      453.5,
+      53.6
+     ],
+     "text": "TABLE 4",
+     "label": "TABLE 4"
+    }
+   ],
+   "overlay": "assets/unifying-llms-and-kgs/_pages/p18.png"
+  },
+  {
+   "page": 19,
+   "candidates": [
+    {
+     "id": "cand_p19_k00",
+     "kind": "table",
+     "bbox": [
+      313.3,
+      44.5,
+      563.3,
+      160.0
+     ],
+     "pdf": "cand_p19_k00.pdf"
+    },
+    {
+     "id": "cand_p19_k01",
+     "kind": "table",
+     "bbox": [
+      95.7,
+      52.7,
+      261.7,
+      168.7
+     ],
+     "pdf": "cand_p19_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      48.0,
+      184.1,
+      300.0,
+      192.1
+     ],
+     "text": "Fig. 23. Synergized knowledge representation by additional KG fusion",
+     "label": "Fig. 23"
+    },
+    {
+     "bbox": [
+      312.0,
+      175.1,
+      503.9,
+      183.1
+     ],
+     "text": "Fig. 24. The framework of LLM-KG Fusion Reasoning.",
+     "label": "Fig. 24"
+    }
+   ],
+   "overlay": "assets/unifying-llms-and-kgs/_pages/p19.png"
+  },
+  {
+   "page": 20,
+   "candidates": [
+    {
+     "id": "cand_p20_k00",
+     "kind": "vector",
+     "bbox": [
+      112.2,
+      46.3,
+      228.8,
+      166.1
+     ],
+     "pdf": "cand_p20_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      48.0,
+      182.7,
+      235.7,
+      190.7
+     ],
+     "text": "Fig. 25. Using LLMs as agents for reasoning on KGs.",
+     "label": "Fig. 25"
+    }
+   ],
+   "overlay": "assets/unifying-llms-and-kgs/_pages/p20.png"
+  },
+  {
+   "page": 21,
+   "candidates": [
+    {
+     "id": "cand_p21_k00",
+     "kind": "vector",
+     "bbox": [
+      99.3,
+      44.6,
+      248.6,
+      123.5
+     ],
+     "pdf": "cand_p21_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      48.0,
+      139.7,
+      227.1,
+      147.7
+     ],
+     "text": "Fig. 26. The milestones of unifying KGs and LLMs.",
+     "label": "Fig. 26"
+    }
+   ],
+   "overlay": "assets/unifying-llms-and-kgs/_pages/p21.png"
+  },
+  {
+   "page": 22,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/unifying-llms-and-kgs/_pages/p22.png"
+  },
+  {
+   "page": 23,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/unifying-llms-and-kgs/_pages/p23.png"
+  },
+  {
+   "page": 24,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/unifying-llms-and-kgs/_pages/p24.png"
+  },
+  {
+   "page": 25,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/unifying-llms-and-kgs/_pages/p25.png"
+  },
+  {
+   "page": 26,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/unifying-llms-and-kgs/_pages/p26.png"
+  },
+  {
+   "page": 27,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/unifying-llms-and-kgs/_pages/p27.png"
+  },
+  {
+   "page": 28,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/unifying-llms-and-kgs/_pages/p28.png"
+  }
+ ]
+}

@@ -1,0 +1,676 @@
+{
+ "pdf": "Efficient Memory.pdf",
+ "slug": "efficient_memory",
+ "page_count": 16,
+ "page_size": [
+  612.0,
+  792.0
+ ],
+ "pages": [
+  {
+   "page": 1,
+   "candidates": [
+    {
+     "id": "cand_p01_k00",
+     "kind": "table",
+     "bbox": [
+      312.6,
+      177.3,
+      549.2,
+      312.4
+     ],
+     "pdf": "cand_p01_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      318.0,
+      315.1,
+      558.0,
+      325.2
+     ],
+     "text": "Figure 1. Left: Memory layout when serving an LLM with",
+     "label": "Figure 1"
+    }
+   ],
+   "overlay": "assets/efficient_memory/_pages/p01.png"
+  },
+  {
+   "page": 2,
+   "candidates": [
+    {
+     "id": "cand_p02_k00",
+     "kind": "table",
+     "bbox": [
+      54.0,
+      72.0,
+      294.1,
+      209.2
+     ],
+     "pdf": "cand_p02_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      54.0,
+      222.0,
+      294.0,
+      232.0
+     ],
+     "text": "Figure 2. Average percentage of memory wastes in different",
+     "label": "Figure 2"
+    },
+    {
+     "bbox": [
+      54.0,
+      361.4,
+      106.3,
+      371.4
+     ],
+     "text": "Fig. 1 (right).",
+     "label": "Fig. 1"
+    }
+   ],
+   "overlay": "assets/efficient_memory/_pages/p02.png"
+  },
+  {
+   "page": 3,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/efficient_memory/_pages/p03.png"
+  },
+  {
+   "page": 4,
+   "candidates": [
+    {
+     "id": "cand_p04_k00",
+     "kind": "table",
+     "bbox": [
+      73.2,
+      60.6,
+      541.1,
+      323.8
+     ],
+     "pdf": "cand_p04_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      54.0,
+      144.8,
+      559.1,
+      154.7
+     ],
+     "text": "Figure 3. KV cache memory management in existing systems. Three types of memory wastes – reserved, internal fragmentation,",
+     "label": "Figure 3"
+    },
+    {
+     "bbox": [
+      327.9,
+      492.9,
+      559.7,
+      502.9
+     ],
+     "text": "Fig. 3 illustrates two requests: request A with 2048 max-",
+     "label": "Fig. 3"
+    }
+   ],
+   "overlay": "assets/efficient_memory/_pages/p04.png"
+  },
+  {
+   "page": 5,
+   "candidates": [
+    {
+     "id": "cand_p05_k00",
+     "kind": "table",
+     "bbox": [
+      63.0,
+      68.3,
+      553.8,
+      344.3
+     ],
+     "pdf": "cand_p05_k00.pdf"
+    },
+    {
+     "id": "cand_p05_k01",
+     "kind": "table",
+     "bbox": [
+      185.7,
+      122.3,
+      253.7,
+      154.3
+     ],
+     "pdf": "cand_p05_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      105.1,
+      194.8,
+      242.9,
+      204.9
+     ],
+     "text": "Figure 4. vLLM system overview.",
+     "label": "Figure 4"
+    },
+    {
+     "bbox": [
+      318.0,
+      169.5,
+      559.1,
+      179.6
+     ],
+     "text": "Figure 5. Illustration of the PagedAttention algorithm,",
+     "label": "Figure 5"
+    }
+   ],
+   "overlay": "assets/efficient_memory/_pages/p05.png"
+  },
+  {
+   "page": 6,
+   "candidates": [
+    {
+     "id": "cand_p06_k00",
+     "kind": "table",
+     "bbox": [
+      46.9,
+      65.5,
+      556.7,
+      300.2
+     ],
+     "pdf": "cand_p06_k00.pdf"
+    },
+    {
+     "id": "cand_p06_k01",
+     "kind": "table",
+     "bbox": [
+      202.4,
+      88.4,
+      292.3,
+      185.3
+     ],
+     "pdf": "cand_p06_k01.pdf"
+    },
+    {
+     "id": "cand_p06_k02",
+     "kind": "table",
+     "bbox": [
+      150.3,
+      113.8,
+      191.8,
+      157.3
+     ],
+     "pdf": "cand_p06_k02.pdf"
+    },
+    {
+     "id": "cand_p06_k03",
+     "kind": "table",
+     "bbox": [
+      51.1,
+      118.4,
+      142.3,
+      162.8
+     ],
+     "pdf": "cand_p06_k03.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      87.9,
+      196.1,
+      260.1,
+      206.1
+     ],
+     "text": "Figure 6. Block table translation in vLLM.",
+     "label": "Figure 6"
+    },
+    {
+     "bbox": [
+      318.0,
+      178.2,
+      558.0,
+      188.1
+     ],
+     "text": "Figure 7. Storing the KV cache of two requests at the same",
+     "label": "Figure 7"
+    }
+   ],
+   "overlay": "assets/efficient_memory/_pages/p06.png"
+  },
+  {
+   "page": 7,
+   "candidates": [
+    {
+     "id": "cand_p07_k00",
+     "kind": "table",
+     "bbox": [
+      46.1,
+      66.6,
+      543.0,
+      324.5
+     ],
+     "pdf": "cand_p07_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      99.0,
+      177.9,
+      249.1,
+      188.0
+     ],
+     "text": "Figure 8. Parallel sampling example.",
+     "label": "Figure 8"
+    },
+    {
+     "bbox": [
+      64.0,
+      285.7,
+      295.7,
+      295.6
+     ],
+     "text": "Fig. 8 shows an example of parallel decoding for two out-",
+     "label": "Fig. 8"
+    },
+    {
+     "bbox": [
+      372.3,
+      154.8,
+      503.6,
+      164.8
+     ],
+     "text": "Figure 9. Beam search example.",
+     "label": "Figure 9"
+    }
+   ],
+   "overlay": "assets/efficient_memory/_pages/p07.png"
+  },
+  {
+   "page": 8,
+   "candidates": [
+    {
+     "id": "cand_p08_k00",
+     "kind": "table",
+     "bbox": [
+      54.9,
+      68.6,
+      513.4,
+      326.5
+     ],
+     "pdf": "cand_p08_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      54.0,
+      157.9,
+      295.6,
+      167.8
+     ],
+     "text": "Figure 10. Shared prompt example for machine translation.",
+     "label": "Figure 10"
+    }
+   ],
+   "overlay": "assets/efficient_memory/_pages/p08.png"
+  },
+  {
+   "page": 9,
+   "candidates": [
+    {
+     "id": "cand_p09_k00",
+     "kind": "table",
+     "bbox": [
+      318.0,
+      72.0,
+      558.0,
+      162.0
+     ],
+     "pdf": "cand_p09_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      77.3,
+      72.8,
+      270.4,
+      82.9
+     ],
+     "text": "Table 1. Model sizes and server configurations.",
+     "label": "Table 1"
+    },
+    {
+     "bbox": [
+      318.0,
+      177.3,
+      558.6,
+      187.4
+     ],
+     "text": "Figure 11. Input and output length distributions of the (a)",
+     "label": "Figure 11"
+    }
+   ],
+   "overlay": "assets/efficient_memory/_pages/p09.png"
+  },
+  {
+   "page": 10,
+   "candidates": [
+    {
+     "id": "cand_p10_k00",
+     "kind": "table",
+     "bbox": [
+      54.0,
+      71.5,
+      556.7,
+      264.8
+     ],
+     "pdf": "cand_p10_k00.pdf"
+    },
+    {
+     "id": "cand_p10_k01",
+     "kind": "table",
+     "bbox": [
+      58.8,
+      285.8,
+      289.2,
+      372.2
+     ],
+     "pdf": "cand_p10_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      114.9,
+      269.7,
+      497.1,
+      279.7
+     ],
+     "text": "Figure 12. Single sequence generation with OPT models on the ShareGPT and Alpaca dataset",
+     "label": "Figure 12"
+    },
+    {
+     "bbox": [
+      54.0,
+      386.0,
+      295.7,
+      396.0
+     ],
+     "text": "Figure 13. Average number of batched requests when serv-",
+     "label": "Figure 13"
+    }
+   ],
+   "overlay": "assets/efficient_memory/_pages/p10.png"
+  },
+  {
+   "page": 11,
+   "candidates": [
+    {
+     "id": "cand_p11_k00",
+     "kind": "table",
+     "bbox": [
+      55.3,
+      71.5,
+      556.7,
+      264.8
+     ],
+     "pdf": "cand_p11_k00.pdf"
+    },
+    {
+     "id": "cand_p11_k01",
+     "kind": "table",
+     "bbox": [
+      256.5,
+      71.8,
+      390.3,
+      132.3
+     ],
+     "pdf": "cand_p11_k01.pdf"
+    },
+    {
+     "id": "cand_p11_k02",
+     "kind": "vector",
+     "bbox": [
+      322.7,
+      298.7,
+      430.7,
+      363.5
+     ],
+     "pdf": "cand_p11_k02.pdf"
+    },
+    {
+     "id": "cand_p11_k03",
+     "kind": "vector",
+     "bbox": [
+      442.7,
+      298.7,
+      550.8,
+      363.5
+     ],
+     "pdf": "cand_p11_k03.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      132.9,
+      277.6,
+      479.1,
+      287.7
+     ],
+     "text": "Figure 14. Parallel generation and beam search with OPT-13B on the Alpaca dataset.",
+     "label": "Figure 14"
+    },
+    {
+     "bbox": [
+      318.0,
+      381.4,
+      558.0,
+      391.3
+     ],
+     "text": "Figure 15. Average amount of memory saving from sharing",
+     "label": "Figure 15"
+    },
+    {
+     "bbox": [
+      318.0,
+      518.5,
+      558.0,
+      528.4
+     ],
+     "text": "Fig. 14 shows the results for beam search with different beam",
+     "label": "Fig. 14"
+    },
+    {
+     "bbox": [
+      327.9,
+      590.2,
+      558.3,
+      600.1
+     ],
+     "text": "Fig. 15 plots the amount of memory saving, computed by",
+     "label": "Fig. 15"
+    }
+   ],
+   "overlay": "assets/efficient_memory/_pages/p11.png"
+  },
+  {
+   "page": 12,
+   "candidates": [
+    {
+     "id": "cand_p12_k00",
+     "kind": "table",
+     "bbox": [
+      64.8,
+      71.5,
+      280.8,
+      191.9
+     ],
+     "pdf": "cand_p12_k00.pdf"
+    },
+    {
+     "id": "cand_p12_k01",
+     "kind": "table",
+     "bbox": [
+      199.4,
+      71.9,
+      277.1,
+      148.9
+     ],
+     "pdf": "cand_p12_k01.pdf"
+    },
+    {
+     "id": "cand_p12_k02",
+     "kind": "vector",
+     "bbox": [
+      320.8,
+      72.0,
+      430.3,
+      159.6
+     ],
+     "pdf": "cand_p12_k02.pdf"
+    },
+    {
+     "id": "cand_p12_k03",
+     "kind": "vector",
+     "bbox": [
+      446.0,
+      82.6,
+      549.7,
+      159.6
+     ],
+     "pdf": "cand_p12_k03.pdf"
+    },
+    {
+     "id": "cand_p12_k04",
+     "kind": "vector",
+     "bbox": [
+      76.8,
+      248.3,
+      268.8,
+      327.2
+     ],
+     "pdf": "cand_p12_k04.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      54.0,
+      199.7,
+      294.0,
+      209.7
+     ],
+     "text": "Figure 16. Translation workload where the input prompts",
+     "label": "Figure 16"
+    },
+    {
+     "bbox": [
+      80.3,
+      333.0,
+      267.7,
+      343.0
+     ],
+     "text": "Figure 17. Performance on chatbot workload.",
+     "label": "Figure 17"
+    },
+    {
+     "bbox": [
+      54.0,
+      364.2,
+      295.7,
+      374.2
+     ],
+     "text": "Fig. 10. For the model, we use LLaMA-13B [52], which is mul-",
+     "label": "Fig. 10"
+    },
+    {
+     "bbox": [
+      64.0,
+      623.7,
+      294.0,
+      634.4
+     ],
+     "text": "Fig. 17 shows that vLLM can sustain 2× higher request",
+     "label": "Fig. 17"
+    },
+    {
+     "bbox": [
+      369.7,
+      190.3,
+      506.3,
+      200.3
+     ],
+     "text": "Figure 18. Ablation experiments.",
+     "label": "Figure 18"
+    }
+   ],
+   "overlay": "assets/efficient_memory/_pages/p12.png"
+  },
+  {
+   "page": 13,
+   "candidates": [
+    {
+     "id": "cand_p13_k00",
+     "kind": "vector",
+     "bbox": [
+      60.8,
+      73.2,
+      164.5,
+      151.0
+     ],
+     "pdf": "cand_p13_k00.pdf"
+    },
+    {
+     "id": "cand_p13_k01",
+     "kind": "vector",
+     "bbox": [
+      178.5,
+      72.0,
+      282.2,
+      151.0
+     ],
+     "pdf": "cand_p13_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      54.0,
+      170.8,
+      294.2,
+      180.7
+     ],
+     "text": "Figure 19. (a) Overhead of recomputation and swapping for",
+     "label": "Figure 19"
+    }
+   ],
+   "overlay": "assets/efficient_memory/_pages/p13.png"
+  },
+  {
+   "page": 14,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/efficient_memory/_pages/p14.png"
+  },
+  {
+   "page": 15,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/efficient_memory/_pages/p15.png"
+  },
+  {
+   "page": 16,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/efficient_memory/_pages/p16.png"
+  }
+ ]
+}

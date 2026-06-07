@@ -1,0 +1,851 @@
+\documentclass[11pt,UTF8,fontset=fandol]{ctexart}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx,float,caption,subcaption}
+\usepackage{booktabs,array,multirow,makecell}
+\usepackage{geometry,enumitem,xcolor}
+\usepackage[hidelinks]{hyperref}
+\usepackage{url}
+\usepackage[most]{tcolorbox}
+\geometry{margin=2.3cm}
+\graphicspath{{/Users/yye/project/论文/assets/tog2/}}
+\captionsetup{font=small,labelfont=bf}
+\setlength{\parskip}{0.4em}
+
+% 用于展示英文提示词（prompt）的框
+\newtcolorbox{promptbox}{
+  enhanced,
+  breakable,
+  colback=gray!4,
+  colframe=gray!55,
+  boxrule=0.6pt,
+  left=8pt,right=8pt,top=6pt,bottom=6pt,
+  before skip=6pt,after skip=6pt
+}
+
+% 用于算法伪代码的框
+\newtcolorbox{algobox}{
+  enhanced,
+  breakable,
+  colback=white,
+  colframe=black,
+  boxrule=0.8pt,
+  left=6pt,right=6pt,top=6pt,bottom=6pt
+}
+
+\newcommand{\toctwo}{ToG-2}
+
+\title{\textbf{Think-on-Graph 2.0：基于知识引导的检索增强生成的\\深度且忠实的大语言模型推理}}
+
+\author{Shengjie Ma$^{1,2*}$,~Chengjin Xu$^{1*,\dagger}$~Xuhui Jiang$^{1*}$,~Muzhi Li$^{3}$,~Huaren Qu$^{4}$,\\
+Cehao Yang$^{1}$,~Jiaxin Mao$^{2\dagger}$,~Jian Guo$^{1\dagger}$\\[0.3em]
+\small $^{1}$ IDEA Research，粤港澳大湾区数字经济研究院（International Digital Economy Academy），中国广东深圳\\
+\small $^{2}$ 高瓴人工智能学院（Gaoling School of Artificial Intelligence），中国人民大学，中国北京\\
+\small $^{3}$ 香港中文大学（The Chinese University of Hong Kong），中国香港新界沙田\\
+\small $^{4}$ 香港科技大学（The Hong Kong University of Science and Technology），中国广东广州}
+
+\date{}
+
+\begin{document}
+\maketitle
+
+\renewcommand{\thefootnote}{\arabic{footnote}}
+
+\begin{abstract}
+检索增强生成（retrieval-augmented generation, RAG）通过利用知识检索来克服知识不足的问题，从而改进了大语言模型（large language models, LLMs）。然而，现有的 RAG 方法往往无法确保所检索信息的深度和完整性，而这些对于复杂推理任务又是必需的。在本工作中，我们提出 Think-on-Graph 2.0（\toctwo{}），这是一种混合式（hybrid）RAG 框架，它以紧耦合（tight-coupling）的方式从非结构化和结构化知识源中迭代地检索信息。具体而言，\toctwo{} 利用知识图谱（knowledge graphs, KGs）通过实体（entity）来连接文档，从而促进深度且知识引导的上下文检索（context retrieval）；同时，它将文档作为实体上下文加以利用，以实现精确而高效的图检索（graph retrieval）。\toctwo{} 在图检索与上下文检索之间交替进行，以搜索与问题相关的深入线索，使大语言模型能够生成答案。我们设计了一系列实验，以凸显 \toctwo{} 的如下优势：1）\toctwo{} 将上下文检索与图检索两个过程紧密耦合，通过知识图谱深化上下文检索，同时基于上下文实现可靠的图检索；2）它通过上下文与知识图谱之间协作的迭代知识检索过程，在大语言模型中实现深度且忠实的推理；3）\toctwo{} 无需训练（training-free），并能以即插即用（plug-and-play）的方式与各类大语言模型兼容。大量实验表明，\toctwo{} 在使用 GPT-3.5 的情况下，于 7 个知识密集型数据集中的 6 个上取得了总体最优（state-of-the-art, SOTA）性能，并能将较小模型（例如 LLAMA-2-13B）的性能提升至 GPT-3.5 直接推理的水平。源代码可在 \url{https://github.com/IDEA-FinAI/ToG-2} 获取。
+\end{abstract}
+
+\section{引言}
+
+检索增强生成（RAG）通过从外部来源检索相关知识，显著增强了大语言模型（LLMs）的能力，是解决知识不足与幻觉（hallucination）问题的一种有前景的方案（Zhao et al., 2024）。尽管 RAG 具有这种潜力，且研究者们尝试将各种复杂的附加过程引入 RAG（Yu et al., 2023；Edge et al., 2024；Li et al., 2024c），但大语言模型在处理复杂任务时，仍难以保持类似人类的推理轨迹（Kahneman, 2011）——这类任务需要持续的努力与动机，以整合零散的信息以及它们之间的结构化关系。许多近期的 RAG 实现主要依赖于对文档内文本内容的向量检索（Ding et al., 2024；Asai et al., 2023；Wang et al., 2023b）。虽然向量嵌入（vector embedding）在度量两段文本之间的语义相似度方面是有效的，但基于文本的 RAG 难以捕捉文本与文档之间的结构化关系（Chen et al., 2023）。具体而言，简单的%
+\footnote{两位作者对本研究贡献相同。}%
+\footnote{通讯作者。}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.98\linewidth]{cand_p02_k00.pdf}
+\caption{（a）基于文本的 RAG（text-based RAG）、（b）基于知识图谱的 RAG（KG-based RAG）、（c）KG+Text（松耦合）混合 RAG（KG+Text (Loose-coupling) Hybrid RAG），以及（d）我们提出的 KG$\times$Text（紧耦合）RAG（KG$\times$Text (Tight-coupling) RAG）框架之间差异的示意图。}
+\label{fig:1}
+\end{figure}
+
+基于向量的匹配可能会忽视不同文本中实体之间在知识层面上的关联，例如 Global Financial Crisis 与 The 2008 Recession 是指代同一事件的两个表层名称；Harry Potter 与 Fantastic Beasts 都是由 J.K. Rowling 创作的。这一局限导致大多数基于文本的 RAG 方法不适用于多步推理，也无法追踪不同信息片段之间的逻辑联系。如图~\ref{fig:1}(a) 所示，在朴素 RAG（naive RAG）中，通用检索器在大规模语料库中进行搜索，其召回（recall）往往聚焦于表层语义相似度的层面（Edge et al., 2024），却忽略了 Craig Virgin 与 Lukas Verzbicas 之间的结构化关系，以及包含其中之一的文本。
+
+知识图谱（KGs）将零散信息中实体之间的结构化关系组织起来，并以三元组（triple）的形式存储知识。一些研究者已经探索了基于知识图谱的 RAG 方法（Sun et al., 2024），即通过检索与问题相关的知识图谱三元组来提示大语言模型。尽管知识图谱在结构化高层概念与关系方面是有效的，但它们本质上存在内部不完整性，并缺乏超出其本体（ontology）范围之外的信息（Li et al., 2024a;b）。如图~\ref{fig:1}(b) 所示，知识图谱无法提供有关 Lukas Verzbicas 比赛记录的详细信息。一些近期工作专注于整合基于文本的 RAG 系统与基于知识图谱的 RAG 系统（Li et al., 2024c；Edge et al., 2024）。在这种方法中，从结构化和非结构化知识源中检索到的信息被聚合在一起，用于提示大语言模型回答问题，但并不能通过一种知识源来改进对另一种知识源的检索结果。如图~\ref{fig:1}(c) 所示，这类松耦合（loose-coupling）组合（KG+Text）方法在处理需要通过深入检索才能获得详细信息的复杂查询时，仍显不足。
+
+考虑到上述挑战，我们提出 Think-on-Graph 2.0（\toctwo{}），一种紧耦合的混合式（KG$\times$Text）RAG 范式，它有效地将来自文本的非结构化知识与来自知识图谱的结构化洞见整合起来，作为增强复杂问题求解能力的路线图。如图~\ref{fig:1}(d) 所示，\toctwo{} 首先通过从问题中抽取主题实体（topic entities）来初始化图搜索的起点。在每一轮检索开始时，\toctwo{} 通过在知识图谱上执行关系检索（relation retrieval）来探索更多的候选实体，并从与这些候选实体相关联的文档中检索相关文本。在知识引导的上下文检索之后，\toctwo{} 基于上下文检索的结果对候选实体进行剪枝（prune），更新主题实体集合，并将其作为下一轮检索的起点。在每一轮检索之后，\toctwo{} 基于在检索过程中获得的高度相关的知识三元组和上下文，提示大语言模型回答问题。如果检索到的信息不足以回答问题，则继续进行下一轮检索，以搜索更深入的线索。这样一种紧耦合的混合式 RAG 范式，使大语言模型在求解复杂问题时表现得更接近人类：检视当前线索，并基于其已有的知识框架联想出潜在的实体，持续深入地挖掘该主题，直到找到答案。
+
+\toctwo{} 的优势可总结如下：（1）深度检索：\toctwo{} 在知识图谱的引导下实现深度且可靠的上下文检索，并通过将文档视为节点上下文（node contexts）来执行精确的图检索，实现了知识图谱与文本 RAG 的紧耦合组合，从而支持深度而全面的检索过程。（2）忠实推理：\toctwo{} 基于知识图谱和文本迭代地执行协作式的检索过程，将检索到的异构知识作为大语言模型推理的基础，增强大语言模型所生成内容的忠实性（faithfulness）。（3）高效性与有效性：a）\toctwo{} 是一种无需训练、即插即用的框架，可应用于各类大语言模型；b）\toctwo{} 可以在任何相关联的知识图谱与文档数据库之间执行，而对于纯文档数据库，可以先从文档中抽取实体，然后通过关系抽取（relation extraction）或实体共现（entity co-occurrence）来构建图（Edge et al., 2024）；c）\toctwo{} 在各类复杂知识推理数据集上取得了新的 SOTA 性能，并能将较小的大语言模型（例如 Llama2-13B）的推理能力提升至与诸如 GPT-3.5 等强大大语言模型直接推理相当的水平。
+
+\section{相关工作}
+
+RAG 旨在以高可解释性（interpretability）有效利用外部知识源。其中一个重要因素是所检索数据的类型。在本节中，我们将简要回顾基于文本的 RAG、基于知识图谱的 RAG 以及混合式 RAG。
+
+基于文本的 RAG 方法依据问题与文本之间的语义相似度来检索信息（Gao et al., 2024；Qiu et al., 2024）。然而，这些方法在捕捉文本之间深层关系方面存在困难，而且检索到的文本可能包含冗余内容。为应对这些挑战，ITER-RETGEN（Shao et al., 2023）采用了一种迭代策略，将检索与生成合并到一个循环中，在“检索增强生成”（retrieval-augmented generation）与“生成增强检索”（generation-augmented retrieval）之间交替进行。Trivedi et al.（2023）将 RAG 与链式思维（Chain of Thought, CoT）（Wei et al., 2022a）方法相结合，在 CoT 引导的检索与检索支持的 CoT 过程之间交替，显著提升了 GPT-3 在各类问答任务上的性能。尽管这些优化增强了相关文本的召回，但由于缺乏可靠的引导，整个检索过程变得更加耗时，且错误可能在多次迭代中累积。
+
+知识图谱的结构化知识表示对大语言模型尤为有益，因为它在知识中引入了一定程度的可解释性和精确性。早期方法（Sun et al., 2020；Peters et al., 2019；Huang et al., 2024；Liu et al., 2020）专注于将知识图谱中的知识直接嵌入到大语言模型的神经网络中。为最大化利用知识图谱的可解释性，更近期的研究（Jiang et al., 2024；Sun et al., 2024）转向使用知识图谱从外部增强大语言模型，而非将知识直接嵌入模型之中。基于知识图谱的 RAG 方法将来自知识图谱的相关结构化知识转换为文本提示（prompt），再将其馈送给大语言模型，但其本身自然会受到知识图谱知识不完整性的影响。
+
+与 \toctwo{} 最相关的工作是混合式 RAG 方法，这类方法旨在将知识图谱与非结构化数据二者都与大语言模型相结合，发挥两者的优势以缓解各自的弱点。Chain-of-Knowledge（Li et al., 2024c）（CoK）是一种混合式 RAG 方法，它从 Wikipedia、Wikidata 和 Wikitable 检索知识，以为大语言模型的输出提供依据。GraphRAG（Edge et al., 2024）从文档中建立知识图谱，并支持知识图谱增强的文本检索。HybridRAG（Sarmah et al., 2024）从向量数据库和知识图谱二者中检索信息，相比单独使用基于文本的 RAG 或基于知识图谱的 RAG 方法，取得了更优的推理性能。然而，现有的混合式 RAG 方法仅仅是聚合从知识图谱和文本中检索到的信息，并不能通过一种知识源来改进对另一种知识源的检索结果。在本工作中，\toctwo{} 旨在将基于知识图谱的 RAG 与基于文本的 RAG 方法紧密耦合起来，同时支持深度的上下文检索与精确的图检索，从而增强大语言模型的复杂推理性能。
+
+\section{方法}
+
+所提出的方法 \toctwo{} 借鉴了 ToG 方法（Sun et al., 2024）在知识图谱内进行多跳搜索（multi-hop search）的思路，即从查询中识别出的关键实体出发，并基于实体与关系，通过一个提示驱动的推断过程向外探索。\toctwo{} 通过迭代地执行知识引导的上下文检索与上下文增强的图检索，将基于三元组的逻辑链扩展与相关实体的非结构化上下文知识相结合，从而更有效地整合和利用异构的外部知识。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.98\linewidth]{cand_p04_k00.pdf}
+\caption{一个示例，用以说明 \toctwo{} 的工作流程。}
+\label{fig:2}
+\end{figure}
+
+具体而言，\toctwo{} 首先从给定问题中抽取实体作为初始主题实体。随后，它执行一个由图检索、上下文检索和大语言模型推理构成的迭代过程。在每次迭代开始时，\toctwo{} 选择性地探索当前主题实体在知识图谱上的邻居实体，利用新遇到的实体来细化检索范围，从而同时提升效率和准确率。接下来，\toctwo{} 基于查询以及从相关文档中检索到的上下文知识，对实体进行排序和选择，减少歧义并确保为下一步进行准确的探索。在此之后，大语言模型利用异构知识（包括三元组路径和实体上下文）来回答问题，或者在所收集的信息不充分时继续进行更多轮的检索。在本节中，我们将详细解释每个步骤。
+
+\subsection{初始化}
+
+给定一个问题 $q$，\toctwo{} 首先识别 $q$ 中出现的实体，并将它们链接到知识图谱中的实体。这一步可以通过不同的实体链接（entity linking, EL）方法来完成，例如使用大语言模型或专门的 EL 工具%
+\footnote{对于 Wikipedia，我们使用 Azure AI 提供的实体链接 API，\url{https://learn.microsoft.com/en-us/azure/ai-services/language-service/entity-linking/overview?source=recommendations}}。
+然后，\toctwo{} 执行一个主题剪枝（Topic Prune, TP）步骤，以选择合适的实体作为在知识图谱中探索的起点；该步骤提示大语言模型评估 $q$ 和出现的实体，选出主题实体 $E^{0}_{topic}=\{e_1,e_2,\ldots,e_N\}$，其中 $N$ 由大语言模型决定。
+
+在第 1 轮图检索之前，\toctwo{} 使用稠密检索模型（dense retrieval models, DRMs，包括双塔模型和单塔模型）从与初始主题实体 $E^{0}_{topic}$ 相关联的文档中抽取 top-$k$ 个文本块（chunk）。大语言模型随后依据其自身的知识，评估这些信息是否足以回答问题。如果它认定可用信息已经充分，则无需进一步的步骤。
+
+\subsection{混合知识探索}
+
+下文将阐述 \toctwo{} 如何迭代地协调并紧密耦合异构知识。该迭代过程将分为两个主要部分进行解释：上下文增强的图搜索（Context-enhanced Graph Search）和知识引导的上下文检索（Knowledge-guided Context Retrieval）。形式化地，在第 $i$ 次迭代中，主题实体记为 $E^{i}_{topic}=\{e^{i}_{1},e^{i}_{2},\ldots,e^{i}_{j}\}$，其前置的三元组路径为 $P^{i-1}=\{P^{i-1}_{1},P^{i-1}_{2},\ldots,P^{i-1}_{j}\}$，$P^{i-1}_{j}=\{p^{0}_{j},p^{1}_{j},\ldots,p^{i-1}_{j}\}$，其中 $j\in[1,W]$，$W$ 是探索宽度（exploration width）这一超参数（即每次迭代中保留的主题实体的最大数目），而 $p^{i-1}_{j}$ 是一个单一三元组 $(e^{i-1}_{j},r^{i-1}_{j},e^{i}_{j})$，它包含 $r^{i-1}_{j}$ 作为知识图谱中 $e^{i-1}_{j}$ 与 $e^{i}_{j}$ 之间的关系，该关系可以是任一方向。注意，$i=0$ 表示初始化阶段，且 $P^{0}$ 为空。
+
+\subsubsection{知识引导的图搜索}
+
+通过利用知识图谱上知识丰富的结构化连通性，图搜索旨在探索并建立问题与目标信息之间的高层概念和关系，而这些信息在语义空间中看似彼此相距甚远。
+
+\noindent\textbf{关系发现（Relation Discovery）：} 在第 $i$ 次迭代开始时，通过函数
+\begin{equation}
+\mathrm{Edge}(e^{i}_{j})=\{(r^{i}_{j,m},h_m)\mid h\in\{\mathrm{True},\mathrm{False}\}\},
+\end{equation}
+我们可以为所有主题实体找到其关系。$\mathrm{Edge}()$ 是一个搜索实体关系的函数。$h$ 指示该关系 $r^{i}_{j,m}$ 的方向是否指向主题实体 $e^{i}_{j}$。
+
+\noindent\textbf{关系剪枝（Relation Prune, RP）：} 从所收集的关系集合 $\{\mathrm{Edge}(e^{i}_{j})\}^{W}_{j=1}$ 中，我们提示大语言模型选择并为那些可能找到含有助于求解 $q$ 的有用上下文信息之实体的关系打分。我们设计了两种提示方式：
+\begin{equation}
+\mathrm{PROMPT}_{RP}(e^{i}_{j},q,\mathrm{Edge}(e^{i}_{j})),
+\end{equation}
+\begin{equation}
+\mathrm{PROMPT}_{RP\_cmb}(E^{i}_{topic},q,\{\mathrm{Edge}(e^{i}_{j})\}^{W}_{j=1}).
+\end{equation}
+详细的提示见附录 E 中的表 15、16 和 17。得分较低的关系将被剪除。式 2 涉及对每个主题实体逐一进行多次大语言模型调用以执行实体剪枝，而式 3 在一次操作中处理所有主题实体的关系选择。式 2 简化了大语言模型的任务，但效率较低。式 3 减少了 API 调用次数，从而提升推理速度，并允许大语言模型同时考虑多条推理路径之间的相互联系，便于从更广阔的视角进行选择。然而，当所有主题实体召回了过多关系时，这可能会对能力较弱的大语言模型有效处理长文本的能力构成挑战。在第 $i$ 次迭代中为所有主题实体选定的关系记为 $R^{i}=\{r^{i}_{j,m}\}$（$j\in[1,W]$）。在图~\ref{fig:2} 的示例中，主题实体 $e^{0}_{1}=$ Crag Virgin 及其关系 $r^{0}_{1,1}=$ place of birth 被剪除，因为它可能导向一个不太可能与一名跑步运动员的表现相关的地点。
+
+\noindent\textbf{实体发现（Entity Discovery）：} 给定 $E^{i}_{topic}$ 中的一个主题实体 $e^{i}_{j}$ 及其在 $R^{i}$ 中对应的已选关系 $r^{i}_{j,m}$，函数
+\begin{equation}
+\mathrm{Tail}(e^{i}_{j},(r^{i}_{j,m},h_m))=c^{i}_{j,m}
+\end{equation}
+识别出主题实体 $e^{i}_{j}$ 通过关系 $(r^{i}_{j,m},h_m)$ 所连接的实体 $\{c^{i}_{j,m}\}$。在图~\ref{fig:2} 的示例中，Crag Sandburg High Shool、Evan Jager 是经过实体发现后 Crag Sandburg High Shool 所连接的实体。随后将执行一个基于上下文的实体剪枝步骤，从所有连接实体中选出 top-$W$ 个实体作为新的主题实体 $E^{i+1}_{topic}$，从而完成整个图检索步骤。
+
+\subsubsection{知识引导的上下文检索}
+
+在这一步中，\toctwo{} 沿着知识图谱提供的高层知识引导，挖掘细粒度的信息。一旦我们通过函数 4 得到所有候选实体，我们就收集与每个候选实体 $c^{i}_{j,m}$ 相关的文档，构成当前迭代候选实体的上下文池（context pool）。在图~\ref{fig:2} 的示例中，第一次迭代的上下文池包含与候选实体相关的文档，这些候选实体包括 Crag Sandburg High School、Evan Jager、Lebanon High School、1984 Summer Olympics 等等。
+
+\noindent\textbf{实体引导的上下文检索（Entity-guided Context Retrieval）：} 为了在候选实体的文档上下文中找到有用的信息，我们应用 DRMs 来计算各个段落的相关性分数。我们不直接计算上下文与问题之间的相关性分数——那样会忽略每个上下文与其对应实体之间的关系——而是将候选实体 $c^{i}_{j,m}$ 的当前三元组 $Pc^{i}_{j,m}=(e^{i}_{j},r^{i}_{j,m})$ 转换为一个简短的句子，并将其追加到待计算分数的上下文之前。形式化地，我们将 $c^{i}_{j,m}$ 第 $z$ 个文本块的相关性分数表述为：
+\begin{equation}
+s^{i}_{j,m,z}=\mathrm{DRM}(q,[\,triple\_sentence(Pc^{i}_{j,m}):chunk^{i}_{j,m,z}\,]).
+\end{equation}
+随后，得分最高的 top-$K$ 个文本块 $Ctx^{i}$ 将被选为推理阶段的参考依据。
+
+\noindent\textbf{基于上下文的实体剪枝（Context-based Entity Prune）：} 候选实体的选择基于其上下文文本块的排名分数。一个候选实体 $c^{i}_{j,m}$ 的排名分数计算为其排名进入 top-$K$ 的文本块分数的指数衰减加权和（$K$ 表示用于推理的上下文数量，Context Number），形式化表述为：
+\begin{equation}
+score(c^{i}_{j,m})=\sum_{k=1}^{K} s_k\cdot w_k\cdot \mathbb{I}\,(\text{第 }k\text{ 个排名的文本块来自 }c^{i}_{j,m}),
+\end{equation}
+其中 $w_k=e^{-\alpha\cdot k}$，$s_k$ 是第 $k$ 个排名文本块的分数，$\mathbb{I}$ 是指示函数（若第 $k$ 个文本块属于 $e^{i}_{j,m}$ 则等于 1），$K$ 和 $\alpha$ 是超参数。得分进入 top-$W$ 的候选实体将被选为下一次迭代的主题实体 $E^{i+1}_{topic}$。相关性分数较低的候选实体（如图~\ref{fig:2} 中的 Evan Jager）将被剪除。
+
+\subsection{基于混合知识的推理}
+
+在第 $i$ 次迭代结束时，我们用所有已发现的知识（包括 $Clues^{i-1}$、三元组路径、top-$K$ 实体及对应的上下文文本块）来提示大语言模型，评估给定的知识是否足以回答问题，其中 $Clues^{i-1}$ 是来自上一次迭代的检索反馈，旨在将有用知识保留于历史上下文中。如果大语言模型判断所提供的知识足以回答问题，它会直接输出答案。否则，我们提示大语言模型输出从现有知识中总结出的有用线索 $Clues^{i}$，然后基于准确的信息重构一个优化后的查询，直到达到最大深度 $D$。该过程形式化表述为：
+\begin{equation}
+\mathrm{PROMPT}_{rs}(q,P^{i},Ctx^{i},Clues^{i-1})=
+\begin{cases}
+\mathrm{Ans.}, & \text{若知识充分。}\\
+Clues^{i}, & \text{否则。}
+\end{cases}
+\end{equation}
+提示的详细内容见附录 E 中的表 18 和 19。
+
+\section{实验}
+\subsection{数据集与评测指标}
+
+我们在不同的知识密集型推理基准数据集上评估了我们的方法，包括两个多跳知识库问答（KBQA）数据集 WebQSP（Yih et al., 2016）和 QALD10-en（Usbeck et al., 2023），一个多跳复杂文档问答数据集 AdvHotpotQA（Ye \& Durrett, 2022）——它是 HotpotQA（Yang et al., 2018）的一个具有挑战性的子集，一个槽填充（slot filling）数据集 Zero-Shot RE（Petroni et al., 2021），以及两个事实验证（fact verification）数据集 FEVER（Thorne et al., 2018）和 Creak（Onoe et al., 2021）。FEVER 和 Creak 的评测指标是准确率（Accuracy, Acc.），而其他数据集的指标是精确匹配（Exact Match, EM）。由于知识源并不限于文档数据库，因此未使用召回率（Recall）和 F1 分数。遵循先前的工作（Li et al., 2024c），对所有这些数据集，我们都使用完整的 Wikipedia 和 Wikidata 作为非结构化和结构化知识源。与干扰项（distractor）设置相比，这种完整 Wiki（full Wiki）设置使检索过程更具挑战性，能够更好地评估各种方法在知识推理任务上的有效性。
+
+由于 Wikipedia 常被用于训练大语言模型，因此需要一个在大语言模型预训练（pre-training）过程中未曾接触过的领域特定问答数据集，以更好地评估不同的基于大语言模型的方法。我们收集了数千份 2023 年度的中文财务报表作为新语料库，并进一步基于该语料库构建了一个知识图谱并手工设计了 97 个多跳问题。在本文中，我们将该数据集称为 ToG-FinQA。公司及其他组织被抽取为知识图谱中的实体，并定义了 7 种关系类型（子公司、主营业务、供应商、兄弟公司、大宗交易、附属公司和客户）。财务报表被用作实体上下文。ToG-FinQA 的详细信息请参见附录 C。
+
+\subsection{基线方法}
+
+我们将 \toctwo{} 与广泛使用的基线方法和最先进的方法进行比较，以提供更全面的概览：1）不使用外部知识的纯大语言模型（LLM-only）方法，包括直接推理（Direct Reasoning）、链式思维（Chain-of-Thought）（Wei et al., 2022b）、自一致性（Self-Consistency）（Wang et al., 2023a）；2）Vanilla RAG，指直接从实体文档中检索并回答问题的基于文本的 RAG 方法；3）基于知识图谱的 RAG 方法：Think-on-Graph（Sun et al., 2024），一种为推理搜索有用知识图谱三元组的基于知识图谱的 RAG 方法；4）Chain-of-Knowledge（Li et al., 2024c），一种从 Wikipedia、Wikidata 和 Wikitable 检索知识的混合式 RAG 方法；5）GraphRAG（Edge et al., 2024），一种先从文档构建知识图谱再支持知识图谱增强文本检索的混合式 RAG 方法。值得注意的是，由于 GraphRAG 在大规模语料库上的索引构建过程中计算成本过高难以承受，我们仅在 ToG-FinQA 上对其进行评估。为公平比较，所有基线方法均使用 GPT-3.5-turbo，并在无监督设置下进行评估。
+
+\begin{table}[H]\centering
+\caption{使用 GPT-3.5-turbo 时，不同方法在各数据集上的性能比较。注意，CoK 模型有 6-shot 和 3-shot 两种设置。对于每个数据集，我们呈现 CoK 在不同 shot 设置下的最佳性能。对于 AdvHotpotQA 和 FEVER，我们使用 CoK 原论文中报告的结果，其中 $\dagger$ 表示 3-shot 设置，$\ddagger$ 表示 6-shot 设置。加粗数字表示同等设置下的最高结果。}
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.15}
+\small
+\begin{tabular}{llcccccc}
+\toprule
+\multirow{2}{*}{\makecell[l]{基线\\类型}} & \multirow{2}{*}{方法} & \multicolumn{6}{c}{数据集}\\
+\cmidrule(lr){3-8}
+ & & \makecell{WebQSP\\(EM)} & \makecell{AdvHotpotQA\\(EM)} & \makecell{QALD-10-en\\(EM)} & \makecell{FEVER\\(Acc.)} & \makecell{Creak\\(Acc.)} & \makecell{Zero-Shot RE\\(EM)}\\
+\midrule
+\multirow{3}{*}{\makecell[l]{纯 LLM}} & Direct & 65.9\% & 23.1\% & 42.0\% & 51.8\% & 89.7\% & 27.7\%\\
+ & CoT & 59.9\% & 30.8\% & 42.9\% & 57.8\% & 90.1\% & 28.8\%\\
+ & CoT-SC & 61.1\% & 34.4\% & 45.3\% & 59.9\%$\dagger$ (56.2\%$\ddagger$) & 90.8\% & 45.4\%\\
+\midrule
+\makecell[l]{文本 RAG} & Vanilla RAG & 67.9\% & 23.7\% & 42.4\% & 53.8\% & 89.7\% & 29.5\%\\
+\makecell[l]{KG RAG} & ToG & 76.2\% & 26.3\% & 50.2\% & 52.7\% & \textbf{93.8\%} & 88.0\%\\
+\makecell[l]{混合 RAG} & CoK & 77.6\% & 35.4\%$\ddagger$ (34.1\%$\dagger$) & 47.1\% & \textbf{63.5\%}$\dagger$ (58.5\%$\ddagger$) & 90.4\% & 75.5\%\\
+\makecell[l]{本文} & \toctwo{} & \textbf{81.1\%} & \textbf{42.9\%} & \textbf{54.1\%} & 63.1$\dagger$ (\textbf{59.7\%}$\ddagger$) & 93.5\% & \textbf{91.0\%}\\
+\bottomrule
+\end{tabular}
+\label{tab:1}
+\end{table}
+
+\begin{table}[H]\centering
+\caption{ToG-FinQA 结果}
+\begin{tabular}{lccccc}
+\toprule
+模型 & \toctwo{} & Vanilla RAG & CoT & ToG & GraphRAG\\
+\midrule
+ToG-FinQA & \textbf{34.0\%} & 0 & 0 & 14.0\% & 6.2\%\\
+\bottomrule
+\end{tabular}
+\label{tab:2}
+\end{table}
+
+\subsection{实现细节}
+
+为与其他基线进行公平比较，我们主要使用 GPT-3.5-turbo 作为骨干（backbone）大语言模型。为评估骨干大语言模型对 \toctwo{} 性能的影响，我们使用 GPT-4o、Llama3-8B 和 Qwen2-7B 进行了实验。与 ToG 的设置一致，我们将所有生成的温度（temperature）参数设为 0。宽度 $W=3$，最大迭代次数（深度）为 3。在关系剪枝过程中，我们设置 0.2 的阈值以过滤相关性分数较低的关系，然后选取 top-$W$。对于上下文检索，我们使用 BGE-embedding 模型且不进行任何微调（fine-tuning）。在实体剪枝中，我们保留 10 个（$K=10$）得分最高的句子用于计算实体分数。在推理阶段，对大多数数据集我们采用 2-shot 示范（demonstration）。遵循 CoK（Li et al., 2024c），我们对 FEVER 采用 3-shot 和 6-shot 示范，并让大语言模型先执行一个自一致性推理步骤。
+
+\subsection{主要结果}
+
+若干开源数据集上的主要结果见表~\ref{tab:1}。我们注意到，\toctwo{} 在 WebQSP、AdvHotpotQA、QALD-10-en 和 Zero-Shot RE 上优于其他基线方法。值得注意的是，WebQSP、AdvHotpotQA 和 QALD-10-en 都是多跳推理数据集。在 FEVER 上，\toctwo{} 取得了与 CoK 相当的性能，因为 FEVER 中的事实陈述主要涉及单跳关系，因而不需要深入的信息检索。在另一个事实验证数据集 Creak 中，所有事实陈述都可以基于 Wikidata 进行验证，因此 \toctwo{} 和 ToG 在 Creak 上有相近的性能。同时，与原始的 ToG 相比，\toctwo{} 在 AdvHotpotQA 上取得了显著提升（16.6\%），在其他数据集上也表现出明显的增强（WebQSP 提升 4.93\%，QALD-10-en 提升 3.85\%，Zero-Shot RE 提升 3\%，FEVER 提升 10.4\%）。这展示了我们的 KG$\times$Text RAG 框架在解决复杂问题方面的优势。
+
+\begin{table}[H]\centering
+\caption{不同骨干模型下直接推理与 \toctwo{} 的性能比较。}
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.2}
+\small
+\begin{tabular}{lcccccccc}
+\toprule
+ & \multicolumn{2}{c}{Llama-3-8B} & \multicolumn{2}{c}{Qwen2-7B} & \multicolumn{2}{c}{GPT-3.5-turbo} & \multicolumn{2}{c}{GPT-4o}\\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}\cmidrule(lr){8-9}
+ & Direct & \toctwo{} & Direct & \toctwo{} & Direct & \toctwo{} & Direct & \toctwo{}\\
+\midrule
+AdvHotpotQA & 20.8 & 34.7 (66.8\%$\uparrow$) & 17.9 & 30.8 (72.1\%$\uparrow$) & 23.1 & 42.9 (85.7\%$\uparrow$) & 47.7 & 53.3 (11.3\%$\uparrow$)\\
+FEVER & 35.5 & 52.9 (49.0\%$\uparrow$) & 38.6 & 53.1 (38.1\%$\uparrow$) & 51.8 & 63.1 (21.8\%$\uparrow$) & 66.2 & 70.1 (5.9\%$\uparrow$)\\
+ToG-FinQA & 0 & 8.2 & 0 & 10.3 & 0 & 34.0 & 0 & 36.1\\
+\bottomrule
+\end{tabular}
+\label{tab:3}
+\end{table}
+
+大多数大语言模型都已在 Wikipedia 上进行过预训练，而 Wikipedia 也是 AdvHotpotQA 和 FEVER 等数据集的非结构化知识源，因此纯大语言模型方法能够在这些数据集上奏效。为进一步评估不同方法在领域特定推理场景下的有效性——在这类场景中，由于大语言模型自身通常缺乏相关知识，从特定知识源检索信息至关重要——我们在自建的 ToG-FinQA 数据集上进行了一项额外评估。表~\ref{tab:2} 展示了基于 GPT-3.5-turbo 的 \toctwo{} 与 CoT 以及原始 RAG 的比较。在这项任务中，\toctwo{} 相比其他基线展现出明显的优势。Vanilla RAG 和 CoT 均表现挣扎，表明传统的 RAG 和 CoT 方法可能无法使大语言模型解决未曾见过的复杂问题。GraphRAG 仅答对了 6.2\%，这表明松耦合的混合式 RAG 虽然能从知识图谱和文档二者中检索信息，却无法借助知识图谱执行多跳的上下文检索与推理。与 GraphRAG 相比，ToG 表现出更高的有效性，尽管提升有限，这表明三元组所提供的知识框架能够更好地支持多跳推理。
+
+\subsection{消融研究}
+\subsubsection{大语言模型骨干的消融}
+
+能力各异的大语言模型在多大程度上受益于 \toctwo{} 的知识增强？为回答这一研究问题，我们通过在 AdvHotpotQA 和 FEVER 上的实验，分析了在不同大语言模型骨干选择下 \toctwo{} 带来的增强。实验结果见表~\ref{tab:3}。
+
+我们观察到，\toctwo{} 能将能力较弱的大语言模型（例如 Llama-3-8B、Qwen2-7B）的推理能力提升至更强大的大语言模型（例如 GPT-3.5-turbo）直接推理的水平，这支持了我们的直觉：\toctwo{} 能帮助存在知识和理解瓶颈的大语言模型。另一方面，强大的大语言模型（例如 GPT-3.5-turbo 和 GPT-4o）仍能受益于 \toctwo{}，在复杂知识推理任务上提升自身性能，这表明 \toctwo{} 在更强的大语言模型加持下可能取得更高的性能。在使用 Wikipedia 作为知识源的 AdvHotpotQA 和 FEVER 上，所有骨干大语言模型中最强大的 GPT-4o 获得的提升最小，因为相比其他骨干大语言模型，GPT-4o 对与 Wikipedia 相关的知识记忆更好，使其在这些数据集上的直接推理性能本已令人满意。显然，当相关知识在预训练过程中未曾接触、且需要一个知识检索过程时，像 GPT-4o 这样具备更强推理能力的大语言模型在 ToG-FinQA 上从 \toctwo{} 中获益更为显著。在此类场景中，\toctwo{} 借助更强的大语言模型实现了更深入的知识检索和更可靠的推理。
+
+\subsubsection{实体剪枝工具的选择}
+
+在基于上下文的实体剪枝这一步骤中，新主题实体的选择应基于对应上下文的相关性，而这又会反向引导下一轮的图路径探索。在本实验中，我们在从 AdvHotpotQA 中采样的一个集合上评估不同的相关性打分方法。除了三种 DRM 模型——BGE-Embedding、BGE-reranker 和 Minilm——之外，我们还测试了稀疏检索模型 BM25 和使用大语言模型的生成式排序（generative ranking）。
+
+什么样的工具最适合将基于图的知识与基于文档的知识紧密耦合？首先，图~\ref{fig:3}a 在固定实体上下文数量 $K=10$ 的情况下呈现了各种剪枝工具的选择。BGE-Reranker 表现出最佳性能，其次是 Minilm，后者可作为前者的一个更轻量的替代方案。基于生成式和基于嵌入的工具表现出相当的结果，而 BM25 作为一种经典且高效的检索方法，其性能接近先进模型。考虑到大语言模型运行时间长以及嵌入模型准确率较低，采用重排器（reranker）进行实体剪枝在二者之间取得了最佳平衡。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{cand_p09_k00.pdf}
+\caption{实体剪枝工具的对比分析。}
+\label{fig:3}
+\end{figure}
+
+这一观察还表明，像 BM25 这样的经典检索技术与更复杂的模型并用，仍能以资源高效的方式产生良好的结果。
+
+然后我们在图~\ref{fig:3}b 中进行了另一项实验，以寻找上下文数量 $K$ 的最佳设置。我们的发现表明，BGE-Reranker 倾向于在更长的上下文输入下产生更好的结果，而大语言模型则表现出有效性下降。尽管如此，使用 BGE-Reranker 的剪枝工具的整体性能仍略微超过大语言模型。我们将这一结果归因于：合理地增加更多上下文能够对不相关文档提供更大的容忍度，且 DRMs 能够处理大量候选项。虽然大语言模型具备强大的判别能力并提供更大的灵活性，但其性能受输入长度的显著制约。因此，考虑到基于 DRM 的方法在成本效益和增强泛化方面的优势，我们选择基于 DRM 的方法进行实体剪枝。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.45\linewidth]{cand_p09_k01.pdf}
+\caption{宽度与深度设置分析。}
+\label{fig:4}
+\end{figure}
+
+\subsubsection{宽度与深度设置}
+
+更宽的探索范围是否一定更好？为回答这一研究问题，我们分析了最大宽度 $W$ 和深度 $D$ 设置的影响。图~\ref{fig:4} 展示了 \toctwo{} 在 AdvHotpotQA 上、在不同的最大推理宽度和深度配置下的性能。结果表明，随着宽度从 2 增加，模型性能逐渐提升；然而，超过宽度 3 之后边际收益递减。这一趋势归因于推理宽度，它对应于每一步保留的 top-$W$ 个相关实体的数目；更大的宽度允许在主题剪枝时有更大的宽容度。就深度而言，模型性能在超过深度 3 之后趋于平稳。这些观察表明，更大的搜索范围并非总是更好；它应当根据任务的难度进行调整。
+
+\subsection{运行时分析}
+
+在上述实验中，为提高效率，我们在关系剪枝中使用式 3。在此设置下，\toctwo{} 的推理过程最多需要 $2D+(D-1)+1$ 次大语言模型调用。当在关系剪枝中使用式 2 时，\toctwo{} 最多需要 $WD+D+1$ 次大语言模型调用，并且如附录 B.3 表 7 所示，能够在若干数据集上取得略高的性能。在表 7 中，我们还报告了一项额外消融研究的结果。相比之下，ToG 最多需要 $2WD+D+1$ 次大语言模型调用。我们在附录 B.4 表 8 中比较了 ToG 与 \toctwo{} 在不同数据集上的具体运行时间。尽管 \toctwo{} 通过实体上下文整合了额外的知识，但 \toctwo{} 仍能将实体剪枝阶段的运行时间平均缩减至 ToG 的 68.7\%。这是因为 ToG 依赖于基于大语言模型的实体剪枝，而 \toctwo{} 利用了 DRMs，后者能够处理更多候选项并更快地计算相关性分数。
+
+\begin{table}[H]\centering
+\caption{答案线索来源的来源分布：直接回答（Direct Answer）指无需额外信息即可直接回答的问题。三元组增强回答（Triple-enhanced Answer）指以三元组连接作为线索的答案。文档增强回答（Doc-enhanced Answer）指实体上下文信息为生成答案提供线索的答案。双重增强回答（Both-enhanced Answer）指三元组连接与实体上下文信息共同发挥作用的答案。}
+\begin{tabular}{lc}
+\toprule
+答案类型 & 占比\\
+\midrule
+直接回答（Direct Answer） & 16.13\%\\
+三元组增强回答（Triple-enhanced Answer） & 9.68\%\\
+文档增强回答（Doc-enhanced Answer） & 41.94\%\\
+双重增强回答（Both-enhanced Answer） & 32.26\%\\
+\bottomrule
+\end{tabular}
+\label{tab:4}
+\end{table}
+
+\subsection{人工分析}
+
+\toctwo{} 在多大程度上利用了三元组连接和上下文信息？为深入理解 \toctwo{} 的行为，我们从 \toctwo{} 的结果中随机选取 50 个 AdvHotpotQA 推理结果，分别就三元组连接推理以及连接内实体的上下文信息如何促成正确答案进行了人工分析。如表~\ref{tab:4} 所示，文档增强回答的占比最高，约为 42\%，而三元组增强回答最为少见，这表明文本上下文往往是复杂问答任务中最重要的信息来源。仅凭三元组连接缺乏详细的上下文，难以提供更深入的洞见，其作用更多是一种宏观层面的引导。即便不依赖三元组内部的文本信息，关键线索仍能被有效地导航。双重增强回答的占比显示出显著的利用率，表明三元组连接推理与实体上下文文档的结合是一种高度有效的模式。直接回答占据了 16\% 的响应，这表明对于复杂问题，大语言模型能够直接回答的问题相对较少，仍然高度依赖于先进的信息增强流程。
+
+我们展示 AdvHotpotQA 中的两个案例，以呈现双重增强回答和文档增强回答的示例。在双重增强案例中，该方法不仅从三元组连接信息中推导出“与 Seminole 民族相关联的 Black Indians 群体是 Black Seminoles”，还利用 Black Seminoles 文档中的上下文来确定他们的定居地点。在文档增强案例中，该方法将三元组连接作为引导，最终从专辑中乐队成员 Billy Corgan 的文档上下文中识别出目标信息。AdvHotpotQA 和 ToG-FinQA 中的更多案例见附录 D。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{cand_p10_k00.pdf}
+\caption{双重增强回答（左侧）与文档增强回答（右侧）的图示。}
+\label{fig:5}
+\end{figure}
+
+我们还就所选问题比较了 \toctwo{} 与 CoT 的输出。如附录 B.1 表 5 所示，与 CoT 相比，\toctwo{} 通过深入的知识检索缓解了大语言模型的幻觉问题，并且在面对知识不足时更倾向于拒绝回答。我们还观察到，当使用 EM 作为评测指标时，\toctwo{} 的响应中存在相当数量的假阴性（false negative），这表明我们的方法仍有尚未开发的潜力。
+
+\section{结论}
+
+现有的基于知识图谱或文本的 RAG 系统在处理复杂知识推理任务时，难以确保深入的知识检索。在本工作中，我们提出了一种混合式 RAG 范式 KG$\times$Text RAG，它将基于知识图谱和基于文本的 RAG 紧密耦合，并提出了 Think-on-Graph 2.0（\toctwo{}）算法框架。该框架通过利用文本上下文实现可靠的图检索，借助知识图谱实现知识引导的上下文检索，并迭代地执行协作式检索过程以获取深入的知识，从而实现深度且忠实的大语言模型推理。实验结果表明，\toctwo{} 能够显著提升不同规模的大语言模型，并在无需额外训练成本的情况下优于现有的各类大语言模型推理方法和 RAG 方法。
+
+\section*{参考文献}
+\begin{enumerate}[leftmargin=2em]
+\item Akari Asai, Zeqiu Wu, Yizhong Wang, Avirup Sil, and Hannaneh Hajishirzi. Self-rag: Learning to retrieve, generate, and critique through self-reflection, 2023. URL \url{https://arxiv.org/abs/2310.11511}.
+\item Jiawei Chen, Hongyu Lin, Xianpei Han, and Le Sun. Benchmarking large language models in retrieval-augmented generation, 2023. URL \url{https://arxiv.org/abs/2309.01431}.
+\item Yujuan Ding, Wenqi Fan, Liangbo Ning, Shijie Wang, Hengyun Li, Dawei Yin, Tat-Seng Chua, and Qing Li. A survey on rag meets llms: Towards retrieval-augmented large language models. arXiv preprint arXiv:2405.06211, 2024.
+\item Darren Edge, Ha Trinh, Newman Cheng, Joshua Bradley, Alex Chao, Apurva Mody, Steven Truitt, and Jonathan Larson. From local to global: A graph rag approach to query-focused summarization, 2024. URL \url{https://arxiv.org/abs/2404.16130}.
+\item Yunfan Gao, Yun Xiong, Xinyu Gao, Kangxiang Jia, Jinliu Pan, Yuxi Bi, Yi Dai, Jiawei Sun, Meng Wang, and Haofen Wang. Retrieval-augmented generation for large language models: A survey, 2024. URL \url{https://arxiv.org/abs/2312.10997}.
+\item Rikui Huang, Wei Wei, Xiaoye Qu, Wenfeng Xie, Xianling Mao, and Dangyang Chen. Joint multi-facts reasoning network for complex temporal question answering over knowledge graph. In ICASSP 2024-2024 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP), pp. 10331--10335. IEEE, 2024.
+\item Zhouyu Jiang, Ling Zhong, Mengshu Sun, Jun Xu, Rui Sun, Hui Cai, Shuhan Luo, and Zhiqiang Zhang. Efficient knowledge infusion via kg-llm alignment, 2024. URL \url{https://arxiv.org/abs/2406.03746}.
+\item Daniel Kahneman. Thinking, fast and slow. Farrar, Straus and Giroux, 2011.
+\item Muzhi Li, Minda Hu, Irwin King, and Ho-fung Leung. The integration of semantic and structural knowledge in knowledge graph entity typing. In Kevin Duh, Helena Gomez, and Steven Bethard (eds.), Proceedings of the 2024 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies (Volume 1: Long Papers), pp. 6625--6638, Mexico City, Mexico, June 2024a. Association for Computational Linguistics. doi: 10.18653/v1/2024.naacl-long.369. URL \url{https://aclanthology.org/2024.naacl-long.369/}.
+\item Muzhi Li, Cehao Yang, Chengjin Xu, Xuhui Jiang, Yiyan Qi, Jian Guo, Ho fung Leung, and Irwin King. Retrieval, reasoning, re-ranking: A context-enriched framework for knowledge graph completion, 2024b. URL \url{https://arxiv.org/abs/2411.08165}.
+\item Xingxuan Li, Ruochen Zhao, Yew Ken Chia, Bosheng Ding, Shafiq Joty, Soujanya Poria, and Lidong Bing. Chain-of-knowledge: Grounding large language models via dynamic knowledge adapting over heterogeneous sources. In International Conference on Learning Representations, 2024c. URL \url{https://openreview.net/forum?id=cPgh4gWZlz}.
+\item Daizong Liu, Xiaoye Qu, Jianfeng Dong, and Pan Zhou. Reasoning step-by-step: Temporal sentence localization in videos via deep rectification-modulation network. In Proceedings of the 28th International Conference on Computational Linguistics, pp. 1841--1851, 2020.
+\item Yasumasa Onoe, Michael J. Q. Zhang, Eunsol Choi, and Greg Durrett. Creak: A dataset for commonsense reasoning over entity knowledge, 2021. URL \url{https://arxiv.org/abs/2109.01653}.
+\item Matthew E Peters, Mark Neumann, Robert L Logan IV, Roy Schwartz, Vidur Joshi, Sameer Singh, and Noah A Smith. Knowledge enhanced contextual word representations. arXiv preprint arXiv:1909.04164, 2019.
+\item Fabio Petroni, Aleksandra Piktus, Angela Fan, Patrick Lewis, Majid Yazdani, Nicola De Cao, James Thorne, Yacine Jernite, Vladimir Karpukhin, Jean Maillard, Vassilis Plachouras, Tim Rocktäschel, and Sebastian Riedel. Kilt: a benchmark for knowledge intensive language tasks, 2021. URL \url{https://arxiv.org/abs/2009.02252}.
+\item Zexuan Qiu, Zijing Ou, Bin Wu, Jingjing Li, Aiwei Liu, and Irwin King. Entropy-based decoding for retrieval-augmented large language models, 2024.
+\item Bhaskarjit Sarmah, Benika Hall, Rohan Rao, Sunil Patel, Stefano Pasquali, and Dhagash Mehta. Hybridrag: Integrating knowledge graphs and vector retrieval augmented generation for efficient information extraction. arXiv preprint arXiv:2408.04948, 2024.
+\item Zhihong Shao, Yeyun Gong, Yelong Shen, Minlie Huang, Nan Duan, and Weizhu Chen. Enhancing retrieval-augmented large language models with iterative retrieval-generation synergy, 2023. URL \url{https://arxiv.org/abs/2305.15294}.
+\item Jiashuo Sun, Chengjin Xu, Lumingyuan Tang, Saizhuo Wang, Chen Lin, Yeyun Gong, Lionel M. Ni, Heung-Yeung Shum, and Jian Guo. Think-on-graph: Deep and responsible reasoning of large language model on knowledge graph, 2024. URL \url{https://arxiv.org/abs/2307.07697}.
+\item Yawei Sun, Lingling Zhang, Gong Cheng, and Yuzhong Qu. SPARQA: skeleton-based semantic parsing for complex questions over knowledge bases. CoRR, abs/2003.13956, 2020. URL \url{https://arxiv.org/abs/2003.13956}.
+\item James Thorne, Andreas Vlachos, Christos Christodoulopoulos, and Arpit Mittal. Fever: a large-scale dataset for fact extraction and verification. arXiv preprint arXiv:1803.05355, 2018.
+\item Harsh Trivedi, Niranjan Balasubramanian, Tushar Khot, and Ashish Sabharwal. Interleaving retrieval with chain-of-thought reasoning for knowledge-intensive multi-step questions, 2023. URL \url{https://arxiv.org/abs/2212.10509}.
+\item Ricardo Usbeck, Xi Yan, Aleksandr Perevalov, Longquan Jiang, Julius Schulz, Angelie Kraft, Cedric Möller, Junbo Huang, Jan Reineke, Axel-Cyrille Ngonga Ngomo, et al. Qald-10--the 10th challenge on question answering over linked data. Semantic Web, (Preprint):1--15, 2023.
+\item Xuezhi Wang, Jason Wei, Dale Schuurmans, Quoc Le, Ed Chi, Sharan Narang, Aakanksha Chowdhery, and Denny Zhou. Self-consistency improves chain of thought reasoning in language models, 2023a. URL \url{https://arxiv.org/abs/2203.11171}.
+\item Zhiruo Wang, Jun Araki, Zhengbao Jiang, Md Rizwan Parvez, and Graham Neubig. Learning to filter context for retrieval-augmented generation, 2023b. URL \url{https://arxiv.org/abs/2311.08377}.
+\item Jason Wei, Xuezhi Wang, Dale Schuurmans, Maarten Bosma, Ed H. Chi, Quoc Le, and Denny Zhou. Chain of thought prompting elicits reasoning in large language models. CoRR, abs/2201.11903, 2022a. URL \url{https://arxiv.org/abs/2201.11903}.
+\item Jason Wei, Xuezhi Wang, Dale Schuurmans, Maarten Bosma, Fei Xia, Ed Chi, Quoc V Le, Denny Zhou, et al. Chain-of-thought prompting elicits reasoning in large language models. Advances in neural information processing systems, 35:24824--24837, 2022b.
+\item Zhilin Yang, Peng Qi, Saizheng Zhang, Yoshua Bengio, William W Cohen, Ruslan Salakhutdinov, and Christopher D Manning. Hotpotqa: A dataset for diverse, explainable multi-hop question answering. arXiv preprint arXiv:1809.09600, 2018.
+\item Xi Ye and Greg Durrett. The unreliability of explanations in few-shot prompting for textual reasoning. In Advances in Neural Information Processing Systems, 2022.
+\item Wen-tau Yih, Matthew Richardson, Christopher Meek, Ming-Wei Chang, and Jina Suh. The value of semantic parse labeling for knowledge base question answering. In Proceedings of the 54th Annual Meeting of the Association for Computational Linguistics (Volume 2: Short Papers), pp. 201--206, 2016.
+\item Wenhao Yu, Hongming Zhang, Xiaoman Pan, Kaixin Ma, Hongwei Wang, and Dong Yu. Chain-of-note: Enhancing robustness in retrieval-augmented language models, 2023. URL \url{https://arxiv.org/abs/2311.09210}.
+\item Penghao Zhao, Hailin Zhang, Qinhan Yu, Zhengren Wang, Yunteng Geng, Fangcheng Fu, Ling Yang, Wentao Zhang, and Bin Cui. Retrieval-augmented generation for ai-generated content: A survey. arXiv preprint arXiv:2402.19473, 2024.
+\end{enumerate}
+
+\appendix
+\section{伪代码}
+
+\begin{center}
+\textbf{算法 1：\toctwo{} 算法}
+\end{center}
+\vspace{-0.5em}
+\begin{algobox}
+\small
+\noindent\textbf{输入（Input）：} 问题 $q$\\
+\noindent\textbf{输出（Output）：} 答案 Ans\\[0.3em]
+\textit{// 初始化（Initialization）;}\\
+$Clues=\mathrm{Null}$;\\
+主题实体 $E^{0}_{topic}\leftarrow$ 先执行 NER 再执行 Topic Prune;\\
+$Ctx^{0}\leftarrow$ 使用 DRM 从与 $E^{0}_{topic}$ 相关联的文档中检索 top-$k$ 个文本块;\\
+提示大语言模型评估知识是否足以回答 $q$：$\mathrm{PROMPT}_{rs}(q,Ctx^{0},Clues^{0})$\\
+\textbf{if} 信息充分（Information is sufficient）\textbf{then}\\
+\hspace*{2em}输出 Ans;\\
+\hspace*{2em}\textbf{return}\\
+\textbf{end}\\
+\textbf{else}\\
+\hspace*{2em}输出 $Clues^{0}$;\\
+\textbf{end}\\
+\textbf{for} $i=1$ \textbf{to} $D$ \textbf{do}\\
+\hspace*{1em}\textit{// 上下文增强的图检索（Context Enhanced Graph Retrieval）}\\
+\hspace*{1em}\textbf{for} $e^{i}_{j}\in E^{i}_{topic}$ \textbf{do}\\
+\hspace*{2em}找到关系 $\mathrm{Edge}(e^{i}_{j})=\{(r^{i}_{j,m},h_m)\}$;\\
+\hspace*{1em}\textbf{end}\\
+\hspace*{1em}使用大语言模型选择并为关系打分：$R^{i}\leftarrow\mathrm{PROMPT}_{RP\_cmb}(E^{i}_{topic},q,\{\mathrm{Edge}(e^{i}_{j})\}^{W}_{j=1})$;\\
+\hspace*{1em}\textbf{for} $r^{i}_{j,m}\in R^{i}$ \textbf{do}\\
+\hspace*{2em}找到连接实体 $c^{i}_{j,m}=\mathrm{Tail}(e^{i}_{j},(r^{i}_{j,m},h_m))$;\\
+\hspace*{2em}收集候选实体 $c^{i}_{j,m}$ 的文档并切分为文本块;\\
+\hspace*{1em}\textbf{end}\\
+\hspace*{1em}\textit{// 知识引导的上下文检索（Knowledge-guided Context Retrieval）}\\
+\hspace*{1em}\textbf{for} $c^{i}_{j,m}$ 的 $chunk^{i}_{j,m,z}$ \textbf{do}\\
+\hspace*{2em}计算相关性分数 $s^{i}_{j,m,z}=\mathrm{DRM}(q,[\,triple\_sentence(Pc^{i}_{j,m}):chunk^{i}_{j,m,z}\,])$;\\
+\hspace*{1em}\textbf{end}\\
+\hspace*{1em}$Ctx^{i}\leftarrow$ 选择得分最高的 top-$K$ 个文本块;\\
+\hspace*{1em}基于文本块分数计算候选实体的分数：$score(c^{i}_{j,m})$;\\
+\hspace*{1em}$E^{i+1}_{topic}\leftarrow$ 选择 top-$W$ 个实体;\\
+\hspace*{1em}\textit{// 基于混合知识的推理（Reasoning with Hybrid Knowledge）}\\
+\hspace*{1em}提示大语言模型评估知识是否足以回答 $q$：$\mathrm{PROMPT}_{rs}(q,P^{i},Ctx^{i},Clues^{i-1})$\\
+\hspace*{1em}\textbf{if} 知识充分（Knowledge is sufficient）\textbf{then}\\
+\hspace*{2em}输出 Ans;\\
+\hspace*{2em}\textbf{return}\\
+\hspace*{1em}\textbf{end}\\
+\hspace*{1em}\textbf{else}\\
+\hspace*{2em}输出 $Clues^{i}$;\\
+\hspace*{1em}\textbf{end}\\
+\textbf{end}\\
+输出失败信息或尽力而为的答案（Output failure or best effort answer）;
+\end{algobox}
+
+\section{额外的实验分析}
+
+\subsection{人工分析（续）}
+
+表~\ref{tab:5} 中呈现的人工分析结果揭示了若干额外的观察：
+
+\begin{table}[H]\centering
+\caption{对从 HotpotQA 中随机采样问题的正确（Correct）与错误（Incorrect）案例的人工研究。}
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.2}
+\small
+\begin{tabular}{lp{2.6cm}p{5.2cm}cc}
+\toprule
+类别 & 类型 & 定义 & \toctwo{} w/o SC & GPT3.5-SC\\
+\midrule
+\multirow{2}{*}{正确（Correct）} & Correct & 答案正确。 & 100\% & 88.3\%\\
+ & False positive & 被错误地判定为正确。 & 0\% & 11.7\%\\
+\midrule
+\multirow{6}{*}{错误（Incorrect）} & False negative & 答案正确但因问题或标签存在歧义而被判定为错误。 & 38.7\% & 18.1\%\\
+ & Hallucination & 因幻觉导致的错误答案。 & 9.7\% & 72.7\%\\
+ & No Info. & 相关信息在知识源中缺失或未被找到。 & 48.3\% & ---\\
+ & Misunderstood & 大语言模型误解了问题并给出了无关的回答。 & 3.2\% & 9.1\%\\
+\bottomrule
+\end{tabular}
+\label{tab:5}
+\end{table}
+
+1）尽管 \toctwo{} 在各数据集上持续优于基线方法，但在信息检索方面仍面临显著瓶颈。这些问题在很大程度上源于知识源不完整以及检索模型的局限。例如，Wikidata 常常包含不准确、相互矛盾或缺失的内容，许多 Wiki 实体在其 Wikipedia 页面上缺失关键细节。在检索方面，不同类型的问题需要不同的信息，而一个“一刀切”的检索模型在缺乏专门训练的情况下可能表现挣扎。因此，\toctwo{} 可以通过纳入更全面的知识图谱和更先进检索模型的插件来进一步优化，而这一点很方便实现。
+
+2）在处理不那么直接或更复杂的问题时，大语言模型有时会误解意图。例如，在问题“What number president nominated Annie Caputo to become a member of the Nuclear Regulatory Commission?”中，正确答案是 45th，但模型可能回答 Donald Trump（这虽然属实，但并不完全是问题所问的内容）。
+
+3）EM（精确匹配）虽然常被用于评估模型在问答问题上的性能，但并不适合处理此类生成的复杂性。EM 难以正确匹配别名（alias），也无法处理详略程度不同的答案。例如，如果问题是“Where was A born?”而未指定详略程度，那么 New York 和 Manhattan 都应被接受为正确答案。研究者们曾尝试使用大语言模型作为评测者，但考虑到效率、成本以及大语言模型评测中潜在的偏差等因素，我们选择使用 EM 进行粗略的评测。尽管在大语言模型时代，评测者的角色确实是一项重大挑战，但本工作不深入探讨该方面。
+
+\subsection{对主要结果的补充分析}
+
+由于我们在表~\ref{tab:1} 中观察到 ToG 与 \toctwo{} 在 Creak 数据集上存在性能差异，我们旨在对这一特定数据集提供更详细的分析。该分析将就导致所观察到差异的潜在因素提供洞见。此外，我们将展示并讨论这些发现对于理解两种方法在 Creak 数据集情境下的优势与局限的意义。具体而言，我们人工分析了 50 个示例的推理过程。表~\ref{tab:6} 提供了 \toctwo{} 答案类型分布的概览，遵循本文表~\ref{tab:4} 的格式。
+
+\begin{table}[H]\centering
+\caption{\toctwo{} 在 Creak 数据集上的答案类型分布。}
+\begin{tabular}{lc}
+\toprule
+答案类型 & \toctwo{}\\
+\midrule
+三元组增强回答（Triple-enhanced Answer） & 42\%\\
+文档增强回答（Doc-enhanced Answer） & 24\%\\
+双重增强回答（Both-enhanced Answer） & 34\%\\
+\bottomrule
+\end{tabular}
+\label{tab:6}
+\end{table}
+
+由于 Creak 数据集中问题的性质相对简单，结果往往可以直接利用三元组推断出来。因此，ToG 在该数据集上已经表现良好，而 \toctwo{} 所利用的更丰富的实体文档信息并未带来显著的额外收益。如表中所示，相比 HotpotQA 等更复杂的数据集，\toctwo{} 在 Creak 上产生了更高比例的三元组增强回答。
+
+我们对 ToG 和 \toctwo{} 的行为进行了详细的案例研究，突出了三个有代表性的案例，以阐明所观察到的性能差异的主要原因。这些不良案例揭示了每个模型在处理推理时的不同模式。
+
+\noindent\textbf{案例 1（Case 1）：} One can watch Bugs Bunny on the television.\\
+\textbf{\toctwo{} 回答：} \{Yes\}, Bugs Bunny can be watched on television. The references mention the history and success of the Bugs Bunny series, indicating its presence on various channels and streaming services over the years. The knowledge triplets also confirm Bugs Bunny's association with iconic works like Looney Tunes and notable creators like Tex Avery and Mel Blanc.\\
+\textbf{ToG 回答：} \{Yes\}, the claim is \{True\}. Based on the knowledge triplets, Bugs Bunny is a beloved character from iconic works such as Looney Tunes, which was created by Warner Bros, and has been featured extensively in television broadcasts since its creation.\\
+\textbf{标签（Label）：} True\\
+\textbf{错误原因（Error Reason）：} 模型未能产生预期的输出格式 \{True\}。大语言模型没有严格遵循指令，这虽是一个低概率事件，却占据了错误中很大的比例。
+
+\noindent\textbf{案例 2（Case 2）：} Quark served the man a drink on Star Trek: Deep Space Nine.\\
+\textbf{\toctwo{} 回答：} \{No\}, the claim is \{False\}. The claim that ``Quark served the man a drink on Star Trek: Deep Space Nine'' cannot be evaluated based on the given information. The references provide information about the character Quark is a Ferengi bartender on Deep Space Nine, but there is no specific mention of him serving a drink to a man.\\
+\textbf{ToG 回答：} \{Yes\}, the claim is \{True\}. The knowledge triplets confirm Quark's association with Star Trek: Deep Space Nine and his role as a bartender, serving drinks to patrons in the series.\\
+\textbf{标签（Label）：} True\\
+\textbf{错误原因（Error Reason）：} 模型的失败源于两个主要问题：过度谨慎和语义歧义。尽管识别出了关键句子“Quark was the bartender on Deep Space Nine”，\toctwo{} 的过度谨慎使其在没有显式证据的情况下无法做出隐式推断。此外，短语“the man”在没有充分上下文的情况下暗指某个特定个体，从而导致了误读。
+
+\noindent\textbf{案例 3（Case 3）：} Parkinson's disease causes various hallucinations in people.\\
+\textbf{\toctwo{} 回答：} \{Yes\}, the claim is \{True\}. The retrieved references mention that Parkinson's disease psychosis (PDP) is present in around 20 percent of cases and comprises hallucinations, illusions, and delusions. This confirms that Parkinson's disease can indeed cause various hallucinations in people.\\
+\textbf{ToG 回答：} \{No\}, the claim is \{False\}. The retrieved references do not provide any evidence linking Parkinson's disease to causing various hallucinations in people. As no supporting information was found, it is concluded that this condition does not lead to hallucinations.\\
+\textbf{标签（Label）：} False\\
+\textbf{错误原因（Error Reason）：} 尽管从医学角度看，\toctwo{} 的回答显得合理，但黄金标签（golden label）为“False”。这种不一致表明，\toctwo{} 详尽的文档分析有时会导致与数据集标注相偏离的结论，尤其是当数据集缺乏细致入微的推断时。
+
+\noindent\textbf{结论（Conclusion）：} ToG 在需要快速、基于三元组推理的场景中表现良好，而 \toctwo{} 在需要详细上下文推理的案例中展现出其优势。然而，\toctwo{} 过度谨慎的行为以及偶尔偏离真实标签（ground truth）的情况，揭示了它倾向于以与不够明确的标签相偏离为代价来防止幻觉。此外，Creak 数据集中部分问题存在的质量问题也限制了模型性能的上限。
+
+\subsection{补充消融研究}
+
+为评估 \toctwo{} 中每个组件的贡献，我们在 WebQSP、AdvHotpotQA、QALD-10-en 和 FEVER 上进行了全面的消融实验。为节省 API 成本，我们对 FEVER 数据集采样了一个小子集用于消融实验。与在其他三个数据集上的性能相比，在 WebQSP 上主题剪枝（TP）的有效性更为明显，这可能是由于 WebQSP 问题中通用实体（general entity）的相对比例较高，往往会引入更多不必要的噪声。此外，检索反馈（Clue）也在每个数据集上带来了相对一致的提升，表明自适应查询优化（adaptive query optimization）能够帮助大语言模型更好地理解任务。
+
+\begin{table}[H]\centering
+\caption{\toctwo{} 中每个模块对最终性能的影响。/ 表示去除（without）。Clue：检索反馈。$TP$：主题剪枝。$/RC$：用式 2 替换关系剪枝中的式 3。}
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{1.2}
+\small
+\begin{tabular}{lcccc}
+\toprule
+\multirow{2}{*}{模型} & \multicolumn{4}{c}{数据集}\\
+\cmidrule(lr){2-5}
+ & WebQSP (EM) & AdvHotpotQA (EM) & QALD-10-en (EM) & FEVER (Acc.)\\
+\midrule
+Direct & 65.9\% & 23.1\% & 42.0\% & 52.1\%\\
+\toctwo{}$/TP/RC/Clue$ & 78.7\% & 40.9\% & 51.1\% & 56.3\%\\
+\toctwo{}$/TP/Clue$ & 78.0\% & 40.2\% & 49.9\% & 56.0\%\\
+\toctwo{}$/TP$ & 77.6\% & 41.9\% & 52.9\% & 56.5\%\\
+\toctwo{} & \textbf{81.1\%} & \textbf{42.8\%} & \textbf{54.1\%} & \textbf{58.5\%}\\
+\bottomrule
+\end{tabular}
+\label{tab:7}
+\end{table}
+
+\subsection{运行时分析结果}
+
+与 ToG 相比，\toctwo{} 是否提升了图探索的效率？为此，我们首先在相同设置下统计比较了 ToG 与 \toctwo{} 在不同阶段的运行时间。具体而言，我们分析了回答每个离散问题时的平均迭代次数，以及每次迭代的平均运行时间。
+
+表~\ref{tab:8} 中的结果显示，\toctwo{} 在关系剪枝时间上有显著改进，将其缩减至仅为 ToG 的 45\%。这一收益来自关系剪枝组合策略，它将每次迭代的大语言模型调用次数从 $W$ 次削减至 1 次。尽管 \toctwo{} 通过实体上下文整合了额外的知识，但在两个数据集上，\toctwo{} 仍能将实体剪枝阶段的运行时间平均缩减至 ToG 的 68.7\%。这是因为 ToG 依赖于基于大语言模型的实体剪枝，而 \toctwo{} 利用了 DRMs，后者能够处理更多候选项并更快地计算相关性分数。
+
+\begin{table}[H]\centering
+\caption{\toctwo{} 与 ToG 在 FEVER 和 AdvHotpotQA 数据集上的运行时间比较。}
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.2}
+\small
+\begin{tabular}{llcccc}
+\toprule
+数据集 & 方法 & \makecell{每次 RP\\平均时间（秒）} & \makecell{每次 EP\\平均时间（秒）} & \makecell{每次推理\\平均时间（秒）} & \makecell{平均\\深度}\\
+\midrule
+\multirow{2}{*}{FEVER} & \toctwo{} & 6.4 & 4.5 & 5.9 & 2.21\\
+ & ToG & 14.2 & 6.5 & 5.5 & 1.94\\
+\midrule
+\multirow{2}{*}{AdvHotpotQA} & \toctwo{} & 6.1 & 4.3 & 5.7 & 2.17\\
+ & ToG & 13.8 & 6.3 & 5.4 & 1.71\\
+\bottomrule
+\end{tabular}
+\label{tab:8}
+\end{table}
+
+为更好地说明我们的方法相比基线的效率，我们分析了每种方法在 HotpotQA 上的平均总运行时间和 API 调用次数。结果总结于下方的表~\ref{tab:9} 中。\textbf{ToG：} 对每个问题，ToG 最多需要 $2WD+D+1$ 次 API 调用，其中 $W$ 是最大宽度（并行探索的知识三元组数量），$D$ 是最大迭代深度。该结构支持全面的多跳推理与知识探索，但导致每个问题的 API 调用次数相对较多。
+
+\begin{table}[H]\centering
+\caption{各方法 API 调用次数与运行时间的比较。}
+\begin{tabular}{lcc}
+\toprule
+方法 & 平均总时间（秒） & API 调用次数\\
+\midrule
+\toctwo{} & 27.3 & 5.4\\
+NaiveRAG & 10.2 & 1\\
+ToG & 69.3 & 16.3\\
+CoK & 30.1 & 11\\
+\bottomrule
+\end{tabular}
+\label{tab:9}
+\end{table}
+
+\noindent\textbf{CoK：} 为确保比较的公平性，我们将知识域限制为来自 WikiData、Wikipedia 和 DPR 的事实数据。我们还采用了原始实现中的 \texttt{update rationales at once}（一次性更新论据）设置。CoK 对每个问题有固定的 11 次 API 调用：1 次域选择调用、1 次链式思维子问题生成调用、$2\times 3$ 次知识检索调用、2 次论据编辑调用，以及 1 次最终答案生成调用。
+
+\noindent\textbf{NaiveRAG：} 为模拟检索语料库，我们使用 \toctwo{} 迭代过程中遇到的所有实体文档。NaiveRAG 使用一个将 BM25 与 BGE-Reranker 相结合的两阶段检索系统，在所比较的方法中 API 调用次数最少。
+
+\noindent\textbf{\toctwo{}：} 对每个问题，\toctwo{} 最多需要 $2D+(D-1)+1$ 次 API 调用，其中：
+\begin{itemize}[leftmargin=2em]
+\item $2D$：每次迭代中关系剪枝（RP）和推理的调用。
+\item $D-1$：迭代之间的查询重写（query re-writing）。
+\item $1$：主题剪枝（TP）。
+\end{itemize}
+
+与基线相比，\toctwo{} 在成本效益与性能之间取得了良好的平衡。它在保持稳健推理能力的同时，减少了总的 API 调用次数和运行时间。
+
+\subsection{关系剪枝中阈值设置的影响}
+
+我们在关系剪枝（RP）中进行了阈值实验，以分析不同阈值分数的影响。具体而言，我们在 HotpotQA 数据集上比较了三个阈值（0.2、0.5 和 0.8）对最终结果的影响。结果总结于表~\ref{tab:10} 中。
+
+\begin{table}[H]\centering
+\caption{不同阈值对 HotpotQA 最终结果的影响。平均保留分数（Avg. retained score）表示所有通过阈值过滤的关系的平均分数。}
+\begin{tabular}{lcc}
+\toprule
+阈值 & 结果（\%） & 平均保留分数\\
+\midrule
+0.2 & 42.9 & 0.65\\
+0.5 & 43.2 & 0.68\\
+0.8 & 40.0 & 0.92\\
+\bottomrule
+\end{tabular}
+\label{tab:10}
+\end{table}
+
+当阈值设置在 0.2 与 0.5 之间时，其对最终结果的影响极小。然而，当阈值增加到 0.8 时，结果显著减弱。我们将其归因于两个主要原因：
+
+\begin{enumerate}[leftmargin=2em]
+\item 在关系剪枝阶段，通过阈值的关系会基于宽度 $W$ 选取排名靠前的关系而被进一步过滤。因此，即便阈值设置得非常低，分数极低的关系最终也无法被纳入 Top $W$。这解释了为何阈值为 0.2 或 0.5 时平均保留分数非常接近。然而，设置一个合理的阈值仍然是必要的，以防在找到的关系很少且分数很低（例如低至 0.1）的情况下，将完全不相关的关系纳入其中。
+\item 相关性分数中等（例如 0.3--0.7）的关系有可能导向有用的信息。较低的阈值能为这种潜力提供更大的容忍度。当阈值提高到 0.8 时，它会过度放大关系剪枝过程中大语言模型判断对整个流程的影响，导致潜在有价值的关系的丢失。
+\end{enumerate}
+
+\subsection{自一致性（SC）设置的影响}
+
+图~\ref{fig:6} 展示了不同自一致性阈值对 \toctwo{} 在 AdvHotpotQA 上性能的影响。随着阈值的增加，我们观察到相应的性能提升。这可归因于：随着阈值升高，对大语言模型多次响应施加了更严格的一致性要求，从而更有效地识别并过滤出大语言模型难以直接解决的复杂问题。这些困难案例随后被移交给 \toctwo{}，从而实现更准确的响应。此外，虽然在 SC 阶段回答的问题更少，但它们是以更高的确定性被回答的。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.5\linewidth]{cand_p18_k00.pdf}
+\caption{SC 设置的影响。}
+\label{fig:6}
+\end{figure}
+
+\subsection{图完整性的影响}
+
+为研究图质量对 \toctwo{} 推理性能的影响，我们设计了一项实验，以量化知识图谱（KG）质量对模型性能的具体影响。具体而言，我们在随机采样的 HotpotQA 问题子集（共 100 个）上，使用模拟的不完整知识图谱进行了实验。不完整性是通过在关系发现（式 1）和实体发现（式 4）阶段随机丢弃所发现的关系和实体而引入的。具体而言，我们测试了保留 30\%、50\% 和 80\% 已发现实体和关系的场景，其余部分被随机移除。这一系统性评估为模型对不同知识图谱完整性水平的适应能力提供了洞见。结果见表~\ref{tab:11}。
+
+\begin{table}[H]\centering
+\caption{知识图谱完整性对 \toctwo{}.0 性能的影响，分别采用默认（$W=3$，$D=3$）和调整后（$W=8$，$D=2$）的探索策略。}
+\begin{tabular}{ccc}
+\toprule
+KG 完整性（\%） & 探索设置 & EM（\%）\\
+\midrule
+100 & 默认（Default） & 43\\
+80 & 默认（Default） & 41\\
+50 & 默认（Default） & 35\\
+30 & 默认（Default） & 23\\
+30 & 调整后（Adjusted） & 29\\
+\bottomrule
+\end{tabular}
+\label{tab:11}
+\end{table}
+
+在 80\% 完整性时，相比完全完整的知识图谱，模型表现出稳健的性能且受影响极小，表明其在高完整性水平下的优势。在 50\% 完整性时，观察到中等程度的性能下降，表明 \toctwo{}.0 对中等程度的知识图谱不完整性仍具韧性。然而，在 30\% 完整性时，由于图中连接稀疏，性能显著下降，凸显了严重知识图谱不完整性所带来的挑战。
+
+为缓解这一问题，我们对探索策略进行了调整：通过将探索宽度（$W$）增加到 8 并将探索深度（$D$）降低到 2，模型得以扩大其搜索范围，弥补缺失的信息。这一调整带来了性能的显著恢复，尽管知识图谱存在严重不完整性，仍使其更接近一个可接受的水平。这些发现强调了模型的适应能力，并为处理不完整知识图谱的潜在策略提供了洞见。
+
+\subsection{显著性检验}
+
+统计显著性是评估模型性能的一个关键因素。为评估这一点，我们在能够同时获取 \toctwo{} 和基线结果的部分数据集上进行了成对 $t$ 检验。然而，表~\ref{tab:1} 中报告的许多基线结果是直接引自其各自的原始论文或其他相关工作。因此，我们无法获取这些基线模型在单个问题上的详细输出，致使我们目前无法对那些基线进行显著性检验。
+
+对于 WebQSP、Zero-Shot-RE、QALD-10-en 和 Creak 数据集，我们计算了将 \toctwo{} 与 CoK 和 ToG 进行比较的成对 $t$ 检验，如表~\ref{tab:12} 所示。
+
+\begin{table}[H]\centering
+\caption{\toctwo{} 在大多数数据集上显著优于 CoK 和 ToG（$p<0.05$），唯独在 Creak 上与 ToG 的差异不显著（$p>0.9$），表明在该数据集上性能相近。}
+\begin{tabular}{lcccc}
+\toprule
+（\toctwo{} vs. ）方法 & WebQSP & Zero-Shot-RE & QALD-10-en & Creak\\
+\midrule
+CoK & $p<0.05$ & $p<0.01$ & $p<0.05$ & $p<0.05$\\
+ToG & $p<0.05$ & $p<0.05$ & $p<0.05$ & $p>0.9$\\
+\bottomrule
+\end{tabular}
+\label{tab:12}
+\end{table}
+
+\section{ToG-FinQA 数据集概览}
+
+该数据集包含三个主要部分：（1）文档语料库，（2）知识图谱，以及（3）问答对。表~\ref{tab:13} 提供了各部分关键统计数据的摘要。
+
+\begin{table}[H]\centering
+\caption{中文金融问答数据集的关键统计数据。}
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{1.2}
+\small
+\begin{tabular}{llr}
+\toprule
+组成部分 & 统计量 & 数值\\
+\midrule
+\multirow{2}{*}{文档语料库（Document Corpus）} & 文档总数 & 17,013\\
+ & 平均文档长度 & 40,469\\
+\midrule
+\multirow{5}{*}{知识图谱（Knowledge Graph）} & 实体总数 & 671,806\\
+ & 边总数 & 565,994\\
+ & 平均边数 & 0.84\\
+ & 最大边数 & 3,982\\
+ & 边数中位数 & 1.0\\
+\midrule
+\multirow{2}{*}{问答对（QA Pairs）} & 问答对总数 & 97\\
+ & 主题（Topics） & \makecell[l]{市场分析、竞争对手分析、\\大宗交易、客户分析、供应商分析}\\
+\bottomrule
+\end{tabular}
+\label{tab:13}
+\end{table}
+
+我们基于预定义的元路径（meta-path）规则自动采样一些候选三元组路径，例如 supplier-customer-supplier（一种可能探索竞争关系的元路径），同时保留沿路径涉及的实体上下文。随后，这些三元组路径及其上下文信息被人工检查和过滤，以选出能够在逻辑上和事实上构成带有客观答案的多跳问题的候选项。
+
+\section{其他案例}
+
+我们在图~\ref{fig:7} 中展示了 ToG-FinQA 的两个案例。左侧是一个主题为供应商分析（Supplier Analysis）的双重增强案例。从谓语关系 customers 和主语关系 suppliers 的三元组关系中，识别出 ZEC 的两家供应商，并在它们的文档中找到了与回收相关的信息。右侧也是一个双重增强案例，通过相同客户或供应商的路径识别出候选实体，然后利用候选实体文档中的上下文确认 Nanjing Jujong 是目标实体。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{cand_p20_k00.pdf}
+\caption{ToG-FinQA 案例。}
+\label{fig:7}
+\end{figure}
+
+图~\ref{fig:8} 展示了 HotpotQA 中的一个三元组增强案例，其中两部电影的共同风格仅通过利用三元组连接即可识别出来。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.6\linewidth]{cand_p20_k01.pdf}
+\caption{三元组增强案例。}
+\label{fig:8}
+\end{figure}
+
+\section{提示词}
+
+以下提示词（prompt）保留英文原文，以确保与原始实现完全一致。
+
+\begin{table}[H]\centering
+\caption{Topic Prune（主题剪枝提示词）。}
+\label{tab:14}
+\end{table}
+\vspace{-1.2em}
+\begin{promptbox}
+\small
+\textbf{Topic Prune Prompt}\\
+Given a question and a group of related topic entities derived from the Wikipedia knowledge graph, the task is to select which of these entities are suitable as starting points for reasoning on the Wiki knowledge graph to find information and clues that are useful for answering the question. Note that your output should be strictly JSON formatted: \{id: entity\}. Here are examples showing how to analyze and output a JSON formatted answer:\\[0.3em]
+\textbf{Example 1:}\\
+Question: What major city is the Faith Lutheran Middle School and High School located in?\\
+Topic entities: \{ ``Q111'': ``Faith Lutheran Middle School'', ``Q39722'': ``Faith Lutheran High School'' \}\\
+Analysis: All entities are directly related to the core of the question---finding the possible information about Faith Lutheran and its location.\\
+Output: \{``Q111'': ``Faith Lutheran Middle School'', ``Q39722'': ``Faith Lutheran High School''\}\\[0.3em]
+\textbf{Example 2:}\\
+Question: How many Turkish verbs ending with ``uş'' with their lemma?\\
+Topic entities: \{ ``Q24905'': ``verb'' \}\\
+Analysis: Q24905 ``verb'' focuses on verbs, which are action words in a language. The task involves not just identifying verbs but specifically Turkish verbs that end with the suffix ``uş,''. Therefore, the entity ``verb'' is too broad and does not point to a specific Turkish verb. Thus there is no suitable topic entity as a starting point for reasoning.\\
+Output: \{\}\\[0.3em]
+\textbf{Example 3:}\\
+Question: On which island is the Indonesian capital located?\\
+Topic entities: \{ ``Q252'': ``Indonesia'', ``Q23442'': ``island'' \}\\
+Analysis: Q252 ``Indonesia'' represents the country of Indonesia. Considering the question is about the capital of Indonesia and which island it is located on, the entity ``Indonesia'' is directly related to the core of the question---finding the capital of Indonesia and then identifying the island it is situated on. Therefore, this entity is highly suitable as a starting point for reasoning. Q23442 ``island'' represents the concept of an island. While the question does indeed relate to an island, the concept of ``island'' itself is too broad and does not point to a specific geographical location or country. From the perspective of reasoning on a knowledge graph, trying to find the capital of a specific country based solely on the concept of an island is less relevant and efficient compared to starting from that country. Hence, Q252 ``Indonesia'' is the more suitable topic entity as a starting point for reasoning on the knowledge graph. It directly connects to the key information of the question and can effectively guide the search for entities related to the answer within the knowledge graph.\\
+Output: \{``Q252'': ``Indonesia''\}
+\end{promptbox}
+
+\begin{table}[H]\centering
+\caption{Topic Prune Prompt（关系剪枝提示词）。}
+\label{tab:15}
+\end{table}
+\vspace{-1.2em}
+\begin{promptbox}
+\small
+\textbf{Relation Prune Prompt}\\
+Please retrieve \%s relations (separated by semicolon) that contribute to the question and rate their contribution on a scale from 0 to 10.\\
+Question: Mesih Pasha's uncle became emperor in what year?\\
+Topic Entity: Mesih Pasha\\
+Relations: 1. child; 2. country of citizenship; 3. date of birth; 4. family; 5. father; 6. languages spoken; 7. military rank; 8. occupation; 9. place of death; 10. position held\\[0.3em]
+Answer:\\
+1. \{family (Score: 10)\}: This relation is highly relevant as it can provide information about the family background of Mesih Pasha, including his uncle who became emperor.\\
+2. \{father (Score: 4)\}: Uncle is father's brother, so father might provide some information as well.\\
+3. \{position held (Score: 1)\}: This relation is moderately relevant as it can provide information about any significant positions held by Mesih Pasha or his uncle that could be related to becoming an emperor.\\
+4. ......\\[0.3em]
+Question: Van Andel Institute was founded in part by what American businessman, who was best known as co-founder of the Amway Corporation?\\
+Topic Entity: Van Andel Institute\\
+Relations: 1. affiliation; 2. country; 3. donations; 4. educated at; 5. employer\\[0.3em]
+Answer:\\
+1. affiliation (Score: 8): This relation is relevant because it can provide information about the individuals or organizations associated with the Van Andel Institute, including the American businessman who co-founded the Amway Corporation.\\
+2. donations (Score: 3): This relation is relevant because it can provide information about the financial contributions made to the Van Andel Institute, which may include donations from the American businessman in question.\\
+3. educated at (Score: 3): This relation is relevant because it can provide information about the educational background of the American businessman, which may have influenced his involvement in founding the Van Andel Institute.\\
+4. ......
+\end{promptbox}
+
+\begin{table}[H]\centering
+\caption{Relation Prune CMB Prompt（组合式关系剪枝提示词）。}
+\label{tab:16}
+\end{table}
+\vspace{-1.2em}
+\begin{promptbox}
+\small
+\textbf{Relation Prune CMB Prompt}\\
+\# Task:\\
+1. Carefully review the question provided.\\
+2. From the list of available relations for their corresponding entity, select the \%s that you believe are most likely to link to the entities that can provide the most relevant information to help answer the provided question.\\
+3. For each selected relation, provide a score between 0 to 10 reflecting its usefulness in answering the question, with 10 being most useful.\\
+4. Provide a brief explanation for your choices, highlighting how each selected relation potentially contributes to answering the question.\\[0.3em]
+\# The input follows the below format:\\
+Question:[The question text]\\
+Entity 1:[The name of the entity 1]\\
+Available Relations:[A relation list of entity 1 to be chosen.]\\
+Entity 2:[The name of the entity 2]:\\
+Available Relations:[A relation list of entity 2 to be chosen.]\\
+...(Continue in the same manner for additional entities)\\[0.3em]
+\# Below is two examples:\\
+\# Example1:\\
+Question: Mesih Pasha's uncle became emperor in what year?\\
+Topic Entity: Mesih Pasha\\
+Relations: 1. child; 2. country of citizenship; 3. date of birth; 4. family; 5. father; 6. languages spoken, written or signed; 7. military rank\\
+Answer:\\
+1. \{family (Score: 1.0)\}: This relation is highly relevant as it can provide information about the family background of Mesih Pasha, including his uncle who became emperor.\\
+2. \{father (Score: 0.4)\}: Uncle is father's brother, so father might provide some information as well.\\
+3. ......\\[0.3em]
+\# Example2:\\
+Question: what the attitude of Joe Biden towards China?\\
+Entity 1: china\\
+Relations: 1. alliance; 2. international relation; 3. political system; 4. population\\
+Entity 2: joe biden\\
+Relations: 1. political position; 2. presidency; 3. family; 4. early life\\
+Answer:\\
+Entity 1:\\
+1. \{alliance (Score: 8)\}: This relation is highly relevant as it can provide information about the relationship between china and other parties.\\
+2. \{political system (Score: 7)\}: This relation is relevant as it can provide information about the policies that might reflect the relationship between china and other parties.\\
+3. ......
+\end{promptbox}
+
+\begin{table}[H]\centering
+\caption{Relation Prune CMB Prompt (Continue)（组合式关系剪枝提示词，续）。}
+\label{tab:17}
+\end{table}
+\vspace{-1.2em}
+\begin{promptbox}
+\small
+\textbf{Relation Prune CMB Prompt (Continue)}\\
+Entity 2:\\
+1. \{political position (Score: 10)\}: This relation is highly relevant as it can provide information about Joe Biden's political position to other parties or countries.\\
+2. \{presidency (Score: 2)\}: This relation is slightly relevant as it can provide information about Joe Biden's position, which might provide clues to answer the question.\\
+3. ......\\[0.3em]
+\# For questions involving multiple entities, you are required to analyze the relation list for each entity separately. Then select the \%s most relevant relations for each entity, based on the analysis as done in the given example. \# It's essential to maintain strict adherence to the line breaks and format as seen in the provided example for clarity and consistency:\\
+Answer:\\
+Entity 1: The Name of Entity 1\\
+1. \{Relation1 (Score: X)\}: Explanation.\\
+2. \{Relation2 (Score: Y)\}: Explanation.\\[0.2em]
+Entity 2: The Name of Entity 2\\
+1. \{Relation1 (Score: X)\}: Explanation\\
+2. \{Relation2 (Score: Y)\}: Explanation\\
+...(Continue in the same manner for additional entities)\\[0.3em]
+\# Now, I will provide you with a new question with \%s entities and relations. Please analyze it following all the guidance above carefully.\\
+\textit{（注：原文此处重复呈现了上述输出格式说明与新问题引导段落。）}
+\end{promptbox}
+
+\begin{table}[H]\centering
+\caption{Reasoning Prompt (QA)（推理提示词，问答）。}
+\label{tab:18}
+\end{table}
+\vspace{-1.2em}
+\begin{promptbox}
+\small
+\textbf{Reasoning Prompt (QA)}\\
+Given a question, some clues, the associated retrieved knowledge triplets and related contexts, you are asked to evaluate if these resources, combined with your pre-existing knowledge, are sufficient to formulate an answer (\{Yes\} or \{No\}). Your answer must begin with \{Yes\} or \{No\}. If \{Yes\}, please note that the analyzed answer entity must be enclosed in curly brackets \{xxxxxx\}. If \{No\}, it means the resources are useless or provide clues that are helpful but insufficient to answer the question conclusively. Based on the given knowledge, please summarize any insights (if any) so far that may help answer the question, which must also be enclosed in curly brackets \{xxxxxx\}.\\[0.3em]
+Here are some examples:\\
+\# Example 1:\\
+Question: The Sentinelese language is the language of people of one of which islands in the Bay of Bengal?\\
+(Clues): None\\
+(Knowledge triplets): Sentinelese language, Indigenous to, Sentinelese people\\
+(Triplet's related context): The Sentinelese, also known as the Sentinel and the North Sentinel Islanders, are an indigenous people who inhabit North Sentinel Island in the Bay of Bengal in the northeastern Indian Ocean.\\
+(Knowledge triplets): Bay of Bengal, area, Andaman and Nicobar Islands\\
+(Triplet's related context): Andaman and Nicobar Islands are an archipelagic island chain in the eastern Indian Ocean across the Bay of Bengal, they are part of India. They are within the union territory of the Andaman and Nicobar Islands\\
+\# Answer: \{Yes\} The analyzed answer entity is \{Andaman and Nicobar Islands\}.\\[0.3em]
+\# Example 2:\\
+Question: Who is the coach of the team owned by the most famous English former professional footballer?\\
+(Clues): The most famous English former professional footballer is David Beckham.\\
+(Knowledge triplets): David Beckham, co-owned, Inter Miami CF\\
+(Triplet's related context): Inter Miami CF, founded in 2018, is a professional soccer club based in Miami, Florida. It competes in Major League Soccer (MLS) as part of the Eastern Conference. David Beckham made a 3 years contract with his major coach.\\
+\# Answer: \{No\} The given knowledge provides helpful information that the footballer is David Beckham and David Beckham's ownership of Inter Miami CF, but they do not explicitly mention who the coach is. The useful information for now is \{the team owned by the famous English former professional footballer David Beckham is Inter Miami CF\}\\[0.3em]
+Now, please carefully consider the following case:
+\end{promptbox}
+
+\begin{table}[H]\centering
+\caption{Query Re-form Prompt（查询重构提示词）。}
+\label{tab:19}
+\end{table}
+\vspace{-1.2em}
+\begin{promptbox}
+\small
+\textbf{Reasoning Prompt (QA)}\\
+Given a question and some knowledge gained so far, please predict the additional evidence that needs to be found to answer the current question, and then provide a suitable query for retrieving this potential evidence. Note that the query must be included in curly brackets \{xxx\}.
+\end{promptbox}
+
+\end{document}

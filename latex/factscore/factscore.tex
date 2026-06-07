@@ -1,0 +1,978 @@
+\documentclass[11pt,UTF8,fontset=fandol]{ctexart}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx,float,caption,subcaption}
+\usepackage{booktabs,array,multirow,makecell}
+\usepackage{geometry,enumitem,xcolor}
+\usepackage[hidelinks]{hyperref}
+\usepackage{url}
+\usepackage{pifont}
+\usepackage{fancyvrb}
+\providecommand{\indi}{\mathbb{I}}
+\geometry{margin=2.3cm}
+\graphicspath{{/Users/yye/project/论文/assets/factscore/}}
+\captionsetup{font=small,labelfont=bf}
+\setlength{\parskip}{0.4em}
+
+\newcommand{\FS}{\textsc{FactScore}}
+\newcommand{\subj}{LM\textsubscript{SUBJ}}
+\newcommand{\eval}{LM\textsubscript{EVAL}}
+
+\title{\textbf{\FS：对长文本生成中事实精度的细粒度原子化评估}}
+\author{
+Sewon Min$^{\dagger 1}$ \quad Kalpesh Krishna$^{\dagger 2}$ \quad Xinxi Lyu$^{1}$ \quad Mike Lewis$^{4}$ \quad Wen-tau Yih$^{4}$ \\
+Pang Wei Koh$^{1}$ \quad Mohit Iyyer$^{2}$ \quad Luke Zettlemoyer$^{1,4}$ \quad Hannaneh Hajishirzi$^{1,3}$ \\[0.5em]
+\normalsize $^{1}$University of Washington（华盛顿大学）\quad
+$^{2}$University of Massachusetts Amherst（马萨诸塞大学阿默斯特分校）\\
+\normalsize $^{3}$Allen Institute for AI（艾伦人工智能研究所）\quad
+$^{4}$Meta AI \\[0.3em]
+\normalsize \texttt{\{sewon,alrope,pangwei,lsz,hannaneh\}@cs.washington.edu} \\
+\normalsize \texttt{\{kalpesh,miyyer\}@cs.umass.edu} \quad \texttt{\{mikelewis,scottyih\}@meta.com}
+}
+\date{}
+
+\begin{document}
+\maketitle
+\thispagestyle{empty}
+\renewcommand{\thefootnote}{\arabic{footnote}}
+
+\footnotetext[0]{$\dagger$ 核心贡献者。}
+
+\begin{abstract}
+评估大语言模型（large language models, LMs）生成的长文本的事实性并非易事，原因有二：（1）生成内容往往同时包含被支持与未被支持的信息片段，使得对质量的二元判断变得不充分；（2）人工评估耗时且成本高昂。本文提出 \FS，一种新的评估方法，它将一段生成拆分为一系列原子事实（atomic facts），并计算其中被可靠知识源所支持的原子事实所占的百分比。我们开展了广泛的人工评估，以获得由若干最先进的商用大语言模型——InstructGPT、ChatGPT 以及检索增强的 PerplexityAI——所生成的人物传记的 \FS，并给出新的分析，论证此类细粒度评分的必要性（例如，ChatGPT 仅取得 58\%）。由于人工评估成本高昂，我们还提出一个自动化模型，它利用检索和一个强大的语言模型来估计 \FS，误差率低于 2\%。最后，我们使用这一自动化指标评估了来自一组新的 13 个近期大语言模型的 6{,}500 段生成，若由人工评估则将花费 26K 美元，并得到多项发现：GPT-4 和 ChatGPT 比公开模型更具事实性，而 Vicuna 和 Alpaca 是表现最好的公开模型之一。\FS{} 已可通过 \texttt{pip install factscore} 供公众使用。\footnote{源代码和指南可在 \url{https://github.com/shmsw25/FActScore} 获取。}
+\end{abstract}
+
+\begin{figure}[H]\centering
+  \includegraphics[width=0.95\linewidth]{cand_p01_k00.pdf}
+  \caption{\FS{} 概览，即给定知识源所支持的原子事实（信息片段）所占比例。\FS{} 允许对事实精度进行更细粒度的评估。例如，在图中，上方模型的得分为 66.7\%，下方模型的得分为 10.0\%，而以往工作会给二者都赋值 0.0。\FS{} 既可以基于人工评估，也可以自动化，从而无需任何人工努力即可评估大量大语言模型。}
+  \label{fig:1}
+\end{figure}
+
+\section{引言}
+
+大语言模型（LMs）生成的长文本已被广泛使用（Brown et al., 2020；Ouyang et al., 2022）；然而，评估其事实精度——即一段生成中所传达的每一条信息是否在事实上准确——出于两个原因仍然具有挑战性。第一，一段生成由大量真假混杂的信息片段构成\footnote{即便单个句子也由多条信息构成（例如 ChatGPT 中每句 4.4 条，其中 40\% 是被支持与未被支持信息的混合）。}，使得二元判断不充分（Pagnoni et al., 2021）。第二，验证每一条信息既耗时又昂贵。
+
+本文提出 \FS（Factual precision in Atomicity Score，原子性中的事实精度评分），一种新的对大语言模型的评估方法，它表示给定知识源所支持的原子事实（信息片段）所占的百分比。计算 \FS{} 包括：（1）将一段生成拆分为一系列原子事实——每个原子事实是一条只包含一条信息的简短陈述（Nenkova and Passonneau, 2004；Shapira et al., 2019；Zhang and Bansal, 2021；Liu et al., 2022）；（2）为每个原子事实赋予一个二元标签，从而允许对事实精度进行细粒度评估。我们在生成人物传记这一任务上评估 \FS，因为此类生成由可验证的陈述构成，而非有争议或主观的陈述，且范围广泛（即涵盖不同的国籍、职业和稀有程度）。
+
+我们开展了广泛的人工标注，以获得三个最先进的、商业可用的大语言模型的 \FS：InstructGPT（Ouyang et al., 2022）、ChatGPT（OpenAI, 2022）以及搜索增强的 PerplexityAI\footnote{\url{perplexity.ai}}。我们的结果表明，商业可用的大语言模型充斥着错误，其 \FS{} 分别为 42\%、58\% 和 71\%。随着实体稀有度增加，它们的 \FS{} 显著下降，例如 ChatGPT 从 80\% 降至 16\%。
+
+由于人工评估成本高昂，我们接下来引入一种对 \FS{} 的自动评估，通过一个为给定大语言模型估计 \FS{} 的模型来实现。我们的估计器将生成内容分解为原子事实，并基于给定知识源验证每个原子事实，利用对给定知识源的检索以及强大的语言模型。我们的估计器以低于 2\% 的误差率紧密逼近 \FS，并且无需人工努力即可大规模应用于一系列新的大语言模型。我们的案例研究评估了来自 13 个大语言模型的 6{,}500 段生成，若用人工评估则将花费 26K 美元，并得到多项发现：GPT-4（OpenAI, 2023）和 ChatGPT 在事实性上远不及人类，但远胜于公开模型；公开模型之间存在很大差异，其中 Vicuna（Chiang et al., 2023）和 Alpaca（Taori et al., 2023）是表现最好的模型之一。
+
+总之，本文的贡献如下。
+
+\begin{enumerate}[leftmargin=2em]
+\item 我们提出 \FS，一种新的对大语言模型事实精度的评估方法，它将模型生成拆分为原子事实，并根据给定知识源验证每个原子事实。人工评估表明，无论是否使用搜索，最先进的大语言模型的 \FS{} 都很低。
+\item 我们提出一个以低于 2\% 误差率逼近 \FS{} 的模型，从而无需人工努力即可评估大量新的大语言模型。
+\item 我们将 \FS{} 及标注数据开源供公众使用，可通过 \texttt{pip install factscore} 获取。我们建议未来工作将 \FS{} 扩展到更广泛的生成集合（例如开放式生成），并进一步改进该估计器。
+\end{enumerate}
+
+\section{相关工作}
+
+\textbf{文本生成中的事实精度。} 文本生成中的事实精度一直是 NLP 中一个活跃的研究领域。多数已有工作研究为特定问题进行监督训练的模型的事实精度，例如对话（Shuster et al., 2021），或聚焦于带简短答案的问答（Kadavath et al., 2022；Kandpal et al., 2022；Mallen et al., 2023；Nori et al., 2023）。
+
+更近期的工作研究了简短答案之外的文本生成的事实精度。Lee et al. (2022) 用代理指标（proxy metrics）评估事实精度，例如生成内容中的命名实体是否出现在相应主题的文章中。一系列同期工作验证了模型所提供引用（attributions）的精度（Gao et al., 2022；Liu et al., 2023a；Yue et al., 2023；Gao et al., 2023）。Manakul et al. (2023) 的一项同期工作在不使用任何知识源的情况下自动识别大语言模型生成中的事实错误；我们在第 4 节中将其方法用作基线估计器。与之相对，我们的工作（1）考虑来自多种最先进大语言模型（带或不带搜索）的更长的文本生成\footnote{由 110--151 个词构成（表~\ref{tab:1}），相比之下 Gao et al. (2022) 为 18--29 个词，Liu et al. (2023a) 为 65 个词。}；（2）通过人类专家以及一个紧密接近人类的自动评估器，提供其细粒度评估；（3）将其大规模应用于大量大语言模型。
+
+\textbf{事实验证（Fact Verification）。} 我们的工作与已有的事实验证工作密切相关（Thorne et al., 2018；Wadden et al., 2020），其中声明句被自动地与诸如 Wikipedia 或科学文献等大型知识源进行核对。多数文献假设单一的原子声明，有时结合周边上下文进行建模（Nakov et al., 2018；Mihaylova et al., 2019；Shaar et al., 2022）。也有工作通过分解为原子事实来验证更长的句子或文本（Fan et al., 2020；Wright et al., 2022；Chen et al., 2022；Kamoi et al., 2023），我们从中获得了启发。事实验证文献与我们工作的主要区别在于，我们聚焦于长文本的模型生成文本，而非句子级别的人工撰写声明。
+
+\textbf{基于模型的评估（Model-based Evaluation）。} 已有工作使用习得的模型来定义自动评估分数（Zhang et al., 2020；Liu et al., 2023b）。这包括摘要中基于模型的评估，它使用 QA 或 NLI 来考量摘要与源文档之间的一致性（Kryscinski et al., 2020；Wang et al., 2020；Fabbri et al., 2022；Deutsch et al., 2021；Laban et al., 2022）。我们从这些工作中获得启发，通过考量信息片段是否被一个大型文本语料库所支持，来评估大语言模型生成的事实精度。
+
+\section{\FS：评估长文本生成的事实精度}
+
+我们提出 \FS，一种新的对大语言模型的评估方法，它考量大语言模型生成的原子事实的事实精度。我们开展人工评估以计算最先进大语言模型的 \FS（第 3.3 节），并讨论结果（第 3.4 节）。\FS{} 允许对事实精度进行严格且细粒度的评估，但耗时且成本高昂，这促使我们在第 4 节进行自动评估。
+
+\subsection{定义}
+
+\FS{} 基于两个核心思想。
+
+\textbf{核心思想 1：以原子事实作为单位。} 长文本由许多信息片段构成，每个片段都可能为真或为假。已有工作探索过以句子作为单位；然而，即使是单个句子也是被支持事实与未被支持事实的混合，例如在 ChatGPT 的 40\% 案例中如此。先前及同期工作要么（1）定义一个额外的“部分支持”标签（Manakul et al., 2023；Liu et al., 2023a），其定义可能是主观的，且会导致较低的一致性；要么（2）采取对支持最严格的定义，要求每一条信息都被支持（Rashkin et al., 2021；Gao et al., 2022），这忽略了部分支持的情形，例如在图~\ref{fig:1} 中给两段生成都赋值 0.0，尽管第一段生成明显比第二段更准确。
+
+在本文中，我们将原子事实定义为传达一条信息的简短句子（示例见图~\ref{fig:1}），类似于摘要内容单元（summarization content units, Nenkova and Passonneau, 2004）。原子事实是比句子更基本的信息单位，并提供更细粒度的评估，例如在图~\ref{fig:1} 中，给第一段生成的评分高于第二段。
+
+\textbf{核心思想 2：事实精度作为给定知识源的函数。} 已有工作常将事实精度视为单一的全局真理（Manakul et al., 2023）。与之相对，我们采取这样一种视角：一条陈述的真实性应取决于终端用户认为可信赖、可靠的某个特定知识源。因此，我们考量的不是某个原子事实在全局意义上为真还是为假，而是它是否被某个给定知识源所支持。这一做法已在事实验证文献中被使用（Wadden et al., 2022），其中不同来源之间的信息冲突相对常见。
+
+\textbf{定义。} 设 $M$ 为待评估的语言模型，$X$ 为一组提示，$\mathcal{C}$ 为知识源。考虑对 $x \in X$ 的响应 $y = M_x$，以及 $A_y$，即 $y$ 中的原子事实列表。$M$ 的 \FS{} 定义如下。
+
+\begin{align*}
+f(y) &= \frac{1}{|A_y|} \sum_{a \in A_y} \indi[a \text{ is supported by } \mathcal{C}], \\
+\text{\textsc{FactScore}}(M) &= \mathbb{E}_{x \in X}\left[f(M_x) \mid M_x \text{ responds}\right].
+\end{align*}
+
+“$M_x$ responds” 表示 $M$ 没有放弃对提示 $x$ 的响应。该定义假设如下：
+
+\begin{enumerate}[leftmargin=2em]
+\item 一个原子事实是否被 $\mathcal{C}$ 支持是无可争议的。
+\item $A_y$ 中每个原子事实都具有相等的重要性权重，遵循 Krishna et al. (2023)。
+\item $\mathcal{C}$ 中的信息片段彼此之间不冲突、不重叠。
+\end{enumerate}
+
+在本文其余部分，我们提议使用人物传记作为 $X$、Wikipedia 作为 $\mathcal{C}$，因为它们在合理程度上满足这些假设（第 3.3 节）。我们在“局限性”一节中更详细地讨论这些假设在哪些情形下成立或可能不成立。
+
+\FS{} 考量精度（precision）而非召回（recall）。例如，一个过于频繁地放弃回答或生成事实较少的文本的模型，可能会有更高的 \FS，即便这并非所期望的。我们将事实召回的评估留待未来工作（更多讨论见“局限性”一节）。
+
+\subsection{所研究的大语言模型}
+
+我们评估三个大语言模型（称为 \subj，即作为评估对象的大语言模型）：（1）InstructGPT（text-davinci-003，由 Ouyang et al. (2022) 更新而来）；（2）ChatGPT（OpenAI, 2022）；（3）PerplexityAI，它将一个搜索引擎与一个语言模型相结合。
+
+\subsection{数据}
+
+我们基于我们的定义对事实精度进行人工评估。我们提示 \subj{} 生成人物传记，并基于 Wikipedia 对其进行评估，原因如下。
+
+\begin{itemize}[leftmargin=2em]
+\item 传记是客观的（而非主观或有争议的），并包含具体（而非含糊）的信息，满足第 3.1 节中的假设 1。
+\item 传记允许跨越不同国籍、职业和稀有程度进行评估。
+\item Wikipedia 对人物信息提供了合理的覆盖，并且具有合理的自洽性\footnote{相关分析见附录 A.5。}，满足假设 3。
+\end{itemize}
+
+\textbf{数据收集。} 我们精心设计了一条标注流水线，通过以下步骤为长文本生成赋予事实精度。
+
+\textbf{步骤 0：抽样人物实体。} 我们从 Wikidata 抽样 183 个有相应 Wikipedia 页面的人物实体。我们从附录 A.1 所定义类别上的均匀分布中抽样实体进行标注。
+
+\textbf{步骤 1：获取生成内容。} 我们向 \subj{} 输入提示 “Tell me a bio of <entity>”（请给我一段 <entity> 的简介），并原样采用生成内容。我们实现了一些规则来识别放弃回答的生成，并将其过滤掉。
+
+\textbf{步骤 2：原子事实生成。} 人类标注者将一段生成拆分为一系列原子事实。为节省标注时间，我们提供由 InstructGPT 拆分好的原子事实，供人类标注者采用并修订。详见附录 A.2。
+
+\textbf{步骤 3：标注事实精度并编辑。} 我们请另一组人类标注者为每个原子事实赋予三种标签之一。如果原子事实显然与提示无关，因而应在无需验证步骤的情况下从传记中删除，标注者赋予 Irrelevant（无关）。如果事实相关，他们基于英文 Wikipedia 验证该事实，并标注为 Supported（被支持）或 Not-supported（未被支持）。
+
+我们通过 Upwork 招募自由职业者，按每小时 15--25 美元支付报酬。标注需要大量努力和时间，导致每段生成的成本为 4 美元。我们为 10\% 的数据分配两名自由职业者并计算一致性率：InstructGPT、ChatGPT 和 PerplexityAI 分别为 96\%、90\% 和 88\%。更多细节见附录 A.3。
+
+\subsection{结果}
+
+数据与结果的统计信息报告于表~\ref{tab:1}。
+
+\begin{table}[H]\centering
+\caption{数据统计与 \FS{} 结果。InstGPT 和 PPLAI 分别指 InstructGPT 和 PerplexityAI。“\% responding” 表示未放弃响应的生成所占百分比。“\# tokens” 基于空格计数。}
+\label{tab:1}
+\begin{tabular}{lccc}
+\toprule
+ & InstGPT & ChatGPT & PPLAI \\
+\midrule
+Use search（使用搜索） & \ding{55} & \ding{55} & \ding{51} \\
+\% responding（响应比例） & 99.5 & 85.8 & 90.7 \\
+\# tokens / response（每条响应的 token 数） & 110.6 & 154.5 & 151.0 \\
+\# sentences / response（每条响应的句子数） & 6.2 & 7.9 & 9.8 \\
+\# facts / response（每条响应的事实数） & 26.3 & 34.7 & 40.8 \\
+\midrule
+\multicolumn{4}{l}{\textit{标签的统计信息}} \\
+Supported（被支持） & 42.3 & 50.0 & 64.9 \\
+Not-supported（未被支持） & 43.2 & 27.5 & 11.1 \\
+Irrelevant（无关） & 14.0 & 8.3 & 14.8 \\
+Abstains from answering（放弃回答） & 0.5 & 14.2 & 9.3 \\
+\midrule
+\textbf{\FS} & 42.5 & 58.3 & 71.5 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{所有 \subj{} 都受困于事实精度错误。} InstructGPT 和 ChatGPT 的 \FS{} 分别为 42.5\% 和 58.3\%。PerplexityAI 使用商用搜索引擎，因此若直接从正确的 Wikipedia 页面复制文本，本应取得完美的 \FS，但其 \FS{} 仅为 71.5\%。我们在本节最后一段对其错误案例进行定性分析。
+
+\textbf{ChatGPT 和 PerplexityAI 经常放弃回答，这大概提升了它们的事实精度。} InstructGPT 很少放弃回答，可能是因为它没有被训练去这样做。
+
+无关事实要么（a）依赖于一段生成中先前那些最终未被支持的事实，要么（b）独立于一段生成中的其他事实而本身就与提示无关（示例见附录 A.4）。我们发现（b）在 InstructGPT 和 ChatGPT 中很少发生，但在 PerplexityAI 中相当常见，因为 PerplexityAI 经常直接复制搜索结果，即使这些结果在很大程度上与输入提示无关。这与 Liu et al. (2023a) 的同期工作一致，该工作表明像 PerplexityAI 这样的生成式搜索引擎会复制不正确的搜索结果，并生成与输入查询无关的文本。
+
+\begin{table}[H]\centering
+\caption{PerplexityAI 的精度错误（Not-supported）分类（A.5 节）。Gen 表示来自 PerplexityAI 的生成，Wiki 表示来自 Wikipedia 的证据文本，Comment 表示我们的评论。}
+\label{tab:2}
+\small
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{p{3.0cm}c p{10cm}}
+\toprule
+类别 & \% & 示例 \\
+\midrule
+单句矛盾（词级别） & 33.3 &
+\textbf{Gen} On November 25th, 2023, Glover Teixeira became an American citizen. \textbf{Wiki} In November 2020, Teixeira became an American citizen. \newline
+\textbf{Gen} [Eric Hacker] was named the International League Pitcher of the Year. \textbf{Wiki} [Eric Hacker] was named the IL Pitcher of the Week. \\
+单句矛盾（超出词级别） & 10.0 &
+\textbf{Gen} William Waldegrave's grandfather was James II and VII. \textbf{Wiki} His father's title was created \ldots{} for the diplomat and ambassador James Waldegrave, 1st Earl Waldegrave, whose grandfather was James II and VII. \newline
+\textbf{Gen} She has appeared in several successful films such as (\ldots) and Zero (2018). \textbf{Wiki:} Zero was a commercial failure. \\
+页面级矛盾 & 23.3 &
+\textbf{Gen} Some of [Julia Faye's] notable films include \ldots{} ``Cleopatra'' (1934). \textbf{Comment} No mention of Cleopatra on the Julia Faye page, and no mention of Julia Faye on the Cleopatra page. \newline
+\textbf{Gen} [Kang Ji-hwan] has donated money to various charities and organizations over the years. \textbf{Comment} No such mention on the Kang Ji-hwan page. \\
+主观 & 16.7 &
+\textbf{Gen} His achievements, as an actor and as a cultural force, will surely prove to be as heroic as those of the characters he portrayed. \textbf{Wiki} Culture writer Steve Rose, in The Guardian, wrote: ``Chadwick Boseman began his career playing African American icons and pioneers; he ends it as one himself. His [\ldots] achievements, as an actor and as a cultural force, will surely prove to be as heroic as those of the characters he portrayed.'' \\
+事实无关 & 3.3 &
+\textbf{Gen} [Zamfir Arbore]'s life is not well-documented, and there is little information available about him. \\
+Wiki 不一致且错误 & 3.3 &
+\textbf{Gen} Kick (2014) that brought [Sajid Nadiadwala] various debutant director awards. \textbf{Wiki} 2015, IIFA Award for Debut Director, Kick. (\ldots) Kick brought him various debutant director awards. \textbf{Comment} The first text is from a table that indicates he won one award (accurate). The second is inaccurate, incorrectly citing a news article. \\
+标注错误 & 10.0 &
+\textbf{Gen} [Zamfir Arbore] was part of the staff of Românul. \textbf{Wiki} The Românul staff came to include Zamfir Arbore. \textbf{Comment} Mentioned in the Românul page but not in the Zamfir Arbore page. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[H]\centering
+  \includegraphics[width=0.62\linewidth]{fig2.pdf}
+  \caption{在不同人物实体频率水平（上）和一段生成中的相对位置（下）上的 \FS。随着实体稀有度增加以及事实位置越靠后，\FS{} 越低。}
+  \label{fig:2}
+\end{figure}
+
+\textbf{对更稀有的实体，错误率更高。} 图~\ref{fig:2}（上）展示了在预训练语料中主题实体（人物）的不同频率水平上的事实精度（见附录 A.1）。随着实体稀有度增加，\FS{} 出现显著下降，这在所有 \subj{} 上一致出现。这与 Kandpal et al. (2022) 和 Mallen et al. (2023) 一致，他们表明简短问答（QA）准确率与预训练数据中的实体频率高度相关。然而，与 Kandpal et al. (2022) 和 Mallen et al. (2023) 所报告的“带检索模型的 QA 准确率对实体稀有度具有鲁棒性”不同，PerplexityAI 的 \FS{} 仍随实体越稀有而显著下降：在原子级别和句子级别分别观察到 50\% 和 64\% 的相对下降。
+
+\textbf{对生成中位置靠后的事实，错误率更高。} 图~\ref{fig:2}（下）报告了在一段生成中相对位置上的事实精度。在所有大语言模型中，生成的较后部分的精度显著更差。这可能是因为（a）较早提及的信息在预训练数据中被更频繁地提及（例如国籍、职业）；（b）误差传播影响了生成的较后部分。这也意味着，仅基于简短答案来评估大语言模型可能无法充分评估其事实精度，因为它未能考虑生成后期阶段所产生的错误。
+
+\textbf{Not-supported 的定性分析。} 我们实证分析中一个令人惊讶的发现是，PerplexityAI 的 \FS（71.5\%）尽管能访问搜索引擎，却比预期更低。为更好地理解其错误，我们对 30 个标签为 Not-supported 的随机样本进行分类（表~\ref{tab:2}）。
+
+\begin{itemize}[leftmargin=2em]
+\item \textbf{单句矛盾：} Wikipedia 中的单个句子在词级别（数字、日期或实体）或更高层面直接与生成内容相矛盾。
+\item \textbf{页面级矛盾：} 在阅读整页之后才发现的错误，通常是因为某条若为真则本应在 Wikipedia 中被提及的事实缺失了，例如该人物是否出现在某部特定影片中。
+\item \textbf{主观：} 生成内容是主观的，常因 PerplexityAI 从 Wikipedia 复制了主观文本，例如在未意识到的情况下直接复制了某记者的引语。
+\item \textbf{事实无关：} 由于搜索错误，生成内容与主题无关。
+\item \textbf{Wiki 不一致且错误：} 在该示例中，Wikipedia 指出该主题从影片 Kick 中获得了一个奖项，但也包含了“他从 Kick 获得多个奖项”的文本，后者不准确，并引用了一篇并不支持该声明的新闻文章。
+\item \textbf{标注错误：} 标注者赋予了不正确的标签，通常是因为该信息未在主题的 Wikipedia 页面中被提及（很可能是因为它无足轻重）。
+\end{itemize}
+
+我们还发现，尽管 PerplexityAI 为参考文献提供了引用，但引用与事实精度几乎没有相关性。被支持和未被支持的句子分别有 36.0\% 和 37.6\% 带有引用。结合 Liu et al. (2023a) 的独立发现，这表明那些整合了搜索并提供引用的商用大语言模型，可能并不像预期的那样可靠。
+
+更多分析见附录 A.5。
+
+\section{估计 \FS{} 以进行自动评估}
+
+对事实精度的人工评估成本高昂（每段生成 4 美元）（Bohnet et al., 2022；Krishna et al., 2023），因为根据大型知识源验证每个原子事实既耗时，而一段生成又包含许多（26--41 个）原子事实。这使得大语言模型的开发者和实践者无法大规模评估新的 \subj{} 在长文本生成中的事实精度。在此背景下，我们引入一个估计 \FS{} 的模型。该估计器接受一组生成内容并自动计算 \FS，且可应用于任何 \subj。
+
+我们描述我们的模型（第 4.1 节），并展示其相对于人工评估的准确性（第 4.2 节）。随后，我们用模型所估计的 \FS{} 评估十二个大语言模型（第 4.3 节）。
+
+\subsection{模型}
+
+我们的 \FS{} 估计器首先将一段生成拆分为一系列原子事实，然后根据给定知识源验证每个原子事实。我们发现，采用由 InstructGPT 生成的原子事实（用于第 3.3 节的数据收集）是有效的，且接近人类水平，这与已有工作的发现一致（Chen et al., 2022）。因此，本节聚焦于如何根据给定知识源验证每个原子事实。
+
+验证基于对一个语言模型的零样本提示（zero-shot prompting），该模型称为 \eval，以与 \subj{} 相区分。具体而言，一个提示（其构造方法在四个变体之间有所不同）被输入 \eval。预测随后通过比较 \eval{} 给出的 True 和 False 的条件概率而得出。如果 logit 值不可用（例如 ChatGPT 等商用大语言模型），则根据生成文本中是否包含 True 或 False 来做出预测。\footnote{在附录 B.3 中，我们与一种生成问题并比较其答案与期望答案的替代提示进行比较（Kryscinski et al., 2020；Wang et al., 2020；Gao et al., 2022；Manakul et al., 2023）。我们实证发现，由于对所生成问题缺乏控制，我们的提示表现更好。}
+
+我们考虑的四个变体如下。
+
+\textbf{No-context LM} 使用 \texttt{<atomic-fact> True or False?} 作为提示，与 Kadavath et al. (2022) 高度相似。\footnote{在附录 B.3 中，我们还与 Self-check LM 进行比较，这是 Manakul et al. (2023) 的同期工作。我们没有将其纳入正文，因为它有很强的限制，例如在评估时需要访问 \subj，且无法应用于具有非确定性输出的 PerplexityAI。}
+
+\textbf{Retrieve$\rightarrow$LM} 从给定知识源检索段落，然后提示 \eval。它首先检索 $k$ 个段落，通过拼接检索到的段落、给定原子事实以及 “True or False?” 来构造提示，并将其输入 \eval{} 以获得预测。
+
+\textbf{Nonparametric Probability（NP，非参数概率）} 基于非参数似然做出判断。它掩盖原子事实中的每个 token，使用非参数掩码语言模型（nonparametric masked LM, Min et al., 2023）计算其似然，对所有 token 的概率取平均，并基于阈值做出预测。
+
+\textbf{Retrieve$\rightarrow$LM + NP} 是 Retrieve$\rightarrow$LM 与 NP 的集成，仅当两种方法都赋予 Supported 时才赋予 Supported。
+
+我们使用在 Super Natural Instructions 上训练的 LLAMA 7B（Inst-LLAMA，Touvron et al., 2023；Wang et al., 2022）和 ChatGPT 作为 \eval，并使用 Generalizable T5-based Retrievers（GTR，Ni et al. (2022)）进行段落检索。更多实现细节见附录 B.1。
+
+\subsection{估计器的评估}
+
+\textbf{指标。} 我们报告误差率（Error Rate, ER）——真实 \FS{} 与估计 \FS{} 之间的差异——以及估计的 \FS{} 是否保持了三个 \subj{} 之间的排序。附录 B.2 讨论了考虑单个判断而非聚合判断的其他指标的结果。我们使用第 3.3 节中的数据作为评估数据。
+
+结果报告于表~\ref{tab:3}。
+
+\begin{table}[H]\centering
+\caption{误差率（ER）结果以及每个模型所估计的 \FS（FS）。“retrv” 表示是否使用了检索，“ranking” 列中的 \ding{51} 表示模型对三个 \subj{} 的排序是否与真实排序一致。$+$ 和 $-$ 分别表示估计的高估和低估在绝对值上超过 5\%。{\color{red}\textbf{红色加粗}}表示最佳（最低）ER。考虑单个判断而非聚合判断的其他指标结果见附录 B.2。}
+\label{tab:3}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{llccccccc}
+\toprule
+ & Evaluator & retrv & \multicolumn{2}{c}{InstGPT} & \multicolumn{2}{c}{ChatGPT} & \multicolumn{2}{c}{PPLAI} \\
+ & & & ER & FS & ER & FS & ER & FS \\
+\midrule
+\multicolumn{2}{l}{Human} & & & 42.5 & & 58.3 & & 71.5 \\
+\midrule
+\multirow{3}{*}{Trivial} & Always Supported & & 57.5 & 100.0\,+ & 41.7 & 100.0\,+ & 28.5 & 100.0\,+ \\
+ & Always Not-supported & & 42.5 & 0.0\,$-$ & 58.3 & 0.0\,$-$ & 71.5 & 0.0\,$-$ \\
+ & Always Random & & 7.5 & 50.0\,+ & 8.3 & 50.0\,$-$ & 21.5 & 50.0\,$-$ \\
+\midrule
+\multirow{4}{*}{I-LLAMA} & No-context LM & \ding{55} & 7.1 & 49.6\,+ & 7.8 & 50.5\,$-$ & 34.7 & 36.8\,$-$ \\
+ & NP & \ding{51} & 14.8 & 57.3\,+ & 13.7 & 72.0\,+ & 1.4 & 72.9 \\
+ & Retrieve$\rightarrow$LM & \ding{51} & 14.1 & 56.6\,+ & 17.1 & 75.4\,+ & 0.1 & 71.6 \\
+ & Retrieve$\rightarrow$LM + NP & \ding{51} & {\color{red}\textbf{1.4}} & 41.1 & {\color{red}\textbf{0.4}} & 58.7 & 9.9 & 61.6\,$-$ \\
+\midrule
+\multirow{3}{*}{ChatGPT} & No-context LM & \ding{55} & 39.6 & 82.1\,+ & 31.7 & 90.1\,+ & 3.3 & 74.8 \\
+ & Retrieve$\rightarrow$LM & \ding{51} & 5.1 & 47.6\,+ & 6.8 & 65.1\,+ & {\color{red}\textbf{0.8}} & 72.3 \\
+ & Retrieve$\rightarrow$LM + NP & \ding{51} & 5.2 & 37.3\,$-$ & 4.7 & 53.6 & 8.7 & 62.8\,$-$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{检索显著有帮助。} 使用检索的模型一致地优于 No-context LM，后者要么具有显著高的 ER，要么无法保持三个 \subj{} 之间的排序。这可能是因为 \eval{} 并未记住关于主题实体的每一条事实信息，因此可从检索所提供的事实上下文中获益。尽管如此，仅使用 Retrieve$\rightarrow$LM 可能会高估 \FS，例如当 \subj{} 为 InstructGPT 或 ChatGPT 时，使用 Inst-LLAMA 最高可高估 17\%。在此情况下，集成 Retrieve$\rightarrow$LM 和 NP 可显著降低误差率。当 \subj{} 为 PerplexityAI 时，单一方法（Retrieve$\rightarrow$LM 或 NP）给出较低的 ER，而集成方法由于对 \FS{} 的低估而具有更高的 ER。
+
+\textbf{ChatGPT 并不总是最好的。} 我们的结果表明，ChatGPT 不一定优于 Inst-LLAMA。我们在附录 B.3 中对此进一步研究。总之，ChatGPT 更擅长验证每个单独的原子事实。然而，ChatGPT 的大多数错误是将 Supported 错误地赋予未被支持的事实，从而高估了 \FS。相比之下，LLAMA+NP 既不偏向高估也不偏向低估事实精度，从而使聚合的事实精度更接近真实值。这类似于摘要评估中系统级与片段级相关性之间的权衡，二者常产生不同的排序（Bhandari et al., 2020；Deutsch et al., 2021）。
+
+\textbf{最佳估计器取决于 \subj。} 虽然使用检索一致地优于 No-context LM，但估计器的最佳变体取决于 \subj：对 InstructGPT 和 ChatGPT 而言是 LLAMA+NP，对 PerplexityAI 而言是 ChatGPT。尽管如此，两种评估器都给出一致正确的三个 \subj{} 之间的排序，且第 4.3 节表明两个估计器的分数在 10 多个 \subj{} 上高度相关（Pearson's $r$ 为 0.99）。我们建议用户在评估新的 \subj{} 时尝试我们估计器的两种变体，并报告它们的相关性。
+
+\subsection{新大语言模型的评估}
+
+我们的估计器允许在无需人工努力的情况下大规模评估大量新大语言模型的事实精度。作为案例研究，我们评估了在进行实验时两个月内发布的十个新大语言模型（表~\ref{tab:4}）。这些大语言模型曾在许多基准上被评估，但由于此类评估成本高昂，从未在长文本生成的事实精度上被评估。我们旨在通过估计其长文本生成的 \FS，对这些大语言模型提供新的洞见。
+
+\begin{table}[H]\centering
+\caption{第 4.3 节中评估的一组十二个大语言模型。所有模型都经过指令遵循或对话方面的调优。“Use other LMs” 表示该模型是否在包含另一个模型输出的任何数据上训练。“Open” 表示模型权重是否公开可得。}
+\label{tab:4}
+\begin{tabular}{lcccc}
+\toprule
+\subj & Base LM & Use other LMs & Open & Release \\
+\midrule
+InstructGPT & ? & ? & \ding{55} & Nov 2022 \\
+ChatGPT & ? & ? & \ding{55} & Nov 2022 \\
+GPT-4 & ? & ? & \ding{55} & Mar 2023 \\
+Alpaca \{7B,13B,65B\} & LLAMA & InstructGPT & \ding{51} & Mar 2023 \\
+Vicuna \{7B,13B\} & LLAMA & ChatGPT & \ding{51} & Mar 2023 \\
+Dolly 12B & Pythia 12B & N/A & \ding{51} & Mar 2023 \\
+Oasst-pythia 12B & Pythia 12B & N/A & \ding{51} & Mar 2023 \\
+StableLM-tuned 7B & StableLM-base & ChatGPT, GPT-4 & \ding{51} & Apr 2023 \\
+MPT Chat 7B & MPT 7B & ChatGPT & \ding{51} & May 2023 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{实验设置}
+
+我们评估表~\ref{tab:4} 所示的 10 个近期发布的大语言模型。GPT-4（OpenAI, 2023）是 OpenAI 发布的、通过 API 提供的多模态大语言模型。Alpaca（Taori et al., 2023）基于 LLAMA（Touvron et al., 2023），按照 Wang et al. (2022) 的方案在基于 InstructGPT 的指令数据上进行微调。Vicuna（Chiang et al., 2023）基于 LLAMA，在通过 ShareGPT\footnote{\url{sharegpt.com}} 获得的 ChatGPT 输出上进行微调。Dolly\footnote{dolly-v2-12b} 是 Pythia 12B（Biderman et al., 2023），在 DataBricks Dolly（由 Databricks 创建的人工撰写数据）上微调。\footnote{\url{databricks.com}} Oasst-pythia\footnote{oasst-sft-1-pythia-12b} 是在通过 Open Assistant\footnote{\url{open-assistant.io}} 收集的人工撰写数据上微调的 Pythia 12B。StableLM-tuned-alpha\footnote{StableLM-tuned-alpha-7b} 基于 StableLM-base-alpha\footnote{stablelm-base-alpha-7b}，在 Alpaca 数据、DataBricks Dolly、ShareGPT 数据、GPT4All 数据（Anand et al., 2023）以及 Anthropic HH（Bai et al., 2022）所用数据上微调。MPT Chat 基于 MPT 7B\footnote{\url{mosaicml.com/blog/mpt-7b}}，在 ShareGPT 数据、Alpaca 数据、Anthropic HH、HC3（Guo et al., 2023）以及 Evol-Instruct\footnote{evol\_instruct\_70k} 上微调。
+
+我们提示每个 \subj{} 生成 500 个人物实体的传记，做法与第 3.3 节相同，但实体不重叠。我们另外纳入 InstructGPT、ChatGPT 以及通过 DBPedia 获得的人工撰写传记。有 11\% 的实体没有人工撰写的传记，我们将其视为放弃响应。它们的统计信息见表~\ref{tab:5}。我们总共评估来自 13 个评估对象的 6{,}500 段生成，若由人工评估则将花费 26K 美元。
+
+\begin{table}[H]\centering
+\caption{在我们的无标注数据中，来自 12 个大语言模型的 500 段模型生成传记以及人工撰写传记的统计信息。“\% responding” 表示未放弃响应的生成所占百分比。“\#facts / res” 表示每条响应的原子事实数。大语言模型按每条响应的事实数排序。它们的 \FS{} 见图~\ref{fig:3}。}
+\label{tab:5}
+\begin{tabular}{lcc}
+\toprule
+\subj & \% responding & \#facts / res \\
+\midrule
+GPT-4 & 88.2 & 60.8 \\
+Vicuna 13B & 76.6 & 50.9 \\
+Vicuna 7B & 91.0 & 45.6 \\
+Oasst-pythia 12B & 100.0 & 39.7 \\
+StableLM-tuned-alpha 7B & 66.6 & 38.0 \\
+MPT Chat 7B & 88.8 & 37.3 \\
+ChatGPT & 84.2 & 37.0 \\
+InstructGPT & 99.8 & 27.7 \\
+Dolly 12B & 100.0 & 24.6 \\
+Alpaca 7B & 100.0 & 17.4 \\
+Alpaca 65B & 100.0 & 17.1 \\
+Alpaca 13B & 100.0 & 16.6 \\
+Human & 88.8 & 29.0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{结果}
+
+图~\ref{fig:3} 展示了由我们估计器的两个最佳变体给出的 13 个评估对象之间的排序，二者的分数高度相关，例如 Pearson's $r$ 为 0.99。这一评估有助于更好地理解这些模型，包括：
+
+\begin{figure}[H]\centering
+  \includegraphics[width=0.95\linewidth]{cand_p09_k00.pdf}
+  \caption{13 个评估对象（人类与 12 个大语言模型）之间的排序，由我们估计器的两个最佳变体评定：ChatGPT（左）和 LLAMA+NP（右），二者都带检索。两个指标的分数具有 0.99 的 Pearson's $r$。各大语言模型的响应比例和每条响应的原子事实数见表~\ref{tab:5}。基于不同提示子集的估计方差报告于附录 B.4 的图~\ref{fig:5}。}
+  \label{fig:3}
+\end{figure}
+
+\begin{itemize}[leftmargin=2em]
+\item 所有大语言模型在事实性上都远逊于人类。这与以往那些声称大语言模型接近人类表现（即便对复杂任务亦然）的工作形成对比（Ding et al., 2022；Nori et al., 2023；Lee et al., 2023），尽管撰写传记这一任务相当容易。
+\item GPT-4 和 ChatGPT 在事实精度上相当。然而，如表~\ref{tab:5} 所报告，GPT-4 放弃响应的情况更少（12\% 对 16\%），并生成显著更多的事实（每条响应 61 个对 37 个）。
+\item GPT-4 和 ChatGPT 在事实性上显著优于公开模型。
+\item 在同一系列、不同规模的模型内，模型规模与事实精度之间存在明显相关性，例如 Alpaca 65B > 13B > 7B，以及 Vicuna 13B > 7B。
+\item 在相同规模的模型内，Alpaca 和 Vicuna 取得的性能彼此非常接近，可能是因为它们共享相同的基础模型和相似的训练数据。尽管如此，如表~\ref{tab:5} 所示，Vicuna 生成的原子事实显著多于 Alpaca（每条响应 51 个对 17 个）。此外，Alpaca 从不放弃回答，而 Vicuna 会放弃。
+\item 在公开模型内，即便模型规模相似，事实精度也存在很大差距，例如在 7B 模型内，Alpaca 和 Vicuna（约 40\%）比 MPT-Chat（30\%）和 StableLM（17\%）更具事实性。可能的影响因素包括基础大语言模型的选择、数据以及训练方案（Hoffmann et al., 2022）。
+\end{itemize}
+
+我们强调，这一评估仅考量事实精度，具体是在人物传记上。对大语言模型的整体性评估应包含生成的其他方面，如流畅性、连贯性、相关性、一致性和创造性，这超出了本文的范围。
+
+\section{结论与未来工作}
+
+我们提出了 \FS，一种新的对大语言模型长文本生成事实精度的评估方法，它将一段生成拆分为一系列原子事实，并计算给定知识源所支持的事实所占比例。我们首先进行了广泛的人工评估，发现商用的、最先进的大语言模型——InstructGPT、ChatGPT 以及搜索引擎增强的 PerplexityAI——会犯下大量错误，例如 ChatGPT 的 \FS{} 为 58\%。由于人工评估耗时且成本高昂，我们提出了一个估计 \FS{} 的模型，从而允许对 \FS{} 进行自动评估。我们发现，基于在知识源上的检索以及有竞争力的语言模型的估计器，能够估计出接近真实值的 \FS，并通过评估 12 个近期发布的大语言模型（若由人工评估则将花费 65K 美元）展示了其应用，并提供了关于它们的洞见。
+
+在首次发布后的四个月内，\FS{} 已被积极用于后续工作，评估近期提出模型的事实精度（Ye et al., 2023；Sun et al., 2023；Malaviya et al., 2023；Dhuliawala et al., 2023）。作为未来工作，我们建议：（1）考虑事实性的其他方面，如召回（事实信息的覆盖度）；（2）进一步改进估计器以更好地逼近事实精度；（3）利用 \FS{} 来修正模型生成（在附录 C 中作了简要探索）。
+
+\section*{局限性}
+\addcontentsline{toc}{section}{局限性}
+
+\textbf{\FS{} 的适用范围。} 我们的所有实验都聚焦于人物传记和 Wikipedia，因为许多大语言模型能够生成带有客观、具体事实（而非主观、含糊事实）的传记，且 Wikipedia 对它们有很高的覆盖度。\FS{} 可应用于更广泛的领域，例如关于近期事件的文本，其知识源可以是一组新闻文章；或关于科学发现的文本，其知识源可以是一组科学文献。我们在附录 B.5 中给出了概念验证，并将进一步研究留待未来工作。
+
+由于第 3.1 节中所做的假设，当事实更加微妙、开放式且有争议时（Chen et al., 2019；Xu et al., 2023），或当知识源的文本彼此频繁冲突时（Wadden et al., 2022），\FS{} 不适用。此外，\FS{} 可能不适用于那些微妙的、包含有意或隐含欺骗的人工撰写文本。
+
+\textbf{我们估计器的局限性。} 尽管我们的估计器紧密逼近人类并在大量大语言模型上提供一致的排序，但它在单个判断上并不完美，且最佳变体取决于生成与人工撰写文本的接近程度及其语言复杂性。未来工作可以研究模型生成的分布如何影响估计器的性能，并进一步改进估计器。
+
+\textbf{超越事实精度。} \FS{} 聚焦于事实精度——即一段生成中的每一条信息是否在事实上被可靠知识源所支持——而这只是更广泛的事实性问题的一个方面。例如，\FS{} 不考量事实召回：即一段生成中信息的覆盖度。\FS{} 不惩罚那些过于频繁地放弃响应或生成较少事实的模型，这可能并不公平，因为精度与召回之间存在固有的权衡。此外，精度与召回之间的界限常常是模糊的，例如即便一段生成中的每一条信息都被支持，它仍可能遗漏一条本应被提及的重要信息，而该信息对于被视为正确响应输入提示是必要的（示例见表~\ref{tab:6}）。我们将对事实性更整体性的评估留待未来工作，并建议将 \FS{} 与放弃回答的百分比以及原子事实的平均数一并报告（正如我们在第 4.3 节中所做的）。
+
+\begin{table}[H]\centering
+\caption{一个事实精度高但召回低的示例。该生成没有提到 Mary I of England 如何重新进入继承顺位并最终成为女王。}
+\label{tab:6}
+\small
+\begin{tabular}{p{0.96\linewidth}}
+\toprule
+\textbf{Prompt:} Tell me a bio of Mary I of England. \\
+\textbf{Generation:} Mary I was Queen of England and Ireland from July 1553 until her death. Mary was the daughter of King Henry VIII and his first wife, Catherine of Aragon. After her father annulled his marriage to Catherine, Mary's status was in doubt, and she was excluded from the line of succession. Her half-brother, Edward VI, succeeded their father in 1547, and Mary had to live with the humiliation of being declared illegitimate. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section*{致谢}
+\addcontentsline{toc}{section}{致谢}
+
+We thank Yizhong Wang for sharing Instruction-tuned LLAMA and Alpaca models with varying sizes, and for sharing feedback on the \FS{} Python package. We thank experts in Upwork for annotating the data, and Dhruba Ghosh, Jiacheng Liu and Zeqiu Wu for participating in pilot annotation and sharing feedback. We thank Akari Asai, Yanai Elazar, UW NLP members, UMass NLP members, FAIR lab members for feedback and discussion on the paper.
+
+This research was supported by NSF IIS-2046248, NSF IIS-2202506, NSF IIS-2044660, ONR N00014-18-1-2826, ONR MURI N00014-18-1-2670, DARPA under Contract No. FA8650-23-C-7316, an Allen Distinguished Award, and gifts from AI2. The views, opinions and/or findings expressed are those of the author and should not be interpreted as representing the official views or policies of the Department of Defense or the U.S. Government. Sewon Min is supported by a J.P. Morgan fellowship, and Kalpesh Krishna was supported by the Google PhD Fellowship.
+
+\section*{参考文献}
+\addcontentsline{toc}{section}{参考文献}
+\begingroup
+\small
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.45em}
+
+Yuvanesh Anand, Zach Nussbaum, Brandon Duderstadt, Benjamin Schmidt, and Andriy Mulyar. 2023. Gpt4all: Training an assistant-style chatbot with large scale data distillation from gpt-3.5-turbo. \url{https://github.com/nomic-ai/gpt4all}.
+
+Yuntao Bai, Andy Jones, Kamal Ndousse, Amanda Askell, Anna Chen, Nova DasSarma, Dawn Drain, Stanislav Fort, Deep Ganguli, Tom Henighan, et al. 2022. Training a helpful and harmless assistant with reinforcement learning from human feedback. arXiv preprint arXiv:2204.05862.
+
+Manik Bhandari, Pranav Narayan Gour, Atabak Ashfaq, Pengfei Liu, and Graham Neubig. 2020. Re-evaluating evaluation in text summarization. In Proceedings of Empirical Methods in Natural Language Processing.
+
+Stella Biderman, Hailey Schoelkopf, Quentin Anthony, Herbie Bradley, Kyle O'Brien, Eric Hallahan, Mohammad Aflah Khan, Shivanshu Purohit, USVSN Sai Prashanth, Edward Raff, et al. 2023. Pythia: A suite for analyzing large language models across training and scaling. arXiv preprint arXiv:2304.01373.
+
+Bernd Bohnet, Vinh Tran, Pat Verga, Roee Aharoni, Daniel Andor, Livio Baldini Soares, Massimiliano Ciaramita, Jacob Eisenstein, Kuzman Ganchev, Jonathan Herzig, Kai Hui, Tom Kwiatkowski, Ji Ma, Jianmo Ni, Tal Schuster, Lierni Sestorain Saralegui, William Weston Cohen, Michael Collins, Dipanjan Das, Don Metzler, Slav Petrov, and Kellie Webster. 2022. Attributed question answering: Evaluation and modeling for attributed large language models. arXiv preprint arXiv:2212.08037.
+
+Tom B. Brown, Benjamin Mann, Nick Ryder, Melanie Subbiah, Jared Kaplan, Prafulla Dhariwal, Arvind Neelakantan, Pranav Shyam, Girish Sastry, Amanda Askell, Sandhini Agarwal, Ariel Herbert-Voss, Gretchen Krueger, Tom Henighan, Rewon Child, Aditya Ramesh, Daniel M. Ziegler, Jeffrey Wu, Clemens Winter, Christopher Hesse, Mark Chen, Eric Sigler, Mateusz Litwin, Scott Gray, Benjamin Chess, Jack Clark, Christopher Berner, Sam McCandlish, Alec Radford, Ilya Sutskever, and Dario Amodei. 2020. Language models are few-shot learners. In Proceedings of Advances in Neural Information Processing Systems.
+
+Danqi Chen, Adam Fisch, Jason Weston, and Antoine Bordes. 2017. Reading Wikipedia to answer open-domain questions. In Proceedings of the Association for Computational Linguistics.
+
+Jifan Chen, Aniruddh Sriram, Eunsol Choi, and Greg Durrett. 2022. Generating literal and implied subquestions to fact-check complex claims. In Proceedings of Empirical Methods in Natural Language Processing.
+
+Sihao Chen, Daniel Khashabi, Wenpeng Yin, Chris Callison-Burch, and Dan Roth. 2019. Seeing things from a different angle: discovering diverse perspectives about claims. In Conference of the North American Chapter of the Association for Computational Linguistics.
+
+Wei-Lin Chiang, Zhuohan Li, Zi Lin, Ying Sheng, Zhanghao Wu, Hao Zhang, Lianmin Zheng, Siyuan Zhuang, Yonghao Zhuang, Joseph E. Gonzalez, Ion Stoica, and Eric P. Xing. 2023. Vicuna: An open-source chatbot impressing gpt-4 with 90\%* chatgpt quality.
+
+Daniel Deutsch, Tania Bedrax-Weiss, and Dan Roth. 2021. Towards question-answering as an automatic metric for evaluating the content quality of a summary. Transactions of the Association for Computational Linguistics.
+
+Shehzaad Dhuliawala, Mojtaba Komeili, Jing Xu, Roberta Raileanu, Xian Li, Asli Celikyilmaz, and Jason Weston. 2023. Chain-of-verification reduces hallucination in large language models. arXiv preprint arXiv:2309.11495.
+
+Bosheng Ding, Chengwei Qin, Linlin Liu, Lidong Bing, Shafiq Joty, and Boyang Li. 2022. Is gpt-3 a good data annotator? arXiv preprint arXiv:2212.10450.
+
+Alexander Fabbri, Chien-Sheng Wu, Wenhao Liu, and Caiming Xiong. 2022. QAFactEval: Improved QA-based factual consistency evaluation for summarization. In Conference of the North American Chapter of the Association for Computational Linguistics.
+
+Angela Fan, Aleksandra Piktus, Fabio Petroni, Guillaume Wenzek, Marzieh Saeidi, Andreas Vlachos, Antoine Bordes, and Sebastian Riedel. 2020. Generating fact checking briefs. In Proceedings of Empirical Methods in Natural Language Processing.
+
+Luyu Gao, Zhuyun Dai, Panupong Pasupat, Anthony Chen, Arun Tejasvi Chaganty, Yicheng Fan, Vincent Y Zhao, Ni Lao, Hongrae Lee, Da-Cheng Juan, et al. 2022. Attributed text generation via post-hoc research and revision. arXiv preprint arXiv:2210.08726.
+
+Tianyu Gao, Howard Yen, Jiatong Yu, and Danqi Chen. 2023. Enabling large language models to generate text with citations.
+
+Biyang Guo, Xin Zhang, Ziyuan Wang, Minqi Jiang, Jinran Nie, Yuxuan Ding, Jianwei Yue, and Yupeng Wu. 2023. How close is chatgpt to human experts? comparison corpus, evaluation, and detection. arXiv preprint arxiv:2301.07597.
+
+Kelvin Guu, Tatsunori B. Hashimoto, Yonatan Oren, and Percy Liang. 2018. Generating sentences by editing prototypes. Transactions of the Association for Computational Linguistics.
+
+Jordan Hoffmann, Sebastian Borgeaud, Arthur Mensch, Elena Buchatskaya, Trevor Cai, Eliza Rutherford, Diego de las Casas, Lisa Anne Hendricks, Johannes Welbl, Aidan Clark, Tom Hennigan, Eric Noland, Katherine Millican, George van den Driessche, Bogdan Damoc, Aurelia Guy, Simon Osindero, Karen Simonyan, Erich Elsen, Oriol Vinyals, Jack William Rae, and Laurent Sifre. 2022. An empirical analysis of compute-optimal large language model training. In Advances in Neural Information Processing Systems.
+
+Saurav Kadavath, Tom Conerly, Amanda Askell, Tom Henighan, Dawn Drain, Ethan Perez, Nicholas Schiefer, Zac Hatfield Dodds, Nova DasSarma, Eli Tran-Johnson, et al. 2022. Language models (mostly) know what they know. arXiv preprint arXiv:2207.05221.
+
+Ryo Kamoi, Tanya Goyal, Juan Diego Rodriguez, and Greg Durrett. 2023. Wice: Real-world entailment for claims in wikipedia. arXiv preprint arXiv:2303.01432.
+
+Nikhil Kandpal, Haikang Deng, Adam Roberts, Eric Wallace, and Colin Raffel. 2022. Large language models struggle to learn long-tail knowledge. arXiv preprint arXiv:2211.08411.
+
+Kalpesh Krishna, Erin Bransom, Bailey Kuehl, Mohit Iyyer, Pradeep Dasigi, Arman Cohan, and Kyle Lo. 2023. LongEval: Guidelines for human evaluation of faithfulness in long-form summarization. In Proceedings of the European Chapter of the Association for Computational Linguistics.
+
+Wojciech Kryscinski, Bryan McCann, Caiming Xiong, and Richard Socher. 2020. Evaluating the factual consistency of abstractive text summarization. In Proceedings of Empirical Methods in Natural Language Processing.
+
+Philippe Laban, Tobias Schnabel, Paul N. Bennett, and Marti A. Hearst. 2022. SummaC: Re-visiting NLI-based models for inconsistency detection in summarization. Transactions of the Association for Computational Linguistics.
+
+Nayeon Lee, Wei Ping, Peng Xu, Mostofa Patwary, Pascale Fung, Mohammad Shoeybi, and Bryan Catanzaro. 2022. Factuality enhanced language models for open-ended text generation. In Advances in Neural Information Processing Systems.
+
+Peter Lee, Sebastien Bubeck, and Joseph Petro. 2023. Benefits, limits, and risks of gpt-4 as an ai chatbot for medicine. New England Journal of Medicine.
+
+Jimmy Lin, Xueguang Ma, Sheng-Chieh Lin, Jheng-Hong Yang, Ronak Pradeep, and Rodrigo Nogueira. 2021. Pyserini: A Python toolkit for reproducible information retrieval research with sparse and dense representations. In Proceedings of the ACM SIGIR Conference on Research and Development in Information Retrieval.
+
+Nelson F Liu, Tianyi Zhang, and Percy Liang. 2023a. Evaluating verifiability in generative search engines. arXiv preprint arXiv:2304.09848.
+
+Yang Liu, Dan Iter, Yichong Xu, Shuohang Wang, Ruochen Xu, and Chenguang Zhu. 2023b. Gpteval: Nlg evaluation using gpt-4 with better human alignment. arXiv preprint arXiv:2303.16634.
+
+Yixin Liu, Alexander R Fabbri, Pengfei Liu, Yilun Zhao, Linyong Nan, Ruilin Han, Simeng Han, Shafiq Joty, Chien-Sheng Wu, Caiming Xiong, et al. 2022. Revisiting the gold standard: Grounding summarization evaluation with robust human evaluation. arXiv preprint arXiv:2212.07981.
+
+Qingsong Ma, Johnny Wei, Ondřej Bojar, and Yvette Graham. 2019. Results of the WMT19 metrics shared task: Segment-level and strong MT systems pose big challenges. In Proceedings of the Fourth Conference on Machine Translation.
+
+Chaitanya Malaviya, Subin Lee, Sihao Chen, Elizabeth Sieber, Mark Yatskar, and Dan Roth. 2023. Expertqa: Expert-curated questions and attributed answers. arXiv preprint arXiv:2309.07852.
+
+Alex Mallen, Akari Asai, Victor Zhong, Rajarshi Das, Daniel Khashabi, and Hannaneh Hajishirzi. 2023. When not to trust language models: Investigating effectiveness of parametric and non-parametric memories. In Proceedings of the Association for Computational Linguistics.
+
+Potsawee Manakul, Adian Liusie, and Mark JF Gales. 2023. Selfcheckgpt: Zero-resource black-box hallucination detection for generative large language models. arXiv preprint arXiv:2303.08896.
+
+Tsvetomila Mihaylova, Georgi Karadzhov, Pepa Atanasova, Ramy Baly, Mitra Mohtarami, and Preslav Nakov. 2019. SemEval-2019 task 8: Fact checking in community question answering forums. In Proceedings of the 13th International Workshop on Semantic Evaluation.
+
+Sewon Min, Weijia Shi, Mike Lewis, Xilun Chen, Wen-tau Yih, Hannaneh Hajishirzi, and Luke Zettlemoyer. 2023. Nonparametric masked language modeling. In Findings of the Association for Computational Linguistics: ACL.
+
+Preslav Nakov, Alberto Barrón-Cedeno, Tamer Elsayed, Reem Suwaileh, Lluís Màrquez, Wajdi Zaghouani, Pepa Atanasova, Spas Kyuchukov, and Giovanni Da San Martino. 2018. Overview of the clef-2018 checkthat! lab on automatic identification and verification of political claims. In Experimental IR Meets Multilinguality, Multimodality, and Interaction.
+
+Ani Nenkova and Rebecca Passonneau. 2004. Evaluating content selection in summarization: The pyramid method. In Conference of the North American Chapter of the Association for Computational Linguistics.
+
+Jianmo Ni, Chen Qu, Jing Lu, Zhuyun Dai, Gustavo Hernandez Abrego, Ji Ma, Vincent Zhao, Yi Luan, Keith Hall, Ming-Wei Chang, and Yinfei Yang. 2022. Large dual encoders are generalizable retrievers. In Proceedings of Empirical Methods in Natural Language Processing.
+
+Harsha Nori, Nicholas King, Scott Mayer McKinney, Dean Carignan, and Eric Horvitz. 2023. Capabilities of gpt-4 on medical challenge problems. arXiv preprint arXiv:2303.13375.
+
+OpenAI. 2022. Chatgpt blog post. \url{https://openai.com/blog/chatgpt}.
+
+OpenAI. 2023. Gpt-4 technical report. arXiv preprint arXiv:2303.08774.
+
+Long Ouyang, Jeffrey Wu, Xu Jiang, Diogo Almeida, Carroll Wainwright, Pamela Mishkin, Chong Zhang, Sandhini Agarwal, Katarina Slama, Alex Gray, John Schulman, Jacob Hilton, Fraser Kelton, Luke Miller, Maddie Simens, Amanda Askell, Peter Welinder, Paul Christiano, Jan Leike, and Ryan Lowe. 2022. Training language models to follow instructions with human feedback. In Proceedings of Advances in Neural Information Processing Systems.
+
+Artidoro Pagnoni, Vidhisha Balachandran, and Yulia Tsvetkov. 2021. Understanding factuality in abstractive summarization with FRANK: A benchmark for factuality metrics. In Conference of the North American Chapter of the Association for Computational Linguistics.
+
+Fabio Petroni, Aleksandra Piktus, Angela Fan, Patrick Lewis, Majid Yazdani, Nicola De Cao, James Thorne, Yacine Jernite, Vladimir Karpukhin, Jean Maillard, Vassilis Plachouras, Tim Rocktäschel, and Sebastian Riedel. 2021. KILT: a benchmark for knowledge intensive language tasks. In Conference of the North American Chapter of the Association for Computational Linguistics.
+
+Pranav Rajpurkar, Jian Zhang, Konstantin Lopyrev, and Percy Liang. 2016. SQuAD: 100,000+ questions for machine comprehension of text. In Proceedings of Empirical Methods in Natural Language Processing.
+
+Hannah Rashkin, Vitaly Nikolaev, Matthew Lamm, Lora Aroyo, Michael Collins, Dipanjan Das, Slav Petrov, Gaurav Singh Tomar, Iulia Turc, and David Reitter. 2021. Measuring attribution in natural language generation models. arXiv preprint arXiv:2112.12870.
+
+Shaden Shaar, Firoj Alam, Giovanni Da San Martino, and Preslav Nakov. 2022. The role of context in detecting previously fact-checked claims. In Findings of the Association for Computational Linguistics: NAACL 2022.
+
+Ori Shapira, David Gabay, Yang Gao, Hadar Ronen, Ramakanth Pasunuru, Mohit Bansal, Yael Amsterdamer, and Ido Dagan. 2019. Crowdsourcing lightweight pyramids for manual summary evaluation. In Conference of the North American Chapter of the Association for Computational Linguistics.
+
+Kurt Shuster, Spencer Poff, Moya Chen, Douwe Kiela, and Jason Weston. 2021. Retrieval augmentation reduces hallucination in conversation. In Findings of the Association for Computational Linguistics: EMNLP 2021.
+
+Simeng Sun, Dhawal Gupta, and Mohit Iyyer. 2023. Exploring the impact of low-rank adaptation on the performance, efficiency, and regularization of rlhf. arXiv preprint arXiv:2309.09055.
+
+Rohan Taori, Ishaan Gulrajani, Tianyi Zhang, Yann Dubois, Xuechen Li, Carlos Guestrin, Percy Liang, and Tatsunori B. Hashimoto. 2023. Stanford alpaca: An instruction-following llama model. \url{https://github.com/tatsu-lab/stanford_alpaca}.
+
+Brian Thompson and Matt Post. 2020. Automatic machine translation evaluation in many languages via zero-shot paraphrasing. In Proceedings of Empirical Methods in Natural Language Processing.
+
+James Thorne, Andreas Vlachos, Christos Christodoulopoulos, and Arpit Mittal. 2018. FEVER: a large-scale dataset for fact extraction and VERification. In Conference of the North American Chapter of the Association for Computational Linguistics.
+
+Hugo Touvron, Thibaut Lavril, Gautier Izacard, Xavier Martinet, Marie-Anne Lachaux, Timothée Lacroix, Baptiste Rozière, Naman Goyal, Eric Hambro, Faisal Azhar, et al. 2023. Llama: Open and efficient foundation language models. arXiv preprint arXiv:2302.13971.
+
+David Wadden, Shanchuan Lin, Kyle Lo, Lucy Lu Wang, Madeleine van Zuylen, Arman Cohan, and Hannaneh Hajishirzi. 2020. Fact or fiction: Verifying scientific claims. In Proceedings of Empirical Methods in Natural Language Processing.
+
+David Wadden, Kyle Lo, Bailey Kuehl, Arman Cohan, Iz Beltagy, Lucy Lu Wang, and Hannaneh Hajishirzi. 2022. SciFact-open: Towards open-domain scientific claim verification. In Findings of the Association for Computational Linguistics: EMNLP.
+
+Alex Wang, Kyunghyun Cho, and Mike Lewis. 2020. Asking and answering questions to evaluate the factual consistency of summaries. In Proceedings of the Association for Computational Linguistics.
+
+Yizhong Wang, Swaroop Mishra, Pegah Alipoormolabashi, Yeganeh Kordi, Amirreza Mirzaei, Atharva Naik, Arjun Ashok, Arut Selvan Dhanasekaran, Anjana Arunkumar, David Stap, Eshaan Pathak, Giannis Karamanolakis, Haizhi Lai, Ishan Purohit, Ishani Mondal, Jacob Anderson, Kirby Kuznia, Krima Doshi, Kuntal Kumar Pal, Maitreya Patel, Mehrad Moradshahi, Mihir Parmar, Mirali Purohit, Neeraj Varshney, Phani Rohitha Kaza, Pulkit Verma, Ravsehaj Singh Puri, Rushang Karia, Savan Doshi, Shailaja Keyur Sampat, Siddhartha Mishra, Sujan Reddy A, Sumanta Patro, Tanay Dixit, and Xudong Shen. 2022. Super-NaturalInstructions: Generalization via declarative instructions on 1600+ NLP tasks. In Proceedings of Empirical Methods in Natural Language Processing.
+
+John Wieting, Kevin Gimpel, Graham Neubig, and Taylor Berg-kirkpatrick. 2022. Paraphrastic representations at scale. In Proceedings of the 2022 Conference on Empirical Methods in Natural Language Processing: System Demonstrations.
+
+Dustin Wright, David Wadden, Kyle Lo, Bailey Kuehl, Arman Cohan, Isabelle Augenstein, and Lucy Lu Wang. 2022. Generating scientific claims for zero-shot scientific fact checking. In Proceedings of the Association for Computational Linguistics.
+
+Fangyuan Xu, Yixiao Song, Mohit Iyyer, and Eunsol Choi. 2023. A critical evaluation of evaluations for long-form question answering. In Proceedings of the Association for Computational Linguistics.
+
+Seonghyeon Ye, Doyoung Kim, Sungdong Kim, Hyeonbin Hwang, Seungone Kim, Yongrae Jo, James Thorne, Juho Kim, and Minjoon Seo. 2023. Flask: Fine-grained language model evaluation based on alignment skill sets. arXiv preprint arXiv:2307.10928.
+
+Xiang Yue, Boshi Wang, Kai Zhang, Ziru Chen, Yu Su, and Huan Sun. 2023. Automatic evaluation of attribution by large language models. arXiv preprint arXiv:2305.06311.
+
+Shiyue Zhang and Mohit Bansal. 2021. Finding a balanced degree of automation for summary evaluation. In Proceedings of Empirical Methods in Natural Language Processing.
+
+Tianyi Zhang, Varsha Kishore, Felix Wu, Kilian Q. Weinberger, and Yoav Artzi. 2020. Bertscore: Evaluating text generation with bert. In Proceedings of the International Conference on Learning Representations.
+
+\endgroup
+
+\appendix
+\section{数据收集细节}
+
+\subsection{抽样人物实体}
+
+我们抽样 183 个待标注的人物实体，做法如下。我们首先从 Wikidata 中选择 “instance of”（实例属于）为 human（人类）且有相应 Wikipedia 页面的实体。然后基于两个维度对实体进行分类：频率和国籍，从而得到 20 个类别。随后我们在所有类别上均匀随机地抽样实体。
+
+\textbf{频率（Frequency）。} 我们将 freqValue 计算为以下二者的最大值：Kandpal et al. (2022) 提供的实体在 Wikipedia 中的出现次数，以及遵循 Mallen et al. (2023) 的 Wikipedia 页面浏览量计数。我们发现，仅使用其中之一可能由于实体链接失败或 Wikipedia 页面标题不匹配而导致对频率水平的低估，而取二者的最大值提供了一个合理的解决方案。随后我们赋予五个类别之一：若 $\text{freqValue} \in [10^0, 10^2)$ 则为 'Very rare'（极稀有），若 $\text{freqValue} \in [10^2, 10^3)$ 则为 'Rare'（稀有），若 $\text{freqValue} \in [10^3, 10^4)$ 则为 'Medium'（中等），若 $\text{freqValue} \in [10^4, 10^5)$ 则为 'Frequent'（频繁），若 $\text{freqValue} \in [10^5, \infty)$ 则为 'Very frequent'（极频繁）。
+
+\textbf{国籍（Nationality）。} 我们从 Wikidata 中获取 “country of citizenship”（公民身份所属国家），并将其赋予四个类别之一：'North America'（北美）、'Europe \& Middle East'（欧洲与中东）、'Asia \& Pacific'（亚洲与太平洋）以及 'Latin/South America \& Africa'（拉丁/南美洲与非洲）。
+
+\subsection{生成原子事实的细节}
+
+我们通过将一段生成切分为句子，并将每个句子连同一系列指令一起输入 InstructGPT（text-davinci-003），来自动拆分一段生成，从而进一步将其拆分为一系列原子事实。给 InstructGPT 的提示见表~\ref{tab:15}。InstructGPT 的输出用于：（1）供人类专家修订（第 3.3 节）；（2）供基于模型的评估器使用（第 4 节）。我们发现人类专家分别在 18\% 和 34\% 的案例中对来自 InstructGPT 的原子事实进行了拆分和合并。
+
+\subsection{关于标注者招募的更多细节}
+
+我们通过 Upwork 招募自由职业者，按每小时 15--25 美元支付报酬。我们为步骤 3 招募事实核查专家——即在专长中提到事实核查的自由职业者。每位工作者都通过了一项 2 小时的资格测试，并被测试为高度合格。我们设计每个 HIT 由三段生成构成，每个 \subj{} 各一段，对应一个提示，因为我们发现这样总体上能节省标注时间。10\% 的 HIT 分配两名工作者以计算一致性率，其余分配一名工作者。InstructGPT、ChatGPT 和 PerplexityAI 的一致性率分别为 96\%、90\% 和 88\%。附录 A.5 更详细地讨论了不一致的案例。完整的说明和界面分别见图~\ref{fig:6} 和图~\ref{fig:7}。
+
+\subsection{标注数据中的示例}
+
+表~\ref{tab:7} 提供了人工标注数据的示例，每个原子事实都带有所赋予的标签。Supported 和 Not-supported 分别表示 Wikipedia 支持该事实和不支持该事实（要么矛盾，要么不包含任何证据）。Irrelevant 表示该事实与输入提示无关，它可以进一步分为两种情形：（1）该事实依赖于其他事实，因为它扩展了一段生成中先前的事实，而这些其他事实是 Not-supported，例如表~\ref{tab:7} 中的第一个示例；（2）整个句子与提示无关，且独立于一段生成中的其他事实，例如表~\ref{tab:7} 中的第二个示例。第二种情形在 InstructGPT 和 ChatGPT 中很少发生，但在 PerplexityAI 中相当常见，即 PerplexityAI 的生成中有 24.7\% 含有被标记为无关且不依赖其他事实的句子，而 InstructGPT 和 ChatGPT 中分别为 0.5\% 和 1.3\%。这是因为 PerplexityAI 经常直接复制搜索结果，即使这些结果在很大程度上与输入提示无关。这与 Liu et al. (2023a) 的同期工作一致，该工作表明像 PerplexityAI 这样的生成式搜索引擎会复制不正确的搜索结果，并生成与输入查询无关的文本。
+
+\begin{table}[H]\centering
+\caption{包含 Supported、Not-supported 和 Irrelevant 的示例。项目符号中的句子表示原子事实。}
+\label{tab:7}
+\small
+\begin{tabular}{p{0.96\linewidth}}
+\toprule
+\textbf{Prompt:} Tell me a bio of Ylona Garcia. \\
+\textbf{Sentence:} [Ylona Garcia] has since appeared in various TV shows such as ASAP (All-Star Sunday Afternoon Party), Wansapanataym Presents: Annika PINTAsera and Maalaala Mo Kaya. \\
+\quad$\bullet$ Ylona Garcia has appeared in various TV shows. \quad\textbf{Supported} \\
+\quad$\bullet$ She has appeared in ASAP. \quad\textbf{Supported} \\
+\quad$\bullet$ ASAP stands for All-Star Sunday Afternoon Party. \quad\textbf{Supported} \\
+\quad$\bullet$ ASAP is a TV show. \quad\textbf{Supported} \\
+\quad$\bullet$ She has appeared in Wansapanataym Presents: Annika PINTAsera. \quad\textbf{Not-supported} \\
+\quad$\bullet$ Wansapanataym Presents: Annika PINTAsera is a TV show. \quad\textbf{Irrelevant} \\
+\quad$\bullet$ She has appeared in Maalaala Mo Kaya. \quad\textbf{Not-supported} \\
+\quad$\bullet$ Maalaala Mo Kaya is a TV show. \quad\textbf{Irrelevant} \\
+\midrule
+\textbf{Prompt:} Tell me a bio of John Estes. \\
+\textbf{Sentence:} William Estes is an American actor known for his role on CBS police drama Blue Bloods as Jameson ``Jamie'' Reagan. \\
+\quad$\bullet$ William Estes is an American. \quad\textbf{Irrelevant} \\
+\quad$\bullet$ William Estes is an actor. \quad\textbf{Irrelevant} \\
+\quad$\bullet$ William Estes is known for his role on CBS police drama Blue Bloods. \quad\textbf{Irrelevant} \\
+\quad$\bullet$ William Estes' role on Blue Bloods is Jameson ``Jamie'' Reagan. \quad\textbf{Irrelevant} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{定性分析}
+
+\textbf{不一致案例的分析。} 我们分析了分配给同一段生成的两名标注者对同一原子事实的精度标签产生分歧的案例。分类见表~\ref{tab:8}。其中 70\% 是由于“该事实是否被给定知识源所支持”存在固有的可争议性，不满足第 3.1 节中的假设 2。这是因为一个事实可能有多种解释，一条信息能否从一段文本中推断出来存在争议，或者该原子事实是主观的。例如：
+
+\begin{table}[H]\centering
+\caption{不一致案例的分类。Gen 表示来自 PerplexityAI 的生成，Wiki 表示来自 Wikipedia 的证据文本，Comment 表示我们的评论。}
+\label{tab:8}
+\small
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{p{3.2cm}c p{10cm}}
+\toprule
+类别 & \% & 示例 \\
+\midrule
+对事实信息的不同解读 & 21 &
+\textbf{Gen} Gerhard Fischer is an inventor. \textbf{Wiki} Gerhard Fischer (inventor). \ldots{} was first patented by Dr. Gerhard Fischer in 1931. A metal detector had been invented some forty years earlier (1881) by Alexander Graham Bell \ldots \newline
+\textbf{Gen} Chadwick Boseman was a producer. \textbf{Comment} Chadwick Boseman is not known as a producer, but produced one music video. \\
+推断得出（未直接提及但极有可能） & 16 &
+\textbf{Gen} Leach has since become a member of the England Test team. \textbf{Comment} Leach is a member of the England Test team, but since when is less clear. \\
+取决于判断正确性的严格程度 & 11 &
+\textbf{Gen} He made his Test debut for England in March 2018. \textbf{Wiki} On 16 March 2018, he was called up to England's Test squad (\ldots) He made his debut in the second Test in Christchurch. \newline
+\textbf{Gen} The building was the first LEED-certificated building in Edmonton. \textbf{Wiki} (\ldots) became the first project in the City of Edmonton to achieve a LEED Gold status. \\
+主观 & 21 &
+\textbf{Gen} Chadwick Boseman became an African American pioneer. \textbf{Wiki} Culture writer Steve Rose, in The Guardian, said that Boseman's career was revolutionary and he ``leaves behind a gamechanging legacy'' (\ldots) Rose wrote: ``Chadwick Boseman began his career playing African American icons and pioneers; he ends it as one himself.'' \\
+Wikipedia 不一致 & 5 &
+\textbf{Gen} [Tim Fischer] was an Ambassador to the Holy See from 2009 to 2012. \textbf{Wiki} \ldots{} was later Ambassador to the Holy See from 2009 to 2012. (\ldots) Australian Ambassador to the Holy See 2008--2012 \textbf{Comment} The plain text and the table of the Tim Fischer page as well as the Australian Ambassador to the Holy See page are inconsistent in his start year. \\
+两个不同的实体 & 5 &
+\textbf{Comment} Carlos J. Alfonso vs. Carlos Alfonso \\
+标注中的失误 & 21 &
+\textbf{Gen} Jack Leach is a left-handed batsman. \textbf{Comment} mentioned in the England cricket team page, Table Current Squad. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{itemize}[leftmargin=2em]
+\item \textbf{Gerhard Fischer is an inventor（Gerhard Fischer 是一名发明家）：} Gerhard Fischer 被广泛认为是金属探测器的发明者，甚至 Wikipedia 文章的标题就是 “Gerhard Fischer (inventor)”。然而，后来发现他并没有发明金属探测器，而是将其商业化了。
+\item \textbf{Chadwick Boseman was a producer（Chadwick Boseman 是一名制片人）：} Chadwick Boseman 被广泛知晓为另一种职业（歌手），且没有文本提及他是制片人。然而，他确实制作过一支音乐视频。
+\end{itemize}
+
+尽管如此，由于我们的一致性率相当高（91\%），我们认为此类案例在我们这个人物传记的特定领域中很少见。我们在“局限性”一节中纳入了关于其他领域（此类案例可能更频繁）的更多讨论。
+
+\textbf{英文 Wikipedia 的覆盖度。} 虽然事实预测本质上是作为输入一部分的某个知识源的函数，但一个潜在的担忧是，使用英文 Wikipedia 作为评估人物传记的知识源，就其覆盖度而言有多大代表性。例如，尤其对于稀有实体，Wikipedia 中信息的覆盖度可能不够高，而大语言模型可能因生成了真实但不被 Wikipedia 支持（即被网络上其他来源支持）的信息而受到惩罚。
+
+为量化这一影响，我们从 ChatGPT 对类别为 'rare'（稀有）或 'very rare'（极稀有）人物的生成中随机抽样 30 个未被支持的事实，然后根据整个网络对其进行验证。我们发现 10\%（30 个事实中的 3 个）实际上是被支持的，尽管它们在 Wikipedia 中不被支持。一个示例是 [Hibo] Wardere published her memoir titled ``Cut: One Woman's Fight Against FGM in Britain Today''，这在 Wikipedia 中没有提及，但可在 Google Books 中找到。尽管如此，我们发现 Wikipedia 有很高的覆盖度，并提及了我们能够从网络上任何其他来源找到的大多数重要信息。这与以往以同样理由将 Wikipedia 视为通用知识源的工作一致（Chen et al., 2017；Petroni et al., 2021）。
+
+\section{估计器的细节}
+
+\subsection{实现细节}
+
+作为 \eval，我们使用在进行实验时最好的开源大语言模型和最好的商用大语言模型：前者为 LLAMA 65B（Touvron et al., 2023）以及在 Super Natural Instructions 上训练的 LLAMA 7B（Inst-LLAMA，Wang et al., 2022），后者为 ChatGPT（OpenAI, 2022）。对于计算非参数概率，我们使用 NPM 的单掩码变体，并采用与原论文相同的 BM25（Min et al., 2023），使用 0.3 作为阈值超参数。
+
+对于段落检索，我们使用 Generalizable T5-based Retrievers（GTR，large 变体），一个无监督的稠密段落检索系统（Ni et al., 2022）。我们将检索到的段落限制为来自主题实体页面，并使用 $k = 5$。我们发现我们的估计器对检索系统的选择不敏感（消融实验见附录 B.3）。作为检索语料库，我们使用 2023 年 4 月 1 日（04/01/2023）的英文 Wikipedia，这大约是数据标注完成的时间，并将每个页面切分为最多 256 个 token 的段落。
+
+\textbf{额外的基线。} 我们还与 Self-check LM 进行比较，这是 Manakul et al. (2023) 同期工作中的一种方法。Self-check LM 需要从 \subj{} 生成的多个样本。它通过对 \eval{} 进行提示、以每个生成样本为条件\footnote{Manakul et al. (2023) 使用 BERTScore 和一个有监督的问答系统而非大语言模型提示，但我们发现大语言模型提示显著更好。}来验证给定原子事实，从每个样本中做出判断（Supported 或否），并通过多数表决汇总结果。该方法假设：（1）\subj{} 在评估时可用；（2）\subj{} 的输出是非确定性的，这使其不适用于 PerplexityAI。
+
+\subsection{片段级 vs. 系统级评估}
+
+除了估计的 \FS{} 与真实 \FS{} 的接近程度（即误差率，如第 4 节所报告）之外，我们还报告 F1\textsubscript{MICRO}。F1\textsubscript{MICRO} 评估模型在假定给定预言原子事实（oracle atomic facts，即由人类专家给出的原子事实）的情况下，验证每个单独原子事实的表现如何，并评估估计器在识别非 Supported（NS）事实方面的表现如何。形式上，设 $G$ 和 $P$ 分别为一组生成中真实标签为 Not-supported 和预测标签为 Not-supported 的原子事实集合。我们将 F1\textsubscript{MICRO} 定义如下。
+
+\[
+P = \frac{|P \cap G|}{|P|}, \quad R = \frac{|P \cap G|}{|G|}, \quad \text{F1}_{\text{MICRO}} = \frac{2 \cdot P \cdot R}{P + R}
+\]
+
+我们称它们为 MICRO，因为它们考量的是单个决策而非聚合估计。
+
+\begin{figure}[H]\centering
+  \includegraphics[width=0.75\linewidth]{fig4.pdf}
+  \caption{F1\textsubscript{MICRO} 与误差率（ER）对两个评估器排序不同的一个案例。Evaluator A 在 F1\textsubscript{MICRO} 上更好，Evaluator B 在 ER 上更好。}
+  \label{fig:4}
+\end{figure}
+
+\textbf{ER vs. F1\textsubscript{MICRO}。} F1\textsubscript{MICRO} 关注单个决策，而 ER 关注聚合估计。一个 F1\textsubscript{MICRO} 较高（较好）但总是高估或低估事实精度的评估器，可能具有较高（较差）的 ER，例如图~\ref{fig:4} 中的 Evaluator A。反之，一个 F1\textsubscript{MICRO} 较低（较差）但既不偏向高估也不偏向低估的评估器，可能具有较低（较好）的 ER，例如图~\ref{fig:4} 中的 Evaluator B。基于模型评估的已有工作主要报告聚合分数，因为其目标是对被评估的不同系统进行比较（Zhang et al., 2020；Rashkin et al., 2021；Gao et al., 2022），而我们同时报告二者，以观察两类指标之间的关系。F1\textsubscript{MICRO} 和 ER 也分别与对人类判断的片段级和系统级相关性密切相关，二者在机器翻译（Ma et al., 2019；Thompson and Post, 2020）和摘要（Bhandari et al., 2020；Deutsch et al., 2021）的评估指标研究中已被广泛使用。
+
+\begin{table}[H]\centering
+\caption{使用 Inst-LLAMA 7B 作为 \eval{} 的 F1\textsubscript{MICRO} 结果。“retrv” 表示是否使用了检索。Self-check 不适用于输出半确定性的 PerplexityAI。加粗表示最佳性能。}
+\label{tab:9}
+\begin{tabular}{lcccc}
+\toprule
+Evaluator & retrv & InstGPT & ChatGPT & PPLAI \\
+\midrule
+Always Supported & - & 0.0 & 0.0 & 0.0 \\
+Always Not-supported & - & 71.4 & 58.3 & 30.9 \\
+Random & - & 52.2 & 45.0 & 25.7 \\
+No-context LM & \ding{55} & 61.2 & 52.2 & 31.4 \\
+Self-check LM & \ding{55} & 66.0 & 48.4 & - \\
+Retrieve$\rightarrow$LM & \ding{51} & 78.7 & 61.9 & 51.1 \\
+NP & \ding{51} & 70.0 & 56.6 & 51.4 \\
+Retrieve$\rightarrow$LM + NP & \ding{51} & \textbf{83.2} & \textbf{70.5} & \textbf{53.3} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{结果。} F1\textsubscript{MICRO} 的结果报告于表~\ref{tab:9}。Self-check LM 比 no-context LM 高出 4--11\%，这印证了 Manakul et al. (2023) 的发现。然而，二者都显著逊于使用检索的方法。这与 Manakul et al. (2023) 形成对比，后者报告称不使用检索的 Self-check 取得的性能接近使用检索的性能，可能是因为 Manakul et al. (2023) 中的数据包含更频繁的实体。检索显著有帮助这一事实与第 4.2 节以 ER 为指标的发现一致。
+
+加入 NP 使 Retrieve$\rightarrow$LM 提升 2--9\%，这同样与第 4.2 节的发现一致。这可能是因为当存在来自大语言模型的强偏见或存在干扰段落时，Retrieve$\rightarrow$LM 常做出不正确的预测，而考虑非参数概率使模型对这些因素更具鲁棒性。例如，给定一个未被支持的事实 Samuel Oboh is Nigerian，No-context LM、Self-check LM 和 Retrieve$\rightarrow$LM 由于强烈的姓名-国籍偏见而预测为 Supported。NPM 则基于一段文本 Samuel Oboh \ldots{} is a Canadian architect, manager, \ldots{} 正确地预测为 Not-supported。同样值得注意的是，这与第 4.2 节中“ChatGPT 不一定优于 LLAMA+NP”的发现不同。
+
+\begin{table}[H]\centering
+\caption{关于 \eval{} 选择的 F1\textsubscript{MICRO} 消融实验。“retrv” 表示是否使用了检索。加粗和{\color{red}\textbf{红色加粗}}分别表示在开放访问大语言模型和商用大语言模型内的最佳 F1。}
+\label{tab:10}
+\begin{tabular}{lcccc}
+\toprule
+Evaluator & retrv & InstGPT & ChatGPT & PPLAI \\
+\midrule
+\multicolumn{5}{l}{\textbf{LLAMA 65B}} \\
+No-context LM & \ding{55} & 22.2 & 20.0 & 18.6 \\
+Retrieve$\rightarrow$LM & \ding{51} & 54.6 & 42.1 & 36.1 \\
+Retrieve$\rightarrow$LM + NP & \ding{51} & 80.1 & 67.1 & 55.1 \\
+\midrule
+\multicolumn{5}{l}{\textbf{Inst-LLAMA 7B}} \\
+No-context LM & \ding{55} & 61.2 & 52.2 & 31.4 \\
+Retrieve$\rightarrow$LM & \ding{51} & 78.7 & 61.9 & 51.1 \\
+Retrieve$\rightarrow$LM + NP & \ding{51} & \textbf{83.2} & \textbf{70.5} & \textbf{53.3} \\
+\midrule
+\multicolumn{5}{l}{\textbf{ChatGPT}} \\
+No-context LM & \ding{55} & 40.0 & 25.4 & 25.4 \\
+Retrieve$\rightarrow$LM & \ding{51} & {\color{red}\textbf{87.5}} & {\color{red}\textbf{80.2}} & {\color{red}\textbf{65.8}} \\
+Retrieve$\rightarrow$LM + NP & \ding{51} & 86.6 & 77.8 & 60.8 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{使用更强的 \eval{} 显著提升 F1\textsubscript{MICRO}。} 表~\ref{tab:10} 报告了在不同 \eval{} 选择上的比较。在同一方法内，Inst-LLAMA 7B 优于 LLAMA 65B，而 ChatGPT 优于二者。使用检索在所有模型上都至关重要，例如基于 ChatGPT 的最佳 no-context 模型的表现逊于所有使用检索的模型。使用 NP 有助于基于 LLAMA 的模型，但对 ChatGPT 无益，这可能是因为 ChatGPT 较少受到来自大语言模型的不正确先验或干扰段落的影响。
+
+值得注意的是，这些结果与第 4.2 节中“ChatGPT 不一定优于 LLAMA+NP”的发现有所不同。这是因为，尽管 ChatGPT 在验证每个单独原子事实上更好，但 ChatGPT 的大多数错误是将 Supported 错误地赋予 Not-supported 的事实，从而导致对 \FS{} 的高估。相比之下，LLAMA+NP 既不偏向高估也不偏向低估事实精度，从而使聚合的事实精度更接近真实值。这类似于摘要评估中系统级与片段级相关性之间的权衡（Bhandari et al., 2020；Deutsch et al., 2021）。
+
+\subsection{消融实验}
+
+\textbf{QA 提示 vs. TF 提示。} 如第 4.1 节所述，我们使用 True or False 作为提示的一部分，即所谓的 TF 提示（TF Prompting）。一种替代方案是 QA 提示（QA Prompting），它生成一个问题和期望答案，独立于期望答案地为所生成问题获取答案，并比较期望答案与所预测答案。这一做法在摘要文献以及近期的事实精度工作中已被广泛研究（Kryscinski et al., 2020；Wang et al., 2020；Gao et al., 2022；Manakul et al., 2023）。表~\ref{tab:11} 提供了两类提示之间的比较。TF 方法在所有方法上都一致地显著优于 QA 方法。我们的进一步分析发现，这是由于所生成的问题常常过于含糊或有歧义。例如，给定一个被支持的事实 Samuel Oboh is an architect，大语言模型生成 What is Samuel Oboh's job? 作为问题、Architect 作为期望答案，而所获得的答案是 Vice President。尽管 Architect 和 Vice President 都正确，但它们并不相同，因此模型错误地预测为 Not-supported。此类案例使模型过度预测 Not-supported，导致许多不正确的预测。
+
+\begin{table}[H]\centering
+\caption{F1\textsubscript{MICRO} 结果，比较 QA 提示与 TF 提示。我们使用 Inst-LLAMA 7B 作为 \eval。由于 PerplexityAI 的输出是半确定性的，Self-check 不适用于 PerplexityAI。加粗表示最佳 F1\textsubscript{MICRO}。}
+\label{tab:11}
+\begin{tabular}{lccc}
+\toprule
+Evaluator & InstGPT & ChatGPT & PPLAI \\
+\midrule
+Always Supported & 30.8 & 37.1 & 45.0 \\
+Always Not-supported & 35.7 & 29.1 & 15.5 \\
+Random & 50.5 & 50.2 & 43.2 \\
+\midrule
+\multicolumn{4}{l}{\textbf{QA Prompting}} \\
+No-context LM & 56.5 & 48.8 & 32.5 \\
+Self-check LM & 65.3 & 63.2 & - \\
+Retrieve$\rightarrow$LM & 65.3 & 58.2 & 47.3 \\
+\midrule
+\multicolumn{4}{l}{\textbf{TF Prompting}} \\
+No-context LM & 57.3 & 55.3 & 41.7 \\
+Self-check LM & 68.0 & 61.9 & - \\
+Retrieve$\rightarrow$LM & \textbf{78.9} & \textbf{71.4} & \textbf{69.2} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{检索选择的影响。} 表~\ref{tab:12} 比较了基于若干段落检索系统的 Retrieve$\rightarrow$LM 方法，包括 BM25（Lin et al., 2021）、GTR Large 和 GTR xLarge。结果表明，所有检索系统都同样优秀，且 Retrieve$\rightarrow$LM 对检索系统的选择不敏感。
+
+\begin{table}[H]\centering
+\caption{F1\textsubscript{MICRO} 结果，比较不同检索系统：BM25、GTR Large 和 GTR xLarge，全部基于 Inst-LLAMA 7B 的 Retrieve$\rightarrow$LM。加粗表示最佳 F1\textsubscript{MICRO}。}
+\label{tab:12}
+\begin{tabular}{lccc}
+\toprule
+Retrieval & InstGPT & ChatGPT & PPLAI \\
+\midrule
+BM25 & 78.5 & 70.8 & 69.1 \\
+GTR Large & 78.9 & 71.4 & \textbf{69.2} \\
+GTR xLarge & \textbf{79.2} & 71.3 & 69.0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{定性分析。} 表~\ref{tab:13} 对基于 ChatGPT 的 Retrieve$\rightarrow$LM（具有最佳 F1\textsubscript{MICRO} 的评估器）所犯的错误进行分类。70\% 的错误是由于检索到的段落未提供直接证据（无论支持还是矛盾）。这些即便对最先进的检索系统和语言模型也很困难，因为验证事实常常需要阅读整页而非单个段落，例如某演员未出现在某部特定影片中。17\% 的错误是因为 ChatGPT 被其他段落干扰，尽管在只给出某个特定、正确段落的情况下它会赋予正确的标签。
+
+\begin{table}[H]\centering
+\caption{对基于 ChatGPT 的 Retrieve$\rightarrow$LM 错误预测的 30 个样本的分类。}
+\label{tab:13}
+\begin{tabular}{lc}
+\toprule
+类别 & \% \\
+\midrule
+检索到的段落无直接证据 & 70 \\
+被其他段落干扰 & 17 \\
+原子事实依赖上下文 & 7 \\
+即便有正确段落仍预测错误 & 3 \\
+标注错误 & 3 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{新大语言模型评估的更多细节（第 4.3 节）}
+
+\textbf{估计中的方差。} 图~\ref{fig:5} 报告了由我们估计器的两个变体所估计的 \FS，与图~\ref{fig:3} 一样，但使用了 100 个随机的数据子集。具体而言，我们在 20 个类别（定义见附录 A.1）上均匀随机地选取 $N$ 个样本（从 500 个中选取）$M$ 次，并报告平均值和标准差。我们使用 $N = \{40, 100, 200\}$ 和 $M = 100$。结果表明方差总体较低，在大多数情况下保持了 13 个评估对象之间的排序。正如预期，样本量越大方差越低。最后，基于 LLAMA+NP 的 ER 估计器（下）的总体方差低于基于 ChatGPT 的估计器（上）。
+
+\begin{figure}[H]\centering
+  \includegraphics[width=0.95\linewidth]{cand_p20_k00.pdf}
+  \caption{提示中不同随机样本子集的影响。13 个评估对象（人类与 12 个大语言模型）的 \FS{} 由我们估计器的两个最佳变体评定：ChatGPT（上）和 LLAMA+NP（下），二者都带检索。方差总体较低，且随样本量增大而降低，并且 LLAMA+NP（下）比 ChatGPT（上）更低。（子图分别对应每类别 2 个样本共 40 个样本、每类别 5 个样本共 100 个样本、每类别 10 个样本共 200 个样本。）}
+  \label{fig:5}
+\end{figure}
+
+\subsection{将 \FS{} 应用于其他领域的可行性}
+
+如“局限性”一节所述，我们的论文主要在使用 Wikipedia 的人物传记上进行评估。评估 \FS{} 对其他类型提示和其他领域的泛化能力是未来工作的一个方向。
+
+作为概念验证，我们在 NLP 领域进行小规模研究。我们首先手动撰写 10 个询问 NLP 论文的提示：Tell me a summary of <paper-title>（请给我一篇 <paper-title> 的摘要），然后从 ChatGPT 获取响应。接下来，我们以 ACL anthology 作为知识源运行 \FS。最后，我们计算误差率（ER）——人类验证（由作者标注）与模型验证之间的差异——做法与第 4 节相同。ER 为 7.41（人类给出的 \FS{} 为 66.20，模型给出的 \FS{} 为 73.61），这与表~\ref{tab:3} 中人物传记的 ER 值相当。
+
+这表明 \FS{} 能够泛化到人物传记之外。然而，由于这是一个非常小规模的实验，我们强烈鼓励未来研究大规模探索 \FS{} 对更多领域的泛化能力。
+
+\section{编辑实验}
+
+我们在第 4 节中的实验聚焦于自动识别语言模型长文本生成中的事实精度错误。这些标签能否真正用于修正长文本生成中的错误？在本节中，我们对编辑长文本大语言模型生成以反映事实正确信息的方法进行了初步探索。我们假设可以访问 \FS{} 标签的人工标注集，并衡量模型在编辑不正确句子方面的表现如何。换言之，我们独立于估计器所产生的错误来评估我们的编辑器模型。
+
+\subsection{方法}
+
+我们为编辑器模型采用一套与第 4.1 节类似的方法。下述所有方法都使用四个范例样本进行上下文学习（in-context learning），这些样本从我们的数据集中抽样并在后续分析中移除。对于所有方法，由于其生成能力，我们使用 OpenAI 的 ChatGPT（OpenAI, 2022）作为基础语言模型。
+
+\textbf{No-context LM。} 我们向语言模型输入提示 \texttt{Input: <sentence> Edit:}，并请它在没有任何检索上下文的情况下编辑文本。
+
+\textbf{Retrv$\rightarrow$LM。} 为辅助编辑器模型，我们使用段落检索系统从外部知识源（在我们的案例中为 Wikipedia）查找支持性证据。我们的检索流水线与附录 B.1 相同，但由于上下文长度限制而使用 3 个检索段落而非 5 个。
+
+\textbf{+ Atomic Facts。} 此外，我们探索添加原子事实及其标签是否有助于模型进行细粒度编辑。具体而言，在输入句子之后，我们向提示添加形如 \texttt{Fact 1 (True/False): <atomic fact 1> Fact 2 (True/False): <atomic fact 2> ...} 的信息。这些数据也提供在范例中。
+
+\textbf{非编辑基线。} 最后，我们添加一些平凡的基线以给我们的编辑指标设定下界。具体而言，我们衡量输入复制（无编辑）的性能，以及一个在随机 25\% 的 token 子集上进行随机 token 丢弃/替换的编辑器的性能。
+
+\subsection{评估}
+
+在我们的数据收集过程（第 3.3 节）中，连同我们的验证数据，我们还收集了金标准的人工撰写编辑。设 $X = x_1, \ldots, x_{N_X}$ 为输入句子，$G = g_1, \ldots, g_{N_G}$ 为金标准编辑句子。我们使用三个自动指标评估模型生成编辑（$E = e_1, \ldots, e_{N_E}$）的质量。
+
+\textbf{(1) 错误定位（Error Localization, ErrLoc）：} 我们的第一个指标衡量编辑器在输入句子中识别错误的表现如何。具体而言，我们首先创建一个“token 保留字符串”，将输入句子 $X$ 中的 token $x_i$ 标记为 “Preserved”（保留）或 “Not Preserved”（不保留）。然后我们计算由金标准编辑和模型生成编辑所导出的 token 保留字符串之间的宏平均（macro-averaged）F1 分数。在进行此计算前，我们移除停用词、标点并将所有词转为小写。为对每个句子等权重，F1 分数对每个句子独立计算，然后再做最终平均。
+
+\textbf{(2) 编辑正确性（Edit Correctness, EditCorr）：} 我们的第二个指标评估模型生成编辑所添加的额外 token 的质量。具体而言，我们检查比较金标准编辑 $G$ 所添加的新 token 与模型生成编辑 $E$ 所添加的新 token 的 token 级 F1 分数（Rajpurkar et al., 2016）。更具体地，
+
+\begin{align*}
+N_{\text{common}} &= \sum_{e_i \in E,\, e_i \notin X} \indi[e_i \in G] \\
+\text{precision} &= N_{\text{common}} / \|\{e_i \in E, e_i \notin X\}\| \\
+\text{recall} &= N_{\text{common}} / \|\{g_i \in G, g_i \notin X\}\| \\
+\text{EditCorr (F1)} &= \text{HM}(\text{precision}, \text{recall})
+\end{align*}
+
+其中 $\|\cdot\|$ 为集合基数，HM 表示调和平均（harmonic mean）。对于此指标，我们舍弃金标准编辑未添加新 token 的数据点。与 ErrLoc 类似，我们在计算 EditCorr 分数前也移除停用词、移除标点并将字符串转为小写。
+
+\textbf{(3) SIM 对齐（SimAl）：} 最后，由于可能编辑的输出空间很大，我们还采用一个奖励金标准编辑改写形式的指标。我们使用来自 Wieting et al. (2022) 的语义相似度嵌入，它将改写映射到向量空间的相似部分。我们检查模型编辑 $E$ 与金标准编辑 $G$ 之间的相似度，并通过 $G$ 与原始输入 $X$ 之间的相似度对其进行归一化。\footnote{我们避免对原始/编辑后文本取向量差，因为编辑向量（edit vectors, Guu et al., 2018）在 Wieting et al. (2022) 中并未被显式建模。}具体而言，
+
+\[
+\text{Sim} = \max\left(0, \frac{s(G, E) - s(G, X)}{1 - s(G, X)}\right)
+\]
+
+其中 $s(A, B)$ 是来自 Wieting et al. (2022) 模型的语义相似度分数（归一化到 $[0, 1]$）。直观上，此指标衡量 $G$ 和 $E$ 相比 $G$ 和 $X$ 接近了多少。
+
+\subsection{结果}
+
+我们在表~\ref{tab:14} 中给出编辑结果。总体而言，我们发现：
+
+\begin{table}[H]\centering
+\caption{在假定真实验证标签的情况下，使用 ChatGPT 进行自动编辑后的结果。所有编辑器都优于平凡的下界基线，且使用检索和原子事实标签可提升编辑性能。自动指标（ErrLoc、ErrCorr、SimAl）的细节定义于 C.2 节。}
+\label{tab:14}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lccccccccc}
+\toprule
+ & \multicolumn{3}{c}{InstructGPT} & \multicolumn{3}{c}{ChatGPT} & \multicolumn{3}{c}{PerplexityAI} \\
+Editor & ErrLoc & ErrCorr & SimAl & ErrLoc & ErrCorr & SimAl & ErrLoc & ErrCorr & SimAl \\
+\midrule
+Input copying & 37.1 & 0.0 & 0.0 & 38.8 & 0.0 & 0.0 & 45.6 & 0.0 & 0.0 \\
+25\% random noise & 44.1 & 0.1 & 0.5 & 45.5 & 0.1 & 0.4 & 45.2 & 0.0 & 0.3 \\
+\midrule
+\multicolumn{10}{l}{\textbf{ChatGPT}} \\
+No-context & 49.0 & 8.5 & 6.2 & 45.3 & 6.8 & 4.0 & 48.3 & 6.2 & 4.1 \\
+No-context + atomic facts & 58.7 & 12.7 & 10.5 & 53.4 & 10.0 & 6.6 & 56.0 & 9.6 & 6.1 \\
+Retrv$\rightarrow$LM & 52.6 & 21.8 & 15.7 & 43.9 & 16.8 & 9.5 & 46.3 & 13.5 & 6.8 \\
+Retrv$\rightarrow$LM + atomic facts & 65.4 & 30.4 & 25.5 & 63.5 & 28.3 & 19.3 & 62.4 & 23.6 & 15.9 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{所有编辑模型都优于平凡的下界。} 总体而言，我们发现所有编辑器模型都优于随机噪声等下界基线。这甚至发生在 no-context LM 设置中，其中 ChatGPT 在编辑其自身输出（或搜索引擎增强的 Perplexity AI 的输出），但仍能执行非平凡的修正（ChatGPT 修正其自身输出时 ErrCorr 为 6.8，而随机噪声编辑器基线为 0.1）。
+
+\textbf{检索显著有助于编辑性能。} 在所有基础语言模型和指标上，用检索到的段落增强编辑器都能提升性能（ChatGPT 修正其自身输出时，ErrCorr 从 6.8 提升到 16.8，SimAl 从 4.0 提升到 9.5）。我们假设 ChatGPT 内部的参数化知识对该主题的信息不足（正如我们在第 3.4 节中也观察到的），无法进行细粒度编辑，而使用来自 Wikipedia 的外部知识极大地简化了错误定位和修正。这也与我们在第 4.2 节的发现相印证。
+
+\textbf{原子事实标签改善错误定位并提升编辑性能。} 在所有基础语言模型（无论是否带检索）上，我们都观察到提供细粒度原子事实标签可提升编辑性能（ChatGPT 修正其自身输出时，ErrCorr 从 16.8 提升到 28.3，SimAl 从 9.5 提升到 19.3）。细粒度的事实正确性标签帮助编辑器轻松识别有问题的 token，正如 ErrLoc 分数的一致提升所示（ChatGPT 修正自身时从 43.9 提升到 63.5）。我们假设原子事实有助于引导编辑器进行其编辑过程（例如，在检索到的段落中进行更有针对性的搜索），从而带来 ErrCorr 的提升。我们还发现，原子事实标签将编辑器逐字复制输入或声称 “The input has no errors”（输入没有错误）的频率从 37.3\% 降低到 3.9\%。
+
+\textbf{PerplexityAI 的输出最难编辑。} 总体而言，我们发现 InstructGPT 的编辑成功率最高，其次是 ChatGPT，而 Perplexity AI 的成功率最低。我们假设这是因为 PerplexityAI 已经使用搜索引擎，因此其错误要微妙得多，正如附录 A.5 中广泛讨论的。
+
+\begin{table}[H]\centering
+\caption{给 InstructGPT 用以为给定句子生成原子事实的提示。模型生成的原子事实由人类编辑修订。}
+\label{tab:15}
+\end{table}
+
+\begin{Verbatim}[fontsize=\scriptsize,frame=single]
+Please breakdown the following sentence into independent facts: He made his acting debut in
+the film The Moon is the Sun's Dream (1992), and continued to appear in small and supporting
+roles throughout the 1990s.
+- He made his acting debut in the film.
+- He made his acting debut in The Moon is the Sun's Dream.
+- The Moon is the Sun's Dream is a film.
+- The Moon is the Sun's Dream was released in 1992.
+- After his acting debut, he appeared in small and supporting roles.
+- After his acting debut, he appeared in small and supporting roles throughout the 1990s.
+
+Please breakdown the following sentence into independent facts: He is also a successful
+producer and engineer, having worked with a wide variety of artists, including Willie Nelson,
+Tim McGraw, and Taylor Swift.
+- He is successful.
+- He is a producer.
+- He is a engineer.
+- He has worked with a wide variety of artists.
+- Willie Nelson is an artist.
+- He has worked with Willie Nelson.
+- Tim McGraw is an artist.
+- He has worked with Tim McGraw.
+- Taylor Swift is an artist.
+- He has worked with Taylor Swift.
+
+Please breakdown the following sentence into independent facts: In 1963, Collins became one of
+the third group of astronauts selected by NASA and he served as the back-up Command Module
+Pilot for the Gemini 7 mission.
+- Collins became an astronaut.
+- Collins became one of the third group of astronauts.
+- Collins became one of the third group of astronauts selected.
+- Collins became one of the third group of astronauts selected by NASA.
+- Collins became one of the third group of astronauts selected by NASA in 1963.
+- He served as the Command Module Pilot.
+- He served as the back-up Command Module Pilot.
+- He served as the Command Module Pilot for the Gemini 7 mission.
+
+Please breakdown the following sentence into independent facts: In addition to his acting roles,
+Bateman has written and directed two short films and is currently in development on his feature
+debut.
+- Bateman has acting roles.
+- Bateman has written two short films.
+- Bateman has directed two short films.
+- Bateman has written and directed two short films.
+- Bateman is currently in development on his feature debut.
+
+Please breakdown the following sentence into independent facts: Michael Collins (born October
+31, 1930) is a retired American astronaut and test pilot who was the Command Module Pilot for
+the Apollo 11 mission in 1969.
+- Michael Collins was born on October 31, 1930.
+- Michael Collins is retired.
+- Michael Collins is an American.
+- Michael Collins was an astronaut.
+- Michael Collins was a test pilot.
+- Michael Collins was the Command Module Pilot.
+- Michael Collins was the Command Module Pilot for the Apollo 11 mission.
+- Michael Collins was the Command Module Pilot for the Apollo 11 mission in 1969.
+
+Please breakdown the following sentence into independent facts: He was an American composer,
+conductor, and musical director.
+- He was an American.
+- He was a composer.
+- He was a conductor.
+- He was a musical director.
+
+Please breakdown the following sentence into independent facts: She currently stars in the
+romantic comedy series, Love and Destiny, which premiered in 2019.
+- She currently stars in Love and Destiny.
+- Love and Destiny is a romantic comedy series.
+- Love and Destiny premiered in 2019.
+
+Please breakdown the following sentence into independent facts: During his professional career,
+McCoy played for the Broncos, the San Diego Chargers, the Minnesota Vikings, and the
+Jacksonville Jaguars.
+- McCoy played for the Broncos.
+- McCoy played for the Broncos during his professional career.
+- McCoy played for the San Diego Chargers.
+- McCoy played for the San Diego Chargers during his professional career.
+- McCoy played for the Minnesota Vikings.
+- McCoy played for the Minnesota Vikings during his professional career.
+- McCoy played for the Jacksonville Jaguars.
+- McCoy played for the Jacksonville Jaguars during his professional career.
+
+Please breakdown the following sentence into independent facts
+\end{Verbatim}
+
+\begin{figure}[H]\centering
+  \includegraphics[width=0.98\linewidth]{fig6.pdf}
+  \caption{第 4 节数据标注的说明。我们还提供了一段演示视频，并在资格任务期间进行一对一反馈。}
+  \label{fig:6}
+\end{figure}
+
+\begin{figure}[H]\centering
+  \includegraphics[width=0.98\linewidth]{fig7.pdf}
+  \caption{第 4 节数据标注的界面。标注者可在左侧浏览 Wikipedia。他们在一个 HIT 中标注针对同一提示的来自三个大语言模型的三段生成，因为这样能节省时间。由于完成一个 HIT 需要相当长的时间（25 分钟），我们添加了一项功能，允许在 HIT 进行中的任意阶段保存其工作。}
+  \label{fig:7}
+\end{figure}
+
+\end{document}

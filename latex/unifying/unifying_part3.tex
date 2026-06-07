@@ -1,0 +1,699 @@
+% ============================================================
+%  第6节 – 第8节、致谢、附录A、参考文献
+%  从 \section{6} 开始，到 \end{document} 结束
+% ============================================================
+
+\section{协同大语言模型与知识图谱}
+
+近年来，大语言模型（LLMs）与知识图谱（KGs）的协同融合引起了越来越多的关注，它结合了LLMs和KGs各自的优势，在各种下游应用中实现相互增强。例如，LLMs可以用于理解自然语言，而KGs则作为知识库提供事实性知识。LLMs与KGs的统一可以产生一个强大的知识表示（knowledge representation）与推理（reasoning）模型。
+
+本节将从两个角度讨论最新的协同LLMs + KGs方法：1）协同知识表示（Synergized Knowledge Representation），以及2）协同推理（Synergized Reasoning）。代表性工作总结于表~4中。
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{cand_p18_k01.pdf}
+\caption{协同KGs和LLMs的方法总结。}
+\end{figure}
+
+\subsection{协同知识表示}
+
+文本语料库和知识图谱都包含大量知识。然而，文本语料库中的知识通常是隐式的和非结构化的，而KGs中的知识是显式的和结构化的。协同知识表示旨在设计一个协同模型，能够有效地表示来自LLMs和KGs两方面的知识。该协同模型可以提供对两种来源知识的更好理解，使其在许多下游任务中具有重要价值。
+
+为了联合表示知识，研究者通过引入额外的KG融合模块来提出协同模型，这些模块与LLMs联合训练。如图~23所示，ERNIE [35] 提出了一种文本-知识双编码器架构（textual-knowledge dual encoder architecture），其中T-encoder首先对输入句子进行编码，然后K-encoder处理知识图谱并将其与来自T-encoder的文本表示进行融合。BERT-MK [241] 采用了类似的双编码器架构，但在LLMs预训练过程中，在知识编码器组件中引入了邻居实体（neighboring entities）的附加信息。然而，KGs中的一些邻居实体可能与输入文本无关，导致额外的冗余和噪声。CokeBERT [242] 针对这一问题，提出了一个基于GNN的模块，利用输入文本过滤不相关的KG实体。JAKET [243] 提出在大语言模型的中间层融合实体信息。
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.48\linewidth]{cand_p19_k00.pdf}
+\caption{通过额外的KG融合模块实现协同知识表示。}
+\end{figure}
+
+KEPLER [40] 提出了一个统一的知识嵌入（knowledge embedding）和预训练语言表示模型。在KEPLER中，他们使用LLM对文本实体描述进行编码作为其嵌入，然后联合优化知识嵌入和语言建模目标。JointGT [42] 提出了一个图-文本联合表示学习（graph-text joint representation learning）模型。DRAGON [44] 提出了一种自监督方法，从文本和KG中预训练一个联合的语言-知识基础模型。HKLM [238] 引入了一个统一的LLM，结合KGs来学习领域特定知识（domain-specific knowledge）的表示。
+
+\subsection{协同推理}
+
+为了更好地利用来自文本语料库和知识图谱的知识进行推理，协同推理旨在设计一个协同模型，能够有效地结合LLMs和KGs进行推理。
+
+\textbf{LLM-KG融合推理。}LLM-KG融合推理（LLM-KG Fusion Reasoning）利用两个独立的LLM和KG编码器分别处理文本和相关的KG输入 [244]。这两个编码器同等重要，联合融合两种来源的知识用于推理。为了改善文本与知识之间的交互，KagNet [38] 提出首先对输入KG进行编码，然后增强输入的文本表示。相比之下，MHGRN [234] 使用输入文本的最终LLM输出来指导KGs上的推理过程。然而，两者都只设计了文本与KGs之间的单向交互。为了解决这一问题，QA-GNN [131] 提出使用基于GNN的模型，通过消息传递（message passing）在输入上下文和KG信息之间进行联合推理。具体而言，QA-GNN将输入文本信息表示为一个特殊节点（通过池化操作），并将该节点与KG中的其他实体连接。然而，文本输入仅被池化为单个稠密向量，限制了信息融合性能。JointLK [245] 随后提出了一个框架，通过LM-to-KG和KG-to-LM的双向注意力机制（bi-directional attention mechanism），实现文本输入中任意token与任意KG实体之间的细粒度交互。如图~24所示，成对的点积分数在所有文本token和KG实体上计算，双向注意力分数分别计算。此外，在每个JointLK层中，KGs也根据注意力分数进行动态剪枝，使后续层能够聚焦于更重要的子KG结构。尽管JointLK是有效的，但其输入文本与KG之间的融合过程仍然使用最终LLM输出作为输入文本表示。GreaseLM [178] 在LLMs的每一层都设计了输入文本token和KG实体之间的深度丰富交互。其架构和融合方法与第~6.1节中讨论的ERNIE [35] 非常相似，不同之处在于GreaseLM不使用仅处理文本的T-encoder来处理输入文本。
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.5\linewidth]{cand_p19_k01.pdf}
+\caption{LLM-KG融合推理框架。}
+\end{figure}
+
+为了更好地引导LLMs通过KGs进行推理，OreoLM [177] 提出了一个知识交互层（Knowledge Interaction Layer, KIL）。该KIL被插入到LLM层之间，它与一个KG推理模块交互，在该模块中发现不同的推理路径，然后推理模块可以在路径上进行推理以生成答案。GreaseLM [178] 融合了来自LLMs和图神经网络（graph neural networks）的表示。UniKGQA [43] 将事实检索（facts retrieval）和推理统一到一个统一的框架中。UniKGQA由两个模块组成。第一个模块是一个语义匹配模块，使用LLM将问题与其对应的关系进行语义匹配。第二个模块是一个匹配信息传播模块，沿着KGs中的有向边传播匹配信息以进行答案推理。类似地，ReLMKG [179] 在大语言模型和关联的知识图谱上执行联合推理。问题和文字化的路径由语言模型编码，语言模型的不同层产生输出，这些输出指导图神经网络执行消息传递。该过程利用结构化知识图谱中包含的显式知识进行推理。StructGPT [237] 采用定制化接口，允许大语言模型（例如ChatGPT）直接在KGs上进行推理，以执行多步问题回答。
+
+\textbf{LLMs作为代理推理。}不同于使用两个编码器来融合知识，LLMs也可以作为代理（agents）与KGs交互以进行推理 [246]，如图~25所示。KD-CoT [247] 从KGs中迭代检索事实，并产生忠实的推理链（reasoning traces），引导LLMs生成答案。KSL [239] 教导LLMs在KGs上搜索，以检索相关事实然后生成答案。StructGPT [237] 设计了几个API接口，允许LLMs访问结构化数据并通过在KGs上遍历来执行推理。Think-on-graph [240] 提供了一个灵活的即插即用框架，其中LLM代理在KGs上迭代执行束搜索（beam search），以发现推理路径并生成答案。
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.48\linewidth]{cand_p20_k00.pdf}
+\caption{使用LLMs作为代理在KGs上进行推理。}
+\end{figure}
+
+\textbf{比较与讨论。}为了增强代理能力，AgentTuning [248] 提出了几个指令微调数据集（instruction-tuning datasets），用于引导LLM代理在KGs上执行推理。LLM-KG融合推理将LLM编码器和KG编码器结合，以统一的方式表示知识，然后采用协同推理模块来联合推理结果。该框架允许不同的编码器和推理模块端到端训练，以有效利用LLMs和KGs的知识和推理能力。然而，这些额外的模块可能引入额外的参数和计算成本，同时缺乏可解释性（interpretability）。LLMs作为代理的KG推理提供了一个灵活的框架，无需额外的训练成本即可在KGs上进行推理，可以推广到不同的LLMs和KGs。同时，推理过程是可解释的，可以用来解释结果。然而，为LLM代理定义动作和策略（actions and policies）也具有挑战性。LLMs与KGs的协同仍然是一个持续的研究课题，未来有可能出现更强大的框架。
+
+\section{未来方向与里程碑}
+
+本节讨论统一KGs与LLMs研究领域的未来方向和若干里程碑。
+
+\subsection{KGs用于LLMs的幻觉检测}
+
+LLMs中的幻觉（hallucination）问题——即生成事实不正确的内容——严重影响了LLMs的可靠性。如第~4节所讨论的，现有研究尝试通过预训练或KG增强推理来利用KGs获得更可靠的LLMs。尽管做出了这些努力，幻觉问题在可预见的未来可能仍将存在于LLMs领域。因此，为了获得公众对LLMs和其他形式的AI生成内容（AIGC）的信任和边界应用的认可，检测和评估LLMs中的幻觉实例是至关重要的。现有方法通过在一小组文档上训练神经分类器来检测幻觉 [249]，这些方法既不够鲁棒，也不够强大，无法处理不断增长的LLMs。最近，研究者尝试使用KGs作为外部来源来验证LLMs [250]。进一步的研究将LLMs和KGs结合，以实现一个可推广的事实核查模型，该模型可以跨领域检测幻觉 [251]。因此，这为利用KGs进行幻觉检测开辟了新的大门。
+
+\subsection{KGs用于编辑LLMs中的知识}
+
+尽管LLMs能够存储大量真实世界的知识，但当真实世界的情况发生变化时，它们无法快速更新其内部知识。目前已有一些关于在不重新训练整个LLMs的情况下编辑LLMs中知识的研究工作 [252]。然而，这些解决方案仍然存在性能不佳或计算开销过高的问题 [253]。现有研究 [254] 还揭示，编辑单个事实会对其他相关知识产生连锁效应（ripple effect）。因此，有必要开发一种更高效和有效的方法来编辑LLMs中的知识。最近，研究者尝试利用KGs来高效地编辑LLMs中的知识。
+
+\subsection{KGs用于黑盒LLMs的知识注入}
+
+尽管预训练和知识编辑可以更新LLMs以跟上最新知识，但它们仍然需要访问LLMs的内部结构和参数。然而，许多最先进的大型LLMs（例如ChatGPT）仅向用户和开发者提供API访问，使其自身对公众来说是黑盒的。因此，遵循传统的KG注入方法——如 [38]、[244] 中描述的通过添加额外的知识融合模块来改变LLM结构的方法——是不可行的。将各种类型的知识转换为不同的文本提示（text prompts）似乎是一个可行的解决方案。然而，这些提示能否很好地推广到新的LLMs尚不清楚。此外，基于提示的方法受限于LLMs的输入token长度。因此，如何为黑盒LLMs实现有效的知识注入仍然是一个值得我们探索的开放问题 [255]、[256]。
+
+\subsection{多模态LLMs用于KGs}
+
+当前的知识图谱通常依赖于文本和图结构来处理KG相关应用。然而，真实世界的知识图谱往往由来自多种模态（modalities）的数据构建 [99]、[257]、[258]。因此，有效地利用来自多种模态的表示将是未来研究中的一个重大挑战 [259]。一个潜在的解决方案是开发能够准确编码和对齐不同模态中实体的方法。最近，随着多模态LLMs [98]、[260] 的发展，利用LLMs进行模态对齐（modality alignment）在这方面显示出前景。然而，弥合多模态LLMs和KG结构之间的差距仍然是该领域的一个关键挑战，需要进一步的研究和探索。
+
+\subsection{LLMs用于理解KG结构}
+
+在纯文本数据上训练的传统LLMs并非为理解诸如知识图谱之类的结构化数据而设计。因此，LLMs可能无法完全把握或理解KG结构所传达的信息。一种直接的方法是将结构化数据线性化为LLMs可以理解的句子。然而，KGs的规模使得无法将整个KGs线性化作为输入。此外，线性化过程可能丢失KGs中一些潜在的信息。因此，有必要开发能够直接理解KG结构并在其上进行推理的LLMs [237]。
+
+\subsection{协同LLMs和KGs实现双向推理}
+
+KGs和LLMs是两种互补的技术，可以相互协同。然而，LLMs与KGs的协同目前尚未被现有研究者充分探索。理想的LLMs与KGs协同将涉及利用两种技术的优势来克服各自的局限性。LLMs，如ChatGPT，擅长生成类人文本和理解自然语言，而KGs是以结构化方式捕获和表示知识的结构化数据库。通过结合两者的能力，我们可以创建一个强大的系统，该系统既能受益于LLMs的上下文理解，又能受益于KGs的结构化知识表示。为了更好地统一LLMs和KGs，许多先进技术需要被整合，如多模态学习（multi-modal learning）[261]、图神经网络（graph neural network）[262] 和持续学习（continuous learning）[263]。最后，LLMs和KGs的协同可以应用于许多真实世界的应用，如搜索引擎 [100]、推荐系统 [10]、[89] 和药物发现（drug discovery）。
+
+给定一个应用问题，我们可以使用KG进行知识驱动的搜索以寻找潜在目标和未见数据，同时使用LLMs进行数据/文本驱动的推理以查看可以得出哪些新的数据/目标项。当知识驱动搜索与数据/文本驱动推理相结合时，它们可以相互验证，形成高效且有效的双轮驱动解决方案。因此，我们可以预见，将KGs和LLMs整合用于多种下游应用的研究将受到越来越多的关注，在不久的将来同时具备生成和推理能力。
+
+\section{结论}
+
+统一大语言模型（LLMs）和知识图谱（KGs）是一个活跃的研究方向，引起了学术界和工业界越来越多的关注。本文对该领域的最新研究进行了全面的综述。我们首先介绍了将KGs整合以增强LLMs的不同方式。然后，介绍了将LLMs应用于KGs的现有方法，并根据各种KG任务建立了分类体系。最后，我们讨论了该领域的挑战和未来方向。
+
+我们预见统一KGs和LLMs的路线图中将有多个阶段（里程碑），如图~26所示。具体而言，我们预计三个阶段的研究将不断增加：\textbf{阶段1}：KG增强的LLMs、LLM增强的KGs；\textbf{阶段2}：协同LLMs + KGs；\textbf{阶段3}：图结构理解、多模态、知识更新。我们希望本文能为推动未来研究提供指引。
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.48\linewidth]{cand_p21_k00.pdf}
+\caption{统一KGs和LLMs的里程碑。}
+\end{figure}
+
+\section*{致谢}
+
+本研究得到了澳大利亚研究委员会（Australian Research Council, ARC）基金FT210100097和DP240101547以及中国国家自然科学基金（NSFC）基金62120106008的支持。
+
+\appendix
+\section{LLMs和KGs的优缺点}
+
+本节详细介绍LLMs和KGs的优缺点。我们分别总结LLMs和KGs的优缺点，如图~1所示。
+
+\textbf{LLM优点。}
+
+\begin{itemize}
+\item \textbf{通用知识（General Knowledge）}[11]：在大规模语料库上预训练的LLMs包含大量的通用知识，如常识知识 [264] 和事实知识 [14]。这些知识可以从LLMs中蒸馏出来，并用于下游任务 [265]。
+
+\item \textbf{语言处理（Language Processing）}[12]：LLMs在理解自然语言方面表现出色 [266]。因此，LLMs可以用于许多自然语言处理任务，如问答 [4]、机器翻译 [5] 和文本生成 [6]。
+
+\item \textbf{泛化能力（Generalizability）}[13]：LLMs具有强大的泛化能力，可以应用于各种下游任务 [267]。通过提供少量示例 [59] 或在多任务数据上进行微调 [3]，LLMs在许多任务上都能取得优异性能。
+\end{itemize}
+
+\textbf{LLM缺点。}
+
+\begin{itemize}
+\item \textbf{隐式知识（Implicit Knowledge）}[14]：LLMs将知识隐式地表示在其参数中。很难解释或验证LLMs获得的知识。
+
+\item \textbf{幻觉（Hallucination）}[15]：LLMs经常通过生成看似合理但实际上事实不正确的内容来产生幻觉 [268]。这一问题严重降低了LLMs在真实世界场景中的可信度。
+
+\item \textbf{不确定性（Indecisiveness）}[16]：LLMs通过概率模型进行推理，这是一个不确定的过程。生成的结果是从概率分布中采样的，这很难控制。
+
+\item \textbf{黑盒（Black-box）}[17]：LLMs因缺乏可解释性而受到批评。LLMs用于得出预测或决策的具体模式和功能是不透明的。
+
+\item \textbf{缺乏领域特定/新知识（Lacking Domain-specific/New Knowledge）}[18]：在通用语料库上训练的LLMs可能无法很好地泛化到特定领域或新知识，这是由于缺乏领域特定知识或新的训练数据。
+\end{itemize}
+
+\textbf{KG优点。}
+
+\begin{itemize}
+\item \textbf{结构化知识（Structural Knowledge）}[19]：KGs以结构化格式（即三元组）存储事实，可以被人类和机器理解。
+
+\item \textbf{准确性（Accuracy）}[20]：KGs中的事实通常由专家手动整理或验证，比LLMs中的知识更准确、更可靠。
+
+\item \textbf{确定性（Decisiveness）}[21]：KGs中的事实知识以确定性方式存储。KGs中的推理算法也是确定性的，可以提供确定的结果。
+
+\item \textbf{可解释性（Interpretability）}[22]：KGs以其符号推理（symbolic reasoning）能力而闻名，提供了一个可被人类理解的可解释推理过程。
+
+\item \textbf{领域特定知识（Domain-specific Knowledge）}[23]：许多领域可以由专家构建其KGs，以提供精确和可靠的领域特定知识。
+
+\item \textbf{演化知识（Evolving Knowledge）}[24]：KGs中的事实是持续演化的。KGs可以通过插入新的三元组和删除过时的三元组来更新。
+\end{itemize}
+
+\textbf{KG缺点。}
+
+\begin{itemize}
+\item \textbf{不完整性（Incompleteness）}[25]：KGs难以构建且经常不完整，这限制了KGs提供全面知识的能力。
+
+\item \textbf{缺乏语言理解（Lacking Language Understanding）}[33]：大多数对KGs的研究只建模知识的结构，而忽略了KGs中的文本信息。KGs中的文本信息在KG相关任务中常被忽视，如KG补全 [26] 和KGQA [43]。
+
+\item \textbf{未见事实（Unseen Facts）}[27]：KGs是动态变化的，这使得建模未见实体和表示新事实变得困难。
+\end{itemize}
+
+\section*{参考文献}
+
+\begin{enumerate}[leftmargin=2em,label={[\arabic*]}]
+
+\item J. Devlin, M.-W. Chang, K. Lee, and K. Toutanova, ``Bert: Pre-training of deep bidirectional transformers for language understanding,'' \textit{arXiv preprint arXiv:1810.04805}, 2018.
+
+\item Y. Liu, M. Ott, N. Goyal, J. Du, M. Joshi, D. Chen, O. Levy, M. Lewis, L. Zettlemoyer, and V. Stoyanov, ``Roberta: A robustly optimized bert pretraining approach,'' \textit{arXiv preprint arXiv:1907.11692}, 2019.
+
+\item C. Raffel, N. Shazeer, A. Roberts, K. Lee, S. Narang, M. Matena, Y. Zhou, W. Li, and P. J. Liu, ``Exploring the limits of transfer learning with a unified text-to-text transformer,'' \textit{The Journal of Machine Learning Research}, vol.~21, no.~1, pp.~5485--5551, 2020.
+
+\item D. Su, Y. Xu, G. I. Winata, P. Xu, H. Kim, Z. Liu, and P. Fung, ``Generalizing question answering system with pre-trained language model fine-tuning,'' in \textit{Proceedings of the 2nd Workshop on Machine Reading for Question Answering}, 2019, pp.~203--211.
+
+\item M. Lewis, Y. Liu, N. Goyal, M. Ghazvininejad, A. Mohamed, O. Levy, V. Stoyanov, and L. Zettlemoyer, ``Bart: Denoising sequence-to-sequence pre-training for natural language generation, translation, and comprehension,'' in \textit{ACL}, 2020, pp.~7871--7880.
+
+\item J. Li, T. Tang, W. X. Zhao, and J.-R. Wen, ``Pretrained language models for text generation: A survey,'' \textit{arXiv preprint arXiv:2105.10311}, 2021.
+
+\item J. Wei, Y. Tay, R. Bommasani, C. Raffel, B. Zoph, S. Borgeaud, D. Yogatama, M. Bosma, D. Zhou, D. Metzler \textit{et al.}, ``Emergent abilities of large language models,'' \textit{Transactions on Machine Learning Research}.
+
+\item K. Malinka, M. Pere\v{s}\'{i}ni, A. Firc, O. Hujn\'{a}k, and F. Janu\v{s}, ``On the educational impact of chatgpt: Is artificial intelligence ready to obtain a university degree?'' \textit{arXiv preprint arXiv:2303.11146}, 2023.
+
+\item Z. Li, C. Wang, Z. Liu, H. Wang, S. Wang, and C. Gao, ``Cctest: Testing and repairing code completion systems,'' \textit{ICSE}, 2023.
+
+\item J. Liu, C. Liu, R. Lv, K. Zhou, and Y. Zhang, ``Is chatgpt a good recommender? a preliminary study,'' \textit{arXiv preprint arXiv:2304.10149}, 2023.
+
+\item W. X. Zhao, K. Zhou, J. Li, T. Tang, X. Wang, Y. Hou, Y. Min, B. Zhang, J. Zhang, Z. Dong \textit{et al.}, ``A survey of large language models,'' \textit{arXiv preprint arXiv:2303.18223}, 2023.
+
+\item X. Qiu, T. Sun, Y. Xu, Y. Shao, N. Dai, and X. Huang, ``Pre-trained models for natural language processing: A survey,'' \textit{Science China Technological Sciences}, vol.~63, no.~10, pp.~1872--1897, 2020.
+
+\item J. Yang, H. Jin, R. Tang, X. Han, Q. Feng, H. Jiang, B. Yin, and X. Hu, ``Harnessing the power of llms in practice: A survey on chatgpt and beyond,'' \textit{arXiv preprint arXiv:2304.13712}, 2023.
+
+\item F. Petroni, T. Rockt\"{a}schel, S. Riedel, P. Lewis, A. Bakhtin, Y. Wu, and A. Miller, ``Language models as knowledge bases?'' in \textit{EMNLP-IJCNLP}, 2019, pp.~2463--2473.
+
+\item Z. Ji, N. Lee, R. Frieske, T. Yu, D. Su, Y. Xu, E. Ishii, Y. J. Bang, A. Madotto, and P. Fung, ``Survey of hallucination in natural language generation,'' \textit{ACM Computing Surveys}, vol.~55, no.~12, pp.~1--38, 2023.
+
+\item H. Zhang, H. Song, S. Li, M. Zhou, and D. Song, ``A survey of controllable text generation using transformer-based pre-trained language models,'' \textit{arXiv preprint arXiv:2201.05337}, 2022.
+
+\item M. Danilevsky, K. Qian, R. Aharonov, Y. Katsis, B. Kawas, and P. Sen, ``A survey of the state of explainable ai for natural language processing,'' \textit{arXiv preprint arXiv:2010.00711}, 2020.
+
+\item J. Wang, X. Hu, W. Hou, H. Chen, R. Zheng, Y. Wang, L. Yang, H. Huang, W. Ye, X. Geng \textit{et al.}, ``On the robustness of chatgpt: An adversarial and out-of-distribution perspective,'' \textit{arXiv preprint arXiv:2302.12095}, 2023.
+
+\item S. Ji, S. Pan, E. Cambria, P. Marttinen, and S. Y. Philip, ``A survey on knowledge graphs: Representation, acquisition, and applications,'' \textit{IEEE TNNLS}, vol.~33, no.~2, pp.~494--514, 2021.
+
+\item D. Vrande\v{c}i\'{c} and M. Kr\"{o}tzsch, ``Wikidata: a free collaborative knowledgebase,'' \textit{Communications of the ACM}, vol.~57, no.~10, pp.~78--85, 2014.
+
+\item S. Hu, L. Zou, and X. Zhang, ``A state-transition framework for answer complex questions over knowledge base,'' in \textit{EMNLP}, 2018, pp.~2098--2108.
+
+\item J. Zhang, B. Chen, L. Zhang, X. Ke, and H. Ding, ``Neural, symbolic and neural-symbolic reasoning on knowledge graphs,'' \textit{AI Open}, vol.~2, pp.~14--35, 2021.
+
+\item B. Abu-Salih, ``Domain-specific knowledge graphs: A survey,'' \textit{Journal of Network and Computer Applications}, vol.~185, p.~103076, 2021.
+
+\item T. Mitchell, W. Cohen, E. Hruschka, P. Talukdar, B. Yang, J. Betteridge, A. Carlson, B. Dalvi, M. Gardner, B. Kisiel, J. Jayant, L. Ni, M. Kathryn, M. Thahir, N. Djapandula, P. Emmanouil, R. Alan, S. Mehdi, S. Burr, W. Derry, G. Abhinav, C. Xi, S. Abul-hair, and W. Joel, ``Never-ending learning,'' \textit{Communications of the ACM}, vol.~61, no.~5, pp.~103--115, 2018.
+
+\item L. Zhong, J. Wu, Q. Li, H. Peng, and X. Wu, ``A comprehensive survey on automatic knowledge graph construction,'' \textit{arXiv preprint arXiv:2302.05019}, 2023.
+
+\item L. Yao, C. Mao, and Y. Luo, ``Kg-bert: Bert for knowledge graph completion,'' \textit{arXiv preprint arXiv:1909.03193}, 2019.
+
+\item L. Luo, Y.-F. Li, G. Haffari, and S. Pan, ``Normalizing flow-based neural process for few-shot knowledge graph completion,'' \textit{SIGIR}, 2023.
+
+\item Y. Bang, S. Cahyawijaya, N. Lee, W. Dai, D. Su, B. Wilie, H. Lovenia, Z. Ji, T. Yu, W. Chung \textit{et al.}, ``A multitask, multilingual, multimodal evaluation of chatgpt on reasoning, hallucination, and interactivity,'' \textit{arXiv preprint arXiv:2302.04023}, 2023.
+
+\item J. Wang, J. Wei, D. Schuurmans, Q. Le, E. Chi, and D. Zhou, ``Self-consistency improves chain of thought reasoning in language models,'' \textit{arXiv preprint arXiv:2203.11171}, 2022.
+
+\item O. Golovneva, M. Chen, S. Poff, M. Corredor, L. Zettlemoyer, M. Fazel-Zarandi, and A. Celikyilmaz, ``Roscoe: A suite of metrics for scoring step-by-step reasoning,'' \textit{ICLR}, 2023.
+
+\item F. M. Suchanek, G. Kasneci, and G. Weikum, ``Yago: a core of semantic knowledge,'' in \textit{WWW}, 2007, pp.~697--706.
+
+\item A. Carlson, J. Betteridge, B. Kisiel, B. Settles, E. Hruschka, and T. Mitchell, ``Toward an architecture for never-ending language learning,'' in \textit{Proceedings of the AAAI conference on artificial intelligence}, vol.~24, no.~1, 2010, pp.~1306--1313.
+
+\item A. Bordes, N. Usunier, A. Garcia-Duran, J. Weston, and O. Yakhnenko, ``Translating embeddings for modeling multi-relational data,'' \textit{NeurIPS}, vol.~26, 2013.
+
+\item G. Wan, S. Pan, C. Gong, C. Zhou, and G. Haffari, ``Reasoning like human: Hierarchical reinforcement learning for knowledge graph reasoning,'' in \textit{AAAI}, 2021, pp.~1926--1932.
+
+\item Z. Zhang, X. Han, Z. Liu, X. Jiang, M. Sun, and Q. Liu, ``ERNIE: Enhanced language representation with informative entities,'' in \textit{ACL}, 2019, pp.~1441--1451.
+
+\item W. Liu, P. Zhou, Z. Zhao, Z. Wang, Q. Ju, H. Deng, and P. Wang, ``K-BERT: enabling language representation with knowledge graph,'' in \textit{AAAI}, 2020, pp.~2901--2908.
+
+\item Y. Liu, Y. Wan, L. He, H. Peng, and P. S. Yu, ``KG-BART: knowledge graph-augmented BART for generative commonsense reasoning,'' in \textit{AAAI}, 2021, pp.~6418--6425.
+
+\item B. Y. Lin, X. Chen, J. Chen, and X. Ren, ``KagNet: Knowledge-aware graph networks for commonsense reasoning,'' in \textit{EMNLP-IJCNLP}, 2019, pp.~2829--2839.
+
+\item D. Dai, L. Dong, Y. Hao, Z. Sui, B. Chang, and F. Wei, ``Knowledge neurons in pretrained transformers,'' \textit{arXiv preprint arXiv:2104.08696}, 2021.
+
+\item X. Wang, T. Gao, Z. Zhu, Z. Zhang, Z. Liu, J. Li, and J. Tang, ``KEPLER: A unified model for knowledge embedding and pre-trained language representation,'' \textit{Transactions of the Association for Computational Linguistics}, vol.~9, pp.~176--194, 2021.
+
+\item I. Melnyk, P. Dognin, and P. Das, ``Grapher: Multi-stage knowledge graph construction using pretrained language models,'' in \textit{NeurIPS 2021 Workshop on Deep Generative Models and Downstream Applications}, 2021.
+
+\item P. Ke, H. Ji, Y. Ran, X. Cui, L. Wang, L. Song, X. Zhu, and M. Huang, ``JointGT: Graph-text joint representation learning for text generation from knowledge graphs,'' in \textit{ACL Finding}, 2021, pp.~2526--2538.
+
+\item J. Jiang, K. Zhou, W. X. Zhao, and J.-R. Wen, ``Unikgqa: Unified retrieval and reasoning for solving multi-hop question answering over knowledge graph,'' \textit{ICLR 2023}, 2023.
+
+\item M. Yasunaga, A. Bosselut, H. Ren, X. Zhang, C. D. Manning, P. S. Liang, and J. Leskovec, ``Deep bidirectional language-knowledge graph pretraining,'' \textit{NeurIPS}, vol.~35, pp.~37\,309--37\,323, 2022.
+
+\item N. Choudhary and C. K. Reddy, ``Complex logical reasoning over knowledge graphs using large language models,'' \textit{arXiv preprint arXiv:2305.01157}, 2023.
+
+\item S. Wang, Z. Wei, J. Xu, and Z. Fan, ``Unifying structure reasoning and language model pre-training for complex reasoning,'' \textit{arXiv preprint arXiv:2301.08913}, 2023.
+
+\item C. Zhen, Y. Shang, X. Liu, Y. Li, Y. Chen, and D. Zhang, ``A survey on knowledge-enhanced pre-trained language models,'' \textit{arXiv preprint arXiv:2212.13428}, 2022.
+
+\item X. Wei, S. Wang, D. Zhang, P. Bhatia, and A. Arnold, ``Knowledge enhanced pretrained language models: A comprehensive survey,'' \textit{arXiv preprint arXiv:2110.08455}, 2021.
+
+\item D. Yin, L. Dong, H. Cheng, X. Liu, K.-W. Chang, F. Wei, and J. Gao, ``A survey of knowledge-intensive nlp with pre-trained language models,'' \textit{arXiv preprint arXiv:2202.08772}, 2022.
+
+\item A. Vaswani, N. Shazeer, N. Parmar, J. Uszkoreit, L. Jones, A. N. Gomez, L. Kaiser, and I. Polosukhin, ``Attention is all you need,'' \textit{NeurIPS}, vol.~30, 2017.
+
+\item Z. Lan, M. Chen, S. Goodman, K. Gimpel, P. Sharma, and R. Soricut, ``Albert: A lite bert for self-supervised learning of language representations,'' in \textit{ICLR}, 2019.
+
+\item K. Clark, M.-T. Luong, Q. V. Le, and C. D. Manning, ``Electra: Pre-training text encoders as discriminators rather than generators,'' \textit{arXiv preprint arXiv:2003.10555}, 2020.
+
+\item K. Hakala and S. Pyysalo, ``Biomedical named entity recognition with multilingual bert,'' in \textit{Proceedings of the 5th workshop on BioNLP open shared tasks}, 2019, pp.~56--61.
+
+\item Y. Tay, M. Dehghani, V. Q. Tran, X. Garcia, J. Wei, X. Wang, H. W. Chung, D. Bahri, T. Schuster, S. Zheng \textit{et al.}, ``Ul2: Unifying language learning paradigms,'' in \textit{ICLR}, 2022.
+
+\item V. Sanh, A. Webson, C. Raffel, S. Bach, L. Sutawika, Z. Alyafeai, A. Chaffin, A. Stiegler, A. Raja, M. Dey \textit{et al.}, ``Multitask prompted training enables zero-shot task generalization,'' in \textit{ICLR}, 2022.
+
+\item B. Zoph, I. Bello, S. Kumar, N. Du, Y. Huang, J. Dean, N. Shazeer, and W. Fedus, ``St-moe: Designing stable and transferable sparse expert models,'' \textit{URL https://arxiv.org/abs/2202.08906}, 2022.
+
+\item A. Zeng, X. Liu, Z. Du, Z. Wang, H. Lai, M. Ding, Z. Yang, Y. Xu, W. Zheng, X. Xia, W. L. Tam, Z. Ma, Y. Xue, J. Zhai, W. Chen, Z. Liu, P. Zhang, Y. Dong, and J. Tang, ``GLM-130b: An open bilingual pre-trained model,'' in \textit{ICLR}, 2023.
+
+\item L. Xue, N. Constant, A. Roberts, M. Kale, R. Al-Rfou, A. Siddhant, A. Barua, and C. Raffel, ``mt5: A massively multilingual pre-trained text-to-text transformer,'' in \textit{NAACL}, 2021, pp.~483--498.
+
+\item T. Brown, B. Mann, N. Ryder, M. Subbiah, J. D. Kaplan, P. Dhariwal, A. Neelakantan, P. Shyam, G. Sastry, A. Askell \textit{et al.}, ``Language models are few-shot learners,'' \textit{Advances in neural information processing systems}, vol.~33, pp.~1877--1901, 2020.
+
+\item L. Ouyang, J. Wu, X. Jiang, D. Almeida, C. Wainwright, P. Mishkin, C. Zhang, S. Agarwal, K. Slama, A. Ray \textit{et al.}, ``Training language models to follow instructions with human feedback,'' \textit{NeurIPS}, vol.~35, pp.~27\,730--27\,744, 2022.
+
+\item H. Touvron, T. Lavril, G. Izacard, X. Martinet, M.-A. Lachaux, T. Lacroix, B. Rozi\`{e}re, N. Goyal, E. Hambro, F. Azhar \textit{et al.}, ``Llama: Open and efficient foundation language models,'' \textit{arXiv preprint arXiv:2302.13971}, 2023.
+
+\item E. Saravia, ``Prompt Engineering Guide,'' \url{https://github.com/dair-ai/Prompt-Engineering-Guide}, 2022, accessed: 2022-12.
+
+\item J. Wei, X. Wang, D. Schuurmans, M. Bosma, F. Xia, E. H. Chi, Q. V. Le, D. Zhou \textit{et al.}, ``Chain-of-thought prompting elicits reasoning in large language models,'' in \textit{NeurIPS}.
+
+\item S. Li, Y. Gao, H. Jiang, Q. Yin, Z. Li, X. Yan, C. Zhang, and B. Yin, ``Graph reasoning for question answering with triplet retrieval,'' in \textit{ACL}, 2023.
+
+\item Y. Wen, Z. Wang, and J. Sun, ``Mindmap: Knowledge graph prompting sparks graph of thoughts in large language models,'' \textit{arXiv preprint arXiv:2308.09729}, 2023.
+
+\item K. Bollacker, C. Evans, P. Paritosh, T. Sturge, and J. Taylor, ``Freebase: A collaboratively created graph database for structuring human knowledge,'' in \textit{SIGMOD}, 2008, pp.~1247--1250.
+
+\item S. Auer, C. Bizer, G. Kobilarov, J. Lehmann, R. Cyganiak, and Z. Ives, ``Dbpedia: A nucleus for a web of open data,'' in \textit{The Semantic Web: 6th International Semantic Web Conference}.\quad Springer, 2007, pp.~722--735.
+
+\item B. Xu, Y. Xu, J. Liang, C. Xie, B. Liang, W. Cui, and Y. Xiao, ``Cn-dbpedia: A never-ending chinese knowledge extraction system,'' in \textit{30th International Conference on Industrial Engineering and Other Applications of Applied Intelligent Systems}.\quad Springer, 2017, pp.~428--438.
+
+\item P. Hai-Nyzhnyk, ``Vikidia as a universal multilingual online encyclopedia for children,'' \textit{The Encyclopedia Herald of Ukraine}, vol.~14, 2022.
+
+\item F. Ilievski, P. Szekely, and B. Zhang, ``Cskg: The commonsense knowledge graph,'' \textit{Extended Semantic Web Conference (ESWC)}, 2021.
+
+\item R. Speer, J. Chin, and C. Havasi, ``Conceptnet 5.5: An open multilingual graph of general knowledge,'' in \textit{Proceedings of the AAAI conference on artificial intelligence}, vol.~31, no.~1, 2017.
+
+\item H. Ji, P. Ke, S. Huang, F. Wei, X. Zhu, and M. Huang, ``Language generation with multi-hop reasoning on commonsense knowledge graph,'' in \textit{EMNLP}, 2020, pp.~725--736.
+
+\item J. D. Hwang, C. Bhagavatula, R. Le Bras, J. Da, K. Sakaguchi, A. Bosselut, and Y. Choi, ``(comet-) atomic 2020: On symbolic and neural commonsense knowledge graphs,'' in \textit{AAAI}, vol.~35, no.~7, 2021, pp.~6384--6392.
+
+\item H. Zhang, X. Liu, H. Pan, Y. Song, and C. W.-K. Leung, ``Aser: A large-scale eventuality knowledge graph,'' in \textit{Proceedings of the web conference 2020}, 2020, pp.~201--211.
+
+\item H. Zhang, D. Khashabi, Y. Song, and D. Roth, ``Transomcs: from linguistic graphs to commonsense knowledge,'' in \textit{IJCAI}, 2021, pp.~4004--4010.
+
+\item Z. Li, X. Ding, T. Liu, J. E. Hu, and B. Van Durme, ``Guided generation of cause and effect,'' in \textit{IJCAI}, 2020.
+
+\item O. Bodenreider, ``The unified medical language system (umls): integrating biomedical terminology,'' \textit{Nucleic acids research}, vol.~32, no.~suppl\_1, pp.~D267--D270, 2004.
+
+\item Y. Liu, Q. Zeng, J. Ordieres Mer\'{e}, and H. Yang, ``Anticipating stock market of the renowned companies: a knowledge graph approach,'' \textit{Complexity}, vol.~2019, 2019.
+
+\item Y. Zhu, W. Zhou, Y. Xu, J. Liu, Y. Tan \textit{et al.}, ``Intelligent learning for knowledge graph towards geological data,'' \textit{Scientific Programming}, vol.~2017, 2017.
+
+\item W. Choi and H. Lee, ``Inference of biomedical relations among chemicals, genes, diseases, and symptoms using knowledge representation learning,'' \textit{IEEE Access}, vol.~7, pp.~179\,373--179\,384, 2019.
+
+\item F. Farazi, M. Salamanca, S. Mosbach, J. Akroyd, A. Eibeck, L. K. Aditya, A. Chadzynski, K. Pan, X. Zhou, S. Zhang \textit{et al.}, ``Knowledge graph approach to combustion chemistry and interoperability,'' \textit{ACS omega}, vol.~5, no.~29, pp.~18\,342--18\,348, 2020.
+
+\item X. Wu, T. Jiang, Y. Zhu, and C. Bu, ``Knowledge graph for china's genealogy,'' \textit{IEEE TKDE}, vol.~35, no.~1, pp.~634--646, 2023.
+
+\item X. Zhu, Z. Li, X. Wang, X. Jiang, P. Sun, X. Wang, Y. Xiao, and N. J. Yuan, ``Multi-modal knowledge graph construction and application: A survey,'' \textit{IEEE TKDE}, 2022.
+
+\item S. Ferrada, B. Bustos, and A. Hogan, ``Imgpedia: a linked dataset with content-based analysis of wikimedia images,'' in \textit{The Semantic Web--ISWC 2017}.\quad Springer, 2017, pp.~84--93.
+
+\item Y. Liu, H. Li, A. Garcia-Duran, M. Niepert, D. Onoro-Rubio, and D. S. Rosenblum, ``Mmkg: multi-modal knowledge graphs,'' in \textit{The Semantic Web: 16th International Conference, ESWC 2019, Portoro\v{z}, Slovenia, June 2--6, 2019, Proceedings 16}.\quad Springer, 2019, pp.~459--474.
+
+\item M. Wang, H. Wang, G. Qi, and Q. Zheng, ``Richpedia: a large-scale, comprehensive multi-modal knowledge graph,'' \textit{Big Data Research}, vol.~22, p.~100159, 2020.
+
+\item B. Shi, L. Ji, P. Lu, Z. Niu, and N. Duan, ``Knowledge aware semantic concept expansion for image-text matching.'' in \textit{IJCAI}, vol.~1, 2019, p.~2.
+
+\item A. Shah, A. Mishra, N. Yadati, and P. P. Talukdar, ``Kvqa: Knowledge-aware visual question answering,'' in \textit{AAAI}, vol.~33, no.~01, 2019, pp.~8876--8884.
+
+\item R. Sun, X. Cao, Y. Zhao, J. Wan, K. Zhou, F. Zhang, Z. Wang, and K. Zheng, ``Multi-modal knowledge graphs for recommender systems,'' in \textit{CIKM}, 2020, pp.~1405--1414.
+
+\item S. Deng, C. Wang, Z. Li, N. Zhang, Z. Dai, H. Chen, F. Xiong, M. Yan, Q. Chen, M. Chen, J. Chen, J. Z. Pan, B. Hooi, and H. Chen, ``Construction and applications of billion-scale pre-trained multimodal business knowledge graph,'' in \textit{ICDE}, 2023.
+
+\item C. Rosset, C. Xiong, M. Phan, X. Song, P. Bennett, and S. Tiwary, ``Knowledge-aware language model pretraining,'' \textit{arXiv preprint arXiv:2007.00655}, 2020.
+
+\item P. Lewis, E. Perez, A. Piktus, F. Petroni, V. Karpukhin, N. Goyal, H. K\"{u}ttler, M. Lewis, W.-t. Yih, T. Rockt\"{a}schel, S. Riedel, and D. Kiela, ``Retrieval-augmented generation for knowledge-intensive nlp tasks,'' in \textit{NeurIPS}, vol.~33, 2020, pp.~9459--9474.
+
+\item Y. Zhu, X. Wang, J. Chen, S. Qiao, Y. Ou, Y. Yao, S. Deng, H. Chen, and N. Zhang, ``Llms for knowledge graph construction and reasoning: Recent capabilities and future opportunities,'' \textit{arXiv preprint arXiv:2305.13168}, 2023.
+
+\item Z. Zhang, X. Liu, Y. Zhang, Q. Su, X. Sun, and B. He, ``Pretrain-kge: learning knowledge representation from pretrained language models,'' in \textit{EMNLP Finding}, 2020, pp.~259--266.
+
+\item A. Kumar, A. Pandey, R. Gadia, and M. Mishra, ``Building knowledge graph using pre-trained language model for learning entity-aware relationships,'' in \textit{2020 IEEE International Conference on Computing, Power and Communication Technologies (GUCON)}.\quad IEEE, 2020, pp.~310--315.
+
+\item X. Xie, N. Zhang, Z. Li, S. Deng, H. Chen, F. Xiong, M. Chen, and H. Chen, ``From discrimination to generation: Knowledge graph completion with generative transformer,'' in \textit{WWW}, 2022, pp.~162--165.
+
+\item Z. Chen, C. Xu, F. Su, Z. Huang, and Y. Dou, ``Incorporating structured sentences with time-enhanced bert for fully-inductive temporal relation prediction,'' \textit{SIGIR}, 2023.
+
+\item D. Zhu, J. Chen, X. Shen, X. Li, and M. Elhoseiny, ``Minigpt-4: Enhancing vision-language understanding with advanced large language models,'' \textit{arXiv preprint arXiv:2304.10592}, 2023.
+
+\item M. Warren, P. J. Hayes, ``Knowledge engineering with image data in real-world settings,'' in \textit{AAAI}, ser. CEUR Workshop Proceedings, vol.~2846, 2021.
+
+\item R. Thoppilan, D. De Freitas, J. Hall, N. Shazeer, A. Kulshreshtha, H.-T. Cheng, A. Jin, T. Bos, L. Baker, Y. Du \textit{et al.}, ``Lamda: Language models for dialog applications,'' \textit{arXiv preprint arXiv:2201.08239}, 2022.
+
+\item Y. Sun, S. Wang, S. Feng, S. Ding, C. Pang, J. Shang, J. Liu, X. Chen, Y. Zhao, Y. Lu \textit{et al.}, ``Ernie 3.0: Large-scale knowledge enhanced pre-training for language understanding and generation,'' \textit{arXiv preprint arXiv:2107.02137}, 2021.
+
+\item Y. Shen, Y. Mao, P. He, G. Long, A. Trischler, and W. Chen, ``Exploiting structured knowledge in text via graph-guided representation learning,'' in \textit{EMNLP}, 2020, pp.~8980--8994.
+
+\item D. Zhang, Z. Yuan, Y. Liu, F. Zhuang, H. Chen, and H. Xiong, ``E-bert: A phrase and product knowledge enhanced language model for e-commerce,'' \textit{arXiv preprint arXiv:2009.02835}, 2020.
+
+\item S. Li, X. Li, L. Shang, C. Sun, B. Liu, Z. Ji, X. Jiang, and Q. Liu, ``Pre-training language models with deterministic factual knowledge,'' in \textit{EMNLP}, 2022, pp.~11\,118--11\,131.
+
+\item M. Kang, J. Baek, and S. J. Hwang, ``Kala: Knowledge-augmented language model adaptation,'' in \textit{NAACL}, 2022, pp.~5144--5167.
+
+\item W. Xiong, J. Du, W. Y. Wang, and V. Stoyanov, ``Pretrained encyclopedia: Weakly supervised knowledge-pretrained language model,'' in \textit{ICLR}, 2020.
+
+\item T. Sun, Y. Shao, X. Qiu, Q. Guo, Y. Hu, X. Huang, and Z. Zhang, ``CoLAKE: Contextualized language and knowledge embedding,'' in \textit{Proceedings of the 28th International Conference on Computational Linguistics}, 2020, pp.~3660--3670.
+
+\item T. Zhang, C. Wang, N. Hu, M. Qiu, C. Tang, X. He, and J. Huang, ``DKPLM: decomposable knowledge-enhanced pre-trained language model for natural language understanding,'' in \textit{AAAI}, 2022, pp.~11\,703--11\,711.
+
+\item J. Wang, W. Huang, M. Qiu, Q. Shi, H. Wang, X. Li, and M. Gao, ``Knowledge prompting in pre-trained language model for natural language understanding,'' in \textit{Proceedings of the 2022 Conference on Empirical Methods in Natural Language Processing}, 2022, pp.~3164--3177.
+
+\item H. Ye, N. Zhang, S. Deng, X. Chen, H. Chen, F. Xiong, X. Chen, and H. Chen, ``Ontology-enhanced prompt-tuning for few-shot learning,'' in \textit{Proceedings of the ACM Web Conference 2022}, 2022, pp.~778--787.
+
+\item H. Luo, Z. Tang, S. Peng, Y. Guo, W. Zhang, C. Ma, G. Dong, M. Song, W. Lin \textit{et al.}, ``Chatkbqa: A generate-then-retrieve framework for knowledge base question answering with fine-tuned large language models,'' \textit{arXiv preprint arXiv:2310.08975}, 2023.
+
+\item L. Luo, Y.-F. Li, G. Haffari, and S. Pan, ``Reasoning on graphs: Faithful and interpretable large language model reasoning,'' \textit{arXiv preprint arxiv:2310.01061}, 2023.
+
+\item R. Logan, N. F. Liu, M. E. Peters, M. Gardner, and S. Singh, ``Barack's wife hillary: Using knowledge graphs for fact-aware language modeling,'' in \textit{ACL}, 2019, pp.~5962--5971.
+
+\item K. Guu, K. Lee, Z. Tung, P. Pasupat, and M.-W. Chang, ``Realm: Retrieval-augmented language model pre-training,'' in \textit{ICML}, 2020.
+
+\item Y. Wu, Y. Zhao, B. Hu, P. Minervini, P. Stenetorp, and S. Riedel, ``An efficient memory-augmented transformer for knowledge-intensive NLP tasks,'' in \textit{EMNLP}, 2022, pp.~5184--5196.
+
+\item J. Luo, J. Ju, B. Xiong, Y.-F. Li, G. Haffari, and S. Pan, ``Chatrule: Mining logical rules with large language models for knowledge graph reasoning,'' \textit{arXiv preprint arXiv:2309.01538}, 2023.
+
+\item J. Wang, Q. Sun, N. Chen, X. Li, and M. Gao, ``Boosting language models reasoning with chain-of-knowledge prompting,'' \textit{arXiv preprint arXiv:2306.06427}, 2023.
+
+\item Z. Jiang, F. F. Xu, J. Araki, and G. Neubig, ``How can we know what language models know?'' \textit{Transactions of the Association for Computational Linguistics}, vol.~8, pp.~423--438, 2020.
+
+\item T. Shin, Y. Razeghi, R. L. Logan IV, E. Wallace, and S. Singh, ``Autoprompt: Eliciting knowledge from language models with automatically generated prompts,'' \textit{arXiv preprint arXiv:2010.15980}, 2020.
+
+\item Z. Meng, F. Liu, E. Shareghi, Y. Su, C. Collins, and N. Collier, ``Rewire-then-probe: A contrastive recipe for probing biomedical knowledge of pre-trained language models,'' \textit{arXiv preprint arXiv:2110.08173}, 2021.
+
+\item L. Luo, T.-T. Vu, D. Phung, and G. Haffari, ``Systematic assessment of factual knowledge in large language models,'' in \textit{EMNLP}, 2023.
+
+\item V. Swamy, A. Romanou, and M. Jaggi, ``Interpreting language models through knowledge graph extraction,'' \textit{arXiv preprint arXiv:2111.08546}, 2021.
+
+\item S. Li, X. Li, L. Shang, Z. Dong, C. Sun, B. Liu, Z. Ji, X. Jiang, and Q. Liu, ``How pre-trained language models capture factual knowledge? a causal-inspired analysis,'' \textit{arXiv preprint arXiv:2203.16747}, 2022.
+
+\item H. Tian, C. Gao, X. Xiao, H. Liu, B. He, H. Wu, H. Wang, and F. Wu, ``SKEP: Sentiment knowledge enhanced pre-training for sentiment analysis,'' in \textit{ACL}, 2020, pp.~4067--4076.
+
+\item W. Yu, C. Zhu, Y. Fang, D. Yu, S. Wang, Y. Xu, M. Zeng, and M. Jiang, ``Dict-BERT: Enhancing language model pre-training with dictionary,'' in \textit{ACL}, 2022, pp.~1907--1918.
+
+\item T. McCoy, E. Pavlick, and T. Linzen, ``Right for the wrong reasons: Diagnosing syntactic heuristics in natural language inference,'' in \textit{ACL}, 2019, pp.~3428--3448.
+
+\item D. Wilmot and F. Keller, ``Memory and knowledge augmented language models for inferring salience in long-form stories,'' in \textit{EMNLP}, 2021, pp.~851--865.
+
+\item L. Adolphs, S. Dhuliawala, and T. Hofmann, ``How to query language models?'' \textit{arXiv preprint arXiv:2108.01928}, 2021.
+
+\item M. Sung, J. Lee, S. Yi, M. Jeon, S. Kim, and J. Kang, ``Can language models be biomedical knowledge bases?'' in \textit{EMNLP}, 2021, pp.~4723--4734.
+
+\item A. Mallen, A. Asai, V. Zhong, R. Das, H. Hajishirzi, and D. Khashabi, ``When not to trust language models: Investigating effectiveness and limitations of parametric and non-parametric memories,'' \textit{arXiv preprint arXiv:2212.10511}, 2022.
+
+\item M. Yasunaga, H. Ren, A. Bosselut, P. Liang, and J. Leskovec, ``QA-GNN: Reasoning with language models and knowledge graphs for question answering,'' in \textit{NAACL}, 2021, pp.~535--546.
+
+\item M. Nayyeri, Z. Wang, M. M. Akter, M. M. Alam, M. R. A. H. Rony, J. Lehmann, S. Staab \textit{et al.}, ``Integrating knowledge graph embedding and pretrained language models in hypercomplex spaces,'' \textit{arXiv preprint arXiv:2208.02743}, 2022.
+
+\item N. Huang, Y. R. Deshpande, Y. Liu, H. Alberts, K. Cho, C. Vania, and I. Calixto, ``Endowing language models with multimodal knowledge graph representations,'' \textit{arXiv preprint arXiv:2206.13163}, 2022.
+
+\item M. M. Alam, M. R. A. H. Rony, M. Nayyeri, K. Mohiuddin, M. M. Akter, S. Vahdati, and J. Lehmann, ``Language model guided knowledge graph embeddings,'' \textit{IEEE Access}, vol.~10, pp.~76\,008--76\,020, 2022.
+
+\item X. Wang, Q. He, J. Liang, and Y. Xiao, ``Language models as knowledge embeddings,'' \textit{arXiv preprint arXiv:2206.12617}, 2022.
+
+\item N. Zhang, X. Xie, X. Chen, S. Deng, C. Tan, F. Huang, X. Cheng, and H. Chen, ``Reasoning through memorization: Nearest neighbor knowledge graph embeddings,'' \textit{arXiv preprint arXiv:2201.05575}, 2022.
+
+\item X. Xie, Z. Li, X. Wang, Y. Zhu, N. Zhang, J. Zhang, S. Cheng, B. Tian, S. Deng, F. Xiong, and H. Chen, ``Lambdakg: A library for pre-trained language model-based knowledge graph embeddings,'' 2022.
+
+\item B. Kim, T. Hong, Y. Ko, and J. Seo, ``Multi-task learning for knowledge graph completion with pre-trained language models,'' in \textit{COLING}, 2020, pp.~1737--1743.
+
+\item X. Lv, Y. Lin, Y. Cao, L. Hou, J. Li, Z. Liu, P. Li, and J. Zhou, ``Do pre-trained models benefit knowledge graph completion? A reliable evaluation and a reasonable approach,'' in \textit{ACL}, 2022, pp.~3570--3581.
+
+\item J. Shen, C. Wang, L. Gong, and D. Song, ``Joint language semantic and structure embedding for knowledge graph completion,'' in \textit{COLING}, 2022, pp.~1965--1978.
+
+\item B. Choi, D. Jang, and Y. Ko, ``MEM-KGC: masked entity model for knowledge graph completion,'' \textit{IEEE Access}, vol.~9, pp.~132\,025--132\,032, 2021.
+
+\item B. Choi and Y. Ko, ``Knowledge graph extension with a pre-trained language model via unified learning method,'' \textit{Knowl. Based Syst.}, vol.~262, p.~110245, 2023.
+
+\item B. Wang, T. Shen, G. Long, T. Zhou, Y. Wang, and Y. Chang, ``Structure-augmented text representation learning for efficient knowledge graph completion,'' in \textit{WWW}, 2021, pp.~1737--1748.
+
+\item L. Wang, W. Zhao, Z. Wei, and J. Liu, ``Simkgc: Simple contrastive knowledge graph completion with pre-trained language models,'' in \textit{ACL}, 2022, pp.~4281--4294.
+
+\item D. Li, M. Yi, and Y. He, ``Lp-bert: Multi-task pre-training knowledge graph bert for link prediction,'' \textit{arXiv preprint arXiv:2201.04843}, 2022.
+
+\item A. Saxena, A. Kochsiek, and R. Gemulla, ``Sequence-to-sequence knowledge graph completion and question answering,'' in \textit{ACL}, 2022, pp.~2814--2828.
+
+\item C. Chen, Y. Wang, B. Li, and K. Lam, ``Knowledge is flat: A seq2seq generative framework for various knowledge graph completion,'' in \textit{COLING}, 2022, pp.~4005--4017.
+
+\item M. E. Peters, M. Neumann, M. Iyyer, M. Gardner, C. Clark, K. Lee, and L. Zettlemoyer, ``Deep contextualized word representations,'' in \textit{NAACL}, 2018, pp.~2227--2237.
+
+\item H. Yan, T. Gui, J. Dai, Q. Guo, Z. Zhang, and X. Qiu, ``A unified generative framework for various NER subtasks,'' in \textit{ACL}, 2021, pp.~5808--5822.
+
+\item G. Onoe and G. Durrett, ``Learning to denoise distantly-labeled data for entity typing,'' in \textit{NAACL}, 2019, pp.~2407--2417.
+
+\item Y. Onoe, M. Boratko, A. McCallum, and G. Durrett, ``Modeling fine-grained entity types with box embeddings,'' in \textit{ACL}, 2021, pp.~2051--2064.
+
+\item B. Z. Li, S. Min, S. Iyer, Y. Mehdad, and W. Yih, ``Efficient one-pass end-to-end entity linking for questions,'' in \textit{EMNLP}, 2020, pp.~6433--6441.
+
+\item T. Ayoola, S. Tyagi, J. Fisher, C. Christodoulopoulos, and A. Pierleoni, ``Refined: An efficient zero-shot-capable approach to end-to-end entity linking,'' in \textit{NAACL}, 2022, pp.~209--220.
+
+\item M. Joshi, O. Levy, L. Zettlemoyer, and D. S. Weld, ``BERT for coreference resolution: Baselines and analysis,'' in \textit{EMNLP}, 2019, pp.~5802--5807.
+
+\item M. Joshi, D. Chen, Y. Liu, D. S. Weld, L. Zettlemoyer, and O. Levy, ``Spanbert: Improving pre-training by representing and predicting spans,'' \textit{Trans. Assoc. Comput. Linguistics}, vol.~8, pp.~64--77, 2020.
+
+\item A. Caciularu, A. Cohan, I. Beltagy, M. E. Peters, A. Cattan, and I. Dagan, ``CDLM: cross-document language modeling,'' in \textit{EMNLP}, 2021, pp.~2648--2662.
+
+\item A. Cattan, A. Eirew, G. Stanovsky, M. Joshi, and I. Dagan, ``Cross-document coreference resolution over predicted mentions,'' in \textit{ACL}, 2021, pp.~5100--5107.
+
+\item Y. Wang, Y. Shen, and H. Jin, ``An end-to-end actor-critic-based neural coreference resolution system,'' in \textit{IEEE International Conference on Acoustics, Speech and Signal Processing, ICASSP 2021, Toronto, ON, Canada, June 6--11, 2021}, 2021, pp.~7848--7852.
+
+\item P. Shi and J. Lin, ``Simple BERT models for relation extraction and semantic role labeling,'' \textit{CoRR}, vol. abs/1904.05255, 2019.
+
+\item S. Park and H. Kim, ``Improving sentence-level relation extraction through curriculum learning,'' \textit{CoRR}, vol. abs/2107.09332, 2021.
+
+\item Y. Ma, A. Wang, and N. Okazaki, ``DREEAM: guiding attention with evidence for improving document-level relation extraction,'' in \textit{EACL}, 2023, pp.~1963--1975.
+
+\item Q. Guo, Y. Sun, G. Liu, Z. Wang, Z. Ji, Y. Shen, and X. Wang, ``Constructing chinese historical literature knowledge graph based on bert,'' in \textit{Web Information Systems and Applications: 18th International Conference, WISA 2021, Kaifeng, China, September 24--26, 2021, Proceedings 18}.\quad Springer, 2021, pp.~323--334.
+
+\item J. Han, N. Collier, W. Buntine, and E. Shareghi, ``Pive: Prompting with iterative verification improving graph-based generative capability of ilms,'' \textit{arXiv preprint arXiv:2305.12392}, 2023.
+
+\item A. Bosselut, H. Rashkin, M. Sap, C. Malaviya, A. Celikyilmaz, and Y. Choi, ``Comet: Commonsense transformers for knowledge graph construction,'' in \textit{ACL}, 2019.
+
+\item S. Hao, B. Tan, K. Tang, H. Zhang, E. P. Xing, and Z. Hu, ``Bertnet: Harvesting knowledge graphs from pretrained language models,'' \textit{arXiv preprint arXiv:2206.14268}, 2022.
+
+\item P. West, C. Bhagavatula, J. Hessel, J. Hwang, L. Jiang, R. Le Bras, X. Lu, S. Welleck, and Y. Choi, ``Symbolic knowledge distillation: from general language models to commonsense models,'' in \textit{NAACL}, 2022, pp.~4602--4625.
+
+\item L. F. R. Ribeiro, M. Schmitt, H. Sch\"{u}tze, and I. Gurevych, ``Investigating pretrained language models for graph-to-text generation,'' in \textit{Proceedings of the 3rd Workshop on Natural Language Processing for Conversational AI}, 2021, pp.~211--227.
+
+\item J. Li, T. Tang, W. X. Zhao, Z. Wei, N. J. Yuan, and J.-R. Wen, ``Few-shot knowledge graph-to-text generation with pretrained language models,'' in \textit{ACL}, 2021, pp.~1558--1568.
+
+\item A. Colas, M. Alvandipour, and D. Z. Wang, ``GAP: A graph-aware language model framework for knowledge graph-to-text generation,'' in \textit{Proceedings of the 29th International Conference on Computational Linguistics}, 2022, pp.~5755--5769.
+
+\item Z. Jin, Q. Guo, X. Qiu, and Z. Zhang, ``GenWiki: A dataset of 1.3 million content-sharing text and graphs for unsupervised graph-to-text generation,'' in \textit{Proceedings of the 28th International Conference on Computational Linguistics}, 2020, pp.~2398--2409.
+
+\item W. Chen, Y. Su, X. Yan, and W. Y. Wang, ``KGPT: Knowledge-grounded pre-training for data-to-text generation,'' in \textit{EMNLP}, 2020, pp.~8635--8648.
+
+\item D. Lukovnikov, A. Fischer, and J. Lehmann, ``Pretrained transformers for simple question answering over knowledge graphs,'' in \textit{The Semantic Web--ISWC 2019: 18th International Semantic Web Conference, Auckland, New Zealand, October 26--30, 2019, Proceedings, Part I 18}.\quad Springer, 2019, pp.~470--486.
+
+\item D. Luo, J. Su, and S. Yu, ``A bert-based approach with relation-aware attention for knowledge base question answering,'' in \textit{IJCNN}.\quad IEEE, 2020, pp.~1--8.
+
+\item N. Hu, Y. Wu, G. Qi, D. Min, J. Chen, J. Z. Pan, and Z. Ali, ``An empirical study of pre-trained language models in simple knowledge graph question answering,'' \textit{arXiv preprint arXiv:2303.10368}, 2023.
+
+\item Y. Xu, C. Zhu, R. Xu, Y. Liu, M. Zeng, and X. Huang, ``Fusing context into knowledge graph for commonsense question answering,'' in \textit{ACL}, 2021, pp.~1201--1207.
+
+\item M. Zhang, R. Dai, M. Dong, and T. He, ``Drlk: Dynamic hierarchical reasoning with language model and knowledge graph for question answering,'' in \textit{EMNLP}, 2022, pp.~5123--5133.
+
+\item Z. Hu, Y. Xu, W. Yu, S. Wang, Z. Yang, C. Zhu, K.-W. Chang, and Y. Sun, ``Empowering language models with knowledge graph reasoning for open-domain question answering,'' in \textit{EMNLP}, 2022, pp.~9562--9581.
+
+\item X. Zhang, A. Bosselut, M. Yasunaga, H. Ren, P. Liang, C. D. Manning, and J. Leskovec, ``Greaselm: Graph reasoning enhanced language models,'' in \textit{ICLR}, 2022.
+
+\item X. Cao and Y. Liu, ``Relmkg: reasoning with pre-trained language models and knowledge graphs for complex question answering,'' \textit{Applied Intelligence}, pp.~1--15, 2022.
+
+\item J. Huang, J. Zhang, D. Li, and P. Li, ``Knowledge graph embedding based question answering,'' in \textit{WSDM}, 2019, pp.~105--113.
+
+\item H. Wang, F. Zhang, X. Xie, and M. Guo, ``Dkn: Deep knowledge-aware network for news recommendation,'' in \textit{WWW}, 2018, pp.~1835--1844.
+
+\item B. Yang, S. W.-t. Yih, X. He, J. Gao, and L. Deng, ``Embedding entities and relations for learning and inference in knowledge bases,'' in \textit{ICLR}, 2015.
+
+\item W. Xiong, M. Yu, S. Chang, X. Guo, and W. Y. Wang, ``One-shot relational learning for knowledge graphs,'' in \textit{EMNLP}, 2018, pp.~1980--1990.
+
+\item P. Wang, J. Han, C. Li, and R. Pan, ``Logic attention based neighborhood aggregation for inductive knowledge graph embedding,'' in \textit{AAAI}, vol.~33, no.~01, 2019, pp.~7152--7159.
+
+\item Y. Lin, Z. Liu, M. Sun, Y. Liu, and X. Zhu, ``Learning entity and relation embeddings for knowledge graph completion,'' in \textit{Proceedings of the AAAI conference on artificial intelligence}, vol.~29, no.~1, 2015.
+
+\item Y. Chen, Y. Wang, A. Sun, B. Li, and L. Kwok-Yan, ``Dipping plms sauce: Bridging structure and text for effective knowledge graph completion via conditional soft prompting,'' in \textit{ACL}, 2023.
+
+\item J. Lovelace and C. P. Ros\'{e}, ``A framework for adapting pre-trained language models to knowledge graph completion,'' in \textit{Proceedings of the 2022 Conference on Empirical Methods in Natural Language Processing, EMNLP 2022, Abu Dhabi, United Arab Emirates, December 7--11, 2022}, 2022, pp.~5937--5955.
+
+\item J. Fu, L. Feng, Q. Zhang, X. Huang, and P. Liu, ``Larger-context tagging: When and why does it work?'' in \textit{2021 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies, NAACL-HLT 2021, Online, June 6--11, 2021}, 2021, pp.~1463--1475.
+
+\item X. Liu, K. Ji, Y. Fu, Z. Du, Z. Yang, and J. Tang, ``P-tuning v2: Prompt tuning can be comparable to fine-tuning universally across scales and tasks,'' \textit{CoRR}, vol. abs/2110.07602, 2021.
+
+\item J. Yu, B. Bohnet, and M. Poesio, ``Named entity recognition as dependency parsing,'' in \textit{ACL}, 2020, pp.~6470--6476.
+
+\item F. Li, Z. Lin, M. Zhang, and D. Ji, ``A span-based model for joint overlapped and discontinuous named entity recognition,'' in \textit{ACL}, 2021, pp.~4814--4828.
+
+\item C. Tan, W. Qiu, M. Chen, R. Wang, and F. Huang, ``Boundary enhanced neural span classification for nested named entity recognition,'' in \textit{The Thirty-Fourth AAAI Conference on Artificial Intelligence, AAAI 2020, The Thirty-Second Innovative Applications of Artificial Intelligence Conference, IAAI 2020, The Tenth AAAI Symposium on Educational Advances in Artificial Intelligence, EAAI 2020, New York, NY, USA, February 7--12, 2020}, 2020, pp.~9016--9023.
+
+\item Y. Xu, H. Huang, C. Feng, and Y. Hu, ``A supervised multi-head self-attention network for nested named entity recognition,'' in \textit{Thirty-Fifth AAAI Conference on Artificial Intelligence, AAAI 2021, Thirty-Third Conference on Innovative Applications of Artificial Intelligence, IAAI 2021, The Eleventh Symposium on Educational Advances in Artificial Intelligence, EAAI 2021, Virtual Event, February 2--9, 2021}, 2021, pp.~14\,185--14\,193.
+
+\item J. Yu, B. Ji, S. Li, J. Ma, H. Liu, and H. Xu, ``S-NER: A concise and efficient span-based model for named entity recognition,'' \textit{Sensors}, vol.~22, no.~8, p.~2852, 2022.
+
+\item Y. Fu, C. Tan, M. Chen, S. Huang, and F. Huang, ``Nested entity recognition with partially-observed treecfrs,'' in \textit{AAAI}, 2021, pp.~12\,839--12\,847.
+
+\item C. Lou, S. Yang, and K. Tu, ``Nested named entity recognition as latent lexicalized constituency parsing,'' in \textit{Proceedings of the 60th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers). ACL 2022, Dublin, Ireland, May 22--27, 2022}, 2022, pp.~6183--6198.
+
+\item S. Yang and K. Tu, ``Bottom-up constituency parsing and nested named entity recognition with pointer networks,'' in \textit{Proceedings of the 60th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers). ACL 2022, Dublin, Ireland, May 22--27, 2022}, 2022, pp.~2403--2416.
+
+\item F. Li, Z. Lin, M. Zhang, and D. Ji, ``A span-based model for joint overlapped and discontinuous named entity recognition,'' in \textit{Proceedings of the 59th Annual Meeting of the Association for Computational Linguistics and the 11th International Joint Conference on Natural Language Processing, ACL/IJCNLP 2021, (Volume 1: Long Papers), Virtual Event, August 1--6, 2021}, 2021, pp.~4814--4828.
+
+\item Q. Liu, H. Lin, X. Xiao, X. Han, L. Sun, and H. Wu, ``Fine-grained entity typing via label reasoning,'' in \textit{Proceedings of the 2021 Conference on Empirical Methods in Natural Language Processing, EMNLP 2021, Virtual Event / Punta Cana, Dominican Republic, 7--11 November, 2021}, 2021, pp.~4611--4622.
+
+\item H. Dai, Y. Song, and H. Wang, ``Ultra-fine entity typing with weak supervision from a masked language model,'' in \textit{Proceedings of the 59th Annual Meeting of the Association for Computational Linguistics and the 11th International Joint Conference on Natural Language Processing, ACL/IJCNLP 2021, (Volume 1: Long Papers), Virtual Event, August 1--6, 2021}, 2021, pp.~1790--1799.
+
+\item N. Ding, Y. Chen, X. Han, G. Xu, X. Wang, P. Xie, H. Zheng, Z. Liu, J. Li, and H. Kim, ``Prompt-learning for fine-grained entity typing,'' in \textit{Findings of the Association for Computational Linguistics: EMNLP 2022, Abu Dhabi, United Arab Emirates, December 7--11, 2022}, 2022, pp.~6888--6901.
+
+\item W. Pan, W. Wei, and F. Zhu, ``Automatic noisy label correction for fine-grained entity typing,'' in \textit{Proceedings of the Thirty-First International Joint Conference on Artificial Intelligence, IJCAI 2022, Vienna, Austria, 23--29 July 2022}, 2022, pp.~4317--4323.
+
+\item B. Li, W. Yin, and M. Chen, ``Ultra-fine entity typing with indirect supervision from natural language inference,'' \textit{Trans. Assoc. Comput. Linguistics}, vol.~10, pp.~607--622, 2022.
+
+\item S. Broscheit, ``Investigating entity knowledge in BERT with simple neural end-to-end entity linking,'' \textit{CoRR}, vol. abs/2003.05473, 2020.
+
+\item N. D. Cao, G. Izacard, S. Riedel, and F. Petroni, ``Autoregressive entity retrieval,'' in \textit{9th ICLR, ICLR 2021, Virtual Event, Austria, May 3--7, 2021}, 2021.
+
+\item N. D. Cao, L. Wu, K. Popat, M. Artetxe, N. Goyal, M. Plekhanov, L. Zettlemoyer, N. Cancedda, S. Riedel, and F. Petroni, ``Multilingual autoregressive entity linking,'' \textit{Trans. Assoc. Comput. Linguistics}, vol.~10, pp.~274--290, 2022.
+
+\item N. D. Cao, W. Aziz, and I. Titov, ``Highly parallel autoregressive entity linking with discriminative correction,'' in \textit{Proceedings of the 2021 Conference on Empirical Methods in Natural Language Processing, EMNLP 2021, Virtual Event / Punta Cana, Dominican Republic, 7--11 November, 2021}, 2021, pp.~7662--7669.
+
+\item K. Lee, L. He, and L. Zettlemoyer, ``Higher-order coreference resolution with coarse-to-fine inference,'' in \textit{NAACL}, 2018, pp.~687--692.
+
+\item T. M. Lai, T. Bui, and D. S. Kim, ``End-to-end neural coreference resolution revisited: A simple yet effective baseline,'' in \textit{IEEE International Conference on Acoustics, Speech and Signal Processing, ICASSP 2022, Virtual and Singapore, 23--27 May 2022}, 2022, pp.~8147--8151.
+
+\item W. Wu, F. Wang, A. Yuan, F. Wu, and J. Li, ``Corefqa: Coreference resolution as query-based span prediction,'' in \textit{Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics, ACL 2020, Online, July 5--10, 2020}, 2020, pp.~6953--6963.
+
+\item T. M. Lai, H. Ji, T. Bui, Q. H. Tran, F. Dernoncourt, and W. Chang, ``A context-dependent gated module for incorporating symbolic semantics into event coreference resolution,'' in \textit{Proceedings of the 2021 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies, NAACL-HLT 2021, Online, June 6--11, 2021}, 2021, pp.~3491--3499.
+
+\item Y. Kirstain, O. Ram, and O. Levy, ``Coreference resolution without span representations,'' in \textit{Proceedings of the 59th Annual Meeting of the Association for Computational Linguistics and the 11th International Joint Conference on Natural Language Processing, ACL/IJCNLP 2021, (Volume 2: Short Papers), Virtual Event, August 1--6, 2021}, 2021, pp.~14--19.
+
+\item R. Thirukovalluru, N. Monath, K. Shridhar, M. Zaheer, M. Sachan, and A. McCallum, ``Scaling within document coreference to long texts,'' in \textit{Findings of the Association for Computational Linguistics: ACL/IJCNLP 2021, Online Event, August 1--6, 2021}, ser. Findings of ACL, vol.~ACL/IJCNLP 2021, 2021, pp.~3921--3931.
+
+\item I. Beltagy, M. E. Peters, and A. Cohan, ``Longformer: The long-document transformer,'' \textit{CoRR}, vol. abs/2004.05150, 2020.
+
+\item C. Alt, M. H\"{u}bner, and L. Hennig, ``Improving relation extraction by pre-trained language representations,'' in \textit{1st Conference on Automated Knowledge Base Construction, AKBC 2019, Amherst, MA, USA, May 20--22, 2019}, 2019.
+
+\item L. B. Soares, N. FitzGerald, J. Ling, and T. Kwiatkowski, ``Matching the blanks: Distributional similarity for relation learning,'' in \textit{ACL}, 2019, pp.~2895--2905.
+
+\item S. Lyu and H. Chen, ``Relation classification with entity type restriction,'' in \textit{Findings of the Association for Computational Linguistics: ACL/IJCNLP 2021, Online Event, August 1--6, 2021}, ser. Findings of ACL, vol.~ACL/IJCNLP 2021, 2021, pp.~390--395.
+
+\item J. Zheng and Z. Chen, ``Sentence-level relation extraction via contrastive learning with descriptive relation prompts,'' \textit{CoRR}, vol. abs/2304.04935, 2023.
+
+\item H. Wang, C. Focke, R. Sylvester, N. Mishra, and W. Y. Wang, ``Fine-tune bert for docred with two-step process,'' \textit{CoRR}, vol. abs/1909.11898, 2019.
+
+\item H. Tang, Y. Cao, Z. Zhang, J. Cao, F. Fang, S. Wang, and P. Yin, ``HIN: hierarchical inference network for document-level relation extraction,'' in \textit{PAKDD}, ser. Lecture Notes in Computer Science, vol.~12084, 2020, pp.~197--209.
+
+\item D. Wang, W. Hu, E. Cao, and W. Sun, ``Global-to-local neural networks for document-level relation extraction,'' in \textit{Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing, EMNLP 2020, Online, November 16--20, 2020}, 2020, pp.~3711--3721.
+
+\item S. Zeng, Y. Wu, and B. Chang, ``SIRE: separate intra- and inter-sentential reasoning for document-level relation extraction,'' in \textit{Findings of the Association for Computational Linguistics: ACL/IJCNLP 2021, Online Event, August 1--6, 2021}, ser. Findings of ACL, vol.~ACL/IJCNLP 2021, 2021, pp.~524--534.
+
+\item G. Nan, Z. Guo, I. Sekulic, and W. Lu, ``Reasoning with latent structure refinement for document-level relation extraction,'' in \textit{ACL}, 2020, pp.~1546--1557.
+
+\item S. Zeng, R. Xu, B. Chang, and L. Li, ``Double graph based reasoning for document-level relation extraction,'' in \textit{Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing, EMNLP 2020, Online, November 16--20, 2020}, 2020, pp.~1630--1640.
+
+\item N. Zhang, X. Chen, X. Xie, S. Deng, C. Tan, M. Chen, F. Huang, L. Si, and H. Chen, ``Document-level relation extraction as semantic segmentation,'' in \textit{IJCAI}, 2021, pp.~3999--4006.
+
+\item O. Ronneberger, P. Fischer, and T. Brox, ``U-net: Convolutional networks for biomedical image segmentation,'' in \textit{Medical Image Computing and Computer-Assisted Intervention -- MICCAI 2015 -- 18th International Conference Munich, Germany, October 5--9, 2015, Proceedings, Part III}, ser. Lecture Notes in Computer Science, vol.~9351, 2015, pp.~234--241.
+
+\item W. Zhou, K. Huang, T. Ma, and J. Huang, ``Document-level relation extraction with adaptive thresholding and localized context pooling,'' in \textit{AAAI}, 2021, pp.~14\,612--14\,620.
+
+\item G. Gardent, A. Shimorina, S. Narayan, and L. Perez-Beltrachini, ``The WebNLG challenge: Generating text from RDF data,'' in \textit{Proceedings of the 10th International Conference on Natural Language Generation}, 2017, pp.~124--133.
+
+\item Y. Guan, Y. Wang, and M. Huang, ``Story ending generation with incremental encoding and commonsense knowledge,'' in \textit{AAAI}, 2019, pp.~6473--6480.
+
+\item H. Zhou, T. Young, M. Huang, H. Zhao, J. Xu, and X. Zhu, ``Commonsense knowledge aware conversation generation with graph attention,'' in \textit{IJCAI}, 2018, pp.~4623--4629.
+
+\item M. Kale and A. Rastogi, ``Text-to-text pre-training for data-to-text tasks,'' in \textit{Proceedings of the 13th International Conference on Natural Language Generation}, 2020, pp.~97--102.
+
+\item M. Mintz, S. Bills, R. Snow, and D. Jurafsky, ``Distant supervision for relation extraction without labeled data,'' in \textit{ACL}, 2009, pp.~1003--1011.
+
+\item A. Saxena, A. Tripathi, and P. Talukdar, ``Improving multi-hop question answering over knowledge graphs using knowledge base embeddings,'' in \textit{ACL}, 2020, pp.~4498--4507.
+
+\item Y. Feng, X. Chen, B. Y. Lin, P. Wang, J. Yan, and X. Ren, ``Scalable multi-hop relational reasoning for knowledge-aware question answering,'' in \textit{EMNLP}, 2020, pp.~1295--1309.
+
+\item Y. Yan, R. Li, S. Wang, H. Zhang, Z. Daoguang, F. Zhang, W. Wu, and W. Xu, ``Large-scale relation learning for question answering over knowledge bases with pre-trained language models,'' in \textit{EMNLP}, 2021, pp.~3653--3660.
+
+\item J. Zhang, X. Zhang, J. Yu, J. Tang, J. Tang, C. Li, and H. Chen, ``Subgraph retrieval enhanced model for multi-hop knowledge base question answering,'' in \textit{ACL (Volume 1: Long Papers)}, 2022, pp.~5773--5784.
+
+\item J. Jiang, K. Zhou, Z. Dong, K. Ye, W. X. Zhao, and J.-R. Wen, ``Structgpt: A general framework for large language model to reason over structured data,'' \textit{arXiv preprint arXiv:2305.09645}, 2023.
+
+\item H. Zhu, H. Peng, Z. Lyu, L. Hou, J. Li, and J. Xiao, ``Pre-training language model incorporating domain-specific heterogeneous knowledge into a unified representation,'' \textit{Expert Systems with Applications}, vol.~215, p.~119369, 2023.
+
+\item C. Feng, X. Zhang, and Z. Fei, ``Knowledge solver: Teaching llms to search for domain knowledge from knowledge graphs,'' \textit{arXiv preprint arXiv:2309.03118}, 2023.
+
+\item J. Sun, C. Xu, L. Tang, S. Wang, C. Lin, Y. Gong, H.-Y. Shum, and J. Guo, ``Think-on-graph: Deep and responsible reasoning of large language model with knowledge graph,'' \textit{arXiv preprint arXiv:2307.07697}, 2023.
+
+\item B. He, D. Zhou, J. Xiao, X. Jiang, Q. Liu, N. J. Yuan, and T. Xu, ``BERT-MK: Integrating graph contextualized knowledge into pre-trained language models,'' in \textit{EMNLP}, 2020, pp.~2281--2290.
+
+\item Y. Su, X. Han, Z. Zhang, Y. Lin, P. Li, Z. Liu, J. Zhou, and M. Sun, ``Cokebert: Contextual knowledge selection and embedding towards enhanced pre-trained language models,'' \textit{AI Open}, vol.~2, pp.~127--134, 2021.
+
+\item D. Yu, C. Zhu, Y. Yang, and M. Zeng, ``JAKET: joint pre-training of knowledge graph and language understanding,'' in \textit{AAAI}, 2022, pp.~11\,630--11\,638.
+
+\item X. Wang, P. Kapanipathi, R. Musa, M. Yu, K. Talamadupula, I. Abdelaziz, M. Chang, A. Fokoue, B. Makni, N. Mattei, and M. Witbrock, ``Improving natural language inference using external knowledge in the science questions domain,'' in \textit{AAAI}, 2019, pp.~7208--7215.
+
+\item Y. Sun, Q. Shi, L. Qi, and Y. Zhang, ``JointLK: Joint reasoning with language models and knowledge graphs for commonsense question answering,'' in \textit{NAACL}, 2022, pp.~5049--5060.
+
+\item X. Liu, H. Yu, H. Zhang, Y. Xu, X. Lei, H. Lai, Y. Gu, H. Ding, K. Men, K. Yang \textit{et al.}, ``Agentbench: Evaluating llms as agents,'' \textit{arXiv preprint arXiv:2308.03688}, 2023.
+
+\item X. Wang, N. Lipka, R. A. Rossi, A. Siu, R. Zhang, and T. Derr, ``Knowledge graph prompting for multi-document question answering,'' \textit{arXiv preprint arXiv:2308.11730}, 2023.
+
+\item A. Zeng, M. Liu, R. Lu, B. Wang, X. Liu, Y. Dong, and J. Tang, ``Agenttuning: Enabling generalized agent abilities for llms,'' 2023.
+
+\item W. Kry\'{s}ci\'{n}ski, B. McCann, C. Xiong, and R. Socher, ``Evaluating the factual consistency of abstractive text summarization,'' \textit{arXiv preprint arXiv:1910.12840}, 2019.
+
+\item Z. Ji, Z. Liu, N. Lee, T. Yu, B. Wilie, M. Zeng, and P. Fung, ``Rho ($\rho$): Reducing hallucination in open-domain dialogues with knowledge grounding,'' \textit{arXiv preprint arXiv:2212.01588}, 2022.
+
+\item S. Feng, V. Balachandran, Y. Bai, and Y. Tsvetkov, ``Factkb: Generalizable factuality evaluation using language models enhanced with factual knowledge,'' \textit{arXiv preprint arXiv:2305.08281}, 2023.
+
+\item Y. Yao, P. Wang, B. Tian, S. Cheng, Z. Li, S. Deng, H. Chen, and N. Zhang, ``Editing large language models: Problems, methods, and opportunities,'' \textit{arXiv preprint arXiv:2305.13172}, 2023.
+
+\item Z. Li, N. Zhang, Y. Yao, M. Wang, X. Chen, and H. Chen, ``Unveiling the pitfalls of knowledge editing for large language models,'' \textit{arXiv preprint arXiv:2310.02129}, 2023.
+
+\item R. Cohen, E. Biran, O. Yoran, A. Globerson, and M. Geva, ``Evaluating the ripple effects of knowledge editing in language models,'' \textit{arXiv preprint arXiv:2307.12976}, 2023.
+
+\item S. Diao, Z. Huang, R. Xu, X. Li, Y. Lin, X. Zhou, and T. Zhang, ``Black-box prompt learning for pre-trained language models,'' \textit{arXiv preprint arXiv:2201.08531}, 2022.
+
+\item T. Sun, Y. Shao, H. Qian, X. Huang, and X. Qiu, ``Black-box tuning for language-model-as-a-service,'' in \textit{International Conference on Machine Learning. PMLR}, 2022, pp.~20\,841--20\,855.
+
+\item X. Chen, A. Shrivastava, and A. Gupta, ``NEIL: extracting visual knowledge from web data,'' in \textit{IEEE International Conference on Computer Vision, ICCV 2013, Sydney, Australia, December 1--8, 2013}, 2013, pp.~1409--1416.
+
+\item M. Warren and P. J. Hayes, ``Bounding ambiguity: Experiences with an image annotation system,'' in \textit{Proceedings of the 1st Workshop on Subjectivity, Ambiguity and Disagreement in Crowdsourcing}, ser. CEUR Workshop Proceedings, vol.~2276, 2018, pp.~41--54.
+
+\item Z. Chen, Y. Huang, J. Chen, Y. Geng, Y. Fang, J. Z. Pan, N. Zhang, and W. Zhang, ``Lako: Knowledge-driven visual estion answering via late knowledge-to-text injection,'' 2022.
+
+\item R. Girdhar, A. El-Nouby, Z. Liu, M. Singh, K. V. Alwala, A. Joulin, and I. Misra, ``Imagebind: One embedding space to bind them all,'' in \textit{ICCV}, 2023, pp.~15\,180--15\,190.
+
+\item J. Zhang, Z. Yin, P. Chen, and S. Nichele, ``Emotion recognition using multi-modal data and machine learning techniques: A tutorial and review,'' \textit{Information Fusion}, vol.~59, pp.~103--126, 2020.
+
+\item H. Zhang, B. Wu, X. Yuan, S. Pan, H. Tong, and J. Pei, ``Trustworthy graph neural networks: Aspects, methods and trends,'' \textit{arXiv preprint arXiv:2205.07424}, 2022.
+
+\item T. Wu, M. Caccia, Z. Li, Y.-F. Li, G. Qi, and G. Haffari, ``Pretrained language model in continual learning: A comparative study,'' in \textit{ICLR}, 2022.
+
+\item X. L. Li, A. Kuncoro, J. Hoffmann, C. de Masson d'Autume, P. Blunsom, and A. Nematzadeh, ``A systematic investigation of commonsense knowledge in large language models,'' in \textit{Proceedings of the 2022 Conference on Empirical Methods in Natural Language Processing}, 2022, pp.~11\,838--11\,855.
+
+\item Y. Zheng, H. Y. Koh, J. Ju, A. T. Nguyen, L. T. May, G. I. Webb, and S. Pan, ``Large language models for scientific synthesis, inference and explanation,'' \textit{arXiv preprint arXiv:2310.07984}, 2023.
+
+\item B. Min, H. Ross, E. Sulem, A. P. B. Veyseh, T. H. Nguyen, O. Sainz, E. Agirre, I. Heintz, and D. Roth, ``Recent advances in natural language processing via large pre-trained language models: A survey,'' \textit{ACM Computing Surveys}, vol.~56, no.~2, pp.~1--40, 2023.
+
+\item J. Wei, M. Bosma, V. Zhao, K. Guu, A. W. Yu, B. Lester, N. Du, A. M. Dai, and Q. V. Le, ``Finetuned language models are zero-shot learners,'' in \textit{International Conference on Learning Representations}, 2021.
+
+\item Y. Zhang, Y. Li, L. Cui, D. Cai, L. Liu, T. Fu, X. Huang, E. Zhao, Y. Zhang, Y. Chen, L. Wang, A. T. Luu, W. Bi, F. Shi, and S. Shi, ``Siren's song in the ai ocean: A survey on hallucination in large language models,'' \textit{arXiv preprint arXiv:2309.01219}, 2023.
+
+\end{enumerate}
+
+\end{document}

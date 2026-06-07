@@ -1,0 +1,491 @@
+\documentclass[11pt,UTF8,fontset=fandol]{ctexart}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx,float,caption,subcaption}
+\usepackage{booktabs,array,multirow,makecell}
+\usepackage{geometry,enumitem,xcolor}
+\usepackage[hidelinks]{hyperref}
+\usepackage{url}
+\usepackage{pifont}
+\geometry{margin=2.3cm}
+\graphicspath{{/Users/yye/project/论文/assets/efficient_memory/}}
+\captionsetup{font=small,labelfont=bf}
+\setlength{\parskip}{0.4em}
+
+\title{\textbf{基于 PagedAttention 的大语言模型服务高效内存管理}}
+\author{%
+Woosuk Kwon\textsuperscript{1,*}\quad Zhuohan Li\textsuperscript{1,*}\quad Siyuan Zhuang\textsuperscript{1}\quad Ying Sheng\textsuperscript{1,2}\quad Lianmin Zheng\textsuperscript{1}\quad Cody Hao Yu\textsuperscript{3}\\[2pt]
+Joseph E. Gonzalez\textsuperscript{1}\quad Hao Zhang\textsuperscript{4}\quad Ion Stoica\textsuperscript{1}\\[6pt]
+\normalsize\textsuperscript{1} UC Berkeley（加州大学伯克利分校）\quad
+\textsuperscript{2} Stanford University（斯坦福大学）\\[2pt]
+\normalsize\textsuperscript{3} Independent Researcher（独立研究者）\quad
+\textsuperscript{4} UC San Diego（加州大学圣地亚哥分校）\\[4pt]
+\normalsize\textsuperscript{*} 同等贡献。
+}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+大语言模型（large language models，LLMs）的高吞吐量服务要求一次性批处理足够多的请求。然而，现有系统面临困难，因为每个请求的键值缓存（key-value cache，KV cache）内存非常大，并且会动态地增长和收缩。当管理不善时，这部分内存会因碎片化和冗余复制而被大量浪费，从而限制了批大小（batch size）。为解决这一问题，我们提出 PagedAttention，一种受操作系统中经典的虚拟内存（virtual memory）与分页（paging）技术启发的注意力算法。在此基础上，我们构建了 vLLM——一个 LLM 服务系统，它实现了：（1）KV cache 内存的近乎零浪费；（2）在请求内部以及跨请求之间灵活共享 KV cache，从而进一步降低内存使用。我们的评估表明，与 FasterTransformer 和 Orca 等当前最先进的系统相比，vLLM 在相同延迟水平下将主流 LLM 的吞吐量提升了 2--4 倍。对于更长的序列、更大的模型以及更复杂的解码算法，这一提升更加显著。vLLM 的源代码已公开，地址为 \url{https://github.com/vllm-project/vllm}。
+\end{abstract}
+
+\section{引言}
+
+GPT [5, 37] 和 PaLM [9] 等大语言模型（LLMs）的出现催生了诸如编程助手 [6, 18] 和通用聊天机器人 [19, 35] 等新型应用，它们正开始深刻影响我们的工作和日常生活。许多云计算公司 [34, 44] 正竞相将这些应用作为托管服务提供。然而，运行这些应用的成本非常高，需要大量诸如 GPU 之类的硬件加速器。根据近期的估算，处理一个 LLM 请求的成本可能比传统关键词查询高出 10 倍 [43]。鉴于这些高昂的成本，提高吞吐量——从而降低 LLM 服务系统每个请求的成本——正变得愈发重要。
+
+LLM 的核心是一个自回归（autoregressive）Transformer 模型 [53]。该模型基于输入（提示，prompt）以及它迄今已生成的输出 token 序列，每次生成一个词（token）。对于每个请求，这一昂贵的过程会不断重复，直到模型输出一个终止 token。这种顺序生成过程使得工作负载受内存约束（memory-bound），既未充分利用 GPU 的计算能力，又限制了服务吞吐量。
+
+通过将多个请求批处理在一起，可以提升吞吐量。然而，要在一个批次中处理众多请求，每个请求的内存空间都应得到高效管理。例如，图~\ref{fig:1}（左）展示了在配备 40GB 显存的 NVIDIA A100 GPU 上运行 13B 参数 LLM 时的内存分布。大约 65\% 的内存被分配给模型权重，这些权重在服务期间保持静态。接近 30\% 的内存用于存储请求的动态状态。对于 Transformer，这些状态由与注意力机制（attention mechanism）相关联的键（key）和值（value）张量构成，通常称为 KV cache [41]，它们表示来自先前 token 的上下文，用于按序生成新的输出 token。其余少量内存用于其他数据，包括激活值（activations）——即评估 LLM 时产生的临时张量。由于模型权重是恒定的，而激活值只占 GPU 内存的一小部分，因此 KV cache 的管理方式对于确定最大批大小至关重要。当管理不善时，KV cache 内存会显著限制批大小，进而限制 LLM 的吞吐量，如图~\ref{fig:1}（右）所示。
+
+\begin{figure}[t]\centering
+  \includegraphics[width=0.95\linewidth]{cand_p01_k00.pdf}
+  \caption{左：在 NVIDIA A100 上服务一个 13B 参数 LLM 时的内存布局。参数（灰色）在整个服务过程中持续驻留于 GPU 内存中。KV cache 的内存（红色）按每个服务请求进行（去）分配。少量内存（黄色）临时用于激活值。右：vLLM 平滑了现有系统 [31, 60] 中 KV cache 内存的快速增长曲线，从而显著提升了服务吞吐量。}
+  \label{fig:1}
+\end{figure}
+
+在本文中，我们观察到现有的 LLM 服务系统 [31, 60] 在高效管理 KV cache 内存方面存在不足。这主要是因为它们将一个请求的 KV cache 存储在连续的内存空间中，因为大多数深度学习框架 [33, 39] 都要求张量存储在连续内存中。然而，与传统深度学习工作负载中的张量不同，KV cache 具有独特的特性：它随着模型生成新 token 而动态增长和收缩，并且其生命周期和长度无法事先预知。这些特性使得现有系统的方法在两个方面显著低效：
+
+首先，现有系统 [31, 60] 受到内部和外部内存碎片化的困扰。为了将一个请求的 KV cache 存储在连续空间中，它们以请求的最大长度（例如 2048 个 token）预分配一块连续的内存。这可能导致严重的内部碎片化（internal fragmentation），因为请求的实际长度可能远短于其最大长度（例如图~\ref{fig:11}）。此外，即使实际长度事先已知，预分配仍然低效：由于整块内存在请求的整个生命周期内都被预留，其他较短的请求无法利用该块中当前未使用的任何部分。除此之外，外部碎片化（external fragmentation）也可能很显著，因为每个请求的预分配大小可能不同。事实上，我们在图~\ref{fig:2} 中的剖析结果显示，现有系统中只有 20.4\%--38.2\% 的 KV cache 内存被用于存储实际的 token 状态。
+
+其次，现有系统无法利用内存共享的机会。LLM 服务常使用诸如并行采样（parallel sampling）和束搜索（beam search）等高级解码算法，它们为每个请求生成多个输出。在这些场景中，请求由多个可部分共享其 KV cache 的序列组成。然而，在现有系统中无法进行内存共享，因为各序列的 KV cache 存储在彼此分离的连续空间中。
+
+\begin{figure}[t]\centering
+  \includegraphics[width=0.78\linewidth]{cand_p02_k00.pdf}
+  \caption{\S6.2 实验中不同 LLM 服务系统的平均内存浪费百分比。}
+  \label{fig:2}
+\end{figure}
+
+为解决上述局限，我们提出 PagedAttention，一种受操作系统（OS）针对内存碎片化与共享的解决方案——带分页的虚拟内存——启发的注意力算法。PagedAttention 将请求的 KV cache 划分为若干块（block），每个块可以包含固定数量 token 的注意力键和值。在 PagedAttention 中，KV cache 的各块不必存储在连续空间中。因此，我们可以像在 OS 的虚拟内存中那样以更灵活的方式管理 KV cache：可以把块看作页（page），把 token 看作字节（byte），把请求看作进程（process）。这一设计通过使用相对较小的块并按需分配，缓解了内部碎片化。此外，由于所有块大小相同，它消除了外部碎片化。最后，它实现了块粒度的内存共享，既可在同一请求关联的不同序列之间共享，也可在不同请求之间共享。
+
+在这项工作中，我们在 PagedAttention 之上构建了 vLLM——一个高吞吐量的分布式 LLM 服务引擎，实现了 KV cache 内存的近乎零浪费。vLLM 采用与 PagedAttention 协同设计的块级内存管理和抢占式请求调度。vLLM 支持各种规模的主流 LLM，如 GPT [5]、OPT [62] 和 LLaMA [52]，包括那些超出单个 GPU 内存容量的模型。我们在各种模型和工作负载上的评估表明，与当前最先进的系统 [31, 60] 相比，vLLM 将 LLM 服务吞吐量提升了 2--4 倍，且完全不影响模型精度。对于更长的序列、更大的模型以及更复杂的解码算法，这一提升更加显著（\S4.3）。
+
+综上所述，我们做出以下贡献：
+
+\begin{itemize}[leftmargin=2em]
+\item 我们识别了在为 LLM 提供服务时内存分配方面的挑战，并量化了它们对服务性能的影响。
+\item 我们提出 PagedAttention，一种作用于存储在非连续分页内存中的 KV cache 之上的注意力算法，其灵感来自 OS 中的虚拟内存与分页。
+\item 我们设计并实现了 vLLM，一个构建在 PagedAttention 之上的分布式 LLM 服务引擎。
+\item 我们在各种场景下评估了 vLLM，证明它大幅优于此前最先进的解决方案，如 FasterTransformer [31] 和 Orca [60]。
+\end{itemize}
+
+\section{背景}
+
+在本节中，我们描述典型 LLM 的生成与服务过程，以及 LLM 服务中所采用的迭代级调度（iteration-level scheduling）。
+
+\subsection{基于 Transformer 的大语言模型}
+
+语言建模的任务是对一组 token $(x_1, \ldots, x_n)$ 的概率进行建模。由于语言具有天然的顺序性，通常将整个序列上的联合概率分解为条件概率的乘积（即自回归分解 [3]）：
+\begin{equation}
+P(x) = P(x_1) \cdot P(x_2 \mid x_1) \cdots P(x_n \mid x_1, \ldots, x_{n-1}). \tag{1}
+\end{equation}
+
+Transformer [53] 已成为在大规模上对上述概率进行建模的事实标准架构。基于 Transformer 的语言模型最重要的组件是其自注意力（self-attention）层。对于一个输入隐状态序列 $(x_1, \ldots, x_n) \in \mathbb{R}^{n \times d}$，自注意力层首先在每个位置 $i$ 上施加线性变换，以获得查询（query）、键（key）和值（value）向量：
+\begin{equation}
+q_i = W_q x_i, \quad k_i = W_k x_i, \quad v_i = W_v x_i. \tag{2}
+\end{equation}
+
+然后，自注意力层通过将某一位置的查询向量与其之前所有的键向量相乘来计算注意力得分 $a_{ij}$，并将输出 $o_i$ 计算为对值向量的加权平均：
+\begin{equation}
+a_{ij} = \frac{\exp(q_i^\top k_j / \sqrt{d})}{\sum_{t=1}^{i} \exp(q_i^\top k_t / \sqrt{d})}, \quad o_i = \sum_{j=1}^{i} a_{ij} v_j. \tag{3}
+\end{equation}
+
+除了式~(3) 中的计算之外，Transformer 模型中的所有其他组件，包括嵌入层（embedding layer）、前馈层（feed-forward layer）、层归一化（layer normalization）[2]、残差连接（residual connection）[22]、输出 logit 计算，以及式~(2) 中的查询、键、值变换，都以 $y_i = f(x_i)$ 的形式按位置（position-wise）独立地施加。
+
+\subsection{LLM 服务与自回归生成}
+
+LLM 一旦训练完成，通常会被部署为条件生成服务（例如补全 API [34] 或聊天机器人 [19, 35]）。对 LLM 服务的一个请求会提供一组输入提示 token $(x_1, \ldots, x_n)$，LLM 服务则根据式~(1) 生成一组输出 token $(x_{n+1}, \ldots, x_{n+T})$。我们将提示列表与输出列表的拼接称为序列（sequence）。
+
+由于式~(1) 中的分解，LLM 只能逐个采样并生成新 token，并且每个新 token 的生成过程都依赖于该序列中所有先前的 token，具体来说是它们的键和值向量。在这一顺序生成过程中，已有 token 的键和值向量常被缓存起来用于生成未来的 token，这被称为 KV cache。注意，一个 token 的 KV cache 依赖于其所有先前的 token。这意味着同一个 token 出现在序列中的不同位置时，其 KV cache 也会不同。
+
+给定一个请求提示，LLM 服务中的生成计算可以分解为两个阶段：
+
+\textbf{提示阶段（prompt phase）}以整个用户提示 $(x_1, \ldots, x_n)$ 作为输入，计算第一个新 token 的概率 $P(x_{n+1} \mid x_1, \ldots, x_n)$。在此过程中，还会生成键向量 $k_1, \ldots, k_n$ 和值向量 $v_1, \ldots, v_n$。由于提示 token $x_1, \ldots, x_n$ 全部已知，提示阶段的计算可以使用矩阵-矩阵乘法运算进行并行化。因此，这一阶段能够高效利用 GPU 固有的并行性。
+
+\textbf{自回归生成阶段（autoregressive generation phase）}按序生成剩余的新 token。在第 $t$ 次迭代时，模型以一个 token $x_{n+t}$ 作为输入，并使用键向量 $k_1, \ldots, k_{n+t}$ 和值向量 $v_1, \ldots, v_{n+t}$ 计算概率 $P(x_{n+t+1} \mid x_1, \ldots, x_{n+t})$。注意，位置 $1$ 到 $n + t - 1$ 的键和值向量已在先前的迭代中缓存，本次迭代仅需计算新的键和值向量 $k_{n+t}$ 和 $v_{n+t}$。当序列达到最大长度（由用户指定或受 LLM 限制）或发出序列结束（\texttt{<eos>}）token 时，这一阶段结束。不同迭代之间的计算由于数据依赖关系而无法并行化，并且通常使用效率较低的矩阵-向量乘法。因此，这一阶段严重未充分利用 GPU 计算资源，受内存约束，承担了单个请求大部分的延迟。
+
+\subsection{面向 LLM 的批处理技术}
+
+通过批处理多个请求，可以提升 LLM 服务中的计算利用率。因为这些请求共享同一份模型权重，移动权重的开销可在一个批次中的多个请求间分摊，并且当批大小足够大时，计算开销能够超过它。然而，对 LLM 服务进行请求批处理并非易事，原因有二。首先，请求可能在不同时刻到达。一种朴素的批处理策略要么让较早的请求等待较晚的请求，要么延迟到来的请求直到较早的请求完成，从而导致显著的排队延迟。其次，请求的输入和输出长度可能差异巨大（图~\ref{fig:11}）。一种直接的批处理技术会对请求的输入和输出进行填充（pad）以使其长度相等，从而浪费 GPU 计算和内存。
+
+为解决这一问题，人们提出了细粒度批处理机制，如蜂窝批处理（cellular batching）[16] 和迭代级调度（iteration-level scheduling）[60]。与在请求级别工作的传统方法不同，这些技术在迭代级别运行。每次迭代之后，已完成的请求从批次中移除，新的请求被加入。因此，一个新请求在等待单次迭代后即可被处理，而无需等待整个批次完成。此外，借助专门的 GPU 内核，这些技术消除了对输入和输出进行填充的需要。通过减少排队延迟以及填充带来的低效，细粒度批处理机制显著提升了 LLM 服务的吞吐量。
+
+\begin{figure*}[t]\centering
+  \includegraphics[width=0.98\linewidth]{cand_p04_k00.pdf}
+  \caption{现有系统中的 KV cache 内存管理。存在三种类型的内存浪费——预留（reserved）、内部碎片化和外部碎片化——它们阻止了其他请求装入内存。每个内存槽（slot）中的 token 表示其 KV cache。注意，同一 token 处于不同位置时可以具有不同的 KV cache。}
+  \label{fig:3}
+\end{figure*}
+
+\section{LLM 服务中的内存挑战}
+
+尽管细粒度批处理减少了计算浪费，并使请求能够以更灵活的方式批处理，但能够一起批处理的请求数量仍受 GPU 内存容量的约束，尤其是用于存储 KV cache 的空间。换言之，服务系统的吞吐量受内存约束。要克服这一内存约束，需要解决内存管理中的以下挑战：
+
+\textbf{庞大的 KV cache。} KV cache 的规模随请求数量快速增长。举例而言，对于 13B 参数的 OPT 模型 [62]，单个 token 的 KV cache 需要 800 KB 的空间，计算方式为 $2$（键和值向量）$\times\, 5120$（隐状态大小）$\times\, 40$（层数）$\times\, 2$（FP16 下每个值的字节数）。由于 OPT 最多可生成 2048 个 token 的序列，存储一个请求 KV cache 所需的内存可高达 1.6 GB。当前的 GPU 内存容量为数十 GB。即使将所有可用内存都分配给 KV cache，也只能容纳几十个请求。此外，低效的内存管理还会进一步降低批大小，如图~\ref{fig:2} 所示。另外，根据当前的趋势，GPU 的计算速度增长快于内存容量 [17]。例如，从 NVIDIA A100 到 H100，FLOPS 增长超过 2 倍，但 GPU 内存仍保持在最大 80GB。因此，我们认为内存将成为日益严重的瓶颈。
+
+\textbf{复杂的解码算法。} LLM 服务提供了一系列解码算法供用户选择，每种算法对内存管理复杂度有着不同的影响。例如，当用户请求从单个输入提示中获取多个随机样本时（这是程序建议 [18] 中的典型用例），提示部分的 KV cache（在我们的实验中占总 KV cache 内存的 12\%，见 \S6.3）可以被共享以最小化内存使用。另一方面，自回归生成阶段的 KV cache 由于采样结果不同以及它们对上下文和位置的依赖，应保持不共享。KV cache 共享的程度取决于所采用的具体解码算法。在更复杂的算法（如束搜索 [49]）中，不同的请求束（beam）可以共享更大的部分（最多节省 55\% 内存，见 \S6.3）的 KV cache，并且共享模式随着解码过程的推进而演变。
+
+\textbf{针对未知输入与输出长度的调度。} 对 LLM 服务的请求在其输入和输出长度上表现出可变性。这要求内存管理系统能够适应各种各样的提示长度。此外，随着请求的输出长度在解码过程中增长，其 KV cache 所需的内存也会扩张，并可能耗尽可供到来请求或现有提示持续生成所用的内存。系统需要做出调度决策，例如从 GPU 内存中删除或换出某些请求的 KV cache。
+
+\subsection{现有系统中的内存管理}
+
+由于当前深度学习框架 [33, 39] 中的大多数算子要求张量存储在连续内存中，此前的 LLM 服务系统 [31, 60] 也将一个请求的 KV cache 作为跨不同位置的连续张量存储。由于 LLM 的输出长度不可预测，它们基于请求可能的最大序列长度为请求静态分配一块内存，而不考虑请求实际的输入或最终的输出长度。
+
+图~\ref{fig:3} 展示了两个请求：请求 A 的最大可能序列长度为 2048，请求 B 的最大长度为 512。现有系统中的块预分配方案有三个主要的内存浪费来源：为未来 token 预留的槽、由于针对潜在最大序列长度过度预留而导致的内部碎片化，以及来自诸如伙伴分配器（buddy allocator）之类的内存分配器的外部碎片化。外部碎片化永远不会用于生成的 token，这在服务一个请求之前就已知。内部碎片化同样保持未使用，但这只有在请求完成采样之后才会显现。两者都是纯粹的内存浪费。尽管预留的内存最终会被使用，但在整个请求期间预留这一空间（尤其当预留空间很大时）会占用本可用于处理其他请求的空间。我们在图~\ref{fig:2} 中可视化了实验中内存浪费的平均百分比，揭示出此前系统中的实际有效内存可能低至 20.4\%。
+
+\begin{figure}[t]\centering
+  \includegraphics[width=0.92\linewidth]{fig4.pdf}
+  \caption{vLLM 系统概览。}
+  \label{fig:4}
+\end{figure}
+
+尽管有人提出压实（compaction）[54] 作为碎片化的潜在解决方案，但在对性能敏感的 LLM 服务系统中执行压实是不切实际的，因为 KV cache 规模巨大。即使采用压实，每个请求预分配的块空间仍会阻碍现有内存管理系统中针对解码算法的内存共享。
+
+\section{方法}
+
+在这项工作中，我们开发了一种新的注意力算法 PagedAttention，并构建了一个 LLM 服务引擎 vLLM，以应对 \S3 中概述的挑战。vLLM 的架构如图~\ref{fig:4} 所示。vLLM 采用一个集中式调度器（centralized scheduler）来协调分布式 GPU 工作进程（worker）的执行。KV cache 管理器在 PagedAttention 的支持下以分页方式高效管理 KV cache。具体而言，KV cache 管理器通过集中式调度器发送的指令来管理 GPU 工作进程上的物理 KV cache 内存。
+
+接下来，我们在 \S4.1 中描述 PagedAttention 算法。在此基础上，我们分别在 \S4.2 中展示 KV cache 管理器的设计，并在 \S4.3 中展示它如何促进 PagedAttention。然后，我们展示该设计如何为各种解码方法实现高效的内存管理（\S4.4），以及如何处理可变长度的输入和输出序列（\S4.5）。最后，我们展示 vLLM 的系统设计在分布式环境中如何运作（\S4.6）。
+
+\subsection{PagedAttention}
+
+为解决 \S3 中的内存挑战，我们引入 PagedAttention，一种受操作系统中经典分页思想 [25] 启发的注意力算法。与传统注意力算法不同，PagedAttention 允许将连续的键和值存储在非连续的内存空间中。具体而言，PagedAttention 将每个序列的 KV cache 划分为若干 KV 块。每个块包含固定数量 token 的键和值向量，\footnote{在 Transformer 中，每个 token 在各层以及一层内的各注意力头（attention head）上都有一组键和值向量。所有的键和值向量可以在单个 KV 块内统一管理，或者不同头和层的键和值向量也可以各自拥有独立的块并在独立的块表（block table）中管理。两种设计在性能上没有差异，我们选择第二种以便于实现。} 我们将该固定数量记为 KV 块大小（block size，$B$）。记键块 $K_j = (k_{(j-1)B+1}, \ldots, k_{jB})$，值块 $V_j = (v_{(j-1)B+1}, \ldots, v_{jB})$。式~(3) 中的注意力计算可以转化为如下的逐块（block-wise）计算：
+\begin{equation}
+A_{ij} = \frac{\exp(q_i^\top K_j / \sqrt{d})}{\sum_{t=1}^{\lceil i/B \rceil} \exp(q_i^\top K_t \mathbf{1} / \sqrt{d})}, \quad o_i = \sum_{j=1}^{\lceil i/B \rceil} V_j A_{ij}^\top, \tag{4}
+\end{equation}
+其中 $A_{ij} = (a_{i,(j-1)B+1}, \ldots, a_{i,jB})$ 是第 $j$ 个 KV 块上注意力得分的行向量。
+
+在注意力计算期间，PagedAttention 内核分别识别并取回不同的 KV 块。我们在图~\ref{fig:5} 中展示一个 PagedAttention 的示例：键和值向量分散在三个块中，且这三个块在物理内存上并不连续。每次计算时，内核将查询 token（``forth''）的查询向量 $q_i$ 与某个块中的键向量 $K_j$（例如块 0 中``Four score and seven''的键向量）相乘以计算注意力得分 $A_{ij}$，随后将 $A_{ij}$ 与某个块中的值向量 $V_j$ 相乘以导出最终的注意力输出 $o_i$。
+
+\begin{figure}[t]\centering
+  \includegraphics[width=0.98\linewidth]{fig5.pdf}
+  \caption{PagedAttention 算法示意图，其中注意力的键和值向量作为非连续的块存储在内存中。}
+  \label{fig:5}
+\end{figure}
+
+总之，PagedAttention 算法允许 KV 块存储在非连续的物理内存中，从而在 vLLM 中实现更灵活的分页内存管理。
+
+\subsection{KV cache 管理器}
+
+vLLM 内存管理器背后的核心思想类似于操作系统中的虚拟内存 [25]。OS 将内存划分为固定大小的页，并将用户程序的逻辑页映射到物理页。连续的逻辑页可以对应非连续的物理内存页，从而允许用户程序如同访问连续内存一样访问内存。此外，物理内存空间无需事先完全预留，使得 OS 能够按需动态分配物理页。vLLM 借用虚拟内存背后的思想来管理 LLM 服务中的 KV cache。在 PagedAttention 的支持下，我们将 KV cache 组织为固定大小的 KV 块，如同虚拟内存中的页。
+
+一个请求的 KV cache 被表示为一系列逻辑 KV 块（logical KV block），随着新 token 及其 KV cache 的生成，这些块从左到右被填充。最后一个 KV 块中未填充的位置为未来的生成预留。在 GPU 工作进程上，块引擎（block engine）分配一块连续的 GPU DRAM，并将其划分为物理 KV 块（physical KV block）（在用于换出的 CPU RAM 上也会这样做；见 \S4.5）。KV 块管理器还维护块表（block table）——即每个请求的逻辑 KV 块与物理 KV 块之间的映射。每个块表条目记录一个逻辑块对应的物理块以及已填充位置的数量。将逻辑 KV 块与物理 KV 块分离，使得 vLLM 能够动态地增长 KV cache 内存，而无需事先为所有位置预留它，从而消除了现有系统中大部分的内存浪费，如图~\ref{fig:2} 所示。
+
+\begin{figure}[t]\centering
+  \includegraphics[width=0.98\linewidth]{fig6.pdf}
+  \caption{vLLM 中的块表转换。}
+  \label{fig:6}
+\end{figure}
+
+\begin{figure}[t]\centering
+  \includegraphics[width=0.98\linewidth]{fig7.pdf}
+  \caption{vLLM 中同时存储两个请求的 KV cache。}
+  \label{fig:7}
+\end{figure}
+
+\subsection{使用 PagedAttention 与 vLLM 进行解码}
+
+接下来，我们通过一个示例（如图~\ref{fig:6} 所示）来演示 vLLM 在单个输入序列的解码过程中如何执行 PagedAttention 并管理内存：\ding{172} 如同 OS 的虚拟内存，vLLM 起初不要求为可能生成的最大序列长度预留内存。相反，它只预留必要的 KV 块来容纳提示计算期间生成的 KV cache。在本例中，提示有 7 个 token，因此 vLLM 将前 2 个逻辑 KV 块（0 和 1）分别映射到 2 个物理 KV 块（7 和 1）。在预填充（prefill）步骤中，vLLM 使用传统的自注意力算法（例如 [13]）生成提示的 KV cache 以及第一个输出 token。vLLM 随后将前 4 个 token 的 KV cache 存储在逻辑块 0 中，将接下来的 3 个 token 存储在逻辑块 1 中。剩余的槽为后续的自回归生成阶段预留。\ding{173} 在第一个自回归解码步骤中，vLLM 在物理块 7 和 1 上使用 PagedAttention 算法生成新的 token。由于最后一个逻辑块中仍有一个槽可用，新生成的 KV cache 就存储在那里，并更新块表的 \#filled 记录。\ding{174} 在第二个解码步骤中，由于最后一个逻辑块已满，vLLM 将新生成的 KV cache 存储在一个新的逻辑块中；vLLM 为它分配一个新的物理块（物理块 3）并将此映射存储在块表中。
+
+在全局层面，对于每个解码迭代，vLLM 首先选择一组候选序列进行批处理（详见 \S4.5），并为新需要的逻辑块分配物理块。然后，vLLM 将当前迭代的所有输入 token（即提示阶段请求的所有 token 和生成阶段请求的最新 token）拼接为一个序列并送入 LLM。在 LLM 的计算过程中，vLLM 使用 PagedAttention 内核访问以逻辑 KV 块形式存储的先前 KV cache，并将新生成的 KV cache 保存到物理 KV 块中。在一个 KV 块内存储多个 token（块大小 $> 1$）使得 PagedAttention 内核能够并行处理跨更多位置的 KV cache，从而提高硬件利用率并降低延迟。然而，较大的块大小也会增加内存碎片化。我们在 \S7.2 中研究块大小的影响。
+
+同样，随着更多 token 及其 KV cache 的生成，vLLM 动态地将新的物理块分配给逻辑块。由于所有块都从左到右填充，且仅当所有先前的块都已满时才分配新的物理块，vLLM 将一个请求的所有内存浪费限制在一个块以内，因此能够有效利用所有内存，如图~\ref{fig:2} 所示。这使得更多请求能够装入内存以进行批处理——从而提升吞吐量。一旦某个请求完成其生成，其 KV 块即可被释放以存储其他请求的 KV cache。在图~\ref{fig:7} 中，我们展示了 vLLM 为两个序列管理内存的示例。两个序列的逻辑块被映射到块引擎在 GPU 工作进程中所预留空间内的不同物理块。两个序列相邻的逻辑块在物理 GPU 内存中无需连续，物理块的空间可被两个序列有效利用。
+
+\subsection{应用于其他解码场景}
+
+\S4.3 展示了 PagedAttention 和 vLLM 如何处理基本的解码算法，例如贪心解码（greedy decoding）和采样，它们以一个用户提示作为输入并生成单个输出序列。在许多成功的 LLM 应用 [18, 34] 中，LLM 服务必须提供更复杂的解码场景，这些场景表现出复杂的访问模式以及更多的内存共享机会。本节中我们展示 vLLM 在这些场景上的普遍适用性。
+
+\textbf{并行采样（Parallel sampling）。} 在基于 LLM 的程序助手 [6, 18] 中，LLM 为单个输入提示生成多个采样输出；用户可以从各种候选中选择一个心仪的输出。到目前为止，我们一直隐含地假设一个请求生成单个序列。在本文余下部分，我们假设更一般的情形，即一个请求生成多个序列。在并行采样中，一个请求包含多个共享相同输入提示的样本，从而提示的 KV cache 也可以被共享。借助其 PagedAttention 和分页内存管理，vLLM 能够轻松实现这种共享并节省内存。
+
+\begin{figure}[t]\centering
+  \includegraphics[width=0.98\linewidth]{fig8.pdf}
+  \caption{并行采样示例。}
+  \label{fig:8}
+\end{figure}
+
+\begin{figure}[t]\centering
+  \includegraphics[width=0.98\linewidth]{fig9.pdf}
+  \caption{束搜索示例。}
+  \label{fig:9}
+\end{figure}
+
+图~\ref{fig:8} 展示了一个生成两个输出的并行解码示例。由于两个输出共享相同的提示，我们在提示阶段只为提示状态预留一份副本的空间；两个序列的提示逻辑块都被映射到相同的物理块：两个序列的逻辑块 0 和 1 分别被映射到物理块 7 和 1。由于单个物理块可以被映射到多个逻辑块，我们为每个物理块引入一个引用计数（reference count）。在本例中，物理块 7 和 1 的引用计数都为 2。在生成阶段，两个输出采样出不同的输出 token，需要为 KV cache 提供独立的存储。vLLM 对需要被多个序列修改的物理块实现了块粒度的写时复制（copy-on-write）机制，类似于 OS 虚拟内存中的写时复制技术（例如在 fork 一个进程时）。具体而言，在图~\ref{fig:8} 中，当样本 A1 需要写入其最后一个逻辑块（逻辑块 1）时，vLLM 识别出对应物理块（物理块 1）的引用计数大于 1；于是它分配一个新的物理块（物理块 3），指示块引擎从物理块 1 复制信息，并将引用计数减为 1。接下来，当样本 A2 写入物理块 1 时，引用计数已减为 1；因此 A2 直接将其新生成的 KV cache 写入物理块 1。
+
+总之，vLLM 实现了在多个输出样本之间共享用于存储提示 KV cache 的大部分空间，唯一的例外是最后一个逻辑块，它由写时复制机制管理。通过在多个样本之间共享物理块，内存使用可以大幅降低，尤其是对于较长的输入提示。
+
+\textbf{束搜索（Beam search）。} 在诸如机器翻译 [59] 的 LLM 任务中，用户期望 LLM 输出最合适的前 $k$ 个翻译。束搜索 [49] 被广泛用于从 LLM 中解码出最可能的输出序列，因为它缓解了完全遍历样本空间的计算复杂度。该算法依赖于束宽（beam width）参数 $k$，它决定了每一步保留的最优候选数量。在解码过程中，束搜索通过考虑所有可能的 token 来扩展束中的每个候选序列，使用 LLM 计算它们各自的概率，并从 $k \cdot |V|$ 个候选中保留概率最高的前 $k$ 个序列，其中 $|V|$ 是词表大小。
+
+与并行解码不同，束搜索不仅便于共享最初的提示块，还便于在不同候选之间共享其他块，并且共享模式随着解码过程的推进而动态变化，类似于 OS 中由复合 fork 创建的进程树。图~\ref{fig:9} 展示了 vLLM 如何为束宽 $k = 4$ 的束搜索示例管理 KV 块。在以虚线表示的迭代之前，每个候选序列已使用了 4 个完整的逻辑块。所有束候选共享第一个块 0（即提示）。候选 3 从第二个块开始与其他候选分岔。候选 0--2 共享前 3 个块，并在第四个块处分岔。在后续的迭代中，概率最高的前 4 个候选全部源自候选 1 和 2。由于原来的候选 0 和 3 不再位于最优候选之中，它们的逻辑块被释放，对应物理块的引用计数被减少。vLLM 释放所有引用计数归零的物理块（块 2、4、5、8）。然后，vLLM 分配新的物理块（块 9--12）来存储来自新候选的新 KV cache。现在，所有候选共享块 0、1、3；候选 0 和 1 共享块 6，候选 2 和 3 进一步共享块 7。
+
+此前的 LLM 服务系统需要频繁地在束候选之间进行 KV cache 的内存复制。例如，在图~\ref{fig:9} 所示的情形中，在虚线之后，候选 3 需要复制候选 2 的大部分 KV cache 才能继续生成。这种频繁的内存复制开销通过 vLLM 的物理块共享被显著降低。在 vLLM 中，不同束候选的大多数块都可以被共享。写时复制机制仅在新生成的 token 位于一个旧的共享块之内时才被应用，如同并行解码中那样。这只涉及复制一个块的数据。
+
+\begin{figure}[t]\centering
+  \includegraphics[width=0.98\linewidth]{cand_p08_k00.pdf}
+  \caption{机器翻译的共享提示示例。这些示例改编自 [5]。}
+  \label{fig:10}
+\end{figure}
+
+\textbf{共享前缀（Shared prefix）。} 通常，LLM 用户会提供对任务的（较长）描述，包括指令以及示例输入和输出，也称为系统提示（system prompt）[36]。该描述与实际任务输入拼接在一起，构成请求的提示。LLM 基于完整的提示生成输出。图~\ref{fig:10} 展示了一个示例。此外，共享前缀还可以通过提示工程（prompt engineering）进一步调优，以提高下游任务的精度 [26, 27]。
+
+对于这类应用，许多用户提示共享一个前缀，因此 LLM 服务提供商可以预先存储该前缀的 KV cache，以减少在前缀上花费的冗余计算。在 vLLM 中，这可以方便地通过由 LLM 服务提供商为一组预定义的共享前缀预留一组物理块来实现，正如 OS 处理跨进程共享库的方式。带有共享前缀的用户输入提示只需将其逻辑块映射到已缓存的物理块（最后一个块标记为写时复制）。提示阶段的计算只需在用户的任务输入上执行。
+
+\textbf{混合解码方法（Mixed decoding methods）。} 前面讨论的解码方法表现出多样的内存共享和访问模式。尽管如此，vLLM 能够同时处理具有不同解码偏好的请求，而现有系统无法高效地做到这一点。这是因为 vLLM 通过一个将逻辑块转换为物理块的通用映射层，隐藏了不同序列之间复杂的内存共享。LLM 及其执行内核对每个序列只看到一个物理块 ID 列表，无需处理跨序列的共享模式。与现有系统相比，这种方法拓宽了对具有不同采样需求的请求进行批处理的机会，最终提升了系统的整体吞吐量。
+
+\subsection{调度与抢占}
+
+当请求流量超过系统容量时，vLLM 必须对一部分请求进行优先级排序。在 vLLM 中，我们对所有请求采用先到先服务（first-come-first-serve，FCFS）调度策略，以确保公平性并防止饥饿（starvation）。当 vLLM 需要抢占请求时，它确保最早到达的请求最先得到服务，最晚到达的请求最先被抢占。
+
+LLM 服务面临一个独特的挑战：LLM 的输入提示长度可能差异显著，而由此产生的输出长度事先未知，取决于输入提示和模型两者。随着请求及其输出数量的增长，vLLM 可能耗尽 GPU 的物理块来存储新生成的 KV cache。在这种情况下，vLLM 需要回答两个经典问题：（1）应当驱逐（evict）哪些块？（2）如果被驱逐的块再次被需要，该如何恢复它们？通常，驱逐策略使用启发式方法来预测哪个块将在最遥远的未来才被访问，并驱逐该块。由于在我们的场景中，我们知道一个序列的所有块都是一起被访问的，因此我们实现了一种全有或全无（all-or-nothing）的驱逐策略，即要么驱逐一个序列的全部块，要么一个都不驱逐。此外，一个请求内的多个序列（例如一个束搜索请求中的束候选）作为一个序列组（sequence group）被联合调度（gang-scheduled）。由于这些序列之间可能存在内存共享，一个序列组内的序列总是被一起抢占或重新调度。为回答第二个问题——如何恢复被驱逐的块，我们考虑两种技术：
+
+\textbf{换出（Swapping）。} 这是大多数虚拟内存实现所使用的经典技术，它将被驱逐的页复制到磁盘上的交换空间（swap space）。在我们的场景中，我们将被驱逐的块复制到 CPU 内存。如图~\ref{fig:4} 所示，除了 GPU 块分配器，vLLM 还包含一个 CPU 块分配器来管理被换出到 CPU RAM 的物理块。当 vLLM 为新 token 耗尽空闲物理块时，它会选择一组序列进行驱逐，并将它们的 KV cache 转移到 CPU。一旦它抢占了一个序列并驱逐其块，vLLM 就停止接受新请求，直到所有被抢占的序列完成。一旦一个请求完成，其块从内存中释放，被抢占序列的块则被带回以继续处理该序列。注意，在这种设计下，换出到 CPU RAM 的块数量永远不会超过 GPU RAM 中物理块的总数，因此 CPU RAM 上的交换空间受限于为 KV cache 分配的 GPU 内存。
+
+\textbf{重计算（Recomputation）。} 在这种情况下，当被抢占的序列被重新调度时，我们只需重新计算 KV cache。注意，重计算的延迟可以显著低于原始延迟，因为解码时生成的 token 可以与原始用户提示拼接为一个新的提示——它们在所有位置的 KV cache 可以在一次提示阶段迭代中生成。
+
+换出和重计算的性能取决于 CPU RAM 与 GPU 内存之间的带宽以及 GPU 的计算能力。我们在 \S7.3 中考察换出和重计算的速度。
+
+\subsection{分布式执行}
+
+许多 LLM 的参数规模超过了单个 GPU 的容量 [5, 9]。因此，有必要将它们划分到分布式 GPU 上，并以模型并行（model parallel）的方式执行 [28, 63]。这就需要一个能够处理分布式内存的内存管理器。vLLM 通过支持在 Transformer 上广泛使用的 Megatron-LM 风格的张量模型并行（tensor model parallelism）策略，在分布式环境中保持有效 [47]。该策略遵循 SPMD（单程序多数据，Single Program Multiple Data）执行调度，其中线性层被划分以执行逐块的矩阵乘法，并且 GPU 通过 all-reduce 操作不断同步中间结果。具体而言，注意力算子在注意力头维度上被切分，每个 SPMD 进程负责多头注意力（multi-head attention）中的一部分注意力头。
+
+我们观察到，即使采用模型并行执行，每个模型分片（shard）仍处理相同的一组输入 token，因此需要相同位置的 KV cache。所以，vLLM 在集中式调度器中设置了一个单一的 KV cache 管理器，如图~\ref{fig:4} 所示。不同的 GPU 工作进程共享该管理器，以及逻辑块到物理块的映射。这一通用映射允许 GPU 工作进程使用调度器为每个输入请求提供的物理块来执行模型。尽管每个 GPU 工作进程拥有相同的物理块 ID，但一个工作进程只为其对应的注意力头存储一部分 KV cache。
+
+在每一步中，调度器首先为批次中的每个请求准备包含输入 token ID 的消息，以及每个请求的块表。接着，调度器将这一控制消息广播给 GPU 工作进程。然后，GPU 工作进程开始用输入 token ID 执行模型。在注意力层中，GPU 工作进程根据控制消息中的块表读取 KV cache。在执行过程中，GPU 工作进程使用 all-reduce 通信原语同步中间结果，而无需调度器的协调，如同 [47] 中那样。最后，GPU 工作进程将本次迭代采样得到的 token 发送回调度器。总之，GPU 工作进程无需在内存管理上进行同步，因为它们只需在每个解码迭代开始时随步骤输入一起接收所有内存管理信息。
+
+\section{实现}
+
+vLLM 是一个端到端的服务系统，配有一个 FastAPI [15] 前端和一个基于 GPU 的推理引擎。前端扩展了 OpenAI API [34] 接口，允许用户为每个请求自定义采样参数，例如最大序列长度和束宽 $k$。vLLM 引擎用 8.5K 行 Python 代码和 2K 行 C++/CUDA 代码编写。我们用 Python 开发与控制相关的组件，包括调度器和块管理器，同时为诸如 PagedAttention 之类的关键操作开发自定义 CUDA 内核。对于模型执行器，我们使用 PyTorch [39] 和 Transformers [58] 实现了诸如 GPT [5]、OPT [62] 和 LLaMA [52] 之类的主流 LLM。我们使用 NCCL [32] 在分布式 GPU 工作进程之间进行张量通信。
+
+\begin{table}[t]\centering
+\caption{模型规模与服务器配置。}
+\label{tab:1}
+\begin{tabular}{lccc}
+\toprule
+模型规模 & 13B & 66B & 175B \\
+\midrule
+GPU & A100 & 4$\times$A100 & 8$\times$A100-80GB \\
+GPU 总内存 & 40 GB & 160 GB & 640 GB \\
+参数大小 & 26 GB & 132 GB & 346 GB \\
+KV cache 可用内存 & 12 GB & 21 GB & 264 GB \\
+最大 KV cache 槽数 & 15.7K & 9.7K & 60.1K \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]\centering
+  \includegraphics[width=0.98\linewidth]{cand_p09_k00.pdf}
+  \caption{(a) ShareGPT 和 (b) Alpaca 数据集的输入与输出长度分布。}
+  \label{fig:11}
+\end{figure}
+
+\subsection{内核级优化}
+
+由于 PagedAttention 引入了现有系统无法高效支持的内存访问模式，我们开发了若干 GPU 内核来对其进行优化。（1）\textbf{融合的 reshape 与块写入（Fused reshape and block write）}。在每个 Transformer 层中，新的 KV cache 被切分为块，重塑（reshape）为针对块读取优化的内存布局，然后保存到块表指定的位置。为最小化内核启动开销，我们将它们融合为单个内核。（2）\textbf{融合块读取与注意力（Fusing block read and attention）}。我们改造了 FasterTransformer [31] 中的注意力内核，使其根据块表读取 KV cache 并即时执行注意力操作。为确保合并的（coalesced）内存访问，我们分配一个 GPU warp 来读取每个块。此外，我们增加了对一个请求批次内可变序列长度的支持。（3）\textbf{融合块复制（Fused block copy）}。由写时复制机制发起的块复制操作可能作用于不连续的块。如果我们使用 \texttt{cudaMemcpyAsync} API，这可能导致大量的小数据移动调用。为减轻这一开销，我们实现了一个内核，将针对不同块的复制操作批处理到单次内核启动中。
+
+\subsection{支持各种解码算法}
+
+vLLM 使用三个关键方法实现各种解码算法：\texttt{fork}、\texttt{append} 和 \texttt{free}。\texttt{fork} 方法从一个现有序列创建一个新序列。\texttt{append} 方法向序列追加一个新 token。最后，\texttt{free} 方法删除该序列。例如，在并行采样中，vLLM 使用 \texttt{fork} 方法从单个输入序列创建多个输出序列。然后，它在每次迭代中用 \texttt{append} 向这些序列添加新 token，并用 \texttt{free} 删除满足停止条件的序列。vLLM 在束搜索和前缀共享中也应用了相同的策略。我们相信，未来的解码算法也可以通过组合这些方法来支持。
+
+\section{评估}
+
+在本节中，我们评估 vLLM 在各种工作负载下的性能。
+
+\begin{figure*}[t]\centering
+  \includegraphics[width=0.92\linewidth]{cand_p10_k00.pdf}
+  \caption{在 ShareGPT 和 Alpaca 数据集上使用 OPT 模型进行的单序列生成。}
+  \label{fig:12}
+\end{figure*}
+
+\subsection{实验设置}
+
+\textbf{模型与服务器配置。} 我们在评估中使用参数量为 13B、66B 和 175B 的 OPT [62] 模型以及 13B 的 LLaMA [52]。如某个 LLM 排行榜 [38] 所示，13B 和 66B 是 LLM 的热门规模，而 175B 是著名的 GPT-3 [5] 模型的规模。在我们所有的实验中，我们使用 Google Cloud Platform 上配备 NVIDIA A100 GPU 的 A2 实例。详细的模型规模和服务器配置如表~\ref{tab:1} 所示。
+
+\textbf{工作负载。} 我们基于 ShareGPT [51] 和 Alpaca [50] 数据集合成工作负载，这些数据集包含真实 LLM 服务的输入和输出文本。ShareGPT 数据集是用户分享的与 ChatGPT [35] 对话的集合。Alpaca 数据集是由 GPT-3.5 通过 self-instruct [57] 生成的指令数据集。我们对数据集进行分词，并使用它们的输入和输出长度来合成客户端请求。如图~\ref{fig:11} 所示，ShareGPT 数据集的输入提示平均比 Alpaca 数据集长 8.4 倍，输出平均长 5.8 倍，且方差更高。由于这些数据集不包含时间戳，我们使用不同请求速率（request rate）下的泊松分布（Poisson distribution）生成请求到达时间。
+
+\begin{figure}[t]\centering
+  \includegraphics[width=0.95\linewidth]{cand_p10_k01.pdf}
+  \caption{在为 ShareGPT（2 reqs/s）和 Alpaca（30 reqs/s）轨迹服务 OPT-13B 时的平均批处理请求数。}
+  \label{fig:13}
+\end{figure}
+
+\textbf{基线 1：FasterTransformer。} FasterTransformer [31] 是一个针对延迟高度优化的分布式推理引擎。由于 FasterTransformer 没有自己的调度器，我们实现了一个自定义调度器，其动态批处理机制类似于诸如 Triton [30] 之类的现有服务系统。具体而言，我们根据 GPU 内存容量，为每个实验设置一个尽可能大的最大批大小 $B$。调度器最多取 $B$ 个最早到达的请求，并将该批次发送给 FasterTransformer 处理。
+
+\textbf{基线 2：Orca。} Orca [60] 是一个针对吞吐量优化的当前最先进的 LLM 服务系统。由于 Orca 不公开可用，我们实现了自己版本的 Orca。我们假设 Orca 使用伙伴分配（buddy allocation）算法来确定存储 KV cache 的内存地址。我们基于 Orca 为请求输出过度预留空间的多少，实现了三个版本的 Orca：
+
+\begin{itemize}[leftmargin=2em]
+\item \textbf{Orca (Oracle)。} 我们假设系统知道请求将实际生成的输出长度。这展示了 Orca 的性能上界，在实践中无法达到。
+\item \textbf{Orca (Pow2)。} 我们假设系统为输出过度预留至多 2 倍的空间。例如，如果真实输出长度为 25，它会为输出预留 32 个位置。
+\item \textbf{Orca (Max)。} 我们假设系统总是预留到模型最大序列长度的空间，即 2048 个 token。
+\end{itemize}
+
+\textbf{关键指标。} 我们关注服务吞吐量。具体而言，我们使用不同请求速率的工作负载，测量系统的归一化延迟（normalized latency），即每个请求端到端延迟除以其输出长度后的均值，如同 Orca [60] 中那样。一个高吞吐量的服务系统应在高请求速率下保持较低的归一化延迟。对于大多数实验，我们用 1 小时的轨迹评估系统。作为例外，由于成本限制，我们对 OPT-175B 模型使用 15 分钟的轨迹。
+
+\begin{figure*}[t]\centering
+  \includegraphics[width=0.92\linewidth]{cand_p11_k00.pdf}
+  \caption{在 Alpaca 数据集上使用 OPT-13B 进行的并行生成和束搜索。}
+  \label{fig:14}
+\end{figure*}
+
+\subsection{基本采样}
+
+我们在三个模型和两个数据集上评估 vLLM 在基本采样（每个请求一个样本）下的性能。图~\ref{fig:12} 的第一行展示了在 ShareGPT 数据集上的结果。曲线表明，随着请求速率的增加，延迟最初以渐进的速度上升，但随后突然爆发。这可归因于：当请求速率超过服务系统的容量时，队列长度持续无限增长，请求的延迟也是如此。
+
+在 ShareGPT 数据集上，vLLM 能够承受比 Orca (Oracle) 高 1.7$\times$--2.7$\times$ 的请求速率，比 Orca (Max) 高 2.7$\times$--8$\times$ 的请求速率，同时保持相近的延迟。这是因为 vLLM 的 PagedAttention 能够高效管理内存使用，从而比 Orca 批处理更多请求。例如，如图~\ref{fig:13}a 所示，对于 OPT-13B，vLLM 同时处理的请求数比 Orca (Oracle) 多 2.2$\times$，比 Orca (Max) 多 4.3$\times$。与 FasterTransformer 相比，vLLM 能够承受高达 22$\times$ 的请求速率，因为 FasterTransformer 没有利用细粒度调度机制，并且像 Orca (Max) 一样低效地管理内存。
+
+图~\ref{fig:12} 的第二行和图~\ref{fig:13}b 展示了在 Alpaca 数据集上的结果，其趋势与 ShareGPT 数据集相似。一个例外是图~\ref{fig:12} (f)，其中 vLLM 相对于 Orca (Oracle) 和 Orca (Pow2) 的优势不太明显。这是因为 OPT-175B 的模型和服务器配置（表~\ref{tab:1}）允许有大量 GPU 内存空间来存储 KV cache，而 Alpaca 数据集的序列较短。在这种设置下，尽管 Orca (Oracle) 和 Orca (Pow2) 的内存管理存在低效，它们仍能批处理大量请求。结果，系统的性能变为受计算约束而非受内存约束。
+
+\begin{figure}[t]\centering
+  \includegraphics[width=0.98\linewidth]{fig15.pdf}
+  \caption{在为 Alpaca 轨迹服务 OPT-13B 时，通过共享 KV 块带来的平均内存节省量。}
+  \label{fig:15}
+\end{figure}
+
+\subsection{并行采样与束搜索}
+
+我们用两种流行的采样方法——并行采样和束搜索——评估 PagedAttention 中内存共享的有效性。在并行采样中，一个请求中的所有并行序列都可以共享提示的 KV cache。如图~\ref{fig:14} 第一行所示，随着要采样的序列数量增多，vLLM 相对于 Orca 基线带来更大的改进。类似地，图~\ref{fig:14} 第二行展示了不同束宽下束搜索的结果。由于束搜索允许更多的共享，vLLM 展现出更大的性能优势。在 OPT-13B 和 Alpaca 数据集上，vLLM 相对于 Orca (Oracle) 的改进从基本采样中的 1.3$\times$ 提升到束宽为 6 的束搜索中的 2.3$\times$。
+
+图~\ref{fig:15} 绘制了内存节省量，其计算方式为通过共享所节省的块数除以无共享时的总块数。我们在并行采样上展示了 6.1\%--9.8\% 的内存节省，在束搜索上展示了 37.6\%--55.2\% 的内存节省。在使用 ShareGPT 数据集的相同实验中，我们在并行采样上看到了 16.2\%--30.5\% 的内存节省，在束搜索上看到了 44.3\%--66.3\% 的内存节省。
+
+\begin{figure}[t]\centering
+  \includegraphics[width=0.98\linewidth]{fig16.pdf}
+  \caption{输入提示共享一个公共前缀的翻译工作负载。前缀包括 (a) 1 个含 80 个 token 的示例，或 (b) 5 个含 341 个 token 的示例。}
+  \label{fig:16}
+\end{figure}
+
+\subsection{共享前缀}
+
+我们探究 vLLM 在不同输入提示之间共享一个前缀的情形中的有效性，如图~\ref{fig:10} 所示。对于模型，我们使用支持多语言的 LLaMA-13B [52]。对于工作负载，我们使用 WMT16 [4] 英语到德语的翻译数据集，并合成两个包含一条指令和若干翻译示例的前缀。第一个前缀包含单个示例（即 one-shot），而另一个前缀包含 5 个示例（即 few-shot）。如图~\ref{fig:16} (a) 所示，当共享 one-shot 前缀时，vLLM 实现了比 Orca (Oracle) 高 1.67$\times$ 的吞吐量。此外，当共享更多示例时（图~\ref{fig:16} (b)），vLLM 实现了比 Orca (Oracle) 高 3.58$\times$ 的吞吐量。
+
+\begin{figure}[t]\centering
+  \includegraphics[width=0.6\linewidth]{cand_p12_k04.pdf}
+  \caption{在聊天机器人工作负载上的性能。}
+  \label{fig:17}
+\end{figure}
+
+\subsection{聊天机器人}
+
+聊天机器人 [8, 19, 35] 是 LLM 最重要的应用之一。为实现聊天机器人，我们让模型通过将聊天历史和最近的用户查询拼接成一个提示来生成回复。我们使用 ShareGPT 数据集合成聊天历史和用户查询。由于 OPT-13B 模型的上下文长度有限，我们将提示截断为最后 1024 个 token，并让模型最多生成 1024 个 token。我们不在不同对话轮次之间存储 KV cache，因为这样做会占用对话轮次之间本可用于其他请求的空间。
+
+图~\ref{fig:17} 显示，vLLM 能够承受比三个 Orca 基线高 2$\times$ 的请求速率。由于 ShareGPT 数据集包含许多长对话，大多数请求的输入提示有 1024 个 token。由于伙伴分配算法，无论 Orca 基线如何预测输出长度，它们都为请求输出预留 1024 个 token 的空间。出于这个原因，三个 Orca 基线的表现相似。相比之下，vLLM 能够有效处理长提示，因为 PagedAttention 解决了内存碎片化和预留的问题。
+
+\section{消融研究}
+
+在本节中，我们研究 vLLM 的各个方面，并通过消融实验评估我们所做的设计选择。
+
+\begin{figure}[t]\centering
+  \includegraphics[width=0.98\linewidth]{fig18.pdf}
+  \caption{消融实验。(a) 注意力内核的延迟。(b) 不同块大小下的端到端延迟。}
+  \label{fig:18}
+\end{figure}
+
+\subsection{内核微基准测试}
+
+PagedAttention 中的动态块映射影响着涉及已存储 KV cache 的 GPU 操作的性能，即块的读/写和注意力。与现有系统相比，我们的 GPU 内核（\S5）涉及访问块表、执行额外分支以及处理可变序列长度的额外开销。如图~\ref{fig:18}a 所示，与高度优化的 FasterTransformer 实现相比，这导致注意力内核延迟高出 20--26\%。我们认为这一开销很小，因为它只影响注意力算子，而不影响模型中的其他算子，例如 Linear。尽管存在这一开销，PagedAttention 仍使 vLLM 在端到端性能上显著优于 FasterTransformer（\S6）。
+
+\subsection{块大小的影响}
+
+块大小的选择会对 vLLM 的性能产生重大影响。如果块大小太小，vLLM 可能无法充分利用 GPU 在读取和处理 KV cache 时的并行性。如果块大小太大，内部碎片化会增加，共享的概率会降低。
+
+\begin{figure}[t]\centering
+  \includegraphics[width=0.98\linewidth]{fig19.pdf}
+  \caption{(a) 不同块大小下重计算和换出的开销。(b) 以相同请求速率使用 ShareGPT 轨迹服务 OPT-13B 时的性能。}
+  \label{fig:19}
+\end{figure}
+
+在图~\ref{fig:18}b 中，我们使用 ShareGPT 和 Alpaca 轨迹，在固定请求速率下采用基本采样，评估 vLLM 在不同块大小下的性能。在 ShareGPT 轨迹中，从 16 到 128 的块大小带来了最佳性能。在 Alpaca 轨迹中，虽然块大小 16 和 32 表现良好，但更大的块大小会显著降低性能，因为序列变得比块大小更短。在实践中，我们发现块大小 16 既足够大以高效利用 GPU，又足够小以在大多数工作负载中避免显著的内部碎片化。因此，vLLM 将其默认块大小设置为 16。
+
+\subsection{重计算与换出的比较}
+
+vLLM 支持重计算和换出作为其恢复机制。为理解这两种方法之间的权衡，我们评估了它们的端到端性能并对其开销进行了微基准测试，结果如图~\ref{fig:19} 所示。我们的结果揭示，换出在小块大小下会产生过高的开销。这是因为小块大小通常导致 CPU 与 GPU 之间大量的小数据传输，从而限制了有效的 PCIe 带宽。相比之下，重计算的开销在不同块大小下保持恒定，因为重计算不使用 KV 块。因此，当块大小较小时重计算更高效，而当块大小较大时换出更高效，不过重计算的开销从未高于换出延迟的 20\%。对于从 16 到 64 的中等块大小，两种方法表现出相当的端到端性能。
+
+\section{讨论}
+
+\textbf{将虚拟内存与分页技术应用于其他 GPU 工作负载。} 虚拟内存与分页的思想对于管理 LLM 服务中的 KV cache 是有效的，因为该工作负载需要动态内存分配（因为输出长度事先未知），并且其性能受 GPU 内存容量约束。然而，这一点对每种 GPU 工作负载并不普遍成立。例如，在 DNN 训练中，张量形状通常是静态的，因此内存分配可以提前优化。再如，在服务非 LLM 的 DNN 时，内存效率的提升可能不会带来任何性能改进，因为性能主要受计算约束。在此类场景中，引入 vLLM 的技术反而可能因内存间接寻址和非连续块内存的额外开销而降低性能。然而，我们乐于看到 vLLM 的技术被应用于具有与 LLM 服务相似特性的其他工作负载。
+
+\textbf{在应用虚拟内存与分页时针对 LLM 的优化。} vLLM 通过利用应用特定的语义，重新诠释并增强了虚拟内存与分页的思想。一个例子是 vLLM 的全有或全无换出策略，它利用了处理一个请求需要将其所有对应的 token 状态都存储在 GPU 内存中这一事实。另一个例子是用于恢复被驱逐块的重计算方法，这在 OS 中是不可行的。此外，vLLM 通过将用于内存访问操作的 GPU 内核与用于诸如注意力之类其他操作的内核融合，缓解了分页中内存间接寻址的开销。
+
+\section{相关工作}
+
+\textbf{通用模型服务系统。} 近年来，模型服务一直是一个活跃的研究领域，人们提出了众多系统来应对深度学习模型部署的各个方面。Clipper [11]、TensorFlow Serving [33]、Nexus [45]、InferLine [10] 和 Clockwork [20] 是一些较早的通用模型服务系统。它们研究服务单个或多个模型的批处理、缓存、放置和调度。最近，DVABatch [12] 引入了多入口多出口（multi-entry multi-exit）批处理。REEF [21] 和 Shepherd [61] 提出了用于服务的抢占。AlpaServe [28] 利用模型并行进行统计复用（statistical multiplexing）。然而，这些通用系统未能考虑 LLM 推理的自回归特性和 token 状态，从而错失了优化的机会。
+
+\textbf{面向 transformer 的专用服务系统。} 由于 transformer 架构的重要性，人们为其开发了众多专用服务系统。这些系统利用 GPU 内核优化 [1, 29, 31, 56]、高级批处理机制 [14, 60]、模型并行 [1, 41, 60] 和参数共享 [64] 来实现高效服务。其中，Orca [60] 与我们的方法最为相关。
+
+\textbf{与 Orca 的比较。} Orca [60] 中的迭代级调度与 vLLM 中的 PagedAttention 是互补的技术：尽管两个系统都旨在提高 GPU 利用率从而提升 LLM 服务的吞吐量，但 Orca 通过调度和交错（interleave）请求，使更多请求能够并行处理来实现这一点，而 vLLM 通过提高内存利用率，使更多请求的工作集（working set）能够装入内存来实现这一点。通过减少内存碎片化并实现共享，vLLM 在一个批次中并行运行更多请求，与 Orca 相比实现了 2--4$\times$ 的加速。事实上，像 Orca 那样对请求进行细粒度调度和交错使得内存管理更具挑战性，这使得 vLLM 中提出的技术更加关键。
+
+\textbf{内存优化。} 加速器的计算能力与内存容量之间日益扩大的差距，使得内存成为训练和推理两者的瓶颈。换出 [23, 42, 55]、重计算 [7, 24] 及其组合 [40] 已被用于降低训练的峰值内存。值得注意的是，FlexGen [46] 研究了如何在有限 GPU 内存下为 LLM 推理换出权重和 token 状态，但它并不针对在线服务场景。OLLA [48] 优化张量的生命周期和位置以减少碎片化，但它不进行细粒度的块级管理或在线服务。FlashAttention [13] 应用分块（tiling）和内核优化来降低注意力计算的峰值内存并减少 I/O 成本。本文在在线服务的背景下引入了块级内存管理这一新思想。
+
+\section{结论}
+
+本文提出了 PagedAttention，一种允许将注意力的键和值存储在非连续分页内存中的新注意力算法，并提出了 vLLM——一个由 PagedAttention 实现高效内存管理的高吞吐量 LLM 服务系统。受操作系统启发，我们展示了诸如虚拟内存和写时复制之类的成熟技术如何能够被改造，以高效管理 KV cache 并处理 LLM 服务中的各种解码算法。我们的实验表明，vLLM 相对于当前最先进的系统实现了 2--4$\times$ 的吞吐量提升。
+
+\section*{致谢}
+
+我们要感谢 Xiaoxuan Liu、Zhifeng Chen、Yanping Huang、匿名的 SOSP 审稿人，以及我们的领航人（shepherd）Lidong Zhou，感谢他们富有洞见的反馈。本研究部分得到了来自 Andreessen Horowitz、Anyscale、Astronomer、Google、IBM、Intel、Lacework、Microsoft、Mohamed Bin Zayed University of Artificial Intelligence、Samsung SDS、Uber 和 VMware 的捐赠的支持。
+
+\section*{参考文献}
+\begin{enumerate}[leftmargin=2.2em,labelsep=0.6em,itemsep=0.25em]
+\item Reza Yazdani Aminabadi, Samyam Rajbhandari, Minjia Zhang, Ammar Ahmad Awan, Cheng Li, Du Li, Elton Zheng, Jeff Rasley, Shaden Smith, Olatunji Ruwase, et al. 2022. DeepSpeed Inference: Enabling Efficient Inference of Transformer Models at Unprecedented Scale. arXiv preprint arXiv:2207.00032 (2022).
+\item Jimmy Lei Ba, Jamie Ryan Kiros, and Geoffrey E Hinton. 2016. Layer normalization. arXiv preprint arXiv:1607.06450 (2016).
+\item Yoshua Bengio, Réjean Ducharme, and Pascal Vincent. 2000. A neural probabilistic language model. Advances in neural information processing systems 13 (2000).
+\item Ond rej Bojar, Rajen Chatterjee, Christian Federmann, Yvette Graham, Barry Haddow, Matthias Huck, Antonio Jimeno Yepes, Philipp Koehn, Varvara Logacheva, Christof Monz, Matteo Negri, Aurelie Neveol, Mariana Neves, Martin Popel, Matt Post, Raphael Rubino, Carolina Scarton, Lucia Specia, Marco Turchi, Karin Verspoor, and Marcos Zampieri. 2016. Findings of the 2016 Conference on Machine Translation. In Proceedings of the First Conference on Machine Translation. Association for Computational Linguistics, Berlin, Germany, 131--198. \url{http://www.aclweb.org/anthology/W/W16/W16-2301}
+\item Tom Brown, Benjamin Mann, Nick Ryder, Melanie Subbiah, Jared D Kaplan, Prafulla Dhariwal, Arvind Neelakantan, Pranav Shyam, Girish Sastry, Amanda Askell, et al. 2020. Language models are few-shot learners. Advances in neural information processing systems 33 (2020), 1877--1901.
+\item Mark Chen, Jerry Tworek, Heewoo Jun, Qiming Yuan, Henrique Ponde de Oliveira Pinto, Jared Kaplan, Harri Edwards, Yuri Burda, Nicholas Joseph, Greg Brockman, et al. 2021. Evaluating large language models trained on code. arXiv preprint arXiv:2107.03374 (2021).
+\item Tianqi Chen, Bing Xu, Chiyuan Zhang, and Carlos Guestrin. 2016. Training deep nets with sublinear memory cost. arXiv preprint arXiv:1604.06174 (2016).
+\item Wei-Lin Chiang, Zhuohan Li, Zi Lin, Ying Sheng, Zhanghao Wu, Hao Zhang, Lianmin Zheng, Siyuan Zhuang, Yonghao Zhuang, Joseph E. Gonzalez, Ion Stoica, and Eric P. Xing. 2023. Vicuna: An Open-Source Chatbot Impressing GPT-4 with 90\%* ChatGPT Quality. \url{https://lmsys.org/blog/2023-03-30-vicuna/}
+\item Aakanksha Chowdhery, Sharan Narang, Jacob Devlin, Maarten Bosma, Gaurav Mishra, Adam Roberts, Paul Barham, Hyung Won Chung, Charles Sutton, Sebastian Gehrmann, et al. 2022. Palm: Scaling language modeling with pathways. arXiv preprint arXiv:2204.02311 (2022).
+\item Daniel Crankshaw, Gur-Eyal Sela, Xiangxi Mo, Corey Zumar, Ion Stoica, Joseph Gonzalez, and Alexey Tumanov. 2020. InferLine: latency-aware provisioning and scaling for prediction serving pipelines. In Proceedings of the 11th ACM Symposium on Cloud Computing. 477--491.
+\item Daniel Crankshaw, Xin Wang, Guilio Zhou, Michael J Franklin, Joseph E Gonzalez, and Ion Stoica. 2017. Clipper: A Low-Latency Online Prediction Serving System. In 14th USENIX Symposium on Networked Systems Design and Implementation (NSDI 17). 613--627.
+\item Weihao Cui, Han Zhao, Quan Chen, Hao Wei, Zirui Li, Deze Zeng, Chao Li, and Minyi Guo. 2022. DVABatch: Diversity-aware Multi-Entry Multi-Exit Batching for Efficient Processing of DNN Services on GPUs. In 2022 USENIX Annual Technical Conference (USENIX ATC 22). 183--198.
+\item Tri Dao, Dan Fu, Stefano Ermon, Atri Rudra, and Christopher Ré. 2022. Flashattention: Fast and memory-efficient exact attention with io-awareness. Advances in Neural Information Processing Systems 35 (2022), 16344--16359.
+\item Jiarui Fang, Yang Yu, Chengduo Zhao, and Jie Zhou. 2021. TurboTransformers: an efficient GPU serving system for transformer models. In Proceedings of the 26th ACM SIGPLAN Symposium on Principles and Practice of Parallel Programming. 389--402.
+\item FastAPI. 2023. FastAPI. \url{https://github.com/tiangolo/fastapi}.
+\item Pin Gao, Lingfan Yu, Yongwei Wu, and Jinyang Li. 2018. Low latency rnn inference with cellular batching. In Proceedings of the Thirteenth EuroSys Conference. 1--15.
+\item Amir Gholami, Zhewei Yao, Sehoon Kim, Michael W Mahoney, and Kurt Keutzer. 2021. Ai and memory wall. RiseLab Medium Post 1 (2021), 6.
+\item Github. 2022. \url{https://github.com/features/copilot}
+\item Google. 2023. \url{https://bard.google.com/}
+\item Arpan Gujarati, Reza Karimi, Safya Alzayat, Wei Hao, Antoine Kaufmann, Ymir Vigfusson, and Jonathan Mace. 2020. Serving \{DNNs\} like Clockwork: Performance Predictability from the Bottom Up. In 14th USENIX Symposium on Operating Systems Design and Implementation (OSDI 20). 443--462.
+\item Mingcong Han, Hanze Zhang, Rong Chen, and Haibo Chen. 2022. Microsecond-scale Preemption for Concurrent \{GPU-accelerated\} \{DNN\} Inferences. In 16th USENIX Symposium on Operating Systems Design and Implementation (OSDI 22). 539--558.
+\item Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun. 2016. Deep residual learning for image recognition. In Proceedings of the IEEE conference on computer vision and pattern recognition. 770--778.
+\item Chien-Chin Huang, Gu Jin, and Jinyang Li. 2020. Swapadvisor: Pushing deep learning beyond the gpu memory limit via smart swapping. In Proceedings of the Twenty-Fifth International Conference on Architectural Support for Programming Languages and Operating Systems. 1341--1355.
+\item Paras Jain, Ajay Jain, Aniruddha Nrusimha, Amir Gholami, Pieter Abbeel, Joseph Gonzalez, Kurt Keutzer, and Ion Stoica. 2020. Checkmate: Breaking the memory wall with optimal tensor rematerialization. Proceedings of Machine Learning and Systems 2 (2020), 497--511.
+\item Tom Kilburn, David BG Edwards, Michael J Lanigan, and Frank H Sumner. 1962. One-level storage system. IRE Transactions on Electronic Computers 2 (1962), 223--235.
+\item Brian Lester, Rami Al-Rfou, and Noah Constant. 2021. The power of scale for parameter-efficient prompt tuning. arXiv preprint arXiv:2104.08691 (2021).
+\item Xiang Lisa Li and Percy Liang. 2021. Prefix-tuning: Optimizing continuous prompts for generation. arXiv preprint arXiv:2101.00190 (2021).
+\item Zhuohan Li, Lianmin Zheng, Yinmin Zhong, Vincent Liu, Ying Sheng, Xin Jin, Yanping Huang, Zhifeng Chen, Hao Zhang, Joseph E Gonzalez, et al. 2023. AlpaServe: Statistical Multiplexing with Model Parallelism for Deep Learning Serving. arXiv preprint arXiv:2302.11665 (2023).
+\item Lingxiao Ma, Zhiqiang Xie, Zhi Yang, Jilong Xue, Youshan Miao, Wei Cui, Wenxiang Hu, Fan Yang, Lintao Zhang, and Lidong Zhou. 2020. Rammer: Enabling holistic deep learning compiler optimizations with rtasks. In Proceedings of the 14th USENIX Conference on Operating Systems Design and Implementation. 881--897.
+\item NVIDIA. [n. d.]. Triton Inference Server. \url{https://developer.nvidia.com/nvidia-triton-inference-server}.
+\item NVIDIA. 2023. FasterTransformer. \url{https://github.com/NVIDIA/FasterTransformer}.
+\item NVIDIA. 2023. NCCL: The NVIDIA Collective Communication Library. \url{https://developer.nvidia.com/nccl}.
+\item Christopher Olston, Noah Fiedel, Kiril Gorovoy, Jeremiah Harmsen, Li Lao, Fangwei Li, Vinu Rajashekhar, Sukriti Ramesh, and Jordan Soyke. 2017. Tensorflow-serving: Flexible, high-performance ml serving. arXiv preprint arXiv:1712.06139 (2017).
+\item OpenAI. 2020. \url{https://openai.com/blog/openai-api}
+\item OpenAI. 2022. \url{https://openai.com/blog/chatgpt}
+\item OpenAI. 2023. \url{https://openai.com/blog/custom-instructions-for-chatgpt}
+\item OpenAI. 2023. GPT-4 Technical Report. arXiv:2303.08774 [cs.CL]
+\item LMSYS ORG. 2023. Chatbot Arena Leaderboard Week 8: Introducing MT-Bench and Vicuna-33B. \url{https://lmsys.org/blog/2023-06-22-leaderboard/}.
+\item Adam Paszke, Sam Gross, Francisco Massa, Adam Lerer, James Bradbury, Gregory Chanan, Trevor Killeen, Zeming Lin, Natalia Gimelshein, Luca Antiga, et al. 2019. Pytorch: An imperative style, high-performance deep learning library. Advances in neural information processing systems 32 (2019).
+\item Shishir G Patil, Paras Jain, Prabal Dutta, Ion Stoica, and Joseph Gonzalez. 2022. POET: Training Neural Networks on Tiny Devices with Integrated Rematerialization and Paging. In International Conference on Machine Learning. PMLR, 17573--17583.
+\item Reiner Pope, Sholto Douglas, Aakanksha Chowdhery, Jacob Devlin, James Bradbury, Anselm Levskaya, Jonathan Heek, Kefan Xiao, Shivani Agrawal, and Jeff Dean. 2022. Efficiently Scaling Transformer Inference. arXiv preprint arXiv:2211.05102 (2022).
+\item Jie Ren, Samyam Rajbhandari, Reza Yazdani Aminabadi, Olatunji Ruwase, Shuangyan Yang, Minjia Zhang, Dong Li, and Yuxiong He. 2021. ZeRO-Offload: Democratizing Billion-Scale Model Training.. In USENIX Annual Technical Conference. 551--564.
+\item Reuters. 2023. \url{https://www.reuters.com/technology/tech-giants-ai-like-bing-bard-poses-billion-dollar-search-problem-2023-02-22/}
+\item Amazon Web Services. 2023. \url{https://aws.amazon.com/bedrock/}
+\item Haichen Shen, Lequn Chen, Yuchen Jin, Liangyu Zhao, Bingyu Kong, Matthai Philipose, Arvind Krishnamurthy, and Ravi Sundaram. 2019. Nexus: A GPU cluster engine for accelerating DNN-based video analysis. In Proceedings of the 27th ACM Symposium on Operating Systems Principles. 322--337.
+\item Ying Sheng, Lianmin Zheng, Binhang Yuan, Zhuohan Li, Max Ryabinin, Daniel Y Fu, Zhiqiang Xie, Beidi Chen, Clark Barrett, Joseph E Gonzalez, et al. 2023. High-throughput Generative Inference of Large Language Models with a Single GPU. arXiv preprint arXiv:2303.06865 (2023).
+\item Mohammad Shoeybi, Mostofa Patwary, Raul Puri, Patrick LeGresley, Jared Casper, and Bryan Catanzaro. 2019. Megatron-lm: Training multi-billion parameter language models using model parallelism. arXiv preprint arXiv:1909.08053 (2019).
+\item Benoit Steiner, Mostafa Elhoushi, Jacob Kahn, and James Hegarty. 2022. OLLA: Optimizing the Lifetime and Location of Arrays to Reduce the Memory Usage of Neural Networks. (2022). \url{https://doi.org/10.48550/arXiv.2210.12924}
+\item Ilya Sutskever, Oriol Vinyals, and Quoc V Le. 2014. Sequence to sequence learning with neural networks. Advances in neural information processing systems 27 (2014).
+\item Rohan Taori, Ishaan Gulrajani, Tianyi Zhang, Yann Dubois, Xuechen Li, Carlos Guestrin, Percy Liang, and Tatsunori B. Hashimoto. 2023. Stanford Alpaca: An Instruction-following LLaMA model. \url{https://github.com/tatsu-lab/stanford_alpaca}.
+\item ShareGPT Team. 2023. \url{https://sharegpt.com/}
+\item Hugo Touvron, Thibaut Lavril, Gautier Izacard, Xavier Martinet, Marie-Anne Lachaux, Timothée Lacroix, Baptiste Rozière, Naman Goyal, Eric Hambro, Faisal Azhar, et al. 2023. Llama: Open and efficient foundation language models. arXiv preprint arXiv:2302.13971 (2023).
+\item Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N Gomez, Łukasz Kaiser, and Illia Polosukhin. 2017. Attention is all you need. Advances in neural information processing systems 30 (2017).
+\item Jing Wang, Youyou Lu, Qing Wang, Minhui Xie, Keji Huang, and Jiwu Shu. 2022. Pacman: An Efficient Compaction Approach for \{Log-Structured\} \{Key-Value\} Store on Persistent Memory. In 2022 USENIX Annual Technical Conference (USENIX ATC 22). 773--788.
+\item Linnan Wang, Jinmian Ye, Yiyang Zhao, Wei Wu, Ang Li, Shuaiwen Leon Song, Zenglin Xu, and Tim Kraska. 2018. Superneurons: Dynamic GPU memory management for training deep neural networks. In Proceedings of the 23rd ACM SIGPLAN symposium on principles and practice of parallel programming. 41--53.
+\item Xiaohui Wang, Ying Xiong, Yang Wei, Mingxuan Wang, and Lei Li. 2021. LightSeq: A High Performance Inference Library for Transformers. In Proceedings of the 2021 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies: Industry Papers. 113--120.
+\item Yizhong Wang, Yeganeh Kordi, Swaroop Mishra, Alisa Liu, Noah A Smith, Daniel Khashabi, and Hannaneh Hajishirzi. 2022. Self-Instruct: Aligning Language Model with Self Generated Instructions. arXiv preprint arXiv:2212.10560 (2022).
+\item Thomas Wolf, Lysandre Debut, Victor Sanh, Julien Chaumond, Clement Delangue, Anthony Moi, Pierric Cistac, Tim Rault, Rémi Louf, Morgan Funtowicz, et al. 2020. Transformers: State-of-the-art natural language processing. In Proceedings of the 2020 conference on empirical methods in natural language processing: system demonstrations. 38--45.
+\item Yonghui Wu, Mike Schuster, Zhifeng Chen, Quoc V Le, Mohammad Norouzi, Wolfgang Macherey, Maxim Krikun, Yuan Cao, Qin Gao, Klaus Macherey, et al. 2016. Google's neural machine translation system: Bridging the gap between human and machine translation. arXiv preprint arXiv:1609.08144 (2016).
+\item Gyeong-In Yu, Joo Seong Jeong, Geon-Woo Kim, Soojeong Kim, and Byung-Gon Chun. 2022. Orca: A Distributed Serving System for \{Transformer-Based\} Generative Models. In 16th USENIX Symposium on Operating Systems Design and Implementation (OSDI 22). 521--538.
+\item Hong Zhang, Yupeng Tang, Anurag Khandelwal, and Ion Stoica. 2023. SHEPHERD: Serving DNNs in the Wild. In 20th USENIX Symposium on Networked Systems Design and Implementation (NSDI 23). USENIX Association, Boston, MA, 787--808. \url{https://www.usenix.org/conference/nsdi23/presentation/zhang-hong}
+\item Susan Zhang, Stephen Roller, Naman Goyal, Mikel Artetxe, Moya Chen, Shuohui Chen, Christopher Dewan, Mona Diab, Xian Li, Xi Victoria Lin, et al. 2022. Opt: Open pre-trained transformer language models. arXiv preprint arXiv:2205.01068 (2022).
+\item Lianmin Zheng, Zhuohan Li, Hao Zhang, Yonghao Zhuang, Zhifeng Chen, Yanping Huang, Yida Wang, Yuanzhong Xu, Danyang Zhuo, Eric P Xing, et al. 2022. Alpa: Automating Inter-and Intra-Operator Parallelism for Distributed Deep Learning. In 16th USENIX Symposium on Operating Systems Design and Implementation (OSDI 22). 559--578.
+\item Zhe Zhou, Xuechao Wei, Jiejing Zhang, and Guangyu Sun. 2022. PetS: A Unified Framework for Parameter-Efficient Transformers Serving. In 2022 USENIX Annual Technical Conference (USENIX ATC 22). 489--504.
+\end{enumerate}
+
+\end{document}
