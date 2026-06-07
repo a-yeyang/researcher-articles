@@ -36,3 +36,17 @@ build.log
 /RAGEN.pdf
 # 整页论文渲染图（等于把整篇论文以图片复刻，不纳入仓库）
 assets/*/_pages/
+
+# === 图×大模型后训练 导读项目：版权与体积排除 ===
+# 原始论文 PDF（受版权保护，仅本地使用，不纳入仓库）
+/G-Retriever.pdf
+/LLaGA.pdf
+/instructgraph.pdf
+/higpt.pdf
+/graphwiz.pdf
+/unigraph.pdf
+/g1.pdf
+/ssqr.pdf
+/whendollm.pdf
+/kgagent_guide.pdf
+/KG-Agent.pdf
