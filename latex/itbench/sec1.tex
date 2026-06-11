@@ -1,0 +1,69 @@
+\begin{abstract}
+要实现“用 AI 智能体（agent）自动完成关键 IT 任务”这一愿景，离不开对所提出方案有效性的度量与理解能力。我们提出 ITBench，一个用于对 AI 智能体进行评测（benchmark）、使其能够应对真实世界 IT 自动化任务的框架，并为此提供一套系统化的方法论。我们的首个发布版本聚焦于三个关键领域：站点可靠性工程（SRE，Site Reliability Engineering）、合规与安全运营（CISO，Compliance and Security Operations）以及财务运营（FinOps，Financial Operations）。该框架的设计使 AI 研究者能够借助一键式（push-button）工作流和可解释的指标，理解 AI 智能体在 IT 自动化中所面临的挑战与机遇。ITBench 包含一组初始的 94 个真实世界场景（scenario），并可通过社区贡献轻松扩展。我们的实验结果表明：由当前最先进（state-of-the-art）模型驱动的智能体仅能解决 13.8\% 的 SRE 场景、25.2\% 的 CISO 场景以及 0\% 的 FinOps 场景。我们期望 ITBench 能成为推动 AI 驱动的 IT 自动化迈向正确、安全、快速的关键使能力量。
+\end{abstract}
+
+\section{引言}
+
+现代 IT 系统正在驱动我们经济的方方面面。随着云计算和敏捷开发实践（agile development practices）的普及，这些系统的复杂度已显著上升（Harvard Business Review Research Report, 2022; Fuller, 2024）。对这些系统进行有效管理正变得极具挑战性：企业在努力跟上这种日益增长的复杂度。从首席信息官（CIO）到站点可靠性工程师，再到安全与合规人员以及一般 IT 工程师，各类 IT 角色（persona）都在为确保 IT 系统的韧性、可靠性、安全性以及成本高效运营而疲于应对。
+
+近期的 CrowdStrike 大规模宕机事件凸显了这些挑战：它令我们社会中最关键的系统纷纷瘫痪，从医院服务到航空旅行无一幸免，估计给 500 家美国财富（Fortune 500）公司造成了高达 54 亿美元的损失（Kerner, 2024）。该事件再次说明，智能化的 IT 事件处置、合规与风险管理能力至关重要——这一议题在欧洲的《数字运营韧性法案》（DORA，Digital Operational Resiliency Act）中亦有论及（Parliament and the Council of the European Union, 2024）。
+
+AI 智能体的日益流行，以及人们对其处理复杂任务能力的预期，已经推高了对“用 AI 智能体管理 IT 系统”的需求（John, 2024; Miguel Carreon, 2024; Pujar et al., 2023）。鉴于 IT 任务的复杂性，这一研究方向面临的一大障碍在于：如何建立系统化的方法，以在 AI 智能体投入生产部署之前评估其有效性（Bogin et al., 2024; Kapoor et al., 2024）。因此，亟需开发一种基于真实 IT 任务及其对应环境来评测 AI 智能体的方法。
+
+本文正是针对这一关键需求，提出了 ITBench——首个兼具全面性与前瞻性、用于对真实生活中 IT 自动化任务进行评测的框架。ITBench 的目标是度量 AI 智能体在各类复杂且真实的 IT 任务上的表现，覆盖多种角色，包括：聚焦可用性与韧性的\emph{站点可靠性工程（SRE）}、确保 IT 实现合规与安全的\emph{合规与安全运营（CISO）}、以及强制实现成本效率并优化投资回报的\emph{财务运营（FinOps）}等（如图~\ref{fig:itbench-personas} 所示）。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{cand_p02_k00.pdf}
+\caption{图 1：示例角色与 IT 任务。铃铛图标表示事件触发型（event-triggered）任务。信息图标表示其他任务，如数据分析、预防性维护任务或持续优化。}
+\label{fig:itbench-personas}
+\end{figure}
+
+ITBench 旨在推动该领域的创新并确立新的标准。我们的贡献可沿以下三条主线归纳：
+
+\begin{itemize}
+  \item \textbf{反映真实世界：} ITBench 针对的是在生产环境中具有现实意义且普遍存在的 IT 自动化需求。其中 SRE 场景基于我们自有 SaaS 产品中观察到的真实事件；CISO 场景基于 CIS 基准（面向互联网安全，CIS）；FinOps 场景则由 FinOps 基金会（FinOps Foundation）通过关键业务成果加以界定（Foundation, 2025a）。
+  \item \textbf{开放且可扩展，覆盖全面的 IT 任务：} 我们将 ITBench 视为一个中枢平台，用于在多样化的 IT 自动化用例中评测 AI 驱动的解决方案。为此，我们提供 IT 评测套件以及支持纵向扩展（即增加更多场景）和横向扩展（即增加更多角色）的框架，从而实现对 IT 任务的广泛覆盖。ITBench 是一个基于开源技术构建的开源框架，同时也允许各组织使用专有技术，以开发和评测其自有解决方案。
+  \item \textbf{支持带部分评分的自动化评估：} ITBench 旨在提供建设性反馈，以推动针对 IT 问题的智能体（agentic）解决方案在设计上的改进。它包含一套全面的评估框架与排行榜（leaderboard），可在智能体推理过程的各个阶段向用户提供有效反馈。
+\end{itemize}
+
+ITBench 提供一键式部署以及用于搭建环境、运行时智能体、护栏引擎（guardrail engine）、授权与认证的工具。它使开发者和研究者能够构建用于管理复杂 IT 系统的新型解决方案。目前，ITBench 处理的是反应式（reactive）问题，包括事件的诊断与处置、受监管环境中针对新管控规则的合规评估、以及成本管理事件。未来，我们计划扩展评测基准的评估能力，并为 IT 流程的更多方面纳入新的评测基准。当前，ITBench 由一组初始的 94 个场景构成，覆盖 SRE（42 个）、CISO（50 个）和 FinOps（2 个），其对应的成功场景处理率分别为 13.8\%、25.2\% 和 0\%（详见第~\ref{sec:related-work} 节）。
+
+我们相信，正如极具影响力的 SWEBench（Jimenez et al., 2024）一样，我们这一全新的 ITBench 框架——它封装并度量了 AI 智能体自动化处理复杂、真实 IT 任务的能力——将同样推动真实世界 IT AI 智能体性能的可观加速进步。
+
+\section{相关工作}
+\label{sec:related-work}
+
+ITBench 面向 IT 自动化中广泛角色的一整套全面任务。ITBench 的首个发布版本聚焦于评估 IT 运维（ITOps）范畴内的场景。图~\ref{fig:itbench-personas} 展示了当前所针对的角色及其例行面对的示例任务。当前，针对 ITOps 中 SRE、CISO 和 FinOps 的评测基准开发呈现出明显的上升趋势与关注热度。
+
+TrainTicket（Zhou et al., 2018）通过对真实世界事件的工业调研收集了 22 个场景，并在 TrainTicket 应用中使用硬编码故障以聚焦于故障定位。AIOpsLab（Chen et al., 2024a）提供了 10 个聚焦 SRE 的场景（在该工作中称为 problems），借助真实环境（系统）集成，允许对任务、时间序列和表格数据进行交互式访问。InsightBench（Sahu et al., 2024）提供了 100 个场景，利用静态表格数据和合成场景对工单（ticket）数据进行分析。TSB-AD（Liu and Paparrizos, 2024a）聚焦于异常检测，包含 40 个合成场景。
+
+CIS-Benchmark（CIS, 2024）提供了用于保障 IT 基础设施安全的最佳实践。尽管名称中带有“benchmark”一词，但它仅提供推荐策略，并不提供实验平台。近期，云原生计算基金会（CNCF）的沙箱项目 OSCAL-compass（OSCAL-compass, 2024）发布了一套 SDK，用于支持将 CIS 人类可读格式转换为美国国家标准与技术研究院（NIST）的 OSCAL（OSCAL, 2024）合规标准，以便在合规自动化中进行编程化使用。ITBench 的 CISO 自动化正是利用了这一技术来评估策略要求。
+
+FinOps 基金会（Foundation, 2025a）提供了评测基准，用于跨组织和部门比较云财务表现，聚焦于资源利用效率、合同覆盖率、成本分摊等关键绩效指标（KPI）。这些评测基准通过评估内部与外部指标，帮助评估云使用效率，从而促进结构化、协作式的云优化方法。
+
+尽管现有评测基准对于特定任务和用例而言是宝贵的资源，并凸显了系统化评测的迫切需求，但它们在反映真实世界 IT 问题、覆盖广泛的 IT 全景以及自动化评估方面仍有局限。这些局限在 ITBench 中得到了解决，如表~\ref{tab:benchmark-comparison} 所示。
+
+\begin{table}[H]
+\centering
+\caption{表 1：ITBench 与相关评测基准的比较。}
+\label{tab:benchmark-comparison}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{lllccll}
+\toprule
+\textbf{基准} & \textbf{场景数} & \textbf{角色与任务} & \textbf{可解决} & \textbf{自动化评估} & \textbf{环境} & \textbf{排行榜} \\
+\midrule
+ITBench（本文） & 94 & \makecell[l]{SRE -- 事件处置，\\ CISO -- 合规评估，\\ FinOps -- 成本管理} & \cmark & \cmark & 真实环境 & \cmark（已验证） \\
+\addlinespace
+TrainTicket & 22 & SRE -- 事件诊断 & \xmark & \xmark & 真实环境 & \xmark \\
+AIOpsLab & 10 & SRE -- 事件处置 & \cmark & \xmark & 真实环境 & \cmark（未验证） \\
+InsightBench & 100 & 工单数据分析 & \xmark & \xmark & 合成 & \xmark \\
+TSB-AD & 40 & 异常检测 & \xmark & \cmark & 合成 & \xmark \\
+CIS & 1000+ & 合规/安全聚焦 & \cmark & \xmark & 不适用（仅信息） & \xmark \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+
+\vspace{2pt}
+{\footnotesize $^{1}$ 注：我们尚未发现 FinOps 领域中有超越记分卡（scorecard）层面的相关评测基准。}
+\end{table}

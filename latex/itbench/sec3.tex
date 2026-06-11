@@ -1,0 +1,155 @@
+\section{实验结果}
+
+\subsection{评测设置}
+
+为了理解大语言模型（LLM）的推理与规划能力对 ITBench 各场景的影响，我们用不同的 LLM 实例化我们的智能体（agent），同时覆盖自然语言推理与代码生成两类任务。具体而言，对于依赖自然语言理解与推理的任务，我们采用 GPT-4o\footnote{检查点版本 2024-11-20}、Llama-3.3-70B-instruct、Llama-3.1-8B-instruct 和 Granite-3.1-8B-instruct；对于以代码为核心的用例，我们采用 GPT-4o-mini、Llama-3.1-405b-instruct 和 Mixtral-8x7b-instruct。所有模型均使用 128K tokens 的上下文窗口，使其能够处理较长的输入序列。
+
+我们的实验主要在 AWS EC2 实例（m4.xlarge）上进行，不过 ITBench 也可以借助伪集群（pseudo-cluster）方便地部署在消费级笔记本电脑上，从而更便于开发 AI 智能体（附录 C.4.1）。
+
+下面我们概要介绍基线智能体在 ITBench 的 SRE、CISO 与 FinOps 场景上的表现。我们的发现表明，无论是开源模型还是专有模型，在真实世界任务上往往都举步维艰，这凸显了构建能够推动基础模型推理与规划能力极限的评测基准（benchmark）的重要性。更全面的结果与逐场景的详细讨论，请分别参见附录 C（SRE）、附录 D（CISO）与附录 E（FinOps）。
+
+\subsection{总体结果}
+
+表~\ref{tab:itb-sre}、表~\ref{tab:itb-ciso} 与表~\ref{tab:itb-finops} 分别展示了 SRE-agent、CISO-agent 与 FinOps-agent 的表现。
+
+\paragraph{SRE。} 我们以 SRE-Agent 诊断与缓解生产事故（例如“前端服务出现高错误率”）的能力来衡量其效率。
+
+诊断效率用 pass@1 来衡量 (Chen et al., 2021)（即是否识别出标准答案中所述的根因），用 NTAM（归一化拓扑感知指标，Normalized Topology-Aware Metric）来衡量根因与故障传播链（fault propagation chain），并测量诊断耗时\footnote{NTAM 是一种归一化拓扑感知指标，借助系统与应用的拓扑结构来衡量所预测的根因与故障传播链的质量。详见附录 C.6.3。}。缓解效率则以 pass@1（即告警是否被清除）与平均修复时间来衡量。
+
+如表~\ref{tab:itb-sre} 所示，在所有 SRE 场景中，GPT-4o 始终优于其他模型，在诊断（13.81\%）与缓解（11.43\%）上均取得最高的 pass@1 分数，并在 NTAM（FL 与 FPC）指标上取得最高分。Llama-3.3-70B 总体排名第二，在多数指标上仅次于 GPT-4o。8B 量级的模型缓解成功率较低。出乎意料的是，Granite-3.1-8B（未经任何专门微调）在诊断任务上取得了高于 Llama-3.1-70B 的准确率。
+
+移除跟踪（trace）数据会大幅降低成功率（参见附录中的表 19 与表 20）。例如，GPT-4o 的诊断 pass@1 从有跟踪数据时的 13.81\% 跌至无跟踪数据时的 9.52\%，缓解成功率更骤降至 2.86\%。这凸显了系统可观测性（observability）在 SRE 中的关键作用，而 ITBench 能够在不同条件下对此加以评测。鉴于实践中并不存在完美的可观测性，如何引导 SRE-agent 去采集新的可观测性数据，以及如何帮助 SRE-agent 在不完全可观测的情况下对故障进行推理，是一个重要但尚待解决的问题。
+
+\paragraph{CISO。} 我们衡量智能体在表~\ref{tab:itb-scenarios} 中引入的四个场景类（scenario class）上的效能。每个场景类（\textit{scenario\_class}）施加一组不同的 CIS-benchmarks 要求（例如“尽量减少允许共享主机网络命名空间的容器数量”），每一类具有特定的复杂度级别（如易、中、难），并生成场景特定的代码工件（code artifact）。
+
+CISO-agent 的效能基于以下能力来衡量：在场景类的多样环境中检测工件配置错误（即非合规，如不存在共享命名空间的容器最小数量要求，或计数超过阈值），或在随机注入了配置错误的环境中确认正确配置（即合规）。值得注意的是，基于 GPT 的模型在 pass@1 与处理时间（Time to Process）两项指标上均占据主导地位。其 pass@1 几乎比次优模型高出近 2 倍（在 llama-3.1-405b-instruct 与 mistral-large-2 之间交替），而 TTP 表明 GPT-4o 能在我们各场景类中以最短时间处理这些场景。
+
+\paragraph{FinOps。} 我们以 FinOps-agent 诊断与缓解成本告警来源（例如“成本上升 20\%”）的能力来衡量其表现。诊断有效性用 pass@1（即是否识别出原因）来衡量。缓解有效性则以与最优运行成本的比例接近度（proportional proximity），以及该工作负载可达到的效率来衡量。
+
+GPT-4o 始终优于所有其他模型，在诊断成本上升告警的来源上取得 33\% 的 pass@1 通过率。在与成本及工作负载效率相关的其他指标上，各模型的表现大体相当，没有任何模型能够达到最优的 CPU 与内存成本或交付出高 CPU 效率。
+
+\begin{table}[H]
+\centering
+\caption{SRE-Agent 在 SRE 场景上的评测}
+\label{tab:itb-sre}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{lcccc cc}
+\toprule
+\multirow{2}{*}{\textbf{模型}} & \multicolumn{4}{c}{\textbf{诊断}} & \multicolumn{2}{c}{\textbf{缓解}} \\
+\cmidrule(lr){2-5} \cmidrule(lr){6-7}
+ & \textbf{pass@1 (\%)}$\uparrow$ & \textbf{FL (NTAM)}$\uparrow$ & \textbf{FPC (NTAM)}$\uparrow$ & \textbf{MTTD (s)}$\downarrow$ & \textbf{pass@1 (\%)}$\uparrow$ & \textbf{MTTR (s)}$\downarrow$ \\
+\midrule
+granite-3.1-8B-instruct & $3.57 \pm 0.94$ & $0.16 \pm 0.02$ & $0.19 \pm 0.02$ & $259.92 \pm 65.01$ & $0.24 \pm 0.25$ & $845.50 \pm {-}$ \\
+llama-3.1-8B-instruct & $0.99 \pm 0.51$ & $0.07 \pm 0.01$ & $0.08 \pm 0.01$ & $57.50 \pm 2.05$ & $1.98 \pm 0.68$ & $245.13 \pm 40.66$ \\
+llama-3.3-70B-instruct & $3.10 \pm 0.84$ & $0.16 \pm 0.02$ & $0.18 \pm 0.02$ & $191.85 \pm 31.34$ & $3.33 \pm 0.90$ & $776.27 \pm 252.87$ \\
+gpt-4o & $\mathbf{13.81 \pm 1.67}$ & $\mathbf{0.39 \pm 0.05}$ & $\mathbf{0.34 \pm 0.03}$ & $72.44 \pm 4.71$ & $\mathbf{11.43 \pm 1.52}$ & $282.47 \pm 30.04$ \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+
+{\footnotesize
+\noindent $^1$ 42 个场景（21 个含跟踪数据，21 个不含跟踪数据）。\quad $^2$ 每个模型运行 10 次。\quad $^3$ pass@1 值以百分比表示。\quad “{---}”表示数据缺失。\quad $^4$ 列出了每个指标的标准误。\quad $^5$ FL (NTAM) = 根因的归一化拓扑感知指标，FPC (NTAM) = 故障传播链的归一化拓扑感知指标（取值在 0 与 1.0 之间），MTTD = 平均诊断时间（秒），MTTR = 平均修复时间（秒）。\textbf{加粗}：最佳表现。\quad $^6$ NTAM 的细节见附录 C.6.3。
+\par}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{CISO 合规评估智能体在 CISO 场景上的评测}
+\label{tab:itb-ciso}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{lcccc cc}
+\toprule
+\multirow{2}{*}{\textbf{模型}} & \multicolumn{4}{c}{\textbf{场景 pass@1 (\%)} $\uparrow$} & \multirow{2}{*}{\textbf{O/A pass@1 (\%)} $\uparrow$} & \multirow{2}{*}{\textbf{TTP (s)} $\downarrow$} \\
+\cmidrule(lr){2-5}
+ & \textbf{kyverno} & \textbf{k8s-opa} & \textbf{rhel-opa} & \textbf{kyverno-update} & & \\
+\midrule
+granite-3.1-8B-instruct & $7.84 \pm 3.84$ & $0.00 \pm 0.00$ & $0.00 \pm 0.00$ & $1.59 \pm 1.58$ & $1.71 \pm 0.76$ & $197.03 \pm 2.52$ \\
+mixtral-8x7B-instruct & $7.35 \pm 3.19$ & $1.43 \pm 1.42$ & $0.00 \pm 0.00$ & $1.29 \pm 4.34$ & $3.94 \pm 1.03$ & $120.63 \pm 3.77$ \\
+llama-3.1-8B-instruct & $8.57 \pm 3.37$ & $0.00 \pm 0.00$ & $0.00 \pm 0.00$ & $7.46 \pm 3.23$ & $3.59 \pm 1.07$ & $121.49 \pm 3.00$ \\
+llama-3.3-70B-instruct & $18.46 \pm 4.94$ & $0.00 \pm 0.00$ & $1.43 \pm 2.88$ & $8.06 \pm 3.50$ & $9.32 \pm 1.67$ & $189.61 \pm 2.71$ \\
+mistral-large-2 & $6.56 \pm 3.20$ & $22.73 \pm 5.32$ & $7.23 \pm 2.88$ & $10.45 \pm 3.77$ & $11.55 \pm 1.95$ & $167.98 \pm 3.42$ \\
+llama-3.1-405B-instruct & $16.22 \pm 4.32$ & $20.83 \pm 4.86$ & $8.75 \pm 3.26$ & $3.17 \pm 2.22$ & $12.46 \pm 1.98$ & $178.89 \pm 3.37$ \\
+gpt-4o-mini & $16.18 \pm 4.54$ & $\mathbf{43.10 \pm 6.99}$ & $\mathbf{30.38 \pm 5.40}$ & $9.43 \pm 4.08$ & $\mathbf{25.19 \pm 2.80}$ & $102.40 \pm 3.70$ \\
+gpt-4o & $\mathbf{40.28 \pm 5.99}$ & $39.34 \pm 6.55$ & $7.61 \pm 2.81$ & $\mathbf{17.74 \pm 4.92}$ & $24.74 \pm 2.64$ & $\mathbf{101.29 \pm 3.81}$ \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+
+{\footnotesize
+\noindent $^1$ 50 个场景。\quad $^2$ 每个模型每个场景运行 8 次。\quad $^3$ pass@1 值以百分比表示。\quad $^4$ TTP = 处理时间（秒）。\quad $^5$ \textbf{kyverno} = Kyverno 上的新 K8s CIS-benchmarks，易场景类；\textbf{k8s-opa} = OPA 上的新 K8s CIS-benchmarks，中场景类；\textbf{rhel-opa} = Ansible-OPA 上的新 RHEL9 CIS-benchmarks，中场景类；\textbf{kyverno-update} = Kyverno 上更新的 K8s CIS-benchmarks，难场景类。
+\par}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{FinOpsAgent 在 FinOps 场景上的评测}
+\label{tab:itb-finops}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{lc ccccc}
+\toprule
+\multirow{2}{*}{\textbf{模型}} & \textbf{诊断} & \multicolumn{5}{c}{\textbf{缓解}} \\
+\cmidrule(lr){2-2} \cmidrule(lr){3-7}
+ & \textbf{pass@1 (\%)} $\uparrow$ & \textbf{pass@1 (\%)} $\uparrow$ & \makecell{\textbf{与最优 CPU}\\\textbf{成本接近度} $\uparrow$} & \makecell{\textbf{与最优内存}\\\textbf{成本接近度} $\uparrow$} & \makecell{\textbf{与最优 CPU}\\\textbf{效率接近度} $\uparrow$} & \makecell{\textbf{与最优内存}\\\textbf{效率接近度} $\uparrow$} \\
+\midrule
+granite-3.1-8B-instruct & $0$ & $0$ & $0.47 \pm 0.01$ & $0.48 \pm 0.06$ & $0.53 \pm 0.04$ & $0.94 \pm 0.01$ \\
+llama-3.1-8B-instruct & $0$ & $0$ & $\mathbf{0.49 \pm 0.01}$ & $0.46 \pm 0.07$ & $0.56 \pm 0.08$ & $0.96 \pm 0.02$ \\
+llama-3.3-70B-instruct & $16.6$ & $0$ & $0.47 \pm 0.01$ & $0.49 \pm 0.05$ & $0.53 \pm 0.03$ & $0.96 \pm 0.02$ \\
+gpt-4o & $\mathbf{33}$ & $0$ & $0.48 \pm 0.01$ & $\mathbf{0.51 \pm 0.02}$ & $\mathbf{0.63 \pm 0.07}$ & $0.92 \pm 0.08$ \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+
+{\footnotesize
+\noindent pass@1 值以百分比表示。接近度（Proximity）值表示观测值与最优值的接近程度，1 表示达到最优，与 1 的任何偏离都表示次优表现。
+\par}
+\end{table}
+
+\subsection{场景复杂度的影响}
+
+\paragraph{SRE。} 我们依据故障传播链长度、解决步骤数量、所涉技术多样性等因素，将场景划分为易、中、难，如公式 (6) 所述。我们的结果表明，随着场景复杂度（\textit{scenario\_complexity}）的提升，成功率（pass@1）明显下降。例如，GPT-4o（表现最佳的模型）对易、中、难场景的诊断成功率分别仅为 36\%、7.73\% 与 5.0\%（参见表 17）。同样，GPT-4o（表现最佳的模型）对易、中、难场景的缓解成功率分别仅为 21\%、12.27\% 与 0.0\%（参见表 18）。
+
+没有任何模型能够缓解任一次运行中的难场景，而超过半数的易场景缓解是成功的。值得注意的是，GPT-4o 是唯一能够成功诊断多个“难”场景的模型。
+
+\paragraph{CISO。} CISO 场景的复杂度与场景类直接对应。例如，Kyverno 场景的场景复杂度（\textit{scenario\_complexity}）为易，k8s-opa 与 rhel-opa 场景为中，而 kyverno-update 场景为难。正如预期，随着场景难度从易的 \textit{kyverno} 类提升至难的 \textit{kyverno-update} 类，所有模型都表现吃力。
+
+\paragraph{FinOps。} 目前 ITBench 仅有两个 FinOps 场景，其中一个的场景复杂度为易，另一个为难。除 GPT-4o 外没有任何模型能够诊断（更无法缓解）难场景。
+
+ITBench 中这一复杂度谱系确保了评测既能覆盖直观简单的问题，也能覆盖跨各类角色（persona）的高度复杂问题。
+
+\subsection{环境固有的非确定性}
+
+GPT-4o 在所有受评角色（SRE、CISO 与 FinOps）中仍是表现最佳者，但它在场景结果上仍表现出显著的波动性。例如，尽管已通过超参数调整力求一致性，搭载 GPT-4o 的 SRE-agent 仍难以保持确定性行为。搭载 GPT-4o 的 SRE-agent 在场景 13 的 10 次运行中仅有 6 次成功诊断出问题，场景 8 为 10 次中 1 次，场景 21 为 10 次中 8 次（所有场景的细节见图 14）。同样，它在场景 16 的 10 次运行中缓解了 6 次，场景 8 为 10 次中 2 次，场景 21 为 10 次中 5 次（所有场景的细节见图 17）。在 FinOps 与 CISO 场景中也观测到了这种固有的非确定性。
+
+这些波动源于实时遥测（telemetry）数据的微小变化，以及大语言模型逐 token 生成的特性。通过在多次运行中跟踪这种动态行为，ITBench 为评估每个智能体的鲁棒性与可靠性提供了关键洞见。
+
+\section{讨论与结论}
+
+我们提出了 ITBench——首个用于评测 IT 自动化任务中 AI 智能体的框架与实验平台。ITBench 力求刻画现代 IT 系统的复杂性与 IT 任务的多样性。ITBench 的可复现性确保了这一社区驱动的工作能够克服大规模 IT 系统固有的非确定性。
+
+ITBench 的关键设计原则之一是确保其灵活性，以支持不同 IT 系统的多样领域，并具备向新场景扩展的能力。尽管 ITBench 当前的覆盖范围已较为全面且具代表性，我们仍计划通过加入对现代 IT 自动化至关重要的其他流程，进一步丰富评测套件。此外，我们计划将评测从事件触发（event-triggered）型场景进一步扩展。我们正积极扩大对所支持流程的场景覆盖，并通过开放社区贡献来促进发展。我们邀请社区借助 ITBench，在合成沙箱环境中复现其受真实世界启发的事故。我们期望每一位贡献者都能将各自的专长带入这一领域。
+
+我们期望 ITBench 能够推动基于 AI 智能体的技术创新，并对当今 IT 基础设施的安全、效率与智能产生直接影响。借助 ITBench，我们开始探索诸多深刻而激动人心的开放问题：如何开发专精于特定类型 IT 任务的领域专用 AI 智能体？如何编排具备多种专长的多个智能体，使其协作完成更大的项目？如何确保 AI 驱动方案的安全性？在开发多样的自适应智能体时，如何有效利用人在回路（human-in-the-loop）？我们邀请所有人参与回答这些问题，共同实现用 AI 智能体自动化关键 IT 任务的愿景。
+
+\section{声明}
+
+\subsection{伦理与更广泛影响}
+
+本研究提出了一个新颖的评测框架，用于衡量 AI 智能体在多种复杂的真实 IT 任务上的表现，这有望成为推动正确、安全、快速的 AI 驱动 IT 自动化的关键支撑。尽管主要目标在于推进机器学习领域的发展，但由于本工作是一个构建于开源技术之上的开源框架，它使得拥有专有技术的组织能够更有效地利用它来开发和评测自身的解决方案；它也促进了社区内的思想共享，并降低了 IT 领域创新的门槛。
+
+与系统交互的智能体带来若干风险。我们识别出在构建和使用 ITBench 及相关智能体时可能出现的三大主要风险，随后讨论我们为缓解这些问题所采取的措施。
+
+第一是在系统上执行 LM 生成的命令/指令所带来的安全风险。例如执行 \texttt{kubectl delete node} 与 \texttt{rm -rf asset/} 这类命令。为防范这一点，我们将智能体容器化，并提供一个自包含的 Kubernetes 环境来创建各类场景。
+
+第二，如果更广泛的社区对 ITBench 及相关智能体产生兴趣并在其基础上构建工作，那么也可能出现非法的评测数据集或基础设施被用来向受测设备注入恶意代码、或注入生成恶意代码的指令的情况。例如，一个声称为 ITBench 及相关智能体托管推理/评测框架的非官方代码仓库，可能包含这样一个任务实例：其问题描述指示 LM 智能体构建密钥日志记录功能并将其存储在隐藏文件夹中。为消除混淆并降低此类事件发生的可能性，我们在 GitHub 仓库、数据存储与网站上提供了清晰的指引，标明我们积极维护的官方仓库与渠道。我们也鼓励第三方将任何改进纳入我们的代码库，并协助整合此类贡献。
+
+最后是 ITBench 智能体在现实世界中被部署所带来的后果。先前工作已对可执行攻击性安全措施的系统进行了概念化并提出原型。同样不难设想，像 SRE-Agent 这样的系统可能被纳入流水线，从而在上述用例中生成恶意代码与库。智能体在 ITBench 上的强劲表现意味着，未来的 AI 系统在上述用例中很可能日益娴熟。将 ITBench 智能体作为开源智能体发布，能够支持有关“为软件工程智能体设计何种健全有效的约束”这一方向的研究。它也可以作为一个系统，供法律专家与政策制定主体进行试验，以共同塑造端到端 AI 驱动软件工程的未来形态。
+
+\subsection{可复现性}
+
+为帮助更广泛的社区复现本文呈现的结果并在其基础上构建工作，我们将本项目创建的所有资源开源。交互式流水线的源代码、上下文管理逻辑、命令实现、接口设计以及其他一切，均已完整发布于一个 GitHub 仓库中。我们提供了大量文字与视频文档，说明如何运行和修改代码库的各个部分。从业者应能通过简单的脚本运行智能体，从而轻松复现我们的发现。本文正文与补充材料中呈现的结果，均可遵循仓库中的说明完整复现。最后，我们还维护着一个活跃的在线帮助论坛，以协助解决任何复现问题或关于如何在 ITBench 上构建的疑问。
+
+\section*{致谢}
+
+We would like to thank everyone at IBM and University of Illinois at Urbana-Champaign not explicitly on the author list, who have shared excitement, given feedback on early prototype, and worked with or supported the core team on many aspects of this project.
+
+In addition, we acknowledge the support of our colleagues in IBM Instana: Marc Palaci-Olgun, Guangya Liu, Brad Blancett, Chad Holliday, Arthur De Magalhaes, Ragu Kattinakere, Chris Bailey, Isabell Sippili, and Danilo Florissi; IBM Granite and Data Model Factory: Hui Wu and Bing Zhang; IBM Emerging Technology Engineering: Aditya Gidh, Mike Sava, Bill Rippon, and Danny Barnett; IBM UX Research: James Sutton, Connor Leech, and Justin McNair; IBM Research: Michal Shmueli-Scheuer, Lilach Edelstein, and Roy Bar-Haim.

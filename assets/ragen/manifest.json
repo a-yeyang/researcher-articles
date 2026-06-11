@@ -1,0 +1,1089 @@
+{
+ "pdf": "RAGEN.pdf",
+ "slug": "ragen",
+ "page_count": 39,
+ "page_size": [
+  595.3,
+  841.9
+ ],
+ "pages": [
+  {
+   "page": 1,
+   "candidates": [
+    {
+     "id": "cand_p01_k00",
+     "kind": "table",
+     "bbox": [
+      86.7,
+      562.0,
+      508.5,
+      701.4
+     ],
+     "pdf": "cand_p01_k00.pdf"
+    },
+    {
+     "id": "cand_p01_k01",
+     "kind": "image",
+     "bbox": [
+      87.0,
+      562.0,
+      255.0,
+      702.0
+     ],
+     "pdf": "cand_p01_k01.pdf"
+    },
+    {
+     "id": "cand_p01_k02",
+     "kind": "vector",
+     "bbox": [
+      70.9,
+      277.4,
+      524.4,
+      550.1
+     ],
+     "pdf": "cand_p01_k02.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      70.9,
+      711.9,
+      524.4,
+      724.0
+     ],
+     "text": "Figure 1 | Previous methods focus on non-interactive tasks such as math or code generation. RAGEN",
+     "label": "Figure 1"
+    }
+   ],
+   "overlay": "assets/ragen/_pages/p01.png"
+  },
+  {
+   "page": 2,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/ragen/_pages/p02.png"
+  },
+  {
+   "page": 3,
+   "candidates": [
+    {
+     "id": "cand_p03_k00",
+     "kind": "table",
+     "bbox": [
+      70.9,
+      85.0,
+      524.4,
+      262.9
+     ],
+     "pdf": "cand_p03_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      70.9,
+      233.4,
+      524.4,
+      245.4
+     ],
+     "text": "Figure 2 | The State-Thinking-Actions-Reward Policy Optimization (StarPO) framework. LLM generates",
+     "label": "Figure 2"
+    }
+   ],
+   "overlay": "assets/ragen/_pages/p03.png"
+  },
+  {
+   "page": 4,
+   "candidates": [
+    {
+     "id": "cand_p04_k00",
+     "kind": "vector",
+     "bbox": [
+      70.9,
+      221.7,
+      524.4,
+      343.3
+     ],
+     "pdf": "cand_p04_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      70.9,
+      203.0,
+      478.3,
+      213.9
+     ],
+     "text": "Figure 2 illustrates the full StarPO process, and we break them down in detail below.",
+     "label": "Figure 2"
+    }
+   ],
+   "overlay": "assets/ragen/_pages/p04.png"
+  },
+  {
+   "page": 5,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/ragen/_pages/p05.png"
+  },
+  {
+   "page": 6,
+   "candidates": [
+    {
+     "id": "cand_p06_k00",
+     "kind": "vector",
+     "bbox": [
+      70.9,
+      85.0,
+      524.4,
+      219.9
+     ],
+     "pdf": "cand_p06_k00.pdf"
+    },
+    {
+     "id": "cand_p06_k01",
+     "kind": "vector",
+     "bbox": [
+      70.9,
+      459.4,
+      524.4,
+      534.6
+     ],
+     "pdf": "cand_p06_k01.pdf"
+    },
+    {
+     "id": "cand_p06_k02",
+     "kind": "vector",
+     "bbox": [
+      70.9,
+      656.6,
+      524.4,
+      745.3
+     ],
+     "pdf": "cand_p06_k02.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      70.9,
+      230.4,
+      524.4,
+      242.5
+     ],
+     "text": "Figure 3 | Baseline StarPO performance across environments. Symbolic tasks like Bandit and",
+     "label": "Figure 3"
+    }
+   ],
+   "overlay": "assets/ragen/_pages/p06.png"
+  },
+  {
+   "page": 7,
+   "candidates": [
+    {
+     "id": "cand_p07_k00",
+     "kind": "table",
+     "bbox": [
+      70.9,
+      85.0,
+      524.4,
+      310.9
+     ],
+     "pdf": "cand_p07_k00.pdf"
+    },
+    {
+     "id": "cand_p07_k01",
+     "kind": "vector",
+     "bbox": [
+      70.9,
+      680.7,
+      524.4,
+      755.9
+     ],
+     "pdf": "cand_p07_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      70.9,
+      321.3,
+      524.4,
+      333.4
+     ],
+     "text": "Figure 4 | Collapse indicators and early warning signals in multi-turn RL. Average reward and",
+     "label": "Figure 4"
+    },
+    {
+     "bbox": [
+      87.8,
+      481.1,
+      524.4,
+      492.1
+     ],
+     "text": "Figure 4 summarizes these dynamics across tasks and optimization methods. From the",
+     "label": "Figure 4"
+    }
+   ],
+   "overlay": "assets/ragen/_pages/p07.png"
+  },
+  {
+   "page": 8,
+   "candidates": [
+    {
+     "id": "cand_p08_k00",
+     "kind": "vector",
+     "bbox": [
+      70.9,
+      548.1,
+      524.4,
+      636.8
+     ],
+     "pdf": "cand_p08_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      70.9,
+      371.6,
+      524.4,
+      384.6
+     ],
+     "text": "Figure 5 shows the effect of varying 𝑝in PPO and GRPO under StarPO-S. We further validate",
+     "label": "Figure 5"
+    }
+   ],
+   "overlay": "assets/ragen/_pages/p08.png"
+  },
+  {
+   "page": 9,
+   "candidates": [
+    {
+     "id": "cand_p09_k00",
+     "kind": "vector",
+     "bbox": [
+      70.9,
+      85.0,
+      524.4,
+      169.2
+     ],
+     "pdf": "cand_p09_k00.pdf"
+    },
+    {
+     "id": "cand_p09_k01",
+     "kind": "vector",
+     "bbox": [
+      70.9,
+      226.8,
+      524.4,
+      361.7
+     ],
+     "pdf": "cand_p09_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      70.9,
+      179.7,
+      526.2,
+      191.8
+     ],
+     "text": "Figure 5 | Effect of uncertainty-based filtering on multi-turn RL stability. Filtering out low-",
+     "label": "Figure 5"
+    },
+    {
+     "bbox": [
+      70.9,
+      372.2,
+      524.4,
+      384.2
+     ],
+     "text": "Figure 6 | StarPO-S improves stability and final performance across tasks. Compared to vanilla",
+     "label": "Figure 6"
+    }
+   ],
+   "overlay": "assets/ragen/_pages/p09.png"
+  },
+  {
+   "page": 10,
+   "candidates": [
+    {
+     "id": "cand_p10_k00",
+     "kind": "vector",
+     "bbox": [
+      70.9,
+      527.2,
+      524.4,
+      616.0
+     ],
+     "pdf": "cand_p10_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      70.5,
+      85.5,
+      524.4,
+      97.6
+     ],
+     "text": "Table 1 | Effect of Task Diversity on Generalization Performance (%). Higher diversity with",
+     "label": "Table 1"
+    },
+    {
+     "bbox": [
+      70.5,
+      222.4,
+      524.4,
+      234.5
+     ],
+     "text": "Table 2 | Performance across environments under different per-turn action budgets (%). 5–6",
+     "label": "Table 2"
+    }
+   ],
+   "overlay": "assets/ragen/_pages/p10.png"
+  },
+  {
+   "page": 11,
+   "candidates": [
+    {
+     "id": "cand_p11_k00",
+     "kind": "table",
+     "bbox": [
+      74.7,
+      136.1,
+      515.6,
+      195.5
+     ],
+     "pdf": "cand_p11_k00.pdf"
+    },
+    {
+     "id": "cand_p11_k01",
+     "kind": "table",
+     "bbox": [
+      74.7,
+      169.3,
+      515.6,
+      195.5
+     ],
+     "pdf": "cand_p11_k01.pdf"
+    },
+    {
+     "id": "cand_p11_k02",
+     "kind": "table",
+     "bbox": [
+      110.3,
+      253.0,
+      480.0,
+      324.0
+     ],
+     "pdf": "cand_p11_k02.pdf"
+    },
+    {
+     "id": "cand_p11_k03",
+     "kind": "table",
+     "bbox": [
+      110.3,
+      285.8,
+      480.0,
+      324.0
+     ],
+     "pdf": "cand_p11_k03.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      70.5,
+      85.5,
+      526.2,
+      97.6
+     ],
+     "text": "Table 3 | Generalization performance (%) with and without reasoning under StarPO-S. Dis-",
+     "label": "Table 3"
+    },
+    {
+     "bbox": [
+      70.5,
+      200.4,
+      524.4,
+      212.6
+     ],
+     "text": "Table 4 | Reasoning length (<think> block length) at different training steps. Token length",
+     "label": "Table 4"
+    },
+    {
+     "bbox": [
+      70.9,
+      535.8,
+      524.4,
+      546.7
+     ],
+     "text": "Figure 14) and find that reasoning traces consistently shrink over time, suggesting the model is",
+     "label": "Figure 14"
+    }
+   ],
+   "overlay": "assets/ragen/_pages/p11.png"
+  },
+  {
+   "page": 12,
+   "candidates": [
+    {
+     "id": "cand_p12_k00",
+     "kind": "vector",
+     "bbox": [
+      70.9,
+      85.0,
+      524.4,
+      186.4
+     ],
+     "pdf": "cand_p12_k00.pdf"
+    },
+    {
+     "id": "cand_p12_k01",
+     "kind": "vector",
+     "bbox": [
+      70.9,
+      253.1,
+      524.4,
+      369.0
+     ],
+     "pdf": "cand_p12_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      70.9,
+      195.9,
+      524.4,
+      209.0
+     ],
+     "text": "Figure 7 | Performance under different rollout frequencies (Online-𝑘). We vary the rollout",
+     "label": "Figure 7"
+    }
+   ],
+   "overlay": "assets/ragen/_pages/p12.png"
+  },
+  {
+   "page": 13,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/ragen/_pages/p13.png"
+  },
+  {
+   "page": 14,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/ragen/_pages/p14.png"
+  },
+  {
+   "page": 15,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/ragen/_pages/p15.png"
+  },
+  {
+   "page": 16,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/ragen/_pages/p16.png"
+  },
+  {
+   "page": 17,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/ragen/_pages/p17.png"
+  },
+  {
+   "page": 18,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/ragen/_pages/p18.png"
+  },
+  {
+   "page": 19,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/ragen/_pages/p19.png"
+  },
+  {
+   "page": 20,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/ragen/_pages/p20.png"
+  },
+  {
+   "page": 21,
+   "candidates": [
+    {
+     "id": "cand_p21_k00",
+     "kind": "vector",
+     "bbox": [
+      70.9,
+      85.0,
+      524.3,
+      278.9
+     ],
+     "pdf": "cand_p21_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      70.9,
+      283.0,
+      525.5,
+      295.0
+     ],
+     "text": "Figure 8 | Bi-Arm Bandits environment. The agent chooses between a low-risk arm (Phoenix)",
+     "label": "Figure 8"
+    }
+   ],
+   "overlay": "assets/ragen/_pages/p21.png"
+  },
+  {
+   "page": 22,
+   "candidates": [
+    {
+     "id": "cand_p22_k00",
+     "kind": "image",
+     "bbox": [
+      92.6,
+      87.6,
+      266.8,
+      175.5
+     ],
+     "pdf": "cand_p22_k00.pdf"
+    },
+    {
+     "id": "cand_p22_k01",
+     "kind": "image",
+     "bbox": [
+      328.5,
+      85.0,
+      502.6,
+      178.0
+     ],
+     "pdf": "cand_p22_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      70.9,
+      230.4,
+      524.4,
+      242.4
+     ],
+     "text": "Figure 9 | Sokoban and Frozen Lake environments. For each environment, the left shows the",
+     "label": "Figure 9"
+    }
+   ],
+   "overlay": "assets/ragen/_pages/p22.png"
+  },
+  {
+   "page": 23,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/ragen/_pages/p23.png"
+  },
+  {
+   "page": 24,
+   "candidates": [
+    {
+     "id": "cand_p24_k00",
+     "kind": "vector",
+     "bbox": [
+      82.2,
+      85.0,
+      513.1,
+      213.2
+     ],
+     "pdf": "cand_p24_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      70.9,
+      223.7,
+      524.4,
+      235.7
+     ],
+     "text": "Figure 10 | Scaling effect across environments. The larger model outperforms smaller models",
+     "label": "Figure 10"
+    },
+    {
+     "bbox": [
+      70.5,
+      353.6,
+      524.4,
+      365.7
+     ],
+     "text": "Table 5 | Zero-shot vs. trained performance. Our 0.5B model, trained with only 4 responses",
+     "label": "Table 5"
+    }
+   ],
+   "overlay": "assets/ragen/_pages/p24.png"
+  },
+  {
+   "page": 25,
+   "candidates": [
+    {
+     "id": "cand_p25_k00",
+     "kind": "table",
+     "bbox": [
+      70.9,
+      274.3,
+      524.4,
+      439.6
+     ],
+     "pdf": "cand_p25_k00.pdf"
+    },
+    {
+     "id": "cand_p25_k01",
+     "kind": "table",
+     "bbox": [
+      315.7,
+      290.6,
+      518.7,
+      413.8
+     ],
+     "pdf": "cand_p25_k01.pdf"
+    },
+    {
+     "id": "cand_p25_k02",
+     "kind": "vector",
+     "bbox": [
+      138.9,
+      85.0,
+      456.4,
+      225.2
+     ],
+     "pdf": "cand_p25_k02.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      70.9,
+      235.7,
+      524.4,
+      247.8
+     ],
+     "text": "Figure 11 | Effect of KL removal and asymmetric clipping on PPO stability. The two designs",
+     "label": "Figure 11"
+    },
+    {
+     "bbox": [
+      70.9,
+      450.1,
+      524.4,
+      462.2
+     ],
+     "text": "Figure 12 | Ablation on turn-aware optimization strategies on Sokoban Task. Both response",
+     "label": "Figure 12"
+    },
+    {
+     "bbox": [
+      87.8,
+      626.8,
+      526.2,
+      637.6
+     ],
+     "text": "Figure 13 supports this intuition. The top row shows the success rates of StarPO and StarPO-",
+     "label": "Figure 13"
+    }
+   ],
+   "overlay": "assets/ragen/_pages/p25.png"
+  },
+  {
+   "page": 26,
+   "candidates": [
+    {
+     "id": "cand_p26_k00",
+     "kind": "vector",
+     "bbox": [
+      70.9,
+      85.0,
+      524.4,
+      281.6
+     ],
+     "pdf": "cand_p26_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      70.9,
+      292.0,
+      524.8,
+      304.1
+     ],
+     "text": "Figure 13 | Comparison of success rate (top) and rollout variance (bottom). StarPO-S basically",
+     "label": "Figure 13"
+    }
+   ],
+   "overlay": "assets/ragen/_pages/p26.png"
+  },
+  {
+   "page": 27,
+   "candidates": [
+    {
+     "id": "cand_p27_k00",
+     "kind": "table",
+     "bbox": [
+      65.7,
+      104.7,
+      529.6,
+      249.8
+     ],
+     "pdf": "cand_p27_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      70.5,
+      262.7,
+      524.4,
+      274.7
+     ],
+     "text": "Table 6 | Examples of reasoning patterns in the Bandit task. Top rows show diverse reasoning",
+     "label": "Table 6"
+    }
+   ],
+   "overlay": "assets/ragen/_pages/p27.png"
+  },
+  {
+   "page": 28,
+   "candidates": [
+    {
+     "id": "cand_p28_k00",
+     "kind": "vector",
+     "bbox": [
+      70.9,
+      85.0,
+      524.4,
+      263.0
+     ],
+     "pdf": "cand_p28_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      70.9,
+      273.4,
+      524.4,
+      285.5
+     ],
+     "text": "Figure 14 | Reasoning length over training iterations across different tasks. We track the",
+     "label": "Figure 14"
+    }
+   ],
+   "overlay": "assets/ragen/_pages/p28.png"
+  },
+  {
+   "page": 29,
+   "candidates": [
+    {
+     "id": "cand_p29_k00",
+     "kind": "vector",
+     "bbox": [
+      70.9,
+      85.0,
+      501.7,
+      426.6
+     ],
+     "pdf": "cand_p29_k00.pdf"
+    }
+   ],
+   "captions": [],
+   "overlay": "assets/ragen/_pages/p29.png"
+  },
+  {
+   "page": 30,
+   "candidates": [
+    {
+     "id": "cand_p30_k00",
+     "kind": "vector",
+     "bbox": [
+      70.9,
+      85.0,
+      501.7,
+      358.9
+     ],
+     "pdf": "cand_p30_k00.pdf"
+    },
+    {
+     "id": "cand_p30_k01",
+     "kind": "vector",
+     "bbox": [
+      70.9,
+      399.5,
+      501.7,
+      482.5
+     ],
+     "pdf": "cand_p30_k01.pdf"
+    },
+    {
+     "id": "cand_p30_k02",
+     "kind": "vector",
+     "bbox": [
+      70.9,
+      509.6,
+      501.7,
+      595.2
+     ],
+     "pdf": "cand_p30_k02.pdf"
+    }
+   ],
+   "captions": [],
+   "overlay": "assets/ragen/_pages/p30.png"
+  },
+  {
+   "page": 31,
+   "candidates": [
+    {
+     "id": "cand_p31_k00",
+     "kind": "vector",
+     "bbox": [
+      70.9,
+      85.0,
+      501.7,
+      345.3
+     ],
+     "pdf": "cand_p31_k00.pdf"
+    },
+    {
+     "id": "cand_p31_k01",
+     "kind": "vector",
+     "bbox": [
+      70.9,
+      385.9,
+      501.7,
+      458.0
+     ],
+     "pdf": "cand_p31_k01.pdf"
+    },
+    {
+     "id": "cand_p31_k02",
+     "kind": "vector",
+     "bbox": [
+      70.9,
+      485.1,
+      501.7,
+      570.8
+     ],
+     "pdf": "cand_p31_k02.pdf"
+    }
+   ],
+   "captions": [],
+   "overlay": "assets/ragen/_pages/p31.png"
+  },
+  {
+   "page": 32,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/ragen/_pages/p32.png"
+  },
+  {
+   "page": 33,
+   "candidates": [
+    {
+     "id": "cand_p33_k00",
+     "kind": "vector",
+     "bbox": [
+      82.2,
+      162.8,
+      513.1,
+      614.9
+     ],
+     "pdf": "cand_p33_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      70.9,
+      635.4,
+      524.4,
+      647.4
+     ],
+     "text": "Figure 15 | A rollout with spurious reasoning. The final outcome is successful, but the reasoning",
+     "label": "Figure 15"
+    }
+   ],
+   "overlay": "assets/ragen/_pages/p33.png"
+  },
+  {
+   "page": 34,
+   "candidates": [
+    {
+     "id": "cand_p34_k00",
+     "kind": "vector",
+     "bbox": [
+      82.2,
+      185.9,
+      513.1,
+      557.9
+     ],
+     "pdf": "cand_p34_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      70.9,
+      575.2,
+      525.8,
+      587.2
+     ],
+     "text": "Figure 16 | Reasoning-based arm selection in Bandit tasks across model scales. In both cases,",
+     "label": "Figure 16"
+    }
+   ],
+   "overlay": "assets/ragen/_pages/p34.png"
+  },
+  {
+   "page": 35,
+   "candidates": [
+    {
+     "id": "cand_p35_k00",
+     "kind": "vector",
+     "bbox": [
+      82.2,
+      156.6,
+      513.1,
+      675.3
+     ],
+     "pdf": "cand_p35_k00.pdf"
+    }
+   ],
+   "captions": [],
+   "overlay": "assets/ragen/_pages/p35.png"
+  },
+  {
+   "page": 36,
+   "candidates": [
+    {
+     "id": "cand_p36_k00",
+     "kind": "vector",
+     "bbox": [
+      70.9,
+      102.5,
+      501.7,
+      678.4
+     ],
+     "pdf": "cand_p36_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      70.9,
+      695.6,
+      526.2,
+      707.7
+     ],
+     "text": "Figure 17 | Sokoban rollouts across model scales. At 0.5B, the model performs minimal rea-",
+     "label": "Figure 17"
+    }
+   ],
+   "overlay": "assets/ragen/_pages/p36.png"
+  },
+  {
+   "page": 37,
+   "candidates": [
+    {
+     "id": "cand_p37_k00",
+     "kind": "vector",
+     "bbox": [
+      82.2,
+      139.9,
+      513.1,
+      433.8
+     ],
+     "pdf": "cand_p37_k00.pdf"
+    },
+    {
+     "id": "cand_p37_k01",
+     "kind": "vector",
+     "bbox": [
+      82.2,
+      449.7,
+      513.1,
+      628.2
+     ],
+     "pdf": "cand_p37_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      70.9,
+      644.7,
+      524.4,
+      656.8
+     ],
+     "text": "Figure 18 | FrozenLake rollouts across model scales. At 0.5B, the agent repeats a fixed plan",
+     "label": "Figure 18"
+    }
+   ],
+   "overlay": "assets/ragen/_pages/p37.png"
+  },
+  {
+   "page": 38,
+   "candidates": [
+    {
+     "id": "cand_p38_k00",
+     "kind": "vector",
+     "bbox": [
+      70.9,
+      100.9,
+      501.7,
+      734.2
+     ],
+     "pdf": "cand_p38_k00.pdf"
+    }
+   ],
+   "captions": [],
+   "overlay": "assets/ragen/_pages/p38.png"
+  },
+  {
+   "page": 39,
+   "candidates": [
+    {
+     "id": "cand_p39_k00",
+     "kind": "vector",
+     "bbox": [
+      70.9,
+      90.0,
+      501.7,
+      641.1
+     ],
+     "pdf": "cand_p39_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      70.9,
+      657.6,
+      524.4,
+      669.7
+     ],
+     "text": "Figure 19 | WebShop rollouts illustrate the impact of model scale on long-context decision",
+     "label": "Figure 19"
+    }
+   ],
+   "overlay": "assets/ragen/_pages/p39.png"
+  }
+ ]
+}

@@ -7,7 +7,7 @@
 > - 每份导读中**至多引用原论文 1 张架构图**用于教学说明，已标注出处；**不包含原始论文 PDF**——请通过下表「原文」链接到官方渠道获取。
 > - 原始论文及其图表的版权归原作者/出版方所有。如有侵权请联系删除。
 
-## 论文清单（引用数据：Semantic Scholar，查询日 2026-06-07）
+## 论文清单（引用数据：Semantic Scholar，查询日 2026-06-10）
 
 ### 2024 年（均发表于 ICLR/NeurIPS/ICML/AAAI/ACL/KDD）
 | 论文 | 会议 | 引用 | 原文 | 代码 | 导读 PDF |
@@ -18,16 +18,18 @@
 | StepCoder | ACL 2024 | — | [arXiv 2402.01391](https://arxiv.org/abs/2402.01391) | [Ablustrund/APPS_Plus](https://github.com/Ablustrund/APPS_Plus) | `译文/StepCoder.精读导读.pdf` |
 | AGILE | NeurIPS 2024 | 49 | [arXiv 2405.14751](https://arxiv.org/abs/2405.14751) | [bytarnish/AGILE](https://github.com/bytarnish/AGILE) | `译文/AGILE.精读导读.pdf` |
 
-### 2025 年（含领域标杆）
-| 论文 | 会议 | 引用 | 原文 | 代码 | 导读 PDF |
-|---|---|--:|---|---|---|
-| Search-R1 | COLM 2025 | 1068 | [arXiv 2503.09516](https://arxiv.org/abs/2503.09516) | [PeterGriffinJin/Search-R1](https://github.com/PeterGriffinJin/Search-R1) | `译文/Search-R1.精读导读.pdf` |
-| UI-TARS | arXiv 2025 | 449 | [arXiv 2501.12326](https://arxiv.org/abs/2501.12326) | [bytedance/UI-TARS](https://github.com/bytedance/UI-TARS) | `译文/UI-TARS.精读导读.pdf` |
-| ReTool | arXiv 2025 | 297 | [arXiv 2504.11536](https://arxiv.org/abs/2504.11536) | [ReTool-RL/ReTool](https://github.com/ReTool-RL/ReTool) | `译文/ReTool.精读导读.pdf` |
-| ToolRL | NeurIPS 2025 | 262 | [arXiv 2504.13958](https://arxiv.org/abs/2504.13958) | [qiancheng0/ToolRL](https://github.com/qiancheng0/ToolRL) | `译文/ToolRL.精读导读.pdf` |
-| RAGEN | arXiv 2025 | 229 | [arXiv 2504.20073](https://arxiv.org/abs/2504.20073) | [RAGEN-AI/RAGEN](https://github.com/RAGEN-AI/RAGEN) | `译文/RAGEN.精读导读.pdf` |
+### 2025–2026 年（含领域标杆）
+| 论文 | 会议 | 引用 | 原文 | 代码 | 发表链接 | 导读 PDF |
+|---|---|--:|---|---|---|---|
+| Search-R1 | COLM 2025 | 1068 | [arXiv 2503.09516](https://arxiv.org/abs/2503.09516) | [PeterGriffinJin/Search-R1](https://github.com/PeterGriffinJin/Search-R1) | [COLM](https://arxiv.org/abs/2503.09516v5) | `译文/Search-R1.精读导读.pdf` |
+| ReTool | **ICLR 2026** ✅ | 297 | [arXiv 2504.11536](https://arxiv.org/abs/2504.11536) | [ReTool-RL/ReTool](https://github.com/ReTool-RL/ReTool) | [OpenReview](https://openreview.net/forum?id=tRk1nofSmz) | `译文/ReTool.精读导读.pdf` |
+| ToolRL | NeurIPS 2025 | 262 | [arXiv 2504.13958](https://arxiv.org/abs/2504.13958) | [qiancheng0/ToolRL](https://github.com/qiancheng0/ToolRL) | [OpenReview](https://openreview.net/forum?id=eOLdGbXT6t) | `译文/ToolRL.精读导读.pdf` |
+| ~~UI-TARS~~ | ⚠️ **未发表**（arXiv） | 449 | [arXiv 2501.12326](https://arxiv.org/abs/2501.12326) | [bytedance/UI-TARS](https://github.com/bytedance/UI-TARS) | — | `译文/[未发表] UI-TARS.精读导读.pdf` |
+| ~~RAGEN~~ | ⚠️ **未发表**（arXiv） | 229 | [arXiv 2504.20073](https://arxiv.org/abs/2504.20073) | [RAGEN-AI/RAGEN](https://github.com/RAGEN-AI/RAGEN) | — | `译文/[未发表] RAGEN.精读导读.pdf` |
 
 > 说明：StepCoder 引用数查询当日因 API 限流未取到；GRPO（6757）、DeepSeek-R1（5387）引用更高，但属"推理 RL"而非智能体，未计入本榜（详见调研报告）。引用数随时间变化，仅供同年排序参考。
+>
+> ⚠️ **2026-06-10 清洗**：UI-TARS 与 RAGEN 截至查询日仍为 arXiv 预印本，未被任何顶会正式接收。ReTool 已确认发表于 ICLR 2026（此前标注为 arXiv）。
 
 ## 目录结构
 - `RL-Agent顶会论文调研报告.md` —— 总览报告（领域扫盲 + 10 篇核心思想/实验 + 学习路线）

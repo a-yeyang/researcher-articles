@@ -1,0 +1,1045 @@
+{
+ "pdf": "DigiRL.pdf",
+ "slug": "digirl",
+ "page_count": 28,
+ "page_size": [
+  612.0,
+  792.0
+ ],
+ "pages": [
+  {
+   "page": 1,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/digirl/_pages/p01.png"
+  },
+  {
+   "page": 2,
+   "candidates": [
+    {
+     "id": "cand_p02_k00",
+     "kind": "vector",
+     "bbox": [
+      127.8,
+      72.0,
+      484.2,
+      255.0
+     ],
+     "pdf": "cand_p02_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      262.0,
+      504.0,
+      272.0
+     ],
+     "text": "Figure 1: DigiRL overview. DigiRL is built upon a VLM that has been pre-trained on extensive web data",
+     "label": "Figure 1"
+    }
+   ],
+   "overlay": "assets/digirl/_pages/p02.png"
+  },
+  {
+   "page": 3,
+   "candidates": [
+    {
+     "id": "cand_p03_k00",
+     "kind": "vector",
+     "bbox": [
+      112.0,
+      72.0,
+      500.0,
+      244.1
+     ],
+     "pdf": "cand_p03_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      251.1,
+      504.0,
+      261.1
+     ],
+     "text": "Figure 2: Qualitative comparison between DigiRL and other approaches. AutoUI trained from static",
+     "label": "Figure 2"
+    }
+   ],
+   "overlay": "assets/digirl/_pages/p03.png"
+  },
+  {
+   "page": 4,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/digirl/_pages/p04.png"
+  },
+  {
+   "page": 5,
+   "candidates": [
+    {
+     "id": "cand_p05_k00",
+     "kind": "vector",
+     "bbox": [
+      112.0,
+      72.0,
+      500.0,
+      234.4
+     ],
+     "pdf": "cand_p05_k00.pdf"
+    },
+    {
+     "id": "cand_p05_k01",
+     "kind": "vector",
+     "bbox": [
+      310.0,
+      373.2,
+      500.0,
+      503.0
+     ],
+     "pdf": "cand_p05_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      241.5,
+      504.0,
+      251.4
+     ],
+     "text": "Figure 3: Environment details. Top: actions space and dynamics of the environment. Bottom: examples of the",
+     "label": "Figure 3"
+    },
+    {
+     "bbox": [
+      306.0,
+      510.0,
+      504.0,
+      520.0
+     ],
+     "text": "Figure 4: Performance of our approach (DigiRL) in",
+     "label": "Figure 4"
+    }
+   ],
+   "overlay": "assets/digirl/_pages/p05.png"
+  },
+  {
+   "page": 6,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/digirl/_pages/p06.png"
+  },
+  {
+   "page": 7,
+   "candidates": [
+    {
+     "id": "cand_p07_k00",
+     "kind": "table",
+     "bbox": [
+      109.9,
+      72.0,
+      502.0,
+      251.3
+     ],
+     "pdf": "cand_p07_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      258.1,
+      504.0,
+      268.2
+     ],
+     "text": "Figure 5: Algorithm visualization. The two value function are first trained with original distribution of",
+     "label": "Figure 5"
+    }
+   ],
+   "overlay": "assets/digirl/_pages/p07.png"
+  },
+  {
+   "page": 8,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      107.7,
+      237.9,
+      504.0,
+      247.8
+     ],
+     "text": "Table 1: Main comparisons of different agents across various settings. Each offline experiment is repeated",
+     "label": "Table 1"
+    }
+   ],
+   "overlay": "assets/digirl/_pages/p08.png"
+  },
+  {
+   "page": 9,
+   "candidates": [
+    {
+     "id": "cand_p09_k00",
+     "kind": "vector",
+     "bbox": [
+      112.0,
+      72.0,
+      500.0,
+      239.9
+     ],
+     "pdf": "cand_p09_k00.pdf"
+    },
+    {
+     "id": "cand_p09_k01",
+     "kind": "vector",
+     "bbox": [
+      127.8,
+      304.1,
+      484.2,
+      425.6
+     ],
+     "pdf": "cand_p09_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      246.9,
+      505.5,
+      256.9
+     ],
+     "text": "Figure 6: Offline-to-online training curves for Filtered BC and DigiRL. Curves are smoothed with expo-",
+     "label": "Figure 6"
+    },
+    {
+     "bbox": [
+      108.0,
+      432.7,
+      504.0,
+      442.6
+     ],
+     "text": "Figure 7: Failure modes for each approach on both the AiTW General and Web Shopping subsets. We found",
+     "label": "Figure 7"
+    }
+   ],
+   "overlay": "assets/digirl/_pages/p09.png"
+  },
+  {
+   "page": 10,
+   "candidates": [
+    {
+     "id": "cand_p10_k00",
+     "kind": "table",
+     "bbox": [
+      108.0,
+      72.0,
+      504.0,
+      190.2
+     ],
+     "pdf": "cand_p10_k00.pdf"
+    },
+    {
+     "id": "cand_p10_k01",
+     "kind": "table",
+     "bbox": [
+      124.1,
+      146.3,
+      502.6,
+      164.1
+     ],
+     "pdf": "cand_p10_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      205.4,
+      504.0,
+      215.3
+     ],
+     "text": "Figure 8: Correlation between our autonomous evaluator and human judgements for all policy models on",
+     "label": "Figure 8"
+    }
+   ],
+   "overlay": "assets/digirl/_pages/p10.png"
+  },
+  {
+   "page": 11,
+   "candidates": [
+    {
+     "id": "cand_p11_k00",
+     "kind": "table",
+     "bbox": [
+      118.6,
+      72.0,
+      493.4,
+      226.8
+     ],
+     "pdf": "cand_p11_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      233.8,
+      504.0,
+      243.8
+     ],
+     "text": "Figure 9: Left: Ablation study results on the AitW Web Shopping subset. Right: Emulation speed w.r.t",
+     "label": "Figure 9"
+    }
+   ],
+   "overlay": "assets/digirl/_pages/p11.png"
+  },
+  {
+   "page": 12,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/digirl/_pages/p12.png"
+  },
+  {
+   "page": 13,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/digirl/_pages/p13.png"
+  },
+  {
+   "page": 14,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/digirl/_pages/p14.png"
+  },
+  {
+   "page": 15,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/digirl/_pages/p15.png"
+  },
+  {
+   "page": 16,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      167.9,
+      413.4,
+      443.8,
+      423.4
+     ],
+     "text": "Table 2: Examples of task descriptions in the AiTW General task set.",
+     "label": "Table 2"
+    },
+    {
+     "bbox": [
+      156.4,
+      695.2,
+      455.3,
+      705.2
+     ],
+     "text": "Table 3: Examples of task descriptions in the AiTW Webshopping task set.",
+     "label": "Table 3"
+    }
+   ],
+   "overlay": "assets/digirl/_pages/p16.png"
+  },
+  {
+   "page": 17,
+   "candidates": [
+    {
+     "id": "cand_p17_k00",
+     "kind": "table",
+     "bbox": [
+      109.9,
+      271.4,
+      502.1,
+      325.4
+     ],
+     "pdf": "cand_p17_k00.pdf"
+    },
+    {
+     "id": "cand_p17_k01",
+     "kind": "vector",
+     "bbox": [
+      214.9,
+      72.0,
+      397.1,
+      197.2
+     ],
+     "pdf": "cand_p17_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      203.9,
+      504.0,
+      214.2
+     ],
+     "text": "Figure 10: Success rate with different horizon length (H ∈{10, 20})under different methods on",
+     "label": "Figure 10"
+    },
+    {
+     "bbox": [
+      107.7,
+      328.9,
+      504.1,
+      338.8
+     ],
+     "text": "Table 4: Average rollout length of the DigiRL agent compared to filtered BC. Darker green means shorter",
+     "label": "Table 4"
+    }
+   ],
+   "overlay": "assets/digirl/_pages/p17.png"
+  },
+  {
+   "page": 18,
+   "candidates": [
+    {
+     "id": "cand_p18_k00",
+     "kind": "vector",
+     "bbox": [
+      157.3,
+      84.8,
+      454.7,
+      689.3
+     ],
+     "pdf": "cand_p18_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      124.6,
+      696.1,
+      487.4,
+      706.1
+     ],
+     "text": "Figure 11: Agents’ trajectory on two randomly sampled tasks on the General split of AitW.",
+     "label": "Figure 11"
+    }
+   ],
+   "overlay": "assets/digirl/_pages/p18.png"
+  },
+  {
+   "page": 19,
+   "candidates": [
+    {
+     "id": "cand_p19_k00",
+     "kind": "vector",
+     "bbox": [
+      157.3,
+      84.6,
+      454.7,
+      689.5
+     ],
+     "pdf": "cand_p19_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      121.1,
+      696.3,
+      490.9,
+      706.3
+     ],
+     "text": "Figure 12: Agents’ trajectory on two randomly sampled tasks on the WebShop split of AitW.",
+     "label": "Figure 12"
+    }
+   ],
+   "overlay": "assets/digirl/_pages/p19.png"
+  },
+  {
+   "page": 20,
+   "candidates": [
+    {
+     "id": "cand_p20_k00",
+     "kind": "vector",
+     "bbox": [
+      117.6,
+      71.8,
+      494.3,
+      345.3
+     ],
+     "pdf": "cand_p20_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      351.8,
+      504.2,
+      362.1
+     ],
+     "text": "Figure 13: Error recovery cases. In bestbuy.com, we systematically find DigiRL able to recover",
+     "label": "Figure 13"
+    },
+    {
+     "bbox": [
+      108.0,
+      646.9,
+      504.0,
+      657.0
+     ],
+     "text": "Figure 15. Here, we ask the model to search for an item in a webshopping website, in particular in",
+     "label": "Figure 15"
+    }
+   ],
+   "overlay": "assets/digirl/_pages/p20.png"
+  },
+  {
+   "page": 21,
+   "candidates": [
+    {
+     "id": "cand_p21_k00",
+     "kind": "vector",
+     "bbox": [
+      117.6,
+      71.8,
+      494.2,
+      370.4
+     ],
+     "pdf": "cand_p21_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      129.3,
+      377.2,
+      482.7,
+      387.2
+     ],
+     "text": "Figure 14: Examples where DigiRL has shorter trajectory length than online filtered BC.",
+     "label": "Figure 14"
+    }
+   ],
+   "overlay": "assets/digirl/_pages/p21.png"
+  },
+  {
+   "page": 22,
+   "candidates": [
+    {
+     "id": "cand_p22_k00",
+     "kind": "image",
+     "bbox": [
+      107.8,
+      75.0,
+      504.2,
+      331.1
+     ],
+     "pdf": "cand_p22_k00.pdf"
+    },
+    {
+     "id": "cand_p22_k01",
+     "kind": "image",
+     "bbox": [
+      178.2,
+      99.4,
+      236.3,
+      222.0
+     ],
+     "pdf": "cand_p22_k01.pdf"
+    },
+    {
+     "id": "cand_p22_k02",
+     "kind": "image",
+     "bbox": [
+      241.9,
+      99.8,
+      299.8,
+      222.0
+     ],
+     "pdf": "cand_p22_k02.pdf"
+    },
+    {
+     "id": "cand_p22_k03",
+     "kind": "image",
+     "bbox": [
+      313.5,
+      99.8,
+      371.3,
+      222.0
+     ],
+     "pdf": "cand_p22_k03.pdf"
+    },
+    {
+     "id": "cand_p22_k04",
+     "kind": "image",
+     "bbox": [
+      379.5,
+      100.1,
+      437.3,
+      222.2
+     ],
+     "pdf": "cand_p22_k04.pdf"
+    },
+    {
+     "id": "cand_p22_k05",
+     "kind": "image",
+     "bbox": [
+      443.8,
+      99.2,
+      501.6,
+      221.2
+     ],
+     "pdf": "cand_p22_k05.pdf"
+    },
+    {
+     "id": "cand_p22_k06",
+     "kind": "image",
+     "bbox": [
+      107.8,
+      417.6,
+      504.2,
+      655.4
+     ],
+     "pdf": "cand_p22_k06.pdf"
+    },
+    {
+     "id": "cand_p22_k07",
+     "kind": "image",
+     "bbox": [
+      111.8,
+      443.2,
+      169.1,
+      564.1
+     ],
+     "pdf": "cand_p22_k07.pdf"
+    },
+    {
+     "id": "cand_p22_k08",
+     "kind": "image",
+     "bbox": [
+      176.8,
+      444.1,
+      233.6,
+      564.1
+     ],
+     "pdf": "cand_p22_k08.pdf"
+    },
+    {
+     "id": "cand_p22_k09",
+     "kind": "image",
+     "bbox": [
+      250.4,
+      444.6,
+      307.1,
+      564.4
+     ],
+     "pdf": "cand_p22_k09.pdf"
+    },
+    {
+     "id": "cand_p22_k10",
+     "kind": "image",
+     "bbox": [
+      314.8,
+      444.9,
+      371.3,
+      564.1
+     ],
+     "pdf": "cand_p22_k10.pdf"
+    },
+    {
+     "id": "cand_p22_k11",
+     "kind": "image",
+     "bbox": [
+      379.0,
+      444.9,
+      435.5,
+      564.1
+     ],
+     "pdf": "cand_p22_k11.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      337.8,
+      504.0,
+      347.9
+     ],
+     "text": "Figure 15: Failure of GPT-4V, with its thoughts and link-based actions given. A typical cause of",
+     "label": "Figure 15"
+    },
+    {
+     "bbox": [
+      108.0,
+      662.2,
+      504.0,
+      672.2
+     ],
+     "text": "Figure 16: Failure of GPT-4V, with its thoughts and link-based actions given. This time the reason",
+     "label": "Figure 16"
+    }
+   ],
+   "overlay": "assets/digirl/_pages/p22.png"
+  },
+  {
+   "page": 23,
+   "candidates": [
+    {
+     "id": "cand_p23_k00",
+     "kind": "image",
+     "bbox": [
+      107.8,
+      71.8,
+      512.1,
+      333.3
+     ],
+     "pdf": "cand_p23_k00.pdf"
+    },
+    {
+     "id": "cand_p23_k01",
+     "kind": "image",
+     "bbox": [
+      180.4,
+      94.2,
+      238.4,
+      216.5
+     ],
+     "pdf": "cand_p23_k01.pdf"
+    },
+    {
+     "id": "cand_p23_k02",
+     "kind": "image",
+     "bbox": [
+      246.2,
+      94.9,
+      304.1,
+      217.0
+     ],
+     "pdf": "cand_p23_k02.pdf"
+    },
+    {
+     "id": "cand_p23_k03",
+     "kind": "image",
+     "bbox": [
+      377.7,
+      94.2,
+      435.6,
+      216.5
+     ],
+     "pdf": "cand_p23_k03.pdf"
+    },
+    {
+     "id": "cand_p23_k04",
+     "kind": "image",
+     "bbox": [
+      445.3,
+      94.2,
+      503.3,
+      216.5
+     ],
+     "pdf": "cand_p23_k04.pdf"
+    },
+    {
+     "id": "cand_p23_k05",
+     "kind": "image",
+     "bbox": [
+      312.0,
+      94.9,
+      369.8,
+      217.0
+     ],
+     "pdf": "cand_p23_k05.pdf"
+    },
+    {
+     "id": "cand_p23_k06",
+     "kind": "vector",
+     "bbox": [
+      108.0,
+      409.8,
+      504.0,
+      495.4
+     ],
+     "pdf": "cand_p23_k06.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      340.1,
+      504.0,
+      350.1
+     ],
+     "text": "Figure 17: Failure of GPT-4V, with an example task on the AiTW general test set. The task is “Set",
+     "label": "Figure 17"
+    },
+    {
+     "bbox": [
+      108.0,
+      502.5,
+      504.0,
+      512.4
+     ],
+     "text": "Figure 18: Failure modes decomposition for each policy model for both General and Web Shopping",
+     "label": "Figure 18"
+    },
+    {
+     "bbox": [
+      107.7,
+      644.3,
+      139.5,
+      654.3
+     ],
+     "text": "Table 5.",
+     "label": "Table 5"
+    }
+   ],
+   "overlay": "assets/digirl/_pages/p23.png"
+  },
+  {
+   "page": 24,
+   "candidates": [
+    {
+     "id": "cand_p24_k00",
+     "kind": "vector",
+     "bbox": [
+      115.3,
+      205.9,
+      496.1,
+      299.2
+     ],
+     "pdf": "cand_p24_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      156.4,
+      176.8,
+      455.3,
+      186.7
+     ],
+     "text": "Table 5: Examples of task descriptions in the AiTW Webshopping task set.",
+     "label": "Table 5"
+    },
+    {
+     "bbox": [
+      108.0,
+      344.7,
+      504.0,
+      354.8
+     ],
+     "text": "Figure 19: Multi-machine parallel emulator execution. The host machine is equipped with GPU",
+     "label": "Figure 19"
+    }
+   ],
+   "overlay": "assets/digirl/_pages/p24.png"
+  },
+  {
+   "page": 25,
+   "candidates": [
+    {
+     "id": "cand_p25_k00",
+     "kind": "image",
+     "bbox": [
+      111.4,
+      89.0,
+      500.6,
+      685.1
+     ],
+     "pdf": "cand_p25_k00.pdf"
+    },
+    {
+     "id": "cand_p25_k01",
+     "kind": "image",
+     "bbox": [
+      149.4,
+      520.0,
+      216.8,
+      662.1
+     ],
+     "pdf": "cand_p25_k01.pdf"
+    },
+    {
+     "id": "cand_p25_k02",
+     "kind": "image",
+     "bbox": [
+      283.8,
+      519.9,
+      351.0,
+      661.7
+     ],
+     "pdf": "cand_p25_k02.pdf"
+    },
+    {
+     "id": "cand_p25_k03",
+     "kind": "image",
+     "bbox": [
+      388.9,
+      520.0,
+      456.1,
+      661.9
+     ],
+     "pdf": "cand_p25_k03.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      141.4,
+      691.6,
+      470.6,
+      701.5
+     ],
+     "text": "Figure 20: Prompt for our autonomous evaluator for tasks in AitW General subset.",
+     "label": "Figure 20"
+    }
+   ],
+   "overlay": "assets/digirl/_pages/p25.png"
+  },
+  {
+   "page": 26,
+   "candidates": [
+    {
+     "id": "cand_p26_k00",
+     "kind": "image",
+     "bbox": [
+      111.4,
+      91.6,
+      500.6,
+      682.5
+     ],
+     "pdf": "cand_p26_k00.pdf"
+    },
+    {
+     "id": "cand_p26_k01",
+     "kind": "image",
+     "bbox": [
+      158.0,
+      522.4,
+      223.8,
+      661.4
+     ],
+     "pdf": "cand_p26_k01.pdf"
+    },
+    {
+     "id": "cand_p26_k02",
+     "kind": "image",
+     "bbox": [
+      289.2,
+      522.8,
+      354.8,
+      661.3
+     ],
+     "pdf": "cand_p26_k02.pdf"
+    },
+    {
+     "id": "cand_p26_k03",
+     "kind": "image",
+     "bbox": [
+      390.4,
+      523.4,
+      455.8,
+      661.5
+     ],
+     "pdf": "cand_p26_k03.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      127.9,
+      689.0,
+      484.1,
+      698.9
+     ],
+     "text": "Figure 21: Prompt for our autonomous evaluator for tasks in AitW Web Shopping subset.",
+     "label": "Figure 21"
+    }
+   ],
+   "overlay": "assets/digirl/_pages/p26.png"
+  },
+  {
+   "page": 27,
+   "candidates": [
+    {
+     "id": "cand_p27_k00",
+     "kind": "vector",
+     "bbox": [
+      107.4,
+      129.5,
+      504.6,
+      515.6
+     ],
+     "pdf": "cand_p27_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      108.0,
+      97.5,
+      504.0,
+      107.5
+     ],
+     "text": "Figure 22 shows the prompt that we used for testing the Set-of-Marks performance for GPT-4V and",
+     "label": "Figure 22"
+    },
+    {
+     "bbox": [
+      108.0,
+      522.1,
+      504.0,
+      532.0
+     ],
+     "text": "Figure 22: Set-of-Marks prompting. The boldened inputs can be changed according to our goal. The",
+     "label": "Figure 22"
+    }
+   ],
+   "overlay": "assets/digirl/_pages/p27.png"
+  },
+  {
+   "page": 28,
+   "candidates": [
+    {
+     "id": "cand_p28_k00",
+     "kind": "table",
+     "bbox": [
+      110.2,
+      231.9,
+      504.0,
+      548.5
+     ],
+     "pdf": "cand_p28_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      212.8,
+      217.7,
+      398.8,
+      227.7
+     ],
+     "text": "Table 6: Hyperparameters for All Experiments",
+     "label": "Table 6"
+    },
+    {
+     "bbox": [
+      107.7,
+      556.6,
+      504.0,
+      566.5
+     ],
+     "text": "Table 7: Hyperparameters for DigiRL and Filtered BC on both General and Web Shopping subset of",
+     "label": "Table 7"
+    }
+   ],
+   "overlay": "assets/digirl/_pages/p28.png"
+  }
+ ]
+}

@@ -1,0 +1,325 @@
+\subsection{C.5 SRE-Agent}
+
+如第 3.2 节所述，智能体（agent）与目标环境交互、收集可观测性（observability）数据，并执行动作以达成其目标。对于 SRE（站点可靠性工程，Site Reliability Engineering）而言，目标是诊断（diagnosis）并缓解（mitigation）故障事件。下面我们描述 SRE-Agent 所收集的可观测性数据，以及我们基于大语言模型（LM）的多智能体系统实现。
+
+\subsubsection{C.5.1 可观测性数据}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.78\linewidth]{cand_p27_k00.pdf}
+\caption{用于 SRE 任务的多模态数据。}
+\label{fig:itb-fig10}
+\end{figure}
+
+如图 10 所示，SRE 任务涉及分析多模态可观测性数据：日志（logs）、链路追踪（traces）和指标（metrics）。
+
+\textbf{日志（Logs）。} 日志是半结构化的文本记录，用于捕获硬件与软件事件。它们通常按严重级别归类，如 INFO、WARN 和 ERROR，以反映系统的运行状态以及问题的严重程度。
+
+\textbf{链路追踪（Traces）。} 请求链路追踪描述用户请求在分布式系统中穿越各服务实例时的执行流程。它们提供服务调用的分层表示，其中每个操作被称为一个跨度（span）。一个跨度记录单次服务调用的信息，如其起始时间、持续时长以及相关元数据（包括标签和日志）。多个跨度相互关联形成一条 trace，从而捕获请求的完整执行路径。此外，程序执行链路追踪还可捕获程序崩溃信息，为开发者在调试时提供宝贵线索。
+
+\textbf{指标（Metrics）。} 指标提供监测系统性能与用户感知指标的时间序列数据，如延迟、错误率和资源利用率。
+
+\subsubsection{C.5.2 SRE-Agent 架构与实现}
+
+SRE-Agent 架构由两个基于大语言模型的智能体构成：一个诊断智能体（Diagnosis Agent）和一个修复智能体（Resolution Agent），如图 11 所示。我们首先定义实现中所用的以下基本组件：
+
+\begin{itemize}
+\item \emph{智能体（Agent）。} 智能体是一个自主或半自主的软件程序，它利用大语言模型进行规划、决策、与目标环境交互并执行动作以达成目标。
+\item \emph{任务（Task）。} 任务是智能体在其执行终止前必须达成的特定目标。在我们的实现中，任务是一个复杂的多步骤流程（例如诊断某次故障事件的成因）。任务还关联有智能体可用于达成目标的工具。
+\item \emph{工具（Tool）。} 工具是智能体可调用以执行某一具体子任务的函数或 API 调用，例如与目标环境交互以收集可观测性数据。
+\end{itemize}
+
+下面我们描述上述各组件的具体实现。
+
+\textbf{工具（Tools）。} 表 14 列出了 SRE-Agent 可用的全部工具。我们所有的工具同样基于大语言模型：以一段来自智能体、指示其执行所需子任务的话语（utterance）作为提示输入大语言模型。根据工具是生成自然语言（如 Mitigation）还是生成函数调用（如 NL2Kubectl），可将工具分为两类。此外，为提升工具的准确性与可用性，我们为工具配备了以下特性。
+
+\begin{table}[H]
+\centering
+\caption{SRE-Agent 所用工具列表。}
+\label{tab:itb-tab14}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{lll}
+\toprule
+\textbf{名称} & \textbf{描述} & \textbf{支持反思} \\
+\midrule
+NL2Kubectl & 直接与 Kubernetes 交互 & yes \\
+NL2Traces & 与 Grafana API 交互以获取链路追踪 & yes \\
+NL2Metrics & 与 Grafana API 交互以获取存储在 Prometheus 中的指标 & yes \\
+NL2Logs & 与 Grafana API 交互以获取存储在 Loki 中的日志 & yes \\
+NL2Alerts & 与 Grafana API 交互以获取告警 & yes \\
+Mitigation & 生成缓解方案 & no \\
+Wait & 暂停执行指定的秒数 & no \\
+Summarization & 对输入内容进行摘要 & no \\
+DiagnosisJsonReport & 生成诊断的 JSON 报告 & no \\
+MitigationJsonReport & 生成缓解方案的 JSON 报告 & no \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\begin{itemize}
+\item \emph{反思（Reflection）。} 为实现对错误大语言模型响应的自动纠正，我们借助 linter（代码检查器）提供外部反馈（Pan et al., 2023；Huang et al., 2023）。具体而言，针对生成函数调用的工具，我们开发了 linter 来校验输出的语法与语义。如果 linter 发现生成的函数调用存在问题，便会将 linter 的反馈连同问题一并重新提示给大语言模型，使其尝试修正。类似地，如果生成的函数调用通过了检查但在执行时引发错误，则将错误消息与失败的函数调用一并重新提示给大语言模型，以获取修正后的函数调用。
+\item \emph{摘要器（Summarizer）。} 对于某些工具（如 NL2Logs 和 NL2Traces），其输出不直接返回给智能体，因为输出非常长且包含大量无关信息。这些工具会增加一个额外步骤：将输出连同要求其仅提供相关信息的详细摘要的指令一并提示给大语言模型。
+\end{itemize}
+
+\textbf{任务（Tasks）。} 我们定义了 SRE-Agent 需完成的以下两项任务。每项任务都包含对其完成过程的描述以及完成后期望的输出。每项任务还关联有工具，智能体可用其执行子任务、收集信息或与环境交互。
+
+\begin{itemize}
+\item \emph{诊断任务（Diagnosis Task）。} 对于诊断，目标是识别完整的故障传播链（fault propagation chain，FPC），即故障传播链分析；并在该链条中识别问题的确切成因，即故障定位（fault localization，FL）。
+\item \emph{缓解任务（Mitigation Task）。} 对于缓解，目标是提供自然语言形式的缓解方案，并执行这些方案以成功清除触发的告警。缓解方案可提升智能体的可解释性，并帮助 SRE 理解智能体为何执行了某些命令。
+\end{itemize}
+
+\textbf{智能体（Agents）。} 总体而言，SRE-Agent 由两个智能体构成，即诊断智能体与缓解智能体。每个智能体被指派其必须完成的任务。一般来说，多智能体系统可以是\emph{分层式（hierarchical）}或\emph{顺序式（sequential）}的。顺序执行使任务以固定的线性顺序完成。在分层执行中，由一个“管理者（manager）”智能体确定任务的执行顺序并与其他智能体协调。我们采用顺序执行，因为它非常适合 SRE 用例——故障事件必须先经诊断才能被修复。尽管任务执行顺序是固定的，但每项任务内部的子任务或步骤可由智能体自身决定按任意顺序完成。下面我们描述两个智能体的整体工作流程。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\linewidth]{cand_p29_k00.pdf}
+\caption{SRE-Agent 架构。}
+\label{fig:itb-fig11}
+\end{figure}
+
+\begin{itemize}
+\item \emph{诊断智能体（Diagnosis Agent）。} 首先，诊断智能体使用 NL2Alerts 工具检索环境中的活动告警。随后，智能体灵活而迭代地使用可观测性工具，从告警中提及的受影响实体以及与该实体关联的实体处收集 trace、日志和指标。它还可能使用 NL2Kubectl 命令来调查环境。一旦智能体确定已掌握足够信息可给出诊断，便会生成一份 JSON 格式的结构化诊断报告，将其发现记录其中以便于评估。报告生成后，缓解智能体接手。
+\item \emph{缓解智能体（Mitigation Agent）。} 缓解智能体读取诊断报告以制定缓解方案，随后利用可用工具实施该方案。这涉及使用 NL2Kubectl 命令。为确保所执行的命令已缓解故障事件，它还可使用 NL2Alerts 工具检查环境中的告警是否已被清除。此外，由于在实时环境的波动下告警有时可能暂时显现为已清除，智能体可使用 Wait 工具检查告警在一段时间后是否\emph{仍然}保持清除状态。最后，执行完成后，智能体生成一份 JSON，说明其所采取的缓解步骤。
+\end{itemize}
+
+\subsection{C.6 ITBench 评测}
+
+\subsubsection{C.6.1 实验细节}
+
+我们在 ITBench 中的一组 42 个 SRE 场景上评测 SRE-Agent。对于智能体基于大语言模型的规划组件，我们考虑四种不同的模型：gpt-4o、granite-3.1-8b-instruct、llama-3.3-70b-instruct 和 llama-3.1-8b-instruct。这些模型均未经过微调。
+
+表 15 列出了我们实验中使用的主要超参数取值。选择这些取值是为了尽可能确保结果具有确定性。$decoding\_method$ 适用于除 gpt-4o 之外的所有模型。
+
+\begin{table}[H]
+\centering
+\caption{模型超参数。}
+\label{tab:itb-tab15}
+\begin{tabular}{ll}
+\toprule
+\textbf{超参数} & \textbf{取值} \\
+\midrule
+$temperature$ & 0 \\
+$top\_p$ & 1e-7 \\
+$seed$ & 42 \\
+$decoding\_method$ & greedy \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{C.6.2 评测指标}
+
+我们在两项主要任务上评测每个基于大语言模型的智能体：(i) 诊断和 (ii) 缓解。
+
+\textbf{诊断（Diagnosis）。} 智能体的诊断能力根据其提供准确\emph{故障定位}与\emph{故障传播链}的能力来评测。故障定位使 SRE 能够识别\emph{导致}问题的确切资源，而故障传播链使 SRE 能够理解故障如何在应用栈中级联传播并影响应用。故障传播链还可进一步用于其他重要任务，如爆炸半径（blast radius）分析。
+
+\begin{itemize}
+\item \emph{故障定位}性能使用 pass@1 和归一化拓扑感知匹配（Normalized Topology-Aware Match，NTAM）来度量。
+\item \emph{故障传播链}使用 NTAM 评估。此外，我们追踪平均诊断时间（Mean Time to Diagnosis，MTTD）以衡量整体诊断效率。
+\end{itemize}
+
+\textbf{缓解（Mitigation）。} 对于缓解，我们评测智能体修复故障事件（即清除告警）的有效程度。
+
+\begin{itemize}
+\item 成功率使用 pass@1 量化。
+\item 效率通过平均修复时间（Mean Time to Resolution，MTTR）来刻画。
+\end{itemize}
+
+\subsubsection{C.6.3 指标定义}
+
+\textbf{pass@1。} 我们使用 pass@1 指标（Chen et al., 2021）来评测故障定位与缓解，其定义如下：
+
+\begin{equation}
+\mathrm{pass@}k := \mathbb{E}_{\mathrm{Scenarios}}\left[ 1 - \frac{\binom{n-c}{k}}{\binom{n}{k}} \right]
+\end{equation}
+
+它是所有场景上 $k=1$ 试验正确性的无偏估计量。对于\emph{故障定位}，正确性指预测的根因（root cause）是否与真实根因完全匹配。对于\emph{缓解}，正确性指告警是否被清除。
+
+\textbf{归一化拓扑感知匹配（Normalized Topology-aware Matching）。} 现有用于评估\emph{故障传播链}与\emph{故障定位}的方法侧重于与真实标签的精确匹配（Ahmed et al., 2023b；Zhu et al., 2024；Chen et al., 2024c），从而忽略了拓扑结构以及对传播链更细粒度的分析。例如，当预测的传播链或根因与真实标签不完全匹配时，现有方法无法有效区分智能体与模型，因为它们未能度量预测与实际故障的接近程度。因此，我们提出一种新指标——归一化拓扑感知匹配（NTAM），通过拓扑感知的距离计算来度量智能体相对于真实标签的性能。
+
+NTAM 需要一张拓扑图，其中节点为系统的实体，边表示它们之间不同类型的连接（例如 Deployment 拥有 ReplicaSet）。给定这样一张拓扑图，便可用其评估故障传播链中的实体集合，以及用于故障定位的根因实体集合。NTAM 受拓扑感知的距离度量以及信息检索概念（如 BM25，Fang et al., 2011）启发，后者会对区分度较低的特征进行降权。它是一个灵活、通用的函数，具有可配置组件，可对预测输出质量进行细粒度评估。
+
+具体而言，它由以下主要组件构成：
+
+\begin{itemize}
+\item \emph{基于拓扑的距离评分}函数，同时考虑边类型与子树规模，对更接近真实标签的预测实体给予奖励。此外，连接较少（子树较小）的节点获得更高分数，因为它们对故障定位更具区分度。
+\item \emph{节点重要性因子}，基于真实标签实体在传播链中的位置而定。这体现了如下直觉：正确预测真实根因实体所应获得的奖励，应高于在链条上预测对了另一个实体。
+\item \emph{长度失配的惩罚项}，针对预测实体与真实实体之间的数量差异。这是为了确保预测实体过多或过少时得分更低。
+\end{itemize}
+
+所有组件都有相应的超参数，可调以调整它们对总分的贡献。最终得分被归一化到 0 与 1 之间，其中 1 表示完全匹配。对于故障定位，不评估全部实体集合，而是仅考虑真实与预测的根因实体。
+
+\textbf{平均诊断时间（Mean Time to Diagnosis）。} 对于智能体成功完成诊断（即找到根因实体）的场景，我们计算 MTTD，用以度量智能体执行诊断的快慢（以秒为单位）。否则，MTTD 设为无穷大。
+
+\textbf{平均修复时间（Mean Time to Repair）。} 类似地，对于缓解，我们识别出智能体成功执行自动化动作以修复故障（即告警被清除）的场景。对于这些场景，我们计算 MTTR（以秒为单位），用以度量智能体执行缓解的快慢。否则，MTTR 设为无穷大。
+
+\subsubsection{C.6.4 评测结果}
+
+我们呈现四个基于大语言模型的智能体在 ITBench 框架下 42 个 SRE 场景上的评测结果。
+
+\textbf{智能体总体结果。} gpt-4o 表现最强，在诊断上取得 13.81\% 的 pass@1、在缓解上取得 11.43\% 的 pass@1（表 4），显著高于其他任何智能体。此外，它在 NTAM 指标（FL 与 FPC）上也取得最佳分数。值得注意的是，在困难场景（表 19）中，gpt-4o 是唯一能够执行多次准确诊断的智能体（granite 仅成功一次），且\emph{没有任何智能体能够修复困难场景}。与此同时，llama-3.1-8B 尽管参数更少，却在成功的尝试中提供了最快的检测速度（最低 MTTD 为 57.50 秒）和修复速度（最低 MTTR 为 245.13 秒）。尽管 granite-3.1-8B 与 llama-3.1-8B 拥有相同的参数规模，它展现出略强的诊断能力，但缓解能力较弱。llama-3.3-70B 总体上排名第二，在我们所计算的所有指标上均落后于 gpt-4o。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.62\linewidth]{fig12.pdf}
+\caption{场景 15 中 llama-3.3-70b-instruct 的轨迹样例。}
+\label{fig:itb-fig12}
+\end{figure}
+
+\textbf{按场景复杂度的结果分析。} 当我们根据公式 (6) 所述的复杂度将基准场景归类为简单（Easy）、中等（Medium）和困难（Hard）时，随着 $scenario\_complexity$ 的增加，出现了明显的性能差距。具体而言，表 17 显示在更复杂的场景中诊断准确率（pass@1）更低，而表 18 揭示出缓解成功率（pass@1）相应下降。在五个困难场景中，没有任何场景能被任何智能体在任何一次运行中解决。相比之下，对于简单场景，超过半数（八个中有五个）的场景被至少一个智能体成功修复，并且有六个场景被正确诊断。我们使用比例差异 z 检验来比较不同任务难度间的成功率（每次评估两个难度）。\emph{智能体性能从简单到困难场景持续下降，这验证了我们基于传播链长度、修复步骤数和技术多样性所构建的复杂度模型。}
+
+\textbf{诊断与缓解之间的相互依赖。} 有趣的是，诊断与缓解常被直觉地认为相互依赖，即准确的诊断是有效缓解的前提条件。然而，\emph{我们的发现揭示：在某些场景中，智能体尽管错误识别了根因，却仍能成功缓解故障事件}。例如，在场景 15（图 12）中，使用 llama-3.3-70b 模型的智能体将根因错误识别为服务中的“内存限制（memory limit）”，而真实根因是 HTTP 请求损坏故障；然而它仍设法通过扩容 email 服务的 pod 数量使其恢复功能，从而实际上绕过了对真实 HTTP 故障的处理。此类案例说明，诸如重启服务或扩容副本之类的通用缓解动作，有时即使在缺乏完全准确诊断的情况下也能修复系统症状。我们在真实世界的 SRE 故障事件分析中也观察到类似行为：尽管根因仍未确定，SRE 仍能够缓解故障事件。
+
+相反地，某些场景揭示了相反的问题：场景 13 虽被标注为“简单”，却无法被任何受测智能体修复，即便它们在诊断根因上取得了高分。值得注意的是，gpt-4o 取得了约 80\% 的 pass@1，并在 FPC 与 RC（NTAM）指标上均超过 0.7。这意味着，\emph{尽管智能体无法完全解决某些问题，它仍能提供近乎准确的诊断洞察，从而潜在地辅助人类操作者进行调试}。
+
+某些场景产生了更差的结果。例如，在场景 19（图 13）中，智能体未能识别根因，也无法修复系统，最终给出的缓解方案完全无效。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.62\linewidth]{fig13.pdf}
+\caption{场景 19 中 gpt-4o 的轨迹样例。}
+\label{fig:itb-fig13}
+\end{figure}
+
+\textbf{运行间的不一致性。} 另一个关键观察是智能体在重复运行间的不一致性。例如，llama-3.1-8b-instruct 和 mistral-large-2 在场景 11 中偶尔仅在 10 次运行中成功 1 次。尽管 gpt-4o 能可靠地修复场景 8，但其运行时间可在 100 至 800 秒之间波动。\emph{这些不一致性源于实时遥测的波动，其中微小的变化（例如某次运行报告 CPU 利用率为 58\%、另一次为 71\%）会影响大语言模型的输出，从而导致诊断与缓解结果各异。}
+
+\textbf{链路追踪对准确率的影响。} 许多基准提供原始遥测数据，而 ITBench 的一个关键差异化特征是其告警驱动的工作流，这与 SRE 通过由所采集遥测数据触发的黄金信号告警（golden-signal alerts）获知故障的方式相吻合。为进一步评估不同遥测来源的重要性，\emph{ITBench 还支持自动化的遥测数据掩蔽（telemetry data masking）}。如表 19 与表 20 所示，gpt-4o 的诊断 pass@1 从 18.10\%（有 trace）降至 9.52\%（无 trace），其缓解 pass@1 骤降至 2.86\%。类似地，llama-3.3-70B 的诊断率从 5.24\% 降至 0.95\%。事实上，一旦 trace 数据被掩蔽，仅有三个场景能被 gpt-4o 成功解决。以场景 13（简单难度）为例，智能体在所有运行中均能达到 80\% 的诊断率；然而当掩蔽 trace 时，该比率降至 0。需要注意的是，这些遥测掩蔽与智能体评估步骤都已集成进 ITBench 的自动化流水线。智能体可在不同的可观测性配置下接受评估。
+
+\textbf{灵活性与可扩展性。} 除场景设计外，\emph{ITBench 以灵活性与可扩展性为指导原则进行设计，既支持在现有任务内新增场景，也支持新增任务（如资源管理）}。我们已集成四种不同的应用，包括微服务应用（OpenTelemetry-Demo 以及来自 DeathStarBench 的 Hotel-Reservation）和非微服务应用（TiDB 应用与 Elasticsearch 应用）。ITBench 通过简单添加一个 Ansible playbook，便可直观地纳入自定义应用。外部协作者将一个应用接入 ITBench 大约耗时四个人工小时。此外，ITBench 在多个系统层（如应用层、虚拟化层）注入真实故障，确保对智能体性能进行覆盖广泛故障类型的全面评测。
+
+\subsubsection{C.6.5 诊断与缓解报告}
+
+智能体 JSON 报告的样例如图 18 所示。该 JSON 报告包含智能体在调查过程中所收集的信息。这包括其所遇到的故障实体列表，以及其对故障事件成因的最佳猜测。此外，它还包含智能体为缓解问题所采取的动作列表。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{cand_p33_k00.pdf}
+\caption{在启用链路追踪的情况下，各场景的诊断百分比。}
+\label{fig:itb-fig14}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{cand_p34_k00.pdf}
+\caption{在启用链路追踪的情况下，各场景根因的归一化拓扑感知指标（NTAM）。}
+\label{fig:itb-fig15}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{cand_p35_k00.pdf}
+\caption{在启用链路追踪的情况下，各场景故障传播链（FPC）的归一化拓扑感知指标（NTAM）。}
+\label{fig:itb-fig16}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{cand_p36_k00.pdf}
+\caption{在启用链路追踪的情况下，各场景的修复百分比。}
+\label{fig:itb-fig17}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{cand_p37_k00.pdf}
+\caption{场景 15 的智能体输出样例。}
+\label{fig:itb-fig18}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\caption{诊断 pass@1（单位：\%）。}
+\label{tab:itb-tab17}
+\begin{tabular}{lccc}
+\toprule
+\textbf{模型} & \textbf{Easy} & \textbf{Medium} & \textbf{Hard} \\
+\midrule
+gpt-4o & $36.00 \pm 4.73$ & $7.73 \pm 1.74$ & $5.00 \pm 2.24$ \\
+granite-3.1-8B-instruct & $8.00 \pm 2.68$ & $2.73 \pm 1.05$ & $1.00 \pm 1.03$ \\
+llama-3.1-8B-instruct & $1.18 \pm 1.20$ & $1.36 \pm 0.79$ & $0.00 \pm 0.00$ \\
+llama-3.3-70B-instruct & $10.00 \pm 2.93$ & $1.36 \pm 0.78$ & $0.00 \pm 0.00$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{修复 pass@1（单位：\%）。}
+\label{tab:itb-tab18}
+\begin{tabular}{lccc}
+\toprule
+\textbf{模型} & \textbf{Easy} & \textbf{Medium} & \textbf{Hard} \\
+\midrule
+gpt-4o & $21.00 \pm 4.06$ & $12.27 \pm 2.19$ & $0.00 \pm 0.00$ \\
+granite-3.1-8B-instruct & $1.00 \pm 1.01$ & $0.00 \pm 0.00$ & $0.00 \pm 0.00$ \\
+llama-3.1-8B-instruct & $5.88 \pm 2.48$ & $1.36 \pm 0.80$ & $0.00 \pm 0.00$ \\
+llama-3.3-70B-instruct & $7.00 \pm 2.50$ & $3.18 \pm 1.16$ & $0.00 \pm 0.00$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{实验细节。}
+\label{tab:itb-tab16}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{lccccc}
+\toprule
+\multirow{2}{*}{\textbf{模型}} & \multirow{2}{*}{\textbf{场景数}} & \multicolumn{3}{c}{\textbf{实验设置}} \\
+\cmidrule(lr){3-5}
+ & & \textbf{\#重复} & \textbf{\#总数} & \textbf{\%智能体提交} \\
+\midrule
+granite-3.1-8B-instruct & 42 & 10 & 420 & 98.76\% \\
+llama-3.1-8B-instruct & 42 & 10 & 420 & 100.0\% \\
+llama-3.3-70B-instruct & 42 & 10 & 420 & 100\% \\
+gpt-4o & 42 & 10 & 420 & 99.75\% \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+
+\footnotesize 注：“\%智能体提交”是指智能体返回了结果的全部试验所占的百分比。
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{仅在启用链路追踪的场景上对 SRE-agent 的评测。}
+\label{tab:itb-tab19}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{lcccccc}
+\toprule
+\multirow{2}{*}{\textbf{模型}} & \multicolumn{4}{c}{\textbf{诊断}} & \multicolumn{2}{c}{\textbf{缓解}} \\
+\cmidrule(lr){2-5}\cmidrule(lr){6-7}
+ & \textbf{pass@1 (\%)$\uparrow$} & \textbf{FL (NTAM)$\uparrow$} & \textbf{FPC (NTAM)$\uparrow$} & \textbf{MTTD (s)$\downarrow$} & \textbf{pass@1 (\%)$\uparrow$} & \textbf{MTTR (s)$\downarrow$} \\
+\midrule
+granite-3.1-8B-instruct & $3.33 \pm 1.20$ & $0.15 \pm 0.02$ & $0.16 \pm 0.01$ & $341.58 \pm 81.71$ & $0.48 \pm 0.50$ & $845.50\pm$ — \\
+llama-3.1-8B-instruct & $0.50 \pm 0.51$ & $0.07 \pm 0.01$ & $0.08 \pm 0.01$ & $58.24\pm$ — & $2.50 \pm 1.09$ & $245.39 \pm 49.45$ \\
+llama-3.3-70B-instruct & $5.24 \pm 1.59$ & $0.21 \pm 0.02$ & $0.22 \pm 0.02$ & $155.78 \pm 19.91$ & $5.71 \pm 1.60$ & $449.50 \pm 46.59$ \\
+gpt-4o & $18.10 \pm 2.58$ & $0.45 \pm 0.05$ & $0.37 \pm 0.03$ & $67.53 \pm 3.84$ & $20.00 \pm 2.75$ & $266.97 \pm 32.95$ \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+
+\footnotesize 21 个场景，每个场景运行 10 次。
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{仅在禁用链路追踪的场景上对 SRE-agent 的评测。}
+\label{tab:itb-tab20}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{lcccccc}
+\toprule
+\multirow{2}{*}{\textbf{模型}} & \multicolumn{4}{c}{\textbf{诊断}} & \multicolumn{2}{c}{\textbf{缓解}} \\
+\cmidrule(lr){2-5}\cmidrule(lr){6-7}
+ & \textbf{pass@1 (\%)$\uparrow$} & \textbf{FL (NTAM)$\uparrow$} & \textbf{FPC (NTAM)$\uparrow$} & \textbf{MTTD (s)$\downarrow$} & \textbf{pass@1 (\%)$\uparrow$} & \textbf{MTTR (s)$\downarrow$} \\
+\midrule
+granite-3.1-8B-instruct & $3.81 \pm 1.30$ & $0.18 \pm 0.02$ & $0.21 \pm 0.02$ & $160.97 \pm 51.06$ & $0.00 \pm 0.00$ & — \\
+llama-3.1-8B-instruct & $1.46 \pm 0.84$ & $0.06 \pm 0.01$ & $0.07 \pm 0.01$ & $57.26 \pm 2.88$ & $1.46 \pm 0.83$ & $244.96 \pm 68.53$ \\
+llama-3.3-70B-instruct & $0.95 \pm 0.68$ & $0.11 \pm 0.02$ & $0.10 \pm 0.02$ & $430.86\pm$ — & $0.95 \pm 0.67$ & $1429.80 \pm 552.71$ \\
+gpt-4o & $9.52 \pm 2.15$ & $0.32 \pm 0.05$ & $0.31 \pm 0.04$ & $85.19 \pm 12.84$ & $2.86 \pm 1.12$ & $385.87 \pm 15.292$ \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+
+\footnotesize 21 个场景，每个场景运行 10 次。
+\end{table}

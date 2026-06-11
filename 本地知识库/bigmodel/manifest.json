@@ -1,0 +1,862 @@
+[
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/agent-api/å¯¹è¯åå²",
+    "slug": "api-reference__agent-api__å¯¹è¯åå²"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/agent-api/å¼æ­¥ç»æ",
+    "slug": "api-reference__agent-api__å¼æ­¥ç»æ"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/agent-api/æºè½ä½å¯¹è¯",
+    "slug": "api-reference__agent-api__æºè½ä½å¯¹è¯"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/agent-api/é®ç­-agent-å¯¹è¯ï¼æµå¼ï¼",
+    "slug": "api-reference__agent-api__é®ç­-agent-å¯¹è¯ï¼æµå¼ï¼"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/å©ç-api/å©æä¼è¯åè¡¨",
+    "slug": "api-reference__å©ç-api__å©æä¼è¯åè¡¨"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/å©ç-api/å©æåè¡¨",
+    "slug": "api-reference__å©ç-api__å©æåè¡¨"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/å©ç-api/å©æå¯¹è¯",
+    "slug": "api-reference__å©ç-api__å©æå¯¹è¯"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/å·¥å·-api/ocr-æå¡",
+    "slug": "api-reference__å·¥å·-api__ocr-æå¡"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/å·¥å·-api/åå®¹å®å¨",
+    "slug": "api-reference__å·¥å·-api__åå®¹å®å¨"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/å·¥å·-api/æä»¶è§£æ",
+    "slug": "api-reference__å·¥å·-api__æä»¶è§£æ"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/å·¥å·-api/æä»¶è§£æåæ­¥",
+    "slug": "api-reference__å·¥å·-api__æä»¶è§£æåæ­¥"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/å·¥å·-api/ç½ç»æç´¢",
+    "slug": "api-reference__å·¥å·-api__ç½ç»æç´¢"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/å·¥å·-api/ç½é¡µéè¯»",
+    "slug": "api-reference__å·¥å·-api__ç½é¡µéè¯»"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/å·¥å·-api/è§£æç»æ",
+    "slug": "api-reference__å·¥å·-api__è§£æç»æ"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/æ¹å¤ç-api/ååºæ¹å¤çä»»å¡",
+    "slug": "api-reference__æ¹å¤ç-api__ååºæ¹å¤çä»»å¡"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/æ¹å¤ç-api/åå»ºæ¹å¤çä»»å¡",
+    "slug": "api-reference__æ¹å¤ç-api__åå»ºæ¹å¤çä»»å¡"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/æ¹å¤ç-api/åæ¶æ¹å¤çä»»å¡",
+    "slug": "api-reference__æ¹å¤ç-api__åæ¶æ¹å¤çä»»å¡"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/æ¹å¤ç-api/æ£ç´¢æ¹å¤çä»»å¡",
+    "slug": "api-reference__æ¹å¤ç-api__æ£ç´¢æ¹å¤çä»»å¡"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/æä»¶-api/ä¸ä¼ æä»¶",
+    "slug": "api-reference__æä»¶-api__ä¸ä¼ æä»¶"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/æä»¶-api/å é¤æä»¶",
+    "slug": "api-reference__æä»¶-api__å é¤æä»¶"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/æä»¶-api/æä»¶åå®¹",
+    "slug": "api-reference__æä»¶-api__æä»¶åå®¹"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/æä»¶-api/æä»¶åè¡¨",
+    "slug": "api-reference__æä»¶-api__æä»¶åè¡¨"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/æºè½ä½-apiï¼æ§ï¼/åå»ºæ°ä¼è¯",
+    "slug": "api-reference__æºè½ä½-apiï¼æ§ï¼__åå»ºæ°ä¼è¯"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/æºè½ä½-apiï¼æ§ï¼/æ¨çæ¥å£",
+    "slug": "api-reference__æºè½ä½-apiï¼æ§ï¼__æ¨çæ¥å£"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/æºè½ä½-apiï¼æ§ï¼/æ¨èé®é¢æ¥å£",
+    "slug": "api-reference__æºè½ä½-apiï¼æ§ï¼__æ¨èé®é¢æ¥å£"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/æºè½ä½-apiï¼æ§ï¼/æä»¶ä¸ä¼ ",
+    "slug": "api-reference__æºè½ä½-apiï¼æ§ï¼__æä»¶ä¸ä¼ "
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/æºè½ä½-apiï¼æ§ï¼/ç¥è¯åºåçå¼ç¨ä½ç½®ä¿¡æ¯",
+    "slug": "api-reference__æºè½ä½-apiï¼æ§ï¼__ç¥è¯åºåçå¼ç¨ä½ç½®ä¿¡æ¯"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/æºè½ä½-apiï¼æ§ï¼/è·åæä»¶è§£æç¶æ",
+    "slug": "api-reference__æºè½ä½-apiï¼æ§ï¼__è·åæä»¶è§£æç¶æ"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/æºè½ä½-apiï¼æ§ï¼/è·åæºè½ä½è¾å¥åæ°",
+    "slug": "api-reference__æºè½ä½-apiï¼æ§ï¼__è·åæºè½ä½è¾å¥åæ°"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/æ¨¡å-api/å é¤é³è²",
+    "slug": "api-reference__æ¨¡å-api__å é¤é³è²"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/æ¨¡å-api/å¾åçæ",
+    "slug": "api-reference__æ¨¡å-api__å¾åçæ"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/æ¨¡å-api/å¾åçæå¼æ­¥",
+    "slug": "api-reference__æ¨¡å-api__å¾åçæå¼æ­¥"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/æ¨¡å-api/å¯¹è¯è¡¥å¨",
+    "slug": "api-reference__æ¨¡å-api__å¯¹è¯è¡¥å¨"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/æ¨¡å-api/å¯¹è¯è¡¥å¨å¼æ­¥",
+    "slug": "api-reference__æ¨¡å-api__å¯¹è¯è¡¥å¨å¼æ­¥"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/æ¨¡å-api/ææ¬åè¯å¨",
+    "slug": "api-reference__æ¨¡å-api__ææ¬åè¯å¨"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/æ¨¡å-api/ææ¬åµå¥",
+    "slug": "api-reference__æ¨¡å-api__ææ¬åµå¥"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/æ¨¡å-api/ææ¬è½¬è¯­é³",
+    "slug": "api-reference__æ¨¡å-api__ææ¬è½¬è¯­é³"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/æ¨¡å-api/ææ¬éæåº",
+    "slug": "api-reference__æ¨¡å-api__ææ¬éæåº"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/æ¨¡å-api/ææ¡£è§£æ",
+    "slug": "api-reference__æ¨¡å-api__ææ¡£è§£æ"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/æ¨¡å-api/æ¥è¯¢å¼æ­¥ç»æ",
+    "slug": "api-reference__æ¨¡å-api__æ¥è¯¢å¼æ­¥ç»æ"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/æ¨¡å-api/è§é¢çæå¼æ­¥",
+    "slug": "api-reference__æ¨¡å-api__è§é¢çæå¼æ­¥"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/æ¨¡å-api/è¯­é³è½¬ææ¬",
+    "slug": "api-reference__æ¨¡å-api__è¯­é³è½¬ææ¬"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/æ¨¡å-api/é³è²åè¡¨",
+    "slug": "api-reference__æ¨¡å-api__é³è²åè¡¨"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/æ¨¡å-api/é³è²å¤å»",
+    "slug": "api-reference__æ¨¡å-api__é³è²å¤å»"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/ç¥è¯åº-api/ä¸ä¼ urlææ¡£",
+    "slug": "api-reference__ç¥è¯åº-api__ä¸ä¼ urlææ¡£"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/ç¥è¯åº-api/ä¸ä¼ æä»¶ææ¡£",
+    "slug": "api-reference__ç¥è¯åº-api__ä¸ä¼ æä»¶ææ¡£"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/ç¥è¯åº-api/å¨æ¨¡æç¥è¯åºæ£ç´¢",
+    "slug": "api-reference__ç¥è¯åº-api__å¨æ¨¡æç¥è¯åºæ£ç´¢"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/ç¥è¯åº-api/åå»ºç¥è¯åº",
+    "slug": "api-reference__ç¥è¯åº-api__åå»ºç¥è¯åº"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/ç¥è¯åº-api/å é¤ææ¡£",
+    "slug": "api-reference__ç¥è¯åº-api__å é¤ææ¡£"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/ç¥è¯åº-api/å é¤ç¥è¯åº",
+    "slug": "api-reference__ç¥è¯åº-api__å é¤ç¥è¯åº"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/ç¥è¯åº-api/ææ¡£åè¡¨",
+    "slug": "api-reference__ç¥è¯åº-api__ææ¡£åè¡¨"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/ç¥è¯åº-api/ææ¡£è¯¦æ",
+    "slug": "api-reference__ç¥è¯åº-api__ææ¡£è¯¦æ"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/ç¥è¯åº-api/ç¥è¯åºä½¿ç¨é",
+    "slug": "api-reference__ç¥è¯åº-api__ç¥è¯åºä½¿ç¨é"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/ç¥è¯åº-api/ç¥è¯åºåè¡¨",
+    "slug": "api-reference__ç¥è¯åº-api__ç¥è¯åºåè¡¨"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/ç¥è¯åº-api/ç¥è¯åºæ£ç´¢",
+    "slug": "api-reference__ç¥è¯åº-api__ç¥è¯åºæ£ç´¢"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/ç¥è¯åº-api/ç¥è¯åºè¯¦æ",
+    "slug": "api-reference__ç¥è¯åº-api__ç¥è¯åºè¯¦æ"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/ç¥è¯åº-api/ç¼è¾ç¥è¯åº",
+    "slug": "api-reference__ç¥è¯åº-api__ç¼è¾ç¥è¯åº"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/ç¥è¯åº-api/è§£æææ¡£å¾ç",
+    "slug": "api-reference__ç¥è¯åº-api__è§£æææ¡£å¾ç"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/api-reference/ç¥è¯åº-api/éæ°åéå",
+    "slug": "api-reference__ç¥è¯åº-api__éæ°åéå"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/api/api-code",
+    "slug": "cn__api__api-code"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/api/introduction",
+    "slug": "cn__api__introduction"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/api/rate-limit",
+    "slug": "cn__api__rate-limit"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/asyncapi/realtime",
+    "slug": "cn__asyncapi__realtime"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/best-practice/case/academic-data",
+    "slug": "cn__best-practice__case__academic-data"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/best-practice/case/ai-essay-correction",
+    "slug": "cn__best-practice__case__ai-essay-correction"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/best-practice/case/ai-search-engine",
+    "slug": "cn__best-practice__case__ai-search-engine"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/best-practice/case/data-analysis",
+    "slug": "cn__best-practice__case__data-analysis"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/best-practice/case/data-extraction",
+    "slug": "cn__best-practice__case__data-extraction"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/best-practice/case/financial-application",
+    "slug": "cn__best-practice__case__financial-application"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/best-practice/case/hr-recruitment",
+    "slug": "cn__best-practice__case__hr-recruitment"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/best-practice/case/intelligent-translation",
+    "slug": "cn__best-practice__case__intelligent-translation"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/best-practice/case/office-efficiency",
+    "slug": "cn__best-practice__case__office-efficiency"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/best-practice/case/social-media-translation",
+    "slug": "cn__best-practice__case__social-media-translation"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/best-practice/creativepractice/aimockinterviewer",
+    "slug": "cn__best-practice__creativepractice__aimockinterviewer"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/best-practice/creativepractice/aimorningnewspaper",
+    "slug": "cn__best-practice__creativepractice__aimorningnewspaper"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/best-practice/creativepractice/graphrag",
+    "slug": "cn__best-practice__creativepractice__graphrag"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/best-practice/creativepractice/interpretation",
+    "slug": "cn__best-practice__creativepractice__interpretation"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/best-practice/creativepractice/podcastgeneration",
+    "slug": "cn__best-practice__creativepractice__podcastgeneration"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/best-practice/creativepractice/video",
+    "slug": "cn__best-practice__creativepractice__video"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/best-practice/prompt/batch-prompt",
+    "slug": "cn__best-practice__prompt__batch-prompt"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/best-practice/prompt/image-prompt",
+    "slug": "cn__best-practice__prompt__image-prompt"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/best-practice/prompt/modelevaluation",
+    "slug": "cn__best-practice__prompt__modelevaluation"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/best-practice/prompt/talk-prompt",
+    "slug": "cn__best-practice__prompt__talk-prompt"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/best-practice/prompt/video-prompt",
+    "slug": "cn__best-practice__prompt__video-prompt"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/coding-plan/credit-campaign-rules",
+    "slug": "cn__coding-plan__credit-campaign-rules"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/coding-plan/extension/coding-tool-helper",
+    "slug": "cn__coding-plan__extension__coding-tool-helper"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/coding-plan/extension/glm-in-excel",
+    "slug": "cn__coding-plan__extension__glm-in-excel"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/coding-plan/faq",
+    "slug": "cn__coding-plan__faq"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/coding-plan/learning-resources/agentic-extension",
+    "slug": "cn__coding-plan__learning-resources__agentic-extension"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/coding-plan/learning-resources/best-practice",
+    "slug": "cn__coding-plan__learning-resources__best-practice"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/coding-plan/learning-resources/common-workflow",
+    "slug": "cn__coding-plan__learning-resources__common-workflow"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/coding-plan/learning-resources/how-coding-agent-works",
+    "slug": "cn__coding-plan__learning-resources__how-coding-agent-works"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/coding-plan/learning-resources/memory-mechanism",
+    "slug": "cn__coding-plan__learning-resources__memory-mechanism"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/coding-plan/mcp/reader-mcp-server",
+    "slug": "cn__coding-plan__mcp__reader-mcp-server"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/coding-plan/mcp/search-mcp-server",
+    "slug": "cn__coding-plan__mcp__search-mcp-server"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/coding-plan/mcp/vision-mcp-server",
+    "slug": "cn__coding-plan__mcp__vision-mcp-server"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/coding-plan/mcp/zread-mcp-server",
+    "slug": "cn__coding-plan__mcp__zread-mcp-server"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/coding-plan/overview",
+    "slug": "cn__coding-plan__overview"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/coding-plan/quick-start",
+    "slug": "cn__coding-plan__quick-start"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/coding-plan/team",
+    "slug": "cn__coding-plan__team"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/coding-plan/tool/others",
+    "slug": "cn__coding-plan__tool__others"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/coding-plan/usage-notes",
+    "slug": "cn__coding-plan__usage-notes"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/coding-plan/using5-1",
+    "slug": "cn__coding-plan__using5-1"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/faq/api-code",
+    "slug": "cn__faq__api-code"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/faq/api-issues",
+    "slug": "cn__faq__api-issues"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/faq/authentication-issues",
+    "slug": "cn__faq__authentication-issues"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/faq/batch-api-issues",
+    "slug": "cn__faq__batch-api-issues"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/faq/business-authorization",
+    "slug": "cn__faq__business-authorization"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/faq/fee-issues",
+    "slug": "cn__faq__fee-issues"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/faq/invoice-issues",
+    "slug": "cn__faq__invoice-issues"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/faq/knowledge-base",
+    "slug": "cn__faq__knowledge-base"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/faq/registration-login",
+    "slug": "cn__faq__registration-login"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/faq/user-rights",
+    "slug": "cn__faq__user-rights"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/agents/aicaricature",
+    "slug": "cn__guide__agents__aicaricature"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/agents/aidrawing",
+    "slug": "cn__guide__agents__aidrawing"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/agents/bill",
+    "slug": "cn__guide__agents__bill"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/agents/clothes",
+    "slug": "cn__guide__agents__clothes"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/agents/contract",
+    "slug": "cn__guide__agents__contract"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/agents/customer",
+    "slug": "cn__guide__agents__customer"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/agents/film",
+    "slug": "cn__guide__agents__film"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/agents/glm-ppt",
+    "slug": "cn__guide__agents__glm-ppt"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/agents/homeworkcorrection",
+    "slug": "cn__guide__agents__homeworkcorrection"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/agents/job",
+    "slug": "cn__guide__agents__job"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/agents/media",
+    "slug": "cn__guide__agents__media"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/agents/sale",
+    "slug": "cn__guide__agents__sale"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/agents/social",
+    "slug": "cn__guide__agents__social"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/agents/solving",
+    "slug": "cn__guide__agents__solving"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/agents/specialeffectsvideos",
+    "slug": "cn__guide__agents__specialeffectsvideos"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/agents/tender",
+    "slug": "cn__guide__agents__tender"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/agents/translation",
+    "slug": "cn__guide__agents__translation"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/agents/winningbidder",
+    "slug": "cn__guide__agents__winningbidder"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/capabilities/cache",
+    "slug": "cn__guide__capabilities__cache"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/capabilities/function-calling",
+    "slug": "cn__guide__capabilities__function-calling"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/capabilities/stream-tool",
+    "slug": "cn__guide__capabilities__stream-tool"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/capabilities/streaming",
+    "slug": "cn__guide__capabilities__streaming"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/capabilities/struct-output",
+    "slug": "cn__guide__capabilities__struct-output"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/capabilities/thinking",
+    "slug": "cn__guide__capabilities__thinking"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/capabilities/thinking-mode",
+    "slug": "cn__guide__capabilities__thinking-mode"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/develop/claude/introduction",
+    "slug": "cn__guide__develop__claude__introduction"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/develop/http/introduction",
+    "slug": "cn__guide__develop__http__introduction"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/develop/java/introduction",
+    "slug": "cn__guide__develop__java__introduction"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/develop/langchain/introduction",
+    "slug": "cn__guide__develop__langchain__introduction"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/develop/openai/introduction",
+    "slug": "cn__guide__develop__openai__introduction"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/develop/python/introduction",
+    "slug": "cn__guide__develop__python__introduction"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/models/embedding/embedding-2",
+    "slug": "cn__guide__models__embedding__embedding-2"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/models/embedding/embedding-3",
+    "slug": "cn__guide__models__embedding__embedding-3"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/models/free/cogvideox-flash",
+    "slug": "cn__guide__models__free__cogvideox-flash"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/models/free/cogview-3-flash",
+    "slug": "cn__guide__models__free__cogview-3-flash"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/models/free/glm-4-flash-250414",
+    "slug": "cn__guide__models__free__glm-4-flash-250414"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/models/free/glm-4.1v-thinking-flash",
+    "slug": "cn__guide__models__free__glm-4.1v-thinking-flash"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/models/free/glm-4.6v-flash",
+    "slug": "cn__guide__models__free__glm-4.6v-flash"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/models/free/glm-4.7-flash",
+    "slug": "cn__guide__models__free__glm-4.7-flash"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/models/free/glm-4v-flash",
+    "slug": "cn__guide__models__free__glm-4v-flash"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/models/humanoid/charglm-4",
+    "slug": "cn__guide__models__humanoid__charglm-4"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/models/humanoid/emohaa",
+    "slug": "cn__guide__models__humanoid__emohaa"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/models/image-generation/cogview-4",
+    "slug": "cn__guide__models__image-generation__cogview-4"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/models/image-generation/glm-image",
+    "slug": "cn__guide__models__image-generation__glm-image"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/models/sound-and-video/glm-4-voice",
+    "slug": "cn__guide__models__sound-and-video__glm-4-voice"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/models/sound-and-video/glm-asr-2512",
+    "slug": "cn__guide__models__sound-and-video__glm-asr-2512"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/models/sound-and-video/glm-realtime",
+    "slug": "cn__guide__models__sound-and-video__glm-realtime"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/models/sound-and-video/glm-tts",
+    "slug": "cn__guide__models__sound-and-video__glm-tts"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/models/sound-and-video/glm-tts-clone",
+    "slug": "cn__guide__models__sound-and-video__glm-tts-clone"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/models/text/glm-4.5",
+    "slug": "cn__guide__models__text__glm-4.5"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/models/text/glm-4.6",
+    "slug": "cn__guide__models__text__glm-4.6"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/models/text/glm-4.7",
+    "slug": "cn__guide__models__text__glm-4.7"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/models/text/glm-5",
+    "slug": "cn__guide__models__text__glm-5"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/models/text/glm-5-turbo",
+    "slug": "cn__guide__models__text__glm-5-turbo"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/models/text/glm-5.1",
+    "slug": "cn__guide__models__text__glm-5.1"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/models/video-generation/cogvideox-3",
+    "slug": "cn__guide__models__video-generation__cogvideox-3"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/models/video-generation/vidu2",
+    "slug": "cn__guide__models__video-generation__vidu2"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/models/video-generation/viduq1",
+    "slug": "cn__guide__models__video-generation__viduq1"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/models/vlm/autoglm-phone",
+    "slug": "cn__guide__models__vlm__autoglm-phone"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/models/vlm/glm-4.1v-thinking",
+    "slug": "cn__guide__models__vlm__glm-4.1v-thinking"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/models/vlm/glm-4.6v",
+    "slug": "cn__guide__models__vlm__glm-4.6v"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/models/vlm/glm-5v-turbo",
+    "slug": "cn__guide__models__vlm__glm-5v-turbo"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/models/vlm/glm-ocr",
+    "slug": "cn__guide__models__vlm__glm-ocr"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/platform/equity-explain",
+    "slug": "cn__guide__platform__equity-explain"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/platform/filing",
+    "slug": "cn__guide__platform__filing"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/platform/intelligent-agent",
+    "slug": "cn__guide__platform__intelligent-agent"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/platform/model-migration",
+    "slug": "cn__guide__platform__model-migration"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/platform/prompt",
+    "slug": "cn__guide__platform__prompt"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/platform/securityaudit",
+    "slug": "cn__guide__platform__securityaudit"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/start/concept-param",
+    "slug": "cn__guide__start__concept-param"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/start/introduction",
+    "slug": "cn__guide__start__introduction"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/start/migrate-to-glm-new",
+    "slug": "cn__guide__start__migrate-to-glm-new"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/start/model-overview",
+    "slug": "cn__guide__start__model-overview"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/start/quick-start",
+    "slug": "cn__guide__start__quick-start"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/tools/batch",
+    "slug": "cn__guide__tools__batch"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/tools/evaluation",
+    "slug": "cn__guide__tools__evaluation"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/tools/file-extract",
+    "slug": "cn__guide__tools__file-extract"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/tools/file-parser",
+    "slug": "cn__guide__tools__file-parser"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/tools/file-parser-sync",
+    "slug": "cn__guide__tools__file-parser-sync"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/tools/fine-tuning",
+    "slug": "cn__guide__tools__fine-tuning"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/tools/glm-in-excel",
+    "slug": "cn__guide__tools__glm-in-excel"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/tools/knowledge/contextual",
+    "slug": "cn__guide__tools__knowledge__contextual"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/tools/knowledge/multimodal-retrieval",
+    "slug": "cn__guide__tools__knowledge__multimodal-retrieval"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/tools/knowledge/price",
+    "slug": "cn__guide__tools__knowledge__price"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/tools/knowledge/q&amp;a",
+    "slug": "cn__guide__tools__knowledge__q&amp"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/tools/knowledge/retrieval",
+    "slug": "cn__guide__tools__knowledge__retrieval"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/tools/model-deploy",
+    "slug": "cn__guide__tools__model-deploy"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/tools/web-search",
+    "slug": "cn__guide__tools__web-search"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/tools/zhipu-ocr",
+    "slug": "cn__guide__tools__zhipu-ocr"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/terms/cancellation-agreement",
+    "slug": "cn__terms__cancellation-agreement"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/terms/entity-change-agreement",
+    "slug": "cn__terms__entity-change-agreement"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/terms/model-commercial-use",
+    "slug": "cn__terms__model-commercial-use"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/terms/principle",
+    "slug": "cn__terms__principle"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/terms/privacy-policy",
+    "slug": "cn__terms__privacy-policy"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/terms/recharge-agreement",
+    "slug": "cn__terms__recharge-agreement"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/terms/security-risk-notice",
+    "slug": "cn__terms__security-risk-notice"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/terms/service-agreement",
+    "slug": "cn__terms__service-agreement"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/terms/subscription-agreement",
+    "slug": "cn__terms__subscription-agreement"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/terms/subscription-agreement-team",
+    "slug": "cn__terms__subscription-agreement-team"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/terms/user-agreement",
+    "slug": "cn__terms__user-agreement"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/update/feature-updates",
+    "slug": "cn__update__feature-updates"
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/update/new-releases",
+    "slug": "cn__update__new-releases"
+  }
+]

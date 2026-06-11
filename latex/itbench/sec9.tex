@@ -1,0 +1,187 @@
+\section{附录 E：FinOps}
+
+\subsection{E.1 背景}
+
+FinOps（财务运营，Financial Operations，即 Finance + Operations）是一种运营框架与文化实践，旨在最大化云的业务价值，并构建共担式的财务问责机制。其首要目标之一，是通过促进工程、财务与业务团队之间的协作，实现及时、数据驱动的决策。FinOps 由三个迭代阶段构成——告知（Inform，可见性与分配，Visibility \& Allocation）、优化（Optimize，费率与用量，Rates \& Usage）和运营（Operate，持续改进与用量，Continuous Improvement \& Usage）。重要的是，FinOps 的成功取决于：利用从应用性能管理（Application Performance Management，APM）、应用资源管理（Application Resource Management，ARM）以及财务（云成本管理，Cloud Cost Management）中收集到的实时洞察，进行多次迭代式调整（Storment and Fuller, 2023）。
+
+与一般认知相反，FinOps 关注的是最大化业务价值，而不仅仅是降低运营成本。《2024 年 FinOps 现状报告》（Foundation, 2024a;b）从 1,245 名受访者处采集了数据，企业的平均年度云支出为 \$44M，部分企业的年度云支出甚至高达 \$1B 以上，云支出总额达 \$55B。该研究显示，与往年相比情况已发生转变：减少浪费、管理承诺（commitment）正成为各方新的关键优先事项。云折扣计划（如节省计划 Savings Plans 与预留实例 Reserved Instances）的管理，以及对支出的准确预测，仍位居榜单前列。诸如自动化程度提升、AI 成本、可持续性等其他领域也呈现出日益增长的关注度。
+
+\subsubsection*{E.1.1 关键术语}
+
+FinOps 通过在框架能力（Framework Capabilities）上迭代地开展工作，跨越三个阶段来实施（Foundation, 2025b），即告知（Inform）、优化（Optimize）与运营（Operate），分别描述如下：
+
+\begin{enumerate}
+\item 告知（Inform）阶段涉及识别云成本、用量与效率数据的数据源。随后，这些数据被用于预算编制、成本分配、预测、分析与报告。
+\item 优化（Optimize）阶段利用在告知阶段开发出的数据与能力，识别提升云效率的机会。
+\item 运营（Operate）阶段利用在告知与优化阶段开发出的数据与能力，将 FinOps 落地实施、运营化。
+\end{enumerate}
+
+FinOps 中一些适合用于优化的常见关键绩效指标（KPI）（完整集合见 \url{https://www.finops.org/wg/finops-kpis/}）包括：
+
+\begin{enumerate}
+\item 资源利用率百分比（Percentage Resource Utilization）——指已利用资源占总分配容量的百分比。
+\item 支出的总未预测方差（Total Unpredicted Variance of Spend）——衡量在给定时间段内记录的、与云服务提供商（CSP）云用量相关的成本的未预测方差。
+\item 自动扩缩效率比（Auto-scaling Efficiency Rate）——满足工作负载需求所需的最大运行容量成本 / 采用自动扩缩满足同等工作负载需求时的运行成本。
+\item 预测准确率（用量）（Forecast Accuracy Rate (Usage)）——比较某一特定时段（如日、月、季度）内预测的云用量与实际云用量（vCPU、内存等）。
+\item 预测准确率（支出）（Forecast Accuracy Rate (Spend)）——该指标比较某一特定时段（如日、月、季度）内预测的云支出与实际云支出。
+\item 由承诺折扣覆盖的计算支出百分比（Percent of Compute Spend Covered by Commitment Discounts）——衡量某一特定时段内由承诺折扣覆盖的计算成本（不含 Spot）的百分比。
+\item 承诺折扣浪费百分比（Percentage of Commitment Discount Waste）——未应用于按需支出的承诺所占的百分比。
+\item 未使用资源百分比（Percent of Unused Resources）——衡量未使用的云资源，例如未挂载/孤立的存储卷、负载均衡器、EIPS、网络网关、快照。
+\item 未分配的共享 CSP 云成本百分比（Percentage of Unallocated Shared CSP Cloud Cost）——该度量指无法直接归属到组织内特定项目、团队或部门的费用。
+\item 已编制预算与已预测 CSP 云支出之间的方差百分比（Percentage Variance of Budgeted vs. Forecasted CSP Cloud Spend）——衡量使用 CSP 云服务的预算成本与预测成本之间的差异。
+\item 有效节省率百分比（Effective Savings Rate Percentage）——含折扣的实际支出 / 等量的按需费率支出。
+\item 符合标签策略的 CSP 云成本百分比（Percentage of CSP Cloud Costs that are Tagging Policy Compliant）——某一时段内符合标签策略的 CSP 云资源相关总成本 / 该时段内 CSP 云总成本。
+\item 高频访问层上的存储百分比（Percent Storage on Frequent Access Tier）——标准（或“高频访问”）层中的 GB 数 vs.\ 存储的总 GB 数。
+\item 与未打标签的 CSP 云资源相关的碳百分比（Percentage of Carbon Associated with Untagged CSP Cloud Resources）。
+\end{enumerate}
+
+还有若干与碳足迹（而非美元成本）相关的类似 KPI。在当前版本的评测基准中，我们的场景采用了一个基于支出方差的告警。其余 KPI 为构建大量额外场景提供了丰富的基础。
+
+\subsection{E.2 启发性示例与 FinOps 任务}
+
+表 25 展示了一个示例性的预算超支事件（budget overrun incident），及其诊断与处置步骤。在该事件中，FinOps 实践者收到了一条由 OpenCost 发出的——非常规成本上涨（比上周平均水平高出 >20\%）——告警。此次上涨主要由观察到的负载激增（load spike）导致的副本数（replica counts）增加所引起。自动扩缩器（autoscaler）如预期般增加了副本数量以服务该需求。然而，预算阈值（budget thresholds）并未随之更新，从而触发了误报（false alerts）。智能体发现应用是健康的，并建议根据新的负载水平更新预算告警。类似地，表 26 演示了一个示例场景：在该场景中，由于副本数增加而生成了一条预算超支告警。然而，在此场景中，尽管容器（containers）中的利用率较低，应用服务却被扩容了。智能体发现自动扩缩器在低利用率阈值（low utilization thresholds）下对应用进行了扩容，并分析了该自动扩缩器配置。它检测出扩容策略（scale up policy）的阈值过低，并据此建议更新自动扩缩器。
+
+\begin{table}[H]
+\centering
+\caption{优化用例：成本上涨告警——需求增加}
+\label{tab:e25}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{@{}p{3.2cm}p{11cm}@{}}
+\toprule
+\textbf{优化用例} & \textbf{详情} \\
+\midrule
+触发告警 & 针对应用“Foo”的成本上涨告警。 \\
+\addlinespace
+摘要 & 在应用“Foo”上观察到成本告警。本次上涨比预期预算高出 20\%。调查发现该应用是健康的，成本上涨由负载增加引起。客户预算具有弹性，因此相应更新成本告警以提高阈值。长期修复需要在 CI/CD 流水线中增加额外检查，并可能对预算调整进行自动化。 \\
+\addlinespace
+检测耗时（Time to detection） & 7 天（当前实践是通过观察利用率指标来进行成本分析） \\
+诊断耗时（Time to diagnose） & 60 分钟 \\
+缓解耗时（Time to mitigate） & 15 分钟 \\
+事件类型（Event Type） & 生成一条告警，表明预期成本上涨超过 20\%。 \\
+成本超支（Cost Overrun） & 成本上涨 20\% \\
+\addlinespace
+诊断步骤 &
+\begin{itemize}[leftmargin=*,nosep]
+\item 检查基础设施规模变化，例如 Kubernetes 集群中副本数的增加。
+\item 发现副本数高于历史平均水平。
+\item 检查应用负载是否存在合理增加。
+\item 发现应用负载存在稳定增长，且该成本上涨是可接受的。
+\item 检查应用的预算约束。
+\item 发现应用预算对于扩容而言具有弹性。
+\end{itemize} \\
+\addlinespace
+处置方案（Resolution Plan） &
+\begin{itemize}[leftmargin=*,nosep]
+\item 计算新的成本告警阈值。
+\item 更新成本告警预算阈值，以适应新的稳定负载水平，从而防止误报。
+\end{itemize} \\
+\addlinespace
+长期改进（Long Term Improvements） & 创建 playbook，以确保此类调整的处理实现自动化。 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{优化用例：成本上涨告警——故障自动扩缩器}
+\label{tab:e26}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{@{}p{3.2cm}p{11cm}@{}}
+\toprule
+\textbf{优化用例} & \textbf{详情} \\
+\midrule
+触发告警 & 针对应用“Foo”的成本上涨告警。 \\
+\addlinespace
+摘要 & 在应用“Foo”上观察到成本告警。本次上涨比预期预算高出 20\%。调查发现自动扩缩器配置有误。SRE 通过更改扩容策略手动更新了自动扩缩配置。长期修复需要在 CI/CD 流水线中增加额外检查。 \\
+\addlinespace
+检测耗时（Time to detection） & 7 天（当前实践是通过观察利用率指标来进行成本分析） \\
+诊断耗时（Time to diagnose） & 60 分钟 \\
+缓解耗时（Time to mitigate） & 15 分钟 \\
+事件类型（Event Type） & 生成一条告警，表明预期成本上涨超过 20\%。 \\
+成本超支（Cost Overrun） & 成本上涨 20\% \\
+\addlinespace
+诊断步骤 &
+\begin{itemize}[leftmargin=*,nosep]
+\item 检查基础设施规模异常，例如 Kubernetes 集群中副本数的增加。
+\item 发现副本数高于历史平均水平。
+\item 检查应用负载是否存在合理增加。
+\item 发现负载增加且存在处于等待状态（pending）的容器。
+\item 检查容器的利用率。
+\item 发现利用率较低。
+\item 检查自动扩缩器的扩缩策略。
+\item 发现扩容规则的阈值过低。
+\end{itemize} \\
+\addlinespace
+处置方案（Resolution Plan） &
+\begin{itemize}[leftmargin=*,nosep]
+\item 配置自动扩缩器以更新扩缩策略。
+\item 手动删除多余的副本。
+\end{itemize} \\
+\addlinespace
+长期改进（Long Term Improvements） & 创建 playbook，以确保此类配置错误在未来的部署中不再发生。 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\subsection{E.3 用于构建 FinOps 任务场景的 ITBench 架构}
+
+我们大量复用了为 SRE 场景所搭建的环境。我们采用 OpenCost 来监控成本，并在预定义的预算与效率阈值被突破时发出告警。OpenCost 是一款开源工具，它根据所分配的资源，将运行在 Kubernetes 部署所在节点上的虚拟机/节点（virtual machine/node）的成本进行分摊。它选取每个容器较高的利用率或请求数量，并采用一种负载分配策略（load distribution policy）来分摊成本。在我们的实验中，我们强制采用了一个自定义定价模型，主要包括单个 CPU 核心的每小时 CPU 成本费率，以及每 1 GB 内存的内存成本费率。其他成本组成部分（如网络成本与 Spot 实例定价）并非我们评测范围的重点。因此，我们将这些组件的成本视为可忽略不计。我们按照 SRE 场景中所述的方式，通过引入成本变化告警来模拟真实世界场景。
+
+\subsection{E.4 评测}
+
+我们沿用了 SRE-bench 中所使用的同一评测框架，并在场景中纳入了 OpenCost 与成本告警。
+
+\subsubsection*{E.4.1 评测指标}
+
+我们就两项主要任务对每个基于大语言模型（LLM）的智能体进行评测：（i）诊断（diagnosis）与（ii）缓解/修复（mitigation）。
+
+\textbf{诊断（Diagnosis）。} 对智能体诊断能力的评测，依据其是否能够为预算告警提供准确的根因（root cause）。诊断包括智能体为识别预算告警根因所遵循的分析步骤。智能体在诊断方面的表现以 pass@1 来度量，该值表明提供给 SRE 的根因分析的准确性。
+
+\textbf{缓解/修复（Mitigation）。} 缓解涉及推荐处置步骤，以清除告警并优化应用的成本与效率。我们使用基于 pass@1 分数的成功率来评测智能体，并使用邻近度分数（proximity scores）来分析智能体在实现 Section E.4.2 所定义的最优成本与效率指标方面的表现。诊断与缓解两类评测在未来都可以扩展，从而采用类似于 SRE-bench 评测的 LLM-as-a-judge（以大语言模型作为评判者）方式来自动度量智能体的表现。
+
+\subsubsection*{E.4.2 指标定义}
+
+\textbf{pass@1。} 对于智能体推荐的诊断与缓解步骤，我们采用 Section C.6.2 中所定义的同一指标。
+
+\textbf{邻近度指标（Proximity metrics）。} 为分析智能体在实现最优成本与效率方面的表现，我们为每小时 CPU 成本、每小时内存成本、工作负载 CPU 效率以及工作负载内存效率定义了邻近度分数。邻近度分数通过计算所测量成本或效率指标的观测值与最优值之间的成比例绝对差，来刻画智能体的表现。我们将该成比例的值从 1 中减去，使得邻近度分数为 1 表示达到了最优表现。邻近度分数按如下方式计算：
+\[
+\mathrm{proximity}\_i = 1 - \frac{|\,\mathrm{observed}\_i - \mathrm{optimal}\,|}{\mathrm{optimal}}
+\]
+其中 $i$ 表示实验试验（experiment trial），$observed$ 是所测量指标的检索值，$optimal$ 是同一指标在基准真值（ground truth）中给定的值。
+
+\textbf{每小时 CPU 成本（Hourly CPU cost）：} 分配单个 CPU 核心一小时的成本。我们通过 opencost 采用自定义定价策略，以确保基准真值不受不同云服务提供商之间或与本地部署（on-premise）之间定价变化的影响。
+
+\textbf{每小时内存成本（Hourly Memory cost）：} 分配 1 GB 内存的成本。它同样采用自定义定价策略。
+
+\textbf{工作负载 CPU 效率（Workload CPU efficiency）：} 我们取应用所有容器的平均 CPU 效率。我们通过将一个容器的 CPU 利用率除以其请求量（request amount）来计算该容器的 CPU 效率。例如，如果部署配置中的 CPU 请求为 100m，而容器实际使用 50m，则效率计算为 50。
+
+\textbf{工作负载内存效率（Workload memory efficiency）：} 计算方式与 CPU 效率相同，即将利用率除以请求的内存量。
+
+我们对每个指标取所有运行的算术平均值，并计算标准差。我们的结果呈现于表 6 中。
+
+\subsection{E.5 示例轨迹}
+
+FinOps 问题与所使用的基础设施、Kubernetes 部署的部署配置与策略高度关联。智能体通常需要使用与 SRE-agent 相同的工具，来理解底层基础设施与应用部署配置的状态，从而识别 FinOps 关切问题的根因。类似地，为准确调查预算变化，智能体需要分析负载与利用率模式，以避免偏离至不相关的处置建议。图~\ref{fig:e26} 展示了场景 37（Scenario 37）的一条轨迹：智能体首先检索告警，并观察到 CPU 每小时成本超出了预算阈值；它继续使用 NL2Kubectl 工具检查部署详情，并检索每个部署的副本数。由于 adservice 中的副本数较高，智能体考虑缩减 adservice 部署的规模。由于缺失了利用率检查、且未分析部署详情，智能体得出了不准确的诊断，并在该应用负载较高的情况下仍给出了缩容建议。在一条正确的轨迹中，智能体本应分析利用率，判断系统中负载较高，并在总预算分配允许的情况下建议更改预算告警阈值；或者分析哪些部署可以在不损害应用性能的前提下被缩容。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.55\linewidth]{cand_p49_k00.pdf}
+\caption{失败场景下 LLaMa 405B 的示例轨迹。}
+\label{fig:e24}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{cand_p50_k00.pdf}
+\caption{各场景的 pass@1 百分比。}
+\label{fig:e25}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.55\linewidth]{cand_p53_k00.pdf}
+\caption{非常规成本变化用例的示例轨迹。}
+\label{fig:e26}
+\end{figure}

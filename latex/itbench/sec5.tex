@@ -1,0 +1,135 @@
+\section{附录 A：相关工作（扩展）}
+
+\paragraph{用于解决 IT 自动化任务的语言模型与智能体。}
+人工智能/机器学习（AI/ML）正越来越多地用于处理 IT 自动化任务。下面按各类角色分别介绍相关工作。
+
+\subsection{A.1 站点可靠性工程（Site Reliability Engineering）}
+
+IT 场景\footnote{我们以宽泛的含义使用“场景（scenario）”一词，用以指代故障、性能问题、合规问题以及成本异常。}的解决涵盖了检测（例如，识别异常或服务中断）(Guo et al., 2015; Leners et al., 2011; Sigelman et al., 2010; Fonseca et al., 2007)、诊断（例如，通过指标与日志定位根因）(Tan et al., 2019; Jha et al., 2020; Ma et al., 2014; Salesforce, 2023) 以及缓解/修复（例如，运维层面的修复或代码变更）等任务。这些工作往往依赖于若干支撑性任务，例如工单分析与路由 (Gao et al., 2020; Liu et al., 2023b; Arzani et al., 2016)、异常检测 (Ashok et al., 2024; Chakraborty et al., 2023; Pham et al., 2024; Yao et al., 2024)、拓扑抽取 (Liu and Paparrizos, 2024a)、因果分析 (Budhathoki et al., 2022; Microsoft and contributors, 2023; Ikram et al., 2022; Chakrabarti et al., 2023) 以及干预性分析 (Wang et al., 2023; Bagehorn et al., 2022)。显然，这一领域已有大量研究，但由于真实世界系统的复杂性、故障的多变性，以及将上下文知识融入 AI 系统的挑战 (Jha et al., 2020)，全自动地解决故障或向人类提供可执行的洞见仍然难以实现。
+
+大语言模型（LLM）的近期进展推动了其被用于工单数据分析与诊断任务 (Roy et al., 2024; Ahmed et al., 2023a; Xie et al., 2024b; Chen et al., 2023; Zhang et al., 2024)。其中最具代表性的例子包括用 LLM 进行因果图构建的 Cloud Atlas (Xie et al., 2024b)，以及用于工单分析、旨在诊断与缓解事件的 RCACopilot (Chen et al., 2023)。然而，与其他技术相比，它们的表现欠佳。例如，(Roy et al., 2024) 表明思维链（chain-of-thought）方法的准确率仅为 35\%。更近期的工作中，LLM 被用于智能体式（agentic）工作流，借助一系列真实或虚拟环境中的工具来完成诸如网页导航 (Drouin et al., 2024; Boisvert et al., 2024; Koh et al., 2024)、系统控制 (Sahu et al., 2024; Zhang et al., 2024; Chen et al., 2024a) 以及代码生成 (Yang et al., 2024a) 等任务。然而，这些工作的初步结果在成功率上表现出很高的方差——从 InsightBench (Boisvert et al., 2024) 中的 35\%，到 Flash (Chen et al., 2024a) 中用于事件解决的基于 ReAct 的智能体（用于工单数据分析 (Roy et al., 2024)）所达到的 100\%，尽管后者本应是一项远比在表格与工单数据中发现既有洞见更困难的任务。我们自己的研究结果同样表明，LLM 与智能体在持续稳定地完成事件解决任务方面存在困难。\textit{我们断言，成功率上的方差之所以存在，是因为这些数据集在现实性方面存在差异。}这凸显出业界迫切需要标准化、开源的评测基准（benchmark），以有效评估并改进 AI 方法在事件解决任务上的效能。
+
+\paragraph{面向 SRE 的评测基准。}
+IT 运维（ITOps）任务的评测基准生态仍处于早期阶段，仅有少数现有工作针对该领域的特定方面展开。AIOpsLab (Chen et al., 2024a) 聚焦于解决在真实环境中创建的、涵盖九个不同问题的 IT 事件。但它并未遵循 SRE 在系统与应用可观测性（observability）方面的最佳实践，例如它使用了一套告警管理系统，缺乏全面的覆盖度分析，也没有用于系统化自动评测的排行榜（leaderboard）。
+
+InsightBench (Sahu et al., 2024) 针对 ServiceNow 工单数据的分析——这是事件路由与查找相关历史事件的一项关键支撑任务——但其对合成数据的依赖以及缺乏真实环境，限制了它在智能体式工作流中的适用性。类似地，TSB-AD (Liu and Paparrizos, 2024b) 是为单变量与多变量异常检测（事件检测的一项核心任务）而设计的。然而，它仅限于合成数据，且只聚焦于异常检测。
+
+\subsection{A.2 合规（Compliance）}
+
+合规自动化软件正在兴起，旨在帮助企业简化并自动化合规流程，减少人工监控与法规追踪的需求。这确保了对法律法规的持续遵守。其中，合规即代码（compliance as code）是 IT 行业中一项非常新近的进展，其推动力来自企业以及审计机构正从年度审计转向期望对受监管环境的合规态势与遭受网络攻击的风险进行持续、自动化的度量与管控。
+
+近期工作 (Papanikolaou et al., 2011; Tupsamudre et al., 2022) 已应用 AI/ML 技术来加速这些任务，重点是将监管要求映射到诸如 NIST 800-53 (NIST 800-53) 之类的标准控制框架上。我们在当前 ITBench 方案中的智能体式自动化，开创性地借助 AI/ML 来撰写合规制品，通过将合规即代码桥接为策略即代码（policy as code）来实现这一目标。相较于合规即代码，策略引擎在 IT 行业中已有较长的应用历史；然而，诸如 (Int, d) 这样新兴的通用型策略引擎试图解决业界对一个统一的持续合规框架的需求。据我们所知，目前尚无任何工作——尽管这是关键且亟需的——涉及对合规自动化软件（无论是否带有智能体支持）进行评测基准化。
+
+\subsection{A.3 FinOps（财务运营）}
+
+IT 成本管理这一领域涵盖了多个学科，即 FinOps、IT 财务管理（IT Financial Management，ITFM）、技术业务管理（Technology Business Management，TBM）以及项目组合业务管理（Portfolio Business Management，PBM）。目前，FinOps 领域通常处理云成本 (Storment and Fuller, 2023; Yang et al., 2024b)，这些成本来自计算节点、内存、其他存储、网络等资源，并由某一超大规模云服务商（hyperscaler）产生。ITFM 则涵盖本地基础设施、许可、人工、采购的服务、技术支持等。TBM Council 提供了一套标准的分类法，用于描述成本来源、技术、IT 资源（IT towers）、应用与服务。此外，还存在针对特定行业（如医疗、银行等）对该分类法的扩展。从本质上说，这套分类法提供了一种普遍接受的方式来对 IT 成本及其他指标进行归类与报告。PBM 指的是在组织内部管理一系列项目与计划的实践，以确保其与整体业务战略保持一致，并通过高效配置资源来最大化其集体价值。FinOps 基金会（FinOps Foundation）已表示，未来它将逐步纳入来自 ITFM、TBM 与 PBM 的要素。
+
+目前，对于本文所采用的 FinOps 评测基准定义，尚不存在与之契合的评测基准。然而，多年来，FinOps 基金会 (Foundation, 2025a) 已编制了若干 KPI，可作为构建 FinOps 评测基准用例与场景的基础。当前 FinOps 基金会的 KPI 包括：
+
+\begin{itemize}
+\item 用量或支出分摊验证（Usage or Spend Apportionment Validation）
+\item 支出的总未预测方差（Total Unpredicted Variance of Spend）
+\item 由承诺折扣（commitment discount）覆盖的计算支出百分比（Percent of Compute Spend Covered by Commitment Discounts）
+\item 有效节省率百分比（Effective Savings Rate Percentage）
+\item 承诺折扣浪费百分比（Percentage of Commitment Discount Waste）
+\item 未使用资源百分比（Percent of Unused Resources）
+\item 自动扩缩效率率（Auto-scaling Efficiency Rate）
+\item 预测准确率（用量、支出）（Forecast Accuracy Rate (Usage, Spend)）
+\item 未分配的共享 CSP 云成本百分比（Percentage of Unallocated Shared CSP Cloud Cost）
+\item 预算与预测的 CSP 云支出方差百分比（Percentage Variance of Budgeted vs. Forecasted CSP Cloud Spend）
+\item 符合标签策略（tagging policy）的 CSP 云成本百分比（Percentage of CSP Cloud Costs that are Tagging Policy Compliant）
+\item 位于高频访问存储层（Frequent Access Tier）的存储百分比（Percent Storage on Frequent Access Tier）
+\item 遗留资源百分比（Percentage of Legacy Resource）
+\end{itemize}
+
+随着云计算的出现，学术界与工业界的研究社区也一直积极探索在平衡多重目标的同时优化成本的方法。FinOps 领域的近期工作聚焦于应用机器学习与数学优化技术 (Qiao et al., 2021; Yang et al., 2024b)，以更好地服务客户的云基础设施需求，同时为其提供如何优化整体云支出的洞见与建议。(Fangkai et al., 2023) 针对在存在多种供给选项（例如比按需虚拟机更便宜但可用性较低的竞价型虚拟机，spot VM）情况下，帮助客户在成本与资源可用性之间权衡取舍的问题。他们提出了一个框架，通过识别按需虚拟机与竞价型虚拟机的最优组合，使用受约束的强化学习（constrained reinforcement learning）来同时优化成本与可用性。诸如 (Diao et al., 2024; Feng et al., 2023; Quattrocchi et al., 2024) 之类的论文提出了用于针对服务等级目标扩缩云资源的预测算法，为更广泛的、由 FinOps 驱动的成本优化领域作出贡献。(Osypanka and Nawrocki, 2020) 使用异常检测、机器学习与粒子群优化来实现成本最优的云资源配置。(Liu et al., 2023a) 从用户视角出发，分析了使用云存储进行成本优化的过程，以探究其中的机会、动因与挑战。(Nodari et al., 2016) 聚焦于寻找按需实例与预留实例的最优组合，从而在满足需求的同时使成本最小化。他们将这一优化问题建模为一个随机库存控制问题（stochastic inventory control problem）。
+
+(Yehoshua et al., 2023) 提出了一个可扩展的成本优化器，它在考虑资源需求与约束以最小化成本的前提下，为公有云或混合云上的工作负载确定最具成本效益的部署策略。在 FinOps 领域，迫切需要超越比较性记分卡（comparative scorecards）与宽泛的分类法，转而面向那些能够测试自动化智能体优化 IT 投资、减少资源浪费能力的具体用例。据我们所知，目前尚不存在任何针对预测、异常检测或成本优化等用例的评测基准，也没有标准化的方法来评估这些技术（无论是否带有智能体支持）。我们坚信，ITBench 将凝聚研究与开发社区的力量，借助 AI 与优化的力量来攻克真实世界中的难题。
+
+\section{附录 B：ITBench}
+
+如图 5 所示，ITBench 框架支持两类主要角色，对应于两个主要阶段：（i）\textbf{基准注册（benchmark registration）}阶段，其目标对象是基准提交者（Benchmark Submitter）角色；（ii）\textbf{智能体注册（agent registration）}阶段，聚焦于智能体提交者（Agent Submitter）角色以及实际的运行时基准执行与评测。
+
+\subsection{B.1 基准注册（Benchmark Registration）}
+
+该阶段包含两个主要步骤：（i）场景的开发与注册；（ii）任务与评测指标的注册。
+
+\paragraph{场景开发与注册。}
+我们的场景旨在将真实世界的 IT 问题实例化于现实且可管理的环境中。每个场景由两个核心组成部分构成：（i）环境规约（environment specification）；（ii）场景规约元数据（scenario specification metadata）。随后，基准提交者角色将这些场景注册到 ITBench，由其将场景存储在数据库中。每个场景都使用表 7 所示的元数据进行描述。
+
+\begin{table}[H]
+\centering
+\caption{场景元数据与示例。}
+\label{tab:7}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{@{}lp{0.62\linewidth}@{}}
+\toprule
+\textbf{字段} & \textbf{示例} \\
+\midrule
+Type（类型） & CISO, SRE, FinOps \\
+Name（名称） & 对于 CISO：k8s CIS-b Minimize containers w/ shared net namespace \\
+Description（描述） & 对于 CISO：Minimize the admission of containers wishing to share the host network namespace \\
+Complexity Class（复杂度等级） & Easy, Medium, Hard \\
+ & 对于 CISO：基于所用技术来定义（例如，k8s w/ Kyverno；k8s w/ OPA；Rhel9 w/ OPA）。\\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\paragraph{任务与评测指标注册。}
+对于每个场景类型，基准提交者都会注册一组定义良好的任务，这些任务构成了智能体性能评估的基础。表 2 总结了 ITBench 当前支持的 IT 自动化任务。展望未来，我们计划扩展 ITBench，以纳入更多任务（例如威胁分析与资源优化），并将其适用范围拓宽至其他领域（例如 DevOps）。
+
+\subsection{B.2 智能体注册（Agent Registration）}
+
+在此阶段，智能体提交者首先在平台上注册为用户，随后进行智能体注册。
+
+\subsubsection{B.2.1 智能体注册（Agent Registration）}
+
+在智能体注册期间，智能体提交者按表 8 所示指定智能体元数据。
+
+\begin{table}[H]
+\centering
+\caption{智能体元数据与示例。}
+\label{tab:8}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{@{}lp{0.62\linewidth}@{}}
+\toprule
+\textbf{字段} & \textbf{示例} \\
+\midrule
+Agent Name（智能体名称） & -- \\
+Agent Type (predefined)（智能体类型，预定义） & CISO, SRE, FinOps \ldots \\
+Agent Level（智能体等级） & Beginner, Intermediate, Expert（初级、中级、专家）（映射到场景复杂度：Easy、Medium、Hard） \\
+Scenario Class（场景类别） & 对于 CISO：rhel9 w/ OPA；Kubernetes w/ Kyverno；Kubernetes w/ OPA, Kyverno update \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+智能体注册完成后，智能体提交者选择该智能体，系统便会使用注册时为该智能体指定的 \textit{agent\_type}、\textit{agent\_level} 与 \textit{scenario\_class}，从数据库中检索出相应的基准。随后，智能体提交者会收到该智能体为达成既定目标所必须完成的任务，其中每项任务都带有预先定义的评测指标。
+
+\subsection{B.3 排行榜（Leaderboard）}
+
+对 IT 自动化任务进行有效的评测基准化——尤其是在为某一组织的特定需求选择 LLM 时——要求对智能体性能进行一致的追踪与比较。排行榜（Leaderboard）通过提供一套预定义、可扩展的性能指标来满足这一需求，这些指标能够针对评估标准给出清晰的智能体性能洞见。
+
+排行榜同时支持 API 与 UI 两种接口，从而实现流畅的评测基准化工作流。用户必须通过排行榜的 UI 或 API 注册其智能体端点（endpoint）。随后，智能体即可向排行榜查询，以检索并部署基准场景，然后报告其运行状态。如前所述，场景既可以由 ITBench 在其托管环境中自动部署，也可以在排行榜之外、即用户自己托管的环境中手动部署——在后一种情况下，智能体与环境仍可利用同一个排行榜 API 端点来发布状态更新。
+
+智能体在被智能体提交者注册之后，其端到端的基准化工作流如图 5 所示，并总结如下：
+
+\begin{enumerate}
+\item 新的基准作业被存入基准队列（Benchmark Queue）以待处理。
+\item 基准运行器（Benchmark Runner）从基准队列中为某一特定智能体获取一个基准场景。
+\item 基准运行器依据基准场景规约来提供（provision）环境。场景的环境是执行某一具体 IT 任务所需的系统集合。智能体与该环境交互，以求解给定的 IT 自动化任务（并有可能修改该环境）。基准评测会根据智能体是否在给定环境中成功完成任务来衡量其性能。该环境可以是，例如，一个运行着目标应用的 Kubernetes 集群，或一台具有待校验的特定配置的 RHEL 9 主机。该环境处于智能体的直接控制之下，因此可能遭受破坏性操作（例如在故障性能场景中），从而起到某种“试验场（playground）”的作用。
+\item 对于基准运行中包含的每个场景，基准运行器与智能体执行以下步骤：
+\begin{enumerate}
+\item[(a)] 智能体持续轮询 \textbf{get\_manifest} API，以监测何时有新的清单（manifest）进入 \textbf{Ready}（就绪）状态。
+\item[(b)] 基准运行器通过执行 \textbf{deploy\_scenario} 函数来部署该场景的环境。每个环境使用 \textbf{post\_bstatus} API 向智能体 API 服务器（Agent API Server）报告其状态。
+\item[(c)] 基准运行器通过智能体 API 服务器的 \textbf{get\_bstatus} API 监测环境状态。一旦状态变为 \textbf{Deployed}（已部署），它便通过执行 \textbf{inject\_fault} 函数向环境中注入故障。
+\item[(d)] 基准运行器继续使用 \textbf{get\_bstatus} API 监测环境状态。一旦状态到达 \textbf{FaultInjected}（已注入故障），它便在基准数据库（Benchmark DB）中将该清单的状态更新为 \textbf{Ready}，并在清单中写入诸如基准 ID、场景 ID、集群凭据以及 URL 等关键细节。这样，智能体便可访问并检索该清单，以便与环境进行交互。
+\item[(e)] 一旦清单状态变为 \textbf{Ready}，智能体便将其检索回来。该清单包含启动智能体所需的 URL 与凭据。在启动之前，智能体会调用智能体 API 服务器的 \textbf{post\_status} API，将其状态报告为 \textbf{STARTED}（已启动）。
+\item[(f)] 在智能体完成其执行后，会再次调用 \textbf{post\_status} API，将其完成状态报告为 \textbf{FINISH}（已完成）。
+\item[(g)] 基准运行器启动评测，并执行 \textbf{delete\_scenario} 函数。
+\end{enumerate}
+\item 一旦基准中所有场景的评测结果均已就绪，基准运行器便将它们汇总，并将结果发布到排行榜。
+\end{enumerate}
+
+我们为若干 IT 自动化任务实例化了排行榜评测指标，详见第 3.1 节、表 2。图 6 展示了排行榜首页（landing page），其上显示了 CISO 合规评估智能体的基准化指标与结果。

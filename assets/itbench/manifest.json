@@ -1,0 +1,1620 @@
+{
+ "pdf": "ITBench- Evaluating AI Agents across Diverse Real-World IT Automation Tasks.pdf",
+ "slug": "itbench",
+ "page_count": 53,
+ "page_size": [
+  612.0,
+  792.0
+ ],
+ "pages": [
+  {
+   "page": 1,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/itbench/_pages/p01.png"
+  },
+  {
+   "page": 2,
+   "candidates": [
+    {
+     "id": "cand_p02_k00",
+     "kind": "vector",
+     "bbox": [
+      79.7,
+      67.1,
+      517.0,
+      164.3
+     ],
+     "pdf": "cand_p02_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      55.4,
+      175.3,
+      541.4,
+      185.2
+     ],
+     "text": "Figure 1: Sample personas and IT tasks. Bell icon represents event-triggered tasks. Information icon represents other tasks",
+     "label": "Figure 1"
+    }
+   ],
+   "overlay": "assets/itbench/_pages/p02.png"
+  },
+  {
+   "page": 3,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      182.0,
+      67.9,
+      414.5,
+      77.8
+     ],
+     "text": "Table 1: Comparison of ITBench with related benchmarks",
+     "label": "Table 1"
+    }
+   ],
+   "overlay": "assets/itbench/_pages/p03.png"
+  },
+  {
+   "page": 4,
+   "candidates": [
+    {
+     "id": "cand_p04_k00",
+     "kind": "table",
+     "bbox": [
+      23.5,
+      513.3,
+      420.5,
+      736.6
+     ],
+     "pdf": "cand_p04_k00.pdf"
+    },
+    {
+     "id": "cand_p04_k01",
+     "kind": "table",
+     "bbox": [
+      160.5,
+      562.0,
+      284.2,
+      638.9
+     ],
+     "pdf": "cand_p04_k01.pdf"
+    },
+    {
+     "id": "cand_p04_k02",
+     "kind": "table",
+     "bbox": [
+      58.1,
+      602.4,
+      149.5,
+      638.9
+     ],
+     "pdf": "cand_p04_k02.pdf"
+    },
+    {
+     "id": "cand_p04_k03",
+     "kind": "vector",
+     "bbox": [
+      110.1,
+      67.1,
+      484.3,
+      176.1
+     ],
+     "pdf": "cand_p04_k03.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      213.5,
+      178.9,
+      383.4,
+      188.9
+     ],
+     "text": "Figure 2: ITBench automation framework.",
+     "label": "Figure 2"
+    },
+    {
+     "bbox": [
+      55.4,
+      653.1,
+      289.4,
+      663.2
+     ],
+     "text": "Figure 3: Agent and environment as a POMDP. Agents",
+     "label": "Figure 3"
+    }
+   ],
+   "overlay": "assets/itbench/_pages/p04.png"
+  },
+  {
+   "page": 5,
+   "candidates": [
+    {
+     "id": "cand_p05_k00",
+     "kind": "vector",
+     "bbox": [
+      55.4,
+      341.3,
+      167.2,
+      430.1
+     ],
+     "pdf": "cand_p05_k00.pdf"
+    },
+    {
+     "id": "cand_p05_k01",
+     "kind": "vector",
+     "bbox": [
+      180.2,
+      349.2,
+      292.0,
+      430.1
+     ],
+     "pdf": "cand_p05_k01.pdf"
+    },
+    {
+     "id": "cand_p05_k02",
+     "kind": "vector",
+     "bbox": [
+      304.9,
+      350.0,
+      416.7,
+      430.1
+     ],
+     "pdf": "cand_p05_k02.pdf"
+    },
+    {
+     "id": "cand_p05_k03",
+     "kind": "vector",
+     "bbox": [
+      442.0,
+      349.9,
+      529.1,
+      430.1
+     ],
+     "pdf": "cand_p05_k03.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      79.7,
+      67.9,
+      516.9,
+      77.8
+     ],
+     "text": "Table 2: Exemplar scenario classes and their complexity per scenario domain in ITBench across 94 scenarios.",
+     "label": "Table 2"
+    },
+    {
+     "bbox": [
+      200.8,
+      456.8,
+      396.1,
+      466.7
+     ],
+     "text": "Figure 4: Characterization of ITBench scenarios.",
+     "label": "Figure 4"
+    }
+   ],
+   "overlay": "assets/itbench/_pages/p05.png"
+  },
+  {
+   "page": 6,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      74.3,
+      67.9,
+      271.1,
+      77.8
+     ],
+     "text": "Table 3: Personas, tasks, and metrics in ITBench.",
+     "label": "Table 3"
+    }
+   ],
+   "overlay": "assets/itbench/_pages/p06.png"
+  },
+  {
+   "page": 7,
+   "candidates": [
+    {
+     "id": "cand_p07_k00",
+     "kind": "table",
+     "bbox": [
+      63.3,
+      119.3,
+      537.6,
+      164.3
+     ],
+     "pdf": "cand_p07_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      193.2,
+      67.9,
+      403.4,
+      77.8
+     ],
+     "text": "Table 4: Evaluation of SRE-Agent on SRE scenarios",
+     "label": "Table 4"
+    },
+    {
+     "bbox": [
+      55.1,
+      276.2,
+      291.1,
+      286.1
+     ],
+     "text": "Table 4, Table 5 and Table 6 show the performance of SRE-",
+     "label": "Table 4"
+    }
+   ],
+   "overlay": "assets/itbench/_pages/p07.png"
+  },
+  {
+   "page": 8,
+   "candidates": [
+    {
+     "id": "cand_p08_k00",
+     "kind": "table",
+     "bbox": [
+      59.5,
+      119.3,
+      541.7,
+      204.1
+     ],
+     "pdf": "cand_p08_k00.pdf"
+    },
+    {
+     "id": "cand_p08_k01",
+     "kind": "table",
+     "bbox": [
+      60.0,
+      314.0,
+      542.4,
+      359.0
+     ],
+     "pdf": "cand_p08_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      139.1,
+      67.9,
+      457.4,
+      77.8
+     ],
+     "text": "Table 5: Evaluation of CISO Compliance Assessment Agent on CISO scenarios",
+     "label": "Table 5"
+    },
+    {
+     "bbox": [
+      182.6,
+      232.7,
+      414.0,
+      242.7
+     ],
+     "text": "Table 6: Evaluation of FinOpsAgent on FinOps scenarios.",
+     "label": "Table 6"
+    },
+    {
+     "bbox": [
+      55.1,
+      459.0,
+      95.3,
+      468.9
+     ],
+     "text": "Table 18).",
+     "label": "Table 18"
+    }
+   ],
+   "overlay": "assets/itbench/_pages/p08.png"
+  },
+  {
+   "page": 9,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/itbench/_pages/p09.png"
+  },
+  {
+   "page": 10,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/itbench/_pages/p10.png"
+  },
+  {
+   "page": 11,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/itbench/_pages/p11.png"
+  },
+  {
+   "page": 12,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/itbench/_pages/p12.png"
+  },
+  {
+   "page": 13,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/itbench/_pages/p13.png"
+  },
+  {
+   "page": 14,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/itbench/_pages/p14.png"
+  },
+  {
+   "page": 15,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/itbench/_pages/p15.png"
+  },
+  {
+   "page": 16,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/itbench/_pages/p16.png"
+  },
+  {
+   "page": 17,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/itbench/_pages/p17.png"
+  },
+  {
+   "page": 18,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      338.9,
+      141.2,
+      509.7,
+      151.2
+     ],
+     "text": "Table 7: Scenario Metadata and Examples.",
+     "label": "Table 7"
+    }
+   ],
+   "overlay": "assets/itbench/_pages/p18.png"
+  },
+  {
+   "page": 19,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      89.7,
+      67.9,
+      249.9,
+      77.8
+     ],
+     "text": "Table 8: Agent Metadata and Examples.",
+     "label": "Table 8"
+    },
+    {
+     "bbox": [
+      307.4,
+      545.3,
+      541.4,
+      555.2
+     ],
+     "text": "Figure 6 shows the Leaderboard landing page displaying the",
+     "label": "Figure 6"
+    }
+   ],
+   "overlay": "assets/itbench/_pages/p19.png"
+  },
+  {
+   "page": 20,
+   "candidates": [
+    {
+     "id": "cand_p20_k00",
+     "kind": "image",
+     "bbox": [
+      55.4,
+      67.1,
+      541.4,
+      347.8
+     ],
+     "pdf": "cand_p20_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      215.5,
+      358.5,
+      381.4,
+      368.5
+     ],
+     "text": "Figure 5: ITBench leaderboard workflow.",
+     "label": "Figure 5"
+    }
+   ],
+   "overlay": "assets/itbench/_pages/p20.png"
+  },
+  {
+   "page": 21,
+   "candidates": [
+    {
+     "id": "cand_p21_k00",
+     "kind": "image",
+     "bbox": [
+      55.4,
+      67.1,
+      541.4,
+      395.8
+     ],
+     "pdf": "cand_p21_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      216.4,
+      406.6,
+      380.5,
+      416.6
+     ],
+     "text": "Figure 6: Example ITBench leaderboard.",
+     "label": "Figure 6"
+    },
+    {
+     "bbox": [
+      307.1,
+      609.3,
+      543.1,
+      619.4
+     ],
+     "text": "Table 9 shows a real-world incident report based on SREs’",
+     "label": "Table 9"
+    }
+   ],
+   "overlay": "assets/itbench/_pages/p21.png"
+  },
+  {
+   "page": 22,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/itbench/_pages/p22.png"
+  },
+  {
+   "page": 23,
+   "candidates": [
+    {
+     "id": "cand_p23_k00",
+     "kind": "vector",
+     "bbox": [
+      219.4,
+      470.1,
+      365.2,
+      587.4
+     ],
+     "pdf": "cand_p23_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      55.3,
+      143.0,
+      541.2,
+      152.9
+     ],
+     "text": "Table 9: An incident that occurred on a SaaS data platform. This incident shows the complex relationship between SRE and",
+     "label": "Table 9"
+    }
+   ],
+   "overlay": "assets/itbench/_pages/p23.png"
+  },
+  {
+   "page": 24,
+   "candidates": [
+    {
+     "id": "cand_p24_k00",
+     "kind": "table",
+     "bbox": [
+      104.0,
+      207.7,
+      492.7,
+      382.1
+     ],
+     "pdf": "cand_p24_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      257.8,
+      67.9,
+      338.7,
+      77.8
+     ],
+     "text": "Table 10: SRE tasks",
+     "label": "Table 10"
+    },
+    {
+     "bbox": [
+      140.2,
+      392.9,
+      456.7,
+      402.8
+     ],
+     "text": "Figure 7: Architecture of ITBench responsible for orchestrating SRE scenarios.",
+     "label": "Figure 7"
+    },
+    {
+     "bbox": [
+      55.1,
+      625.5,
+      291.1,
+      635.5
+     ],
+     "text": "Table 12 summarizes the scenarios that are currently avail-",
+     "label": "Table 12"
+    },
+    {
+     "bbox": [
+      307.4,
+      504.0,
+      541.4,
+      514.0
+     ],
+     "text": "Figure 8 illustrates key incident characteristics observed in",
+     "label": "Figure 8"
+    }
+   ],
+   "overlay": "assets/itbench/_pages/p24.png"
+  },
+  {
+   "page": 25,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      121.6,
+      67.9,
+      475.0,
+      77.8
+     ],
+     "text": "Table 11: Recreated failure scenarios using the incident description described in Table 9.",
+     "label": "Table 11"
+    },
+    {
+     "bbox": [
+      198.9,
+      356.7,
+      397.7,
+      366.7
+     ],
+     "text": "Table 12: Unique Scenarios available in ITBench.",
+     "label": "Table 12"
+    }
+   ],
+   "overlay": "assets/itbench/_pages/p25.png"
+  },
+  {
+   "page": 26,
+   "candidates": [
+    {
+     "id": "cand_p26_k00",
+     "kind": "table",
+     "bbox": [
+      55.4,
+      67.1,
+      541.4,
+      272.2
+     ],
+     "pdf": "cand_p26_k00.pdf"
+    },
+    {
+     "id": "cand_p26_k01",
+     "kind": "vector",
+     "bbox": [
+      119.8,
+      330.0,
+      225.1,
+      406.2
+     ],
+     "pdf": "cand_p26_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      209.7,
+      299.0,
+      387.1,
+      308.9
+     ],
+     "text": "Figure 8: Characterizing ITBench scenarios.",
+     "label": "Figure 8"
+    },
+    {
+     "bbox": [
+      101.3,
+      417.0,
+      243.6,
+      427.0
+     ],
+     "text": "Figure 9: SRE scenario complexity.",
+     "label": "Figure 9"
+    },
+    {
+     "bbox": [
+      55.4,
+      599.9,
+      289.4,
+      609.9
+     ],
+     "text": "Figure 9 presents the distribution of task complexity values",
+     "label": "Figure 9"
+    }
+   ],
+   "overlay": "assets/itbench/_pages/p26.png"
+  },
+  {
+   "page": 27,
+   "candidates": [
+    {
+     "id": "cand_p27_k00",
+     "kind": "image",
+     "bbox": [
+      312.2,
+      273.2,
+      539.2,
+      402.8
+     ],
+     "pdf": "cand_p27_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      66.4,
+      536.0,
+      278.2,
+      545.8
+     ],
+     "text": "Table 13: Cluster resource usage during fault injection.",
+     "label": "Table 13"
+    },
+    {
+     "bbox": [
+      334.3,
+      415.9,
+      514.5,
+      425.9
+     ],
+     "text": "Figure 10: Multi-modality data for SRE task.",
+     "label": "Figure 10"
+    }
+   ],
+   "overlay": "assets/itbench/_pages/p27.png"
+  },
+  {
+   "page": 28,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      206.0,
+      67.9,
+      390.6,
+      77.8
+     ],
+     "text": "Table 14: List of the tools used by SRE-Agent",
+     "label": "Table 14"
+    }
+   ],
+   "overlay": "assets/itbench/_pages/p28.png"
+  },
+  {
+   "page": 29,
+   "candidates": [
+    {
+     "id": "cand_p29_k00",
+     "kind": "vector",
+     "bbox": [
+      307.4,
+      67.1,
+      541.4,
+      250.2
+     ],
+     "pdf": "cand_p29_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      55.1,
+      695.5,
+      289.4,
+      705.5
+     ],
+     "text": "Table 15 shows the main hyper-parameter values used in",
+     "label": "Table 15"
+    },
+    {
+     "bbox": [
+      354.6,
+      261.1,
+      494.3,
+      271.0
+     ],
+     "text": "Figure 11: SRE-Agent architecture",
+     "label": "Figure 11"
+    },
+    {
+     "bbox": [
+      354.0,
+      333.5,
+      494.6,
+      343.5
+     ],
+     "text": "Table 15: Model hyper-parameters.",
+     "label": "Table 15"
+    }
+   ],
+   "overlay": "assets/itbench/_pages/p29.png"
+  },
+  {
+   "page": 30,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      237.1,
+      67.9,
+      359.5,
+      77.8
+     ],
+     "text": "Table 16: Experimental details",
+     "label": "Table 16"
+    }
+   ],
+   "overlay": "assets/itbench/_pages/p30.png"
+  },
+  {
+   "page": 31,
+   "candidates": [
+    {
+     "id": "cand_p31_k00",
+     "kind": "table",
+     "bbox": [
+      81.4,
+      324.3,
+      260.7,
+      639.2
+     ],
+     "pdf": "cand_p31_k00.pdf"
+    },
+    {
+     "id": "cand_p31_k01",
+     "kind": "image",
+     "bbox": [
+      78.7,
+      321.7,
+      266.6,
+      356.2
+     ],
+     "pdf": "cand_p31_k01.pdf"
+    },
+    {
+     "id": "cand_p31_k02",
+     "kind": "image",
+     "bbox": [
+      78.7,
+      370.0,
+      266.6,
+      404.5
+     ],
+     "pdf": "cand_p31_k02.pdf"
+    },
+    {
+     "id": "cand_p31_k03",
+     "kind": "image",
+     "bbox": [
+      78.7,
+      398.9,
+      266.6,
+      433.4
+     ],
+     "pdf": "cand_p31_k03.pdf"
+    },
+    {
+     "id": "cand_p31_k04",
+     "kind": "image",
+     "bbox": [
+      78.7,
+      428.4,
+      266.6,
+      469.4
+     ],
+     "pdf": "cand_p31_k04.pdf"
+    },
+    {
+     "id": "cand_p31_k05",
+     "kind": "image",
+     "bbox": [
+      78.7,
+      465.6,
+      266.6,
+      518.9
+     ],
+     "pdf": "cand_p31_k05.pdf"
+    },
+    {
+     "id": "cand_p31_k06",
+     "kind": "image",
+     "bbox": [
+      78.7,
+      514.5,
+      266.6,
+      567.9
+     ],
+     "pdf": "cand_p31_k06.pdf"
+    },
+    {
+     "id": "cand_p31_k07",
+     "kind": "image",
+     "bbox": [
+      78.7,
+      563.5,
+      266.6,
+      605.0
+     ],
+     "pdf": "cand_p31_k07.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      55.4,
+      655.1,
+      289.4,
+      665.2
+     ],
+     "text": "Figure 12: Sample Trajectory of llama-3.3-70b-instruct in",
+     "label": "Figure 12"
+    }
+   ],
+   "overlay": "assets/itbench/_pages/p31.png"
+  },
+  {
+   "page": 32,
+   "candidates": [
+    {
+     "id": "cand_p32_k00",
+     "kind": "table",
+     "bbox": [
+      82.4,
+      277.3,
+      260.9,
+      418.2
+     ],
+     "pdf": "cand_p32_k00.pdf"
+    },
+    {
+     "id": "cand_p32_k01",
+     "kind": "table",
+     "bbox": [
+      82.4,
+      373.9,
+      260.9,
+      389.2
+     ],
+     "pdf": "cand_p32_k01.pdf"
+    },
+    {
+     "id": "cand_p32_k02",
+     "kind": "image",
+     "bbox": [
+      79.8,
+      274.7,
+      266.8,
+      309.0
+     ],
+     "pdf": "cand_p32_k02.pdf"
+    },
+    {
+     "id": "cand_p32_k03",
+     "kind": "image",
+     "bbox": [
+      79.8,
+      342.2,
+      266.8,
+      376.0
+     ],
+     "pdf": "cand_p32_k03.pdf"
+    },
+    {
+     "id": "cand_p32_k04",
+     "kind": "image",
+     "bbox": [
+      79.8,
+      390.9,
+      266.8,
+      424.7
+     ],
+     "pdf": "cand_p32_k04.pdf"
+    },
+    {
+     "id": "cand_p32_k05",
+     "kind": "vector",
+     "bbox": [
+      82.4,
+      431.7,
+      260.9,
+      467.6
+     ],
+     "pdf": "cand_p32_k05.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      226.3,
+      67.9,
+      370.3,
+      77.8
+     ],
+     "text": "Table 17: Diagnosis pass@1 (in %).",
+     "label": "Table 17"
+    },
+    {
+     "bbox": [
+      234.2,
+      167.6,
+      362.4,
+      177.6
+     ],
+     "text": "Table 18: Repair pass@1 (in %)",
+     "label": "Table 18"
+    },
+    {
+     "bbox": [
+      63.8,
+      482.8,
+      281.0,
+      492.8
+     ],
+     "text": "Figure 13: Sample Trajectory of gpt-4o in Scenario 19",
+     "label": "Figure 13"
+    }
+   ],
+   "overlay": "assets/itbench/_pages/p32.png"
+  },
+  {
+   "page": 33,
+   "candidates": [
+    {
+     "id": "cand_p33_k00",
+     "kind": "vector",
+     "bbox": [
+      55.4,
+      121.3,
+      541.4,
+      638.9
+     ],
+     "pdf": "cand_p33_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      160.2,
+      649.7,
+      436.7,
+      659.7
+     ],
+     "text": "Figure 14: Percent diagnosed for each scenario with tracing enabled.",
+     "label": "Figure 14"
+    }
+   ],
+   "overlay": "assets/itbench/_pages/p33.png"
+  },
+  {
+   "page": 34,
+   "candidates": [
+    {
+     "id": "cand_p34_k00",
+     "kind": "vector",
+     "bbox": [
+      55.4,
+      117.4,
+      541.4,
+      642.8
+     ],
+     "pdf": "cand_p34_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      87.8,
+      653.5,
+      509.1,
+      663.5
+     ],
+     "text": "Figure 15: Normalized topology-aware metric (NTAM) for root cause for scenarios with tracing enabled.",
+     "label": "Figure 15"
+    }
+   ],
+   "overlay": "assets/itbench/_pages/p34.png"
+  },
+  {
+   "page": 35,
+   "candidates": [
+    {
+     "id": "cand_p35_k00",
+     "kind": "vector",
+     "bbox": [
+      55.4,
+      115.2,
+      541.5,
+      633.1
+     ],
+     "pdf": "cand_p35_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      55.4,
+      643.8,
+      541.4,
+      653.8
+     ],
+     "text": "Figure 16: Normalized topology-aware metric (NTAM) for fault propagation chain (FPC) for each scenario with tracing",
+     "label": "Figure 16"
+    }
+   ],
+   "overlay": "assets/itbench/_pages/p35.png"
+  },
+  {
+   "page": 36,
+   "candidates": [
+    {
+     "id": "cand_p36_k00",
+     "kind": "vector",
+     "bbox": [
+      55.4,
+      121.3,
+      541.4,
+      638.9
+     ],
+     "pdf": "cand_p36_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      165.3,
+      649.7,
+      431.5,
+      659.7
+     ],
+     "text": "Figure 17: Percent repaired for each scenario with tracing enabled.",
+     "label": "Figure 17"
+    }
+   ],
+   "overlay": "assets/itbench/_pages/p36.png"
+  },
+  {
+   "page": 37,
+   "candidates": [
+    {
+     "id": "cand_p37_k00",
+     "kind": "vector",
+     "bbox": [
+      55.6,
+      167.9,
+      541.2,
+      588.3
+     ],
+     "pdf": "cand_p37_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      199.4,
+      603.3,
+      397.5,
+      613.2
+     ],
+     "text": "Figure 18: Example agent output for Scenario 15.",
+     "label": "Figure 18"
+    }
+   ],
+   "overlay": "assets/itbench/_pages/p37.png"
+  },
+  {
+   "page": 38,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      149.2,
+      67.9,
+      447.3,
+      77.8
+     ],
+     "text": "Table 19: Evaluation of SRE-agent only on scenarios with tracing enabled.",
+     "label": "Table 19"
+    },
+    {
+     "bbox": [
+      139.3,
+      186.9,
+      465.6,
+      196.9
+     ],
+     "text": "Table 20: Evaluation of SRE-agent only on scenarios in which tracing is disabled.",
+     "label": "Table 20"
+    }
+   ],
+   "overlay": "assets/itbench/_pages/p38.png"
+  },
+  {
+   "page": 39,
+   "candidates": [
+    {
+     "id": "cand_p39_k00",
+     "kind": "table",
+     "bbox": [
+      55.4,
+      67.1,
+      541.4,
+      313.1
+     ],
+     "pdf": "cand_p39_k00.pdf"
+    },
+    {
+     "id": "cand_p39_k01",
+     "kind": "table",
+     "bbox": [
+      321.4,
+      154.2,
+      418.5,
+      186.8
+     ],
+     "pdf": "cand_p39_k01.pdf"
+    },
+    {
+     "id": "cand_p39_k02",
+     "kind": "table",
+     "bbox": [
+      321.4,
+      195.6,
+      369.3,
+      227.1
+     ],
+     "pdf": "cand_p39_k02.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      118.7,
+      323.9,
+      478.2,
+      333.9
+     ],
+     "text": "Figure 19: Compliance Authoring and Administration vs. Policy Validation Point Engines",
+     "label": "Figure 19"
+    }
+   ],
+   "overlay": "assets/itbench/_pages/p39.png"
+  },
+  {
+   "page": 40,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      307.1,
+      280.6,
+      541.4,
+      290.6
+     ],
+     "text": "Table 2 summarizes the CISO tasks initially supported in",
+     "label": "Table 2"
+    }
+   ],
+   "overlay": "assets/itbench/_pages/p40.png"
+  },
+  {
+   "page": 41,
+   "candidates": [
+    {
+     "id": "cand_p41_k00",
+     "kind": "image",
+     "bbox": [
+      104.0,
+      67.1,
+      492.8,
+      266.8
+     ],
+     "pdf": "cand_p41_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      135.5,
+      277.6,
+      461.4,
+      287.5
+     ],
+     "text": "Figure 20: Architecture of ITBench responsible for orchestrating CISO scenarios.",
+     "label": "Figure 20"
+    }
+   ],
+   "overlay": "assets/itbench/_pages/p41.png"
+  },
+  {
+   "page": 42,
+   "candidates": [
+    {
+     "id": "cand_p42_k00",
+     "kind": "vector",
+     "bbox": [
+      119.8,
+      67.1,
+      225.1,
+      142.5
+     ],
+     "pdf": "cand_p42_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      96.6,
+      153.3,
+      248.3,
+      163.3
+     ],
+     "text": "Figure 21: CISO scenario complexity.",
+     "label": "Figure 21"
+    },
+    {
+     "bbox": [
+      55.4,
+      230.7,
+      289.6,
+      240.6
+     ],
+     "text": "Fig. 22 illustrates the end-to-end benchmarking process for",
+     "label": "Fig. 22"
+    },
+    {
+     "bbox": [
+      55.1,
+      513.5,
+      289.4,
+      523.5
+     ],
+     "text": "Table 21 and Table 22 illustrate examples of the typical",
+     "label": "Table 21"
+    }
+   ],
+   "overlay": "assets/itbench/_pages/p42.png"
+  },
+  {
+   "page": 43,
+   "candidates": [
+    {
+     "id": "cand_p43_k00",
+     "kind": "vector",
+     "bbox": [
+      91.9,
+      67.1,
+      504.9,
+      298.0
+     ],
+     "pdf": "cand_p43_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      130.3,
+      308.9,
+      466.6,
+      318.9
+     ],
+     "text": "Figure 22: CISO Compliance Assessment Agent end-to-end Benchmarking Process.",
+     "label": "Figure 22"
+    }
+   ],
+   "overlay": "assets/itbench/_pages/p43.png"
+  },
+  {
+   "page": 44,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      151.7,
+      67.9,
+      444.9,
+      77.8
+     ],
+     "text": "Table 21: Kubernetes - Center for Internet Security Benchmarks (sample)",
+     "label": "Table 21"
+    }
+   ],
+   "overlay": "assets/itbench/_pages/p44.png"
+  },
+  {
+   "page": 45,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      123.5,
+      101.4,
+      476.6,
+      111.4
+     ],
+     "text": "Table 22: Red Hat Enterprise Linux - Center for Internet Security Benchmarks (sample).",
+     "label": "Table 22"
+    }
+   ],
+   "overlay": "assets/itbench/_pages/p45.png"
+  },
+  {
+   "page": 46,
+   "candidates": [
+    {
+     "id": "cand_p46_k00",
+     "kind": "vector",
+     "bbox": [
+      307.6,
+      202.9,
+      541.2,
+      452.9
+     ],
+     "pdf": "cand_p46_k00.pdf"
+    },
+    {
+     "id": "cand_p46_k01",
+     "kind": "vector",
+     "bbox": [
+      307.6,
+      644.6,
+      541.2,
+      710.3
+     ],
+     "pdf": "cand_p46_k01.pdf"
+    }
+   ],
+   "captions": [],
+   "overlay": "assets/itbench/_pages/p46.png"
+  },
+  {
+   "page": 47,
+   "candidates": [
+    {
+     "id": "cand_p47_k00",
+     "kind": "image",
+     "bbox": [
+      78.8,
+      94.4,
+      266.0,
+      653.8
+     ],
+     "pdf": "cand_p47_k00.pdf"
+    },
+    {
+     "id": "cand_p47_k01",
+     "kind": "vector",
+     "bbox": [
+      307.6,
+      67.1,
+      541.2,
+      171.8
+     ],
+     "pdf": "cand_p47_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      55.4,
+      664.5,
+      289.4,
+      674.6
+     ],
+     "text": "Figure 23: Sample Trajectory of LLaMa 405B in Success",
+     "label": "Figure 23"
+    }
+   ],
+   "overlay": "assets/itbench/_pages/p47.png"
+  },
+  {
+   "page": 48,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      237.1,
+      67.9,
+      359.5,
+      77.8
+     ],
+     "text": "Table 23: Experimental details",
+     "label": "Table 23"
+    },
+    {
+     "bbox": [
+      224.0,
+      257.1,
+      388.2,
+      267.1
+     ],
+     "text": "Table 24: CISO/Agent: Assessed Results",
+     "label": "Table 24"
+    }
+   ],
+   "overlay": "assets/itbench/_pages/p48.png"
+  },
+  {
+   "page": 49,
+   "candidates": [
+    {
+     "id": "cand_p49_k00",
+     "kind": "image",
+     "bbox": [
+      78.8,
+      132.1,
+      266.0,
+      616.1
+     ],
+     "pdf": "cand_p49_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      55.4,
+      626.8,
+      289.4,
+      636.9
+     ],
+     "text": "Figure 24: Sample Trajectory of LLaMa 405B in Failure",
+     "label": "Figure 24"
+    },
+    {
+     "bbox": [
+      307.1,
+      492.2,
+      541.4,
+      502.3
+     ],
+     "text": "Table 25 shows an exemplar budget overrun incident with",
+     "label": "Table 25"
+    }
+   ],
+   "overlay": "assets/itbench/_pages/p49.png"
+  },
+  {
+   "page": 50,
+   "candidates": [
+    {
+     "id": "cand_p50_k00",
+     "kind": "image",
+     "bbox": [
+      55.4,
+      76.5,
+      517.1,
+      683.7
+     ],
+     "pdf": "cand_p50_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      207.9,
+      694.5,
+      389.0,
+      704.4
+     ],
+     "text": "Figure 25: Percent pass@1 for each scenario.",
+     "label": "Figure 25"
+    }
+   ],
+   "overlay": "assets/itbench/_pages/p50.png"
+  },
+  {
+   "page": 51,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      145.1,
+      67.9,
+      451.5,
+      77.8
+     ],
+     "text": "Table 25: Optimization Use Case: Increased Cost Alert - Increasing Demand",
+     "label": "Table 25"
+    },
+    {
+     "bbox": [
+      146.8,
+      360.1,
+      449.8,
+      370.1
+     ],
+     "text": "Table 26: Optimization Use Case: Increased Cost Alert - Faulty Auto-scaler",
+     "label": "Table 26"
+    }
+   ],
+   "overlay": "assets/itbench/_pages/p51.png"
+  },
+  {
+   "page": 52,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      307.1,
+      484.4,
+      339.0,
+      494.4
+     ],
+     "text": "Table 6.",
+     "label": "Table 6"
+    }
+   ],
+   "overlay": "assets/itbench/_pages/p52.png"
+  },
+  {
+   "page": 53,
+   "candidates": [
+    {
+     "id": "cand_p53_k00",
+     "kind": "image",
+     "bbox": [
+      78.8,
+      174.8,
+      266.0,
+      508.5
+     ],
+     "pdf": "cand_p53_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      55.4,
+      519.3,
+      289.4,
+      529.3
+     ],
+     "text": "Figure 26: Sample Trajectory of unusual cost variation use",
+     "label": "Figure 26"
+    }
+   ],
+   "overlay": "assets/itbench/_pages/p53.png"
+  }
+ ]
+}

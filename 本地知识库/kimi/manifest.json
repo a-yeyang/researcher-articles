@@ -1,0 +1,246 @@
+[
+  {
+    "url": "https://platform.kimi.com/docs/agreement/modeluse",
+    "slug": "agreement__modeluse"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/agreement/payment",
+    "slug": "agreement__payment"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/agreement/userprivacy",
+    "slug": "agreement__userprivacy"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/agreement/userservice",
+    "slug": "agreement__userservice"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/api/balance",
+    "slug": "api__balance"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/api/batch-cancel",
+    "slug": "api__batch-cancel"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/api/batch-create",
+    "slug": "api__batch-create"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/api/batch-list",
+    "slug": "api__batch-list"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/api/batch-retrieve",
+    "slug": "api__batch-retrieve"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/api/chat",
+    "slug": "api__chat"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/api/errors",
+    "slug": "api__errors"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/api/estimate",
+    "slug": "api__estimate"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/api/files",
+    "slug": "api__files"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/api/files-content",
+    "slug": "api__files-content"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/api/files-delete",
+    "slug": "api__files-delete"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/api/files-list",
+    "slug": "api__files-list"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/api/files-retrieve",
+    "slug": "api__files-retrieve"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/api/files-upload",
+    "slug": "api__files-upload"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/api/list-models",
+    "slug": "api__list-models"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/api/models-overview",
+    "slug": "api__models-overview"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/api/overview",
+    "slug": "api__overview"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/api/partial",
+    "slug": "api__partial"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/api/quickstart",
+    "slug": "api__quickstart"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/api/tool-use",
+    "slug": "api__tool-use"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/guide/agent-support",
+    "slug": "guide__agent-support"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/guide/auto-reconnect",
+    "slug": "guide__auto-reconnect"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/guide/benchmark-best-practice",
+    "slug": "guide__benchmark-best-practice"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/guide/configure-the-modelscope-mcp-server",
+    "slug": "guide__configure-the-modelscope-mcp-server"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/guide/engage-in-multi-turn-conversations-using-kimi-api",
+    "slug": "guide__engage-in-multi-turn-conversations-using-kimi-api"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/guide/faq",
+    "slug": "guide__faq"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/guide/kimi-cli-support",
+    "slug": "guide__kimi-cli-support"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/guide/kimi-k2-6-quickstart",
+    "slug": "guide__kimi-k2-6-quickstart"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/guide/migrating-from-openai-to-kimi",
+    "slug": "guide__migrating-from-openai-to-kimi"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/guide/org-best-practice",
+    "slug": "guide__org-best-practice"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/guide/prompt-best-practice",
+    "slug": "guide__prompt-best-practice"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/guide/start-using-kimi-api",
+    "slug": "guide__start-using-kimi-api"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/guide/use-batch-api",
+    "slug": "guide__use-batch-api"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/guide/use-batch-inference",
+    "slug": "guide__use-batch-inference"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/guide/use-json-mode-feature-of-kimi-api",
+    "slug": "guide__use-json-mode-feature-of-kimi-api"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/guide/use-kimi-api-for-file-based-qa",
+    "slug": "guide__use-kimi-api-for-file-based-qa"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/guide/use-kimi-api-to-complete-tool-calls",
+    "slug": "guide__use-kimi-api-to-complete-tool-calls"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/guide/use-kimi-in-openclaw",
+    "slug": "guide__use-kimi-in-openclaw"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/guide/use-kimi-k2-thinking-model",
+    "slug": "guide__use-kimi-k2-thinking-model"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/guide/use-kimi-vision-model",
+    "slug": "guide__use-kimi-vision-model"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/guide/use-moonpalace",
+    "slug": "guide__use-moonpalace"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/guide/use-official-tools",
+    "slug": "guide__use-official-tools"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/guide/use-partial-mode-feature-of-kimi-api",
+    "slug": "guide__use-partial-mode-feature-of-kimi-api"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/guide/use-playground-to-debug-the-model",
+    "slug": "guide__use-playground-to-debug-the-model"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/guide/use-web-search",
+    "slug": "guide__use-web-search"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/guide/utilize-the-streaming-output-feature-of-kimi-api",
+    "slug": "guide__utilize-the-streaming-output-feature-of-kimi-api"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/introduction",
+    "slug": "introduction"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/models",
+    "slug": "models"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/overview",
+    "slug": "overview"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/pricing/batch",
+    "slug": "pricing__batch"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/pricing/chat",
+    "slug": "pricing__chat"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/pricing/chat-k25",
+    "slug": "pricing__chat-k25"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/pricing/chat-k26",
+    "slug": "pricing__chat-k26"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/pricing/chat-v1",
+    "slug": "pricing__chat-v1"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/pricing/faq",
+    "slug": "pricing__faq"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/pricing/limits",
+    "slug": "pricing__limits"
+  },
+  {
+    "url": "https://platform.kimi.com/docs/pricing/tools",
+    "slug": "pricing__tools"
+  }
+]

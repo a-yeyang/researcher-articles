@@ -1,0 +1,389 @@
+\section{附录 D：CISO（合规与安全运营）与合规评估智能体评测}
+
+\subsection{D.1 背景}
+
+技术的进步正在不断加剧应用与基础设施的复杂度。因此，那些依赖专职安全与合规团队、根据漏洞对组织构成的威胁来识别生产系统漏洞并加以缓解的传统做法，已经无法奏效。现代组织依赖一种开发、安全与运营一体化（DevSecOps）的实践，即在部署前对应用安全进行验证：在软件开发阶段就植入安全与监管管控；随后在部署后由运行时检查接力完成校验。在这些由不同团队负责、且其中部分团队网络安全知识有限的多层级安全与合规检查之下，手动的合规流程不仅对技术性安全管控而言已不再可行，而且这些流程的自动化也需要以前所未有的速度和规模加以推进，以跟上产品上市的节奏。
+
+整个流程始于 CISO（合规与安全运营，Chief Information Security Officer）、安全管理员或监管方建立并撰写相关的合规建议正文，通常以自然语言、针对特定的关键任务环境给出。随后他们依靠开发团队或安全专员在这些环境中收集状态作为证据，并出于取得运营授权（authorization to operate）或其他认证的目的，对照建议对其进行校验。自动化所追求的收益在于自动化\textbf{证据收集（evidence collection）}及其\textbf{校验（validation）}，从而实现可扩展性——既能处理复杂环境，也能支持频繁扫描（每日或按需，在每次系统修复或更新后进行）以完成状态度量与报告。校验自动化工具的例子包括策略引擎，如面向 Kubernetes 的 Kyverno（Int, c）、OPA Gatekeeper（Int, b），面向 PaaS 的 Ansible（Int, a），或面向云的云安全态势管理（CSPM）解决方案。图~\ref{fig:itbench-19} 展示了这种二分对立：左侧为合规撰写（compliance authoring），右侧为通过策略脚本及其多样化的编程语言进行的合规校验（compliance validation）。
+
+把自然语言建议自动翻译为策略脚本，要求在通常分属不同业务单元的各个领域与专家之间，达成前所未有的信任与同步水平。此外，它还要求通常专注于法律与知识产权（IP）事务的合规团队具备前所未有的技术知识。
+
+AI 智能体（agent）日益普及，以及人们预期其将能够处理复杂任务，使得对管理 IT 系统的 AI 智能体的需求随之上升（John, 2024；Miguel Carreon, 2024）。鉴于合规任务的复杂性，本研究面临的一大障碍是：要建立系统化的方法，在 AI 智能体投入生产部署之前评估其有效性。因此，迫切需要开发基于真实 IT 任务及其对应环境来评估 AI 智能体的方法。
+
+我们在开源（CIS, a）的 git 代码库文档中详细介绍了 CISO 合规评估智能体的部署与执行。下文将通过一套定义良好、含有真实场景与环境的方法论，展示我们的 CISO 智能体评测性能。下文随后给出一组场景样例及其环境对应的可执行自动化包，这些也在开源（CIS, b）中提供。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{fig19.pdf}
+\caption{合规撰写与管理（Compliance Authoring and Administration）对比策略校验点引擎（Policy Validation Point Engines）。}
+\label{fig:itbench-19}
+\end{figure}
+
+\subsection{D.2 真实世界评测}
+
+我们的 CISO 合规评估智能体（CAA，Compliance Assessment Agent）及其对应的评测基准（bench）将合规即代码（compliance as code）领域的最新技术结合在一起，借助生成式 AI（Gen AI）的代码生成能力，实现对监管管控及其态势评估的程序化表达。我们的智能体旨在赋能合规团队，加速新监管程序的采纳与运营：根据以自然语言描述的合规要求，自动生成用于证据收集及对照要求进行态势校验的代码。我们的评测实验覆盖端到端的智能体式（agentic）工作流，从在评测场景中发现策略技术，到将评估策略生成为代码，再到其实时的 git PR 管理、部署、执行与态势生成。最后，结果在我们的 ITBench 解决方案排行榜（leaderboard）上被评估、评级并报告。
+
+\subsubsection{D.2.1 术语与记号}
+
+我们定义以下关键术语，下文将用它们来描述智能体框架与评测方法论的主要方面：
+
+\begin{enumerate}
+\item \textit{智能体（Agent）：}智能体是一种由 AI 驱动的软件，它代表某一角色（persona）自主行动以解决给定任务。我们按照反映 IT 运营角色的智能体类型（Agent Type）对智能体进行分组，例如 CISO、FinOps 或 SRE 类型。
+\item \textit{任务（Task）：}任务是与某一角色职责相对应的具体工作，智能体旨在将其自动化。CISO 的典型任务包括收集证据和评估合规管控态势。
+\item \textit{场景（Scenario）：}场景是某一任务在给定环境中的真实实例。以 CISO 为例，\textit{每一项}在 OPA 上实例化的 Kubernetes CIS 基准要求都是一个独立的场景。场景可以分组归入类别（class）。
+\item \textit{场景类（Scenario Class）：}场景类是一类被归并在一起的真实场景，期望它们对应同一角色表现出相同的行为与结果。场景类的例子包括 OPA 引擎上的 Kubernetes CIS 基准\textit{集合}、Ansible 引擎上的 RHEL9 CIS 基准\textit{集合}，或 Kyverno 引擎上的 Kubernetes CIS 基准更新\textit{集合}。
+\item \textit{场景环境（Scenario Environment）：}场景环境是场景中指定部署设置的部分。
+\item \textit{环境状态（Environment State）：}一个环境具有可数的状态集合，我们认为这些状态标记了特定时刻的某一特定条件。状态的例子包括：环境初始部署状态、注入故障或不合规配置后的环境失败状态，以及缓解后修复或合规的环境状态。
+\item \textit{目标（Goal）：}目标是环境所期望达到的状态，即目标状态（goal state）。
+\end{enumerate}
+
+智能体的任务是以最高效的方式，将环境从其初始状态转移到目标状态。智能体可支配的手段包括环境动作（environment actions），即对系统状态进行观测的请求或试图影响系统状态的执动（actuation）尝试。智能体迈向把环境推入目标状态的第一步，是对若干观测动作的结果进行推理，以确定下一个最优步骤。带着对"最优步骤究竟为何"的有力假设，智能体力求寻找并执行策略，以最高效的方式趋向目标状态。
+
+我们的 CISO 合规评估任务与预定义场景相耦合，以便以标准化方式评估智能体交付自动化的有效性。下一节将先详述这些预定义的 CISO 任务，然后再详述我们的 ITBench 与 CISO 场景。
+
+\subsubsection{D.2.2 CISO 合规评估任务}
+
+合规评估任务包含各种活动，旨在将系统的实际状态与策略中以英文描述的期望状态进行比较。基于这一比较，系统给出相对于策略的"通过（pass）"或"失败（fail）"态势。
+
+\begin{itemize}
+\item \textbf{识别证据收集器（Identify Evidence Collector，IEC）：}获取证据需要选择适合目标系统特征的收集机制。例如，关于 Kubernetes 集群中某应用状态的证据，需要访问 Kubernetes API，通常借助诸如 \texttt{kubectl} 命令之类的工具。对于主机配置证据，则适合使用诸如 Ansible Playbook 之类的工具。该 IEC 任务及其关联智能体或工具，会识别环境中所用的收集器，以便生成与其对应语言和接口相匹配的脚本。
+\item \textbf{识别策略评估工具（Identify Policy Assessment Tool，IPA）：}对照策略评估证据，需要选择合适的策略引擎。对于通用场景，业界使用开源策略引擎 Open Policy Agent（OPA）（Int, d）及其特定的程序化语言 Rego。此外，对于 Kubernetes 特有的配置，Kyverno 策略与 OPA 一同被广泛使用。该 IPA 任务及其关联智能体或工具，会针对手头策略对应的场景识别合适的策略引擎，以便按照该策略引擎的程序化语言和接口生成策略代码。
+\item \textbf{收集证据（Collect Evidence，CE）：}该 CE 任务及其关联智能体或工具负责实际的证据收集，包括代码生成、证据收集代码的管理、部署与执行，以便从环境中获取实际证据。要以可靠且可扩展的方式实现这一点，代码的正确放置与执行是必要的。
+\item \textbf{扫描评估态势（Scan Assessment Posture，SAP）：}该 SAP 任务及其关联智能体或工具负责生成态势——即证据是否满足场景的 CIS 基准要求。它包括校验代码的生成、代码在策略引擎上的管理、部署与执行，以评估证据并产出合规态势。
+\end{itemize}
+
+表~2 总结了我们 ITBench 中最初支持的 CISO 任务，即 CE 与 SAP。其余任务将在后续版本中覆盖。这些任务在 ITBench 中对照预定义的标准场景执行，并与每个场景环境规约下存储在 ITBench 中的真实期望评估态势"pass"/"fail"进行比较。
+
+\subsection{D.3 用于处理 CISO 任务的 ITBench 架构}
+
+ITBench 使用开源技术，为 CISO 任务在 Kubernetes 集群上创建可重复、可复现的场景与环境，如图~\ref{fig:itbench-20} 所示。
+
+\subsubsection{D.3.1 原则}
+
+遵循引言中指出的评测基准原则，我们的 ITBench 使用开源技术构建完全可重复、可复现的场景，以模拟真实世界的事件。
+
+\begin{itemize}
+\item \textbf{模仿 CISO 最佳实践。}ITBench 遵循美国国家标准与技术研究院（NIST）网络安全框架（CSF）（NIS）为 CISO 与安全团队改进组织网络安全所列出的指引，具体为：（1）\textit{识别（Identify）}需要保护的关键数据、系统、资产与能力；（2）通过限制事件影响的安全措施进行\textit{保护（Protect）}；（3）制定策略以\textit{检测（detect）}不合规，并配以清晰的程序与工具；（4）通过快速消除威胁并缓解损害的计划进行\textit{响应（Respond）}；（5）设计\textit{恢复（recovery）}策略以支持及时恢复正常运营。我们的首个 ITBench 版本覆盖 CISO CSF 的前三项活动，方法是评估以下合规任务：（1）从选定环境中的系统识别并收集证据；（2）实现场景中建议的策略；（3）评估策略态势以检测进入不合规的失败。其余两项 CISO CSF 活动——\textit{响应}与\textit{恢复}——将成为未来某个 ITBench 版本的主题，该版本将支持智能体协作，即借助 SRE 智能体进行缓解。
+\item \textbf{模仿 CISO 真实世界问题。}我们在 ITBench 中研究并使用了真实世界的 Cloud Internet Security（CIS）基准（CIS, 2024），这是一套用于保护 IT 云基础设施的最佳实践集合，被全球公认为云安全标准。我们用这些 CIS 基准创建了不同复杂度级别的 CISO 合规策略场景：25\% 简单（Easy）、50\% 中等（Medium）、25\% 困难（Hard）策略（见图~\ref{fig:itbench-21}）。
+\item \textbf{提供可观测性（observability）。}云原生计算基金会（CNCF）近期的 Sandbox 项目（OSCAL-compass, 2024）发布了一套合规即代码 SDK，以支持对美国国家标准与技术研究院（NIST）的机器可读合规即代码（OSCAL, 2024）进行编程化的合规自动化使用。ITBench CISO 自动化利用这一方法论来表达 CIS 基准要求，检测要求创建或更新的事件，并触发证据收集与校验代码的创建或更新。
+\item \textbf{确保确定性（Determinism）。}ITBench 强制场景及其环境严格按照规约生成，而每个场景后的环境清理（cleanup）则确保为下一次运行提供干净的初始状态。
+\end{itemize}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{cand_p41_k00.pdf}
+\caption{负责编排 CISO 场景的 ITBench 架构。}
+\label{fig:itbench-20}
+\end{figure}
+
+\subsubsection{D.3.2 ITBench 架构}
+
+评测场景的环境由一个 Kubernetes 集群和若干虚拟机（VM）组成。如本节下文所述，ITBench 中预定义的每个 CISO 场景都由一个可部署栈（deployable stack）管理，它是一个软件组件，负责在真实运行时环境中处理评测流程与环境。
+
+该可部署栈管理各种任务，包括为每次评测场景运行所做的准备（"deploy\_environment"）、故障注入（"inject\_fault"）、智能体性能评估（"evaluate"）和环境清理（"delete\_environment"）。每个可部署栈都是为特定的 CISO 合规评估场景专门设计的，确保所需的工具、配置和策略就位。环境管理员定义这些场景的可部署栈，并配置所需的软件，这可能涉及搭建策略引擎、工具，或创建模拟违反特定合规要求的条件。
+
+例如，某个可部署栈可能故意展现一处错误配置（misconfiguration），以模拟违反某一特定合规标准。在一个场景的执行过程中，智能体最初被提供该场景合规要求的自然语言描述。基于该描述，智能体生成必要的产物，包括用于证据评估的脚本和策略。随后，运行时场景环境被部署并向智能体开放访问。智能体访问环境以检索证据、部署策略，并致力于实现指定的自动化目标——本例中即评估合规态势为"fail"或"not-satisfied"。
+
+在场景运行过程中，智能体会向 ITBench 通报其任务的开始与完成。收到完成通知后，ITBench 访问环境以度量评测指标。一旦收集到所有预定义场景的指标，它们便被聚合并展示在 ITBench 排行榜（Leaderboard）上。图~\ref{fig:itbench-22} 展示了 CISO 场景的端到端评测流程。
+
+在我们 CISO 合规评估评测的背景下，场景环境（包括 Kubernetes 集群和 VM）由智能体提交器（Agent Submitter）准备。搭建与指标度量使用一个名为 Mini-Bench 的工具自动化完成。评测结果（包括任务指标）通过 API 注册到中央 Bench Server。这些结果展示在 Bench Server 上的排行榜（Leaderboard）上。这一设置允许评测统一地进行——无论使用智能体提交器的本地环境还是远程环境，两种情况下采用的都是相同的 API 交互。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.6\linewidth]{cand_p42_k00.pdf}
+\caption{CISO 场景复杂度。}
+\label{fig:itbench-21}
+\end{figure}
+
+\subsection{D.4 ITBench 真实世界 CISO 场景}
+
+我们在 ITBench 中使用真实世界的 Cloud Internet Security（CIS）基准（CIS, 2024）标准来创建我们的 CISO 合规评估场景。我们考虑作为 CISO 智能体评测试验场的技术是 Kubernetes 和 RHEL9，不过 CIS 中可用的任何其他技术都可以被加以利用，将其策略场景注入 ITBench。
+
+表~\ref{tab:itbench-21} 和表~\ref{tab:itbench-22} 展示了典型 CIS 基准建议的示例。ITBench 上渲染的每个场景都被设计为镜像该建议的复杂度。这确保了 ITBench 复现真实世界的合规要求，从而允许对智能体进行真实的评估。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{cand_p43_k00.pdf}
+\caption{CISO 合规评估智能体端到端评测流程。}
+\label{fig:itbench-22}
+\end{figure}
+
+\subsection{D.5 CISO 场景类及其复杂度}
+
+\subsubsection{D.5.1 New-K8s-CIS-b-Kyverno}
+
+New-K8s-CIS-b-Kyverno 代表 ITBench 中的简单（Easy）场景类。该类中的 10 个场景基于面向 Kubernetes 的 CIS 基准（CIS Benchmark for Kubernetes）准备，具体聚焦于 Pod 安全策略（Pod Security Policy）。该场景假设一个预配置了 Kyverno 策略引擎的 Kubernetes 集群。在该集群内，存在某些与 Pod 安全策略相关的错误配置，但智能体并不知晓其确切位置。
+
+需要处理的错误配置要求被传达给智能体。基于这些要求，智能体生成一个 Kyverno 策略并将其部署到集群。随后，智能体从集群收集报告。该报告的准确性通过检查它是否成功识别出错误配置来加以校验。如果策略被正确生成并部署，报告应指示出恰当的态势；反之，若出现错误，则会报告不正确的态势。
+
+在该场景中，四项合规评估任务（Compliance Assessment Task）的评估方式如下：
+
+\begin{itemize}
+\item IEC：通过校验 Kyverno 策略中是否反映出正确的配置来评估。
+\item IPA：通过确认是否成功为 Kyverno 生成了策略来评估。
+\item CE：通过校验是否在预定义位置生成了 Kyverno 报告来度量。
+\item SAP：由 Kyverno 报告中所报告的态势是否与期望值匹配来判定。
+\end{itemize}
+
+\subsubsection{D.5.2 New-K8s-CIS-b-OPARego}
+
+New-K8s-CIS-b-Kubectl-OPARego 被归类为中等（Medium）复杂度场景。该基准包含 10 个源自面向 Kubernetes 的 CIS 基准的场景，具体聚焦于 Pod 安全策略。
+
+该场景的基础背景与 New-K8s-CIS-b-Kyverno 高度相似，共享将 Kubernetes 集群作为运行环境、并将面向 Kubernetes 的 CIS 基准作为运行环境的假设。关键差异在于 Open Policy Agent（OPA）策略引擎的双重输出：既生成证据获取脚本（evidence fetcher script），也生成策略检查器代码（policy checker code）。
+
+\begin{itemize}
+\item 获取脚本（fetcher script）旨在通过执行 kubectl 命令从目标集群收集所需证据。
+\item 策略检查器（policy checker）基于预定义规则校验所收集证据的合规性。这通过 Open Policy Agent（OPA）实现，并由 OPA Rego 策略定义。
+\end{itemize}
+
+该场景中智能体的目标是生成两个输出：1）一个执行 kubectl 命令的脚本（fetcher），2）一个用于合规校验的 OPA Rego 策略（checker）。
+
+校验流程对智能体生成的输出评估如下：由 kubectl 命令组成的获取脚本针对一个真实的 Kubernetes 集群执行以收集证据。随后，所收集的证据使用生成的 OPA Rego 策略和 OPA 策略引擎加以评估，以校验结果是否与期望的合规结果一致。
+
+该场景在以下四项合规评估任务上被评估：
+
+\begin{itemize}
+\item IEC：判定包含 kubectl 命令的获取脚本是否成功生成。
+\item IPA：校验以 OPA Rego 策略实现的检查器是否被正确生成。
+\item CE：检查针对集群执行获取脚本能否成功收集证据。
+\item SAP：校验 OPA Rego 策略是否如期评估所收集证据，产出正确的合规评估。
+\end{itemize}
+
+这一方式为评估智能体生成有效脚本与策略以进行 Kubernetes 集群合规评估的能力提供了结构化评估。
+
+\subsubsection{D.5.3 New-RHEL9-CIS-b-Ansible-OPA}
+
+New-RHEL9-CIS-b-Ansible-OPA 属于中等（Medium）复杂度场景类，包含 20 个基于面向 RHEL9 操作系统的 CIS 基准的场景。该场景与 New-K8s-CIS-b-Kubectl-OPARego 共享一些共同特征，包括生成两份代码（一个获取脚本和一个检查器策略），以及使用 OPA Rego 策略进行合规校验。主要区别在于目标系统：与聚焦 Kubernetes 集群的 New-K8s-CIS-b-Kubectl-OPARego 不同，该场景以 RHEL9 主机为目标。因此，New-RHEL9-CIS-b-Ansible-OPA 不使用 kubectl 作为获取脚本，而是采用 Ansible playbook。该场景的目标是生成作为获取脚本的 Ansible playbook，以及作为检查器的 OPA Rego 策略。
+
+校验流程对智能体生成的输出评估如下：获取脚本（Ansible playbook）针对一台真实的 RHEL9 主机执行以收集证据。随后，所收集的证据使用生成的 OPA Rego 策略在 OPA 策略引擎上分析，评估结果是否与期望的合规结果一致。
+
+在该场景中，智能体的性能在以下四项合规评估任务上被评估：
+
+\begin{itemize}
+\item IEC：智能体是否以 Ansible playbook 的形式生成获取脚本？
+\item IPA：智能体是否为检查器生成 OPA Rego 策略？
+\item CE：Ansible playbook 能否针对 RHEL9 主机成功执行并收集相关证据？
+\item SAP：生成的 OPA Rego 策略能否评估所收集证据并产出期望的合规结果？
+\end{itemize}
+
+该场景旨在评估智能体在 Kubernetes 之外的主机管理环境（具体聚焦于 RHEL9 系统）中执行合规评估任务的性能。
+
+\subsubsection{D.5.4 Update-K8s-CIS-b-Kyverno}
+
+Update-K8s-CIS-b-Kyverno 属于复杂度被归类为困难（Hard）的场景类，目前包含 10 个场景。与基于目标中指定的新要求生成新 Kyverno 策略的 New-K8s-CIS-b-Kyverno 不同，该场景涉及不同的目标。具体而言，它以一个既有的 Kyverno 策略作为输入，连同详细说明对原始要求所做修改的指令，生成一个满足修订后要求的\textit{已更新（updated）}策略。更新后的策略随后作为最终输出被部署（或更新）。
+
+该场景的校验流程与 New-K8s-CIS-b-Kyverno 所用的方法论一致。
+
+\begin{table}[H]
+\centering
+\caption{Kubernetes —— Center for Internet Security 基准（样例）。}
+\label{tab:itbench-21}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{lllll}
+\toprule
+\textbf{章节号} & \textbf{建议号} & \textbf{标题} & \textbf{评估状态} & \textbf{描述} \\
+\midrule
+1.1.1 & 1.1.1.1 & \begin{tabular}[t]{@{}l@{}}Ensure cramfs kernel\\module is not available\end{tabular} & Automated & \begin{tabular}[t]{@{}p{6.2cm}@{}}`cramfs' 文件系统类型是一种内嵌于小型系统的压缩只读 Linux 文件系统。`cramfs' 镜像无需先解压整个镜像即可使用。\end{tabular} \\
+\addlinespace
+1.1.1 & 1.1.1.2 & \begin{tabular}[t]{@{}l@{}}Ensure freevxfs kernel\\module is not available\end{tabular} & Automated & \begin{tabular}[t]{@{}p{6.2cm}@{}}`freevxfs' 文件系统类型是 Veritas 类型文件系统的免费版本。它是 HP-UX 操作系统的主要文件系统类型。\end{tabular} \\
+\addlinespace
+1.1.1 & 1.1.1.3 & \begin{tabular}[t]{@{}l@{}}Ensure hfs kernel mod-\\ule is not available\end{tabular} & Automated & \begin{tabular}[t]{@{}p{6.2cm}@{}}`hfs' 文件系统类型是一种层次化文件系统，允许你挂载 Mac OS 文件系统。\end{tabular} \\
+\addlinespace
+1.1.1 & 1.1.1.4 & \begin{tabular}[t]{@{}l@{}}Ensure hfsplus kernel\\module is not available\end{tabular} & Automated & \begin{tabular}[t]{@{}p{6.2cm}@{}}`hfsplus' 文件系统类型是一种层次化文件系统，设计用于替代 `hfs'，允许你挂载 Mac OS 文件系统。\end{tabular} \\
+\addlinespace
+1.1.1 & 1.1.1.5 & \begin{tabular}[t]{@{}l@{}}Ensure jffs2 kernel mod-\\ule is not available\end{tabular} & Automated & \begin{tabular}[t]{@{}p{6.2cm}@{}}`jffs2'（日志型闪存文件系统 2）文件系统类型是一种用于闪存设备的日志结构文件系统。\end{tabular} \\
+\addlinespace
+1.1.1 & 1.1.1.8 & \begin{tabular}[t]{@{}l@{}}Ensure usb-storage ker-\\nel module is not avail-\\able\end{tabular} & Automated & \begin{tabular}[t]{@{}p{6.2cm}@{}}USB 存储提供了一种传输与存储文件的手段，可确保文件的持久性与可用性，且不受网络连接状态影响。其普及性与实用性使得基于 USB 的恶意软件成为一种简单而常见的网络渗透手段，也是在网络化环境中建立持久威胁的第一步。\end{tabular} \\
+\addlinespace
+1.1.1 & 1.1.1.9 & \begin{tabular}[t]{@{}l@{}}Ensure unused filesys-\\tems kernel modules are\\not available\end{tabular} & Manual & \begin{tabular}[t]{@{}p{6.2cm}@{}}文件系统内核模块是一些代码片段，可以被动态加载进 Linux 内核，以扩展操作系统的文件系统能力（即所谓的基础内核）。文件系统内核模块通常用于为新硬件（如设备驱动）添加支持，或用于添加系统调用。\end{tabular} \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\subsection{D.6 CISO ITBench 评估}
+
+我们主要在 AWS EC2 实例（m4.xlarge）上开展实验，不过 ITBench 也可以很方便地使用伪集群（pseudo-cluster）部署在消费级笔记本电脑上，从而使 AI 智能体的开发更加便利。
+
+我们在跨越表~2 所引入的四个场景类的 50 个场景上度量 CISO 合规评估智能体的效能。每个场景类施加一组各不相同的 CIS 基准要求（例如，"最小化希望共享主机网络命名空间的容器的准入数量"），每个类具有特定的复杂度级别（例如简单、中等、困难），并生成场景特定的代码产物。
+
+在评估中，我们考虑了多种 LLM，例如用于依赖自然语言理解与推理任务的 GPT-4o、Llama-3.3-70B-instruct、Llama-3.1-8B-instruct 和 Granite-3.1-8B-instruct。对于以代码为中心的用例，我们另外采用了 GPT-4o-mini、Llama-3.1-405b-instruct 和 Mixtral-8x7b-instruct。所有模型的上下文窗口均为 128K token，使它们能够处理更长的输入序列。
+
+\begin{table}[H]
+\centering
+\caption{Red Hat Enterprise Linux —— Center for Internet Security 基准（样例）。}
+\label{tab:itbench-22}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{lllll}
+\toprule
+\textbf{章节号} & \textbf{建议号} & \textbf{标题} & \textbf{评估状态} & \textbf{描述} \\
+\midrule
+1.1.2 & 1.1.2.3 & Ensure noexec option set on \texttt{/tmp} partition & Automated & `noexec' 挂载选项指定文件系统不能包含可执行二进制文件。 \\
+\addlinespace
+1.1.2 & 1.1.2.4 & Ensure nosuid option set on \texttt{/tmp} partition & Automated & `nosuid' 挂载选项指定文件系统不能包含 `setuid' 文件。 \\
+\addlinespace
+1.1.3 & -- & Configure \texttt{/var} & -- & `/var' 目录由守护进程及其他系统服务用于临时存储动态数据。该进程创建的某些目录可能是全局可写的。 \\
+\addlinespace
+1.1.3 & 1.1.3.2 & Ensure nodev option set on \texttt{/var} partition & Automated & `nodev' 挂载选项指定文件系统不能包含特殊设备。 \\
+\addlinespace
+1.1.3 & 1.1.3.3 & Ensure nosuid option set on \texttt{/var} partition & Automated & `nosuid' 挂载选项指定文件系统不能包含 `setuid' 文件。 \\
+\addlinespace
+1.1.4 & -- & Configure \texttt{/var/tmp} & -- & `/var/tmp' 目录是一个全局可写目录，供所有用户和某些应用用于临时存储。位于 `/var/tmp' 的临时文件需在重启之间保留。 \\
+\addlinespace
+1.1.4 & 1.1.4.2 & Ensure noexec option set on \texttt{/var/tmp} partition & Automated & `noexec' 挂载选项指定文件系统不能包含可执行二进制文件。 \\
+\addlinespace
+1.1.4 & 1.1.4.3 & Ensure nosuid option set on \texttt{/var/tmp} partition & Automated & `nosuid' 挂载选项指定文件系统不能包含 `setuid' 文件。 \\
+\addlinespace
+1.1.4 & 1.1.4.4 & Ensure nodev option set on \texttt{/var/tmp} partition & Automated & `nodev' 挂载选项指定文件系统不能包含特殊设备。 \\
+\addlinespace
+1.1.5 & -- & Configure \texttt{/var/log} & -- & `/var/log' 目录由系统服务用于存储日志数据。 \\
+\addlinespace
+1.1.5 & 1.1.5.2 & Ensure nodev option set on \texttt{/var/log} partition & Automated & `nodev' 挂载选项指定文件系统不能包含特殊设备。 \\
+\addlinespace
+1.1.5 & 1.1.5.3 & Ensure noexec option set on \texttt{/var/log} partition & Automated & `noexec' 挂载选项指定文件系统不能包含可执行二进制文件。 \\
+\addlinespace
+1.1.5 & 1.1.5.4 & Ensure nosuid option set on \texttt{/var/log} partition & Automated & `nosuid' 挂载选项指定文件系统不能包含 `setuid' 文件。 \\
+\addlinespace
+1.1.6 & -- & Configure \texttt{/var/log/audit} & -- & 审计守护进程 `auditd' 将日志数据存储在 `/var/log/audit' 目录中。 \\
+\addlinespace
+1.1.6 & 1.1.6.2 & Ensure noexec option set on \texttt{/var/log/audit} partition & Automated & `noexec' 挂载选项指定文件系统不能包含可执行二进制文件。 \\
+\addlinespace
+1.1.6 & 1.1.6.3 & Ensure nodev option set on \texttt{/var/log/audit} partition & Automated & `nodev' 挂载选项指定文件系统不能包含特殊设备。 \\
+\addlinespace
+1.1.6 & 1.1.6.4 & Ensure nosuid option set on \texttt{/var/log/audit} partition & Automated & `nosuid' 挂载选项指定文件系统不能包含 `setuid' 文件。 \\
+\addlinespace
+1.1.7 & -- & Configure \texttt{/home} & -- & 请注意，home 目录可以被挂载到任何位置，不一定限于 `/home'，也不一定限于单一位置，名称也没有任何限制。可以通过查看 `/etc/passwd'、用 `mount' 遍历已挂载文件系统，或用 `getent' 查询相关数据库来进行检查。 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\subsubsection{D.6.1 评估指标}
+
+我们的 CISO 智能体的效能，是基于其在场景类（随机注入了各种错误配置）的多样化环境中，检测产物错误配置（即不合规，例如未达到容器共享命名空间的最小数量，或数量超过阈值）或确认正确配置（即合规）的能力来度量的。
+
+我们使用以下指标评估智能体检测（不）合规的有效性：
+
+\begin{itemize}
+\item 成功率使用 pass@1 量化。
+\item 效率通过处理用时（Time to Process，TTP）刻画。
+\end{itemize}
+
+\subsubsection{D.6.2 指标定义}
+
+\textbf{pass@1。}我们使用 pass@1 指标（Chen et al., 2021）评估智能体对态势"pass"/"fail"的正确评估，其定义如下：
+\[
+\mathrm{pass@}k := \mathbb{E}_{\text{Scenarios}}\left[1 - \frac{\binom{n-c}{k}}{\binom{n}{k}}\right]
+\]
+它是跨所有场景在 $k=1$ 次试验中正确性的无偏估计量。
+
+\textbf{处理用时（Time to Process）。}我们识别出智能体成功判定态势的场景（即错误配置导致"fail"态势，而合规配置导致"pass"态势）。对于这些任务场景，我们计算 \textit{TTP}，用以度量智能体执行评估的耗时。否则，\textit{TTP} 被设为无穷大。
+
+\subsubsection{D.6.3 评估结果}
+
+\textbf{智能体总体结果。}总体而言，我们在表~5 和图~25 中的结果表明，基于 GPT 的模型在 pass@1 和处理用时两项指标上均占据主导地位。其 pass@1 几乎是次优模型（在 llama-3.1-405b-instruct 与 mistral-large-2 之间交替）的 2 倍，而 TTP 显示其能跨我们的场景类以最短时间处理这些场景。
+
+\textbf{场景复杂度的影响。}CISO 场景的复杂度被直接映射到场景类。例如，Kyverno 场景为简单复杂度，k8s-opa 和 rhel-opa 为中等复杂度，而 Kyverno-update 场景为困难复杂度。不出所料，所有模型都表现挣扎——正如预期，随着场景难度从简单的 \textit{kyverno} 类升至困难的 \textit{kyverno-upadate} 类，难度逐渐增大。
+
+\subsubsection{D.6.4 CISO 合规评估智能体轨迹}
+
+我们考察实验中的两条样例轨迹，以凸显智能体的思维模式与动作。这包括两个场景，一个成功、一个失败，均派生自 NEW-CIS-B-RHEL9-ANSIBLE-OPA 与 LLaMa 405B 的实验，聚焦于面向 RHEL9 的 CIS 基准（控制章节 5.1.8 和 5.2.19）。
+
+在成功的场景中，playbook 被成功生成、独立测试，进而成功收集到数据，随后成功创建出一个 OPA，并最终在评测中通过评估检测出问题。
+
+在不成功的场景中，playbook 被成功独立生成与测试，从而成功收集数据，但 OPA 无法被正确创建。这导致反复的语法错误纠正与重试，最终达到最大重试上限。
+
+接下来，我们为这两种情形分别给出轨迹。在成功场景中，智能体被指派根据以下请求执行合规评估：
+
+\begin{quote}
+确保 cron 限于授权用户使用。系统必须：只允许已授权用户使用 cron 调度作业。具体要求：
+
+- 文件 /etc/cron.allow 必须存在，并指定授权用户列表。
+
+- 文件 /etc/cron.deny 必须不存在。
+
+- 未授权用户（例如 user1、user2）不得列入 /etc/cron.allow。
+
+为检查该条件，请执行以下步骤。- 从 RHEL 主机收集配置并保存到本地，你可以使用 ansible-playbook 来完成。- 用上述步骤给定的输入，通过 rego 策略检查该条件是否满足。
+
+针对上述步骤，你需要创建 ansible playbook `playbook.yml' 和 OPA rego 策略 `policy.rego'。如果你能修复生成的代码，请修复并重新运行修复后的代码。一旦你得到最终答案，即可结束这项工作。
+\end{quote}
+
+智能体运行这一任务时，会被提供目标环境凭据以及一个用于保存待提交生成文件的工作目录。图~\ref{fig:itbench-23} 展示了智能体为完成该请求所采取的轨迹。
+
+在下一个场景（CIS 基准控制章节 5.2.19）中，智能体被赋予一个不同的合规要求。这一次，重点是确保 SSH 登录会话遵守安全最佳实践。然而，与前一个场景不同，智能体遇到了一个严重问题：它未能正确写出语法有效的 Rego 策略，导致执行期间反复出现 OPA 错误。
+
+场景 5.2.19 的合规要求如下：
+
+\begin{quote}
+确保 SSH LoginGraceTime 设置为一分钟或更短
+
+为检查该条件，请执行以下步骤。- 从 RHEL 主机收集配置并保存到本地。
+\end{quote}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.5\linewidth]{cand_p47_k00.pdf}
+\caption{成功场景下 LLaMa 405B 的样例轨迹。}
+\label{fig:itbench-23}
+\end{figure}
+
+智能体运行这一任务时，会被提供目标环境凭据以及一个用于保存待提交生成文件的工作目录。图~\ref{fig:itbench-23} 展示了智能体为完成该请求所采取的轨迹。
+
+在重复这一过程三次后，达到了最大重试上限，最终只有当前保存的 playbook.yml 和 policy.rego 被用于评估。在评估时，这个 policy.rego 存在语法错误，因此评估未能通过。
+
+\begin{table}[H]
+\centering
+\caption{实验细节。}
+\label{tab:itbench-23}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{lcccccc}
+\toprule
+\multirow{2}{*}{\textbf{CISO/Agent: Models}} & \multirow{2}{*}{\textbf{Scenarios}} & \multicolumn{4}{c}{\textbf{Experiment Setup}} \\
+\cmidrule(lr){3-6}
+ & & \textbf{\#Repeats} & \textbf{\#Total} & \textbf{\% Exp. Completion} & \textbf{\% Agent Submission} \\
+\midrule
+granite-3.1-8B-instruct  & 50 & 8 & 400 & 91.41\% & 88.48\% \\
+mixtral-8x7B-instruct    & 50 & 8 & 400 & 91.02\% & 94.67\% \\
+llama-3.1-8B-instruct    & 50 & 8 & 400 & 93.21\% & 85.71\% \\
+llama-3.3-70B-instruct   & 50 & 8 & 400 & 92.82\% & 89.11\% \\
+mistral-large-2          & 50 & 8 & 400 & 94.48\% & 85.23\% \\
+llama-3.1-405B-instruct  & 50 & 8 & 400 & 92.43\% & 84.50\% \\
+gpt-4o-mini              & 50 & 8 & 400 & 95.25\% & 85.71\% \\
+gpt-4o                   & 50 & 8 & 400 & 90.83\% & 90.54\% \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\par\smallskip
+\footnotesize\raggedright
+注：``\% Exp. Completion''（实验完成率）指由评测运行器正确启动并完成的实验所占百分比。\\
+注：``Trials Agent Submitted''（智能体提交的试验）指在所有已完成试验中智能体返回结果的百分比。
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{CISO/Agent：评估结果。}
+\label{tab:itbench-24}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{lccccccc}
+\toprule
+\multirow{2}{*}{\textbf{Models}} & \multicolumn{4}{c}{\textbf{Scenario pass@1 (\%)} $\uparrow$} & \multirow{2}{*}{\textbf{Avg. pass@1 (\%)} $\uparrow$} & \multirow{2}{*}{\textbf{MPR (s)} $\downarrow$} \\
+\cmidrule(lr){2-5}
+ & \textbf{kyverno} & \textbf{k8s-opa} & \textbf{rhel-opa} & \textbf{kyverno-upadate} & & \\
+\midrule
+granite-3.1-8B-instruct  & $7.84 \pm 3.84$  & $0.00 \pm 0.00$  & $0.00 \pm 0.00$  & $1.59 \pm 1.58$  & $1.71 \pm 0.76$  & $197.03 \pm 2.52$ \\
+mixtral-8x7B-instruct    & $7.35 \pm 3.19$  & $1.43 \pm 1.42$  & $0.00 \pm 0.00$  & $1.29 \pm 4.34$  & $3.94 \pm 1.03$  & $120.63 \pm 3.77$ \\
+llama-3.1-8B-instruct    & $8.57 \pm 3.37$  & $0.00 \pm 0.00$  & $0.00 \pm 0.00$  & $7.46 \pm 3.23$  & $3.59 \pm 1.07$  & $121.49 \pm 3.00$ \\
+llama-3.3-70B-instruct   & $18.46 \pm 4.94$ & $0.00 \pm 0.00$  & $1.43 \pm 2.88$  & $8.06 \pm 3.50$  & $9.32 \pm 1.67$  & $189.61 \pm 2.71$ \\
+mistral-large-2          & $6.56 \pm 3.20$  & $22.73 \pm 5.32$ & $7.23 \pm 2.88$  & $10.45 \pm 3.77$ & $11.55 \pm 1.95$ & $167.98 \pm 3.42$ \\
+llama-3.1-405B-instruct  & $16.22 \pm 4.32$ & $20.83 \pm 4.86$ & $8.75 \pm 3.26$  & $3.17 \pm 2.22$  & $12.46 \pm 1.98$ & $178.89 \pm 3.37$ \\
+gpt-4o-mini              & $16.18 \pm 4.54$ & $43.10 \pm 6.99$ & $30.38 \pm 5.43$ & $9.43 \pm 4.08$  & $25.19 \pm 2.80$ & $102.40 \pm 3.70$ \\
+gpt-4o                   & $40.28 \pm 5.99$ & $39.34 \pm 6.55$ & $7.61 \pm 2.81$  & $17.74 \pm 4.92$ & $24.74 \pm 2.64$ & $101.29 \pm 3.81$ \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\par\smallskip
+\footnotesize\raggedright
+``pass@1'' 数值以百分比表示。pass@1 按 Codex（Chen et al., 2021）中的定义计算。``MPR'' 为平均处理用时（mean processing time）。\\
+\textbf{kyverno} = Kyverno 上的 New K8s CIS 基准，\textbf{k8s-opa} = OPA 上的 New K8s CIS 基准，\textbf{rhel-opa} = Ansible-OPA 上的 New RHEL9 CIS 基准，\textbf{kyverno-update} = Kyverno 上的 Update K8s CIS 基准。
+\end{table}

@@ -1,0 +1,322 @@
+{
+ "pdf": "ReTool.pdf",
+ "slug": "retool",
+ "page_count": 16,
+ "page_size": [
+  612.0,
+  792.0
+ ],
+ "pages": [
+  {
+   "page": 1,
+   "candidates": [
+    {
+     "id": "cand_p01_k00",
+     "kind": "table",
+     "bbox": [
+      86.1,
+      593.0,
+      523.2,
+      710.9
+     ],
+     "pdf": "cand_p01_k00.pdf"
+    },
+    {
+     "id": "cand_p01_k01",
+     "kind": "table",
+     "bbox": [
+      326.0,
+      603.4,
+      516.3,
+      675.7
+     ],
+     "pdf": "cand_p01_k01.pdf"
+    },
+    {
+     "id": "cand_p01_k02",
+     "kind": "vector",
+     "bbox": [
+      69.4,
+      242.8,
+      542.6,
+      560.3
+     ],
+     "pdf": "cand_p01_k02.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      82.4,
+      710.8,
+      529.7,
+      719.8
+     ],
+     "text": "Figure 1 AIME 2024 & 2025 scores of ReTool and text-based RL baseline on the Qwen2.5-32B-Instruct model.",
+     "label": "Figure 1"
+    }
+   ],
+   "overlay": "assets/retool/_pages/p01.png"
+  },
+  {
+   "page": 2,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/retool/_pages/p02.png"
+  },
+  {
+   "page": 3,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/retool/_pages/p03.png"
+  },
+  {
+   "page": 4,
+   "candidates": [
+    {
+     "id": "cand_p04_k00",
+     "kind": "vector",
+     "bbox": [
+      69.4,
+      41.8,
+      593.9,
+      336.8
+     ],
+     "pdf": "cand_p04_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      116.4,
+      327.9,
+      148.4,
+      336.7
+     ],
+     "text": "Figure 2",
+     "label": "Figure 2"
+    }
+   ],
+   "overlay": "assets/retool/_pages/p04.png"
+  },
+  {
+   "page": 5,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/retool/_pages/p05.png"
+  },
+  {
+   "page": 6,
+   "candidates": [
+    {
+     "id": "cand_p06_k00",
+     "kind": "table",
+     "bbox": [
+      129.6,
+      129.3,
+      479.4,
+      208.4
+     ],
+     "pdf": "cand_p06_k00.pdf"
+    },
+    {
+     "id": "cand_p06_k01",
+     "kind": "table",
+     "bbox": [
+      129.6,
+      225.2,
+      479.4,
+      248.3
+     ],
+     "pdf": "cand_p06_k01.pdf"
+    },
+    {
+     "id": "cand_p06_k02",
+     "kind": "table",
+     "bbox": [
+      129.6,
+      264.5,
+      479.4,
+      302.2
+     ],
+     "pdf": "cand_p06_k02.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      70.6,
+      311.6,
+      541.4,
+      322.1
+     ],
+     "text": "Table 1 Main results. ♠The Text-based RL method includes a text-based cold-start SFT initialization to ensure a fair",
+     "label": "Table 1"
+    }
+   ],
+   "overlay": "assets/retool/_pages/p06.png"
+  },
+  {
+   "page": 7,
+   "candidates": [
+    {
+     "id": "cand_p07_k00",
+     "kind": "vector",
+     "bbox": [
+      70.9,
+      97.9,
+      541.1,
+      313.3
+     ],
+     "pdf": "cand_p07_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      187.1,
+      324.0,
+      425.0,
+      332.9
+     ],
+     "text": "Figure 3 CI-related behavior evolution during RL training.",
+     "label": "Figure 3"
+    }
+   ],
+   "overlay": "assets/retool/_pages/p07.png"
+  },
+  {
+   "page": 8,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      178.8,
+      430.3,
+      433.2,
+      439.2
+     ],
+     "text": "Figure 4 The case of “aha moment” about code self-correction.",
+     "label": "Figure 4"
+    }
+   ],
+   "overlay": "assets/retool/_pages/p08.png"
+  },
+  {
+   "page": 9,
+   "candidates": [
+    {
+     "id": "cand_p09_k00",
+     "kind": "image",
+     "bbox": [
+      153.2,
+      97.9,
+      458.9,
+      312.2
+     ],
+     "pdf": "cand_p09_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      241.0,
+      322.8,
+      371.0,
+      331.8
+     ],
+     "text": "Figure 5 Code purpose analysis.",
+     "label": "Figure 5"
+    }
+   ],
+   "overlay": "assets/retool/_pages/p09.png"
+  },
+  {
+   "page": 10,
+   "candidates": [
+    {
+     "id": "cand_p10_k00",
+     "kind": "vector",
+     "bbox": [
+      73.5,
+      122.1,
+      539.8,
+      472.7
+     ],
+     "pdf": "cand_p10_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      171.4,
+      486.2,
+      440.6,
+      495.1
+     ],
+     "text": "Figure 6 Case of CI-powered Reasoning vs. Text-based Reasoning.",
+     "label": "Figure 6"
+    }
+   ],
+   "overlay": "assets/retool/_pages/p10.png"
+  },
+  {
+   "page": 11,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/retool/_pages/p11.png"
+  },
+  {
+   "page": 12,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/retool/_pages/p12.png"
+  },
+  {
+   "page": 13,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/retool/_pages/p13.png"
+  },
+  {
+   "page": 14,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/retool/_pages/p14.png"
+  },
+  {
+   "page": 15,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      213.2,
+      412.0,
+      398.8,
+      421.0
+     ],
+     "text": "Figure 7 Template prompt for ReTool rollout.",
+     "label": "Figure 7"
+    }
+   ],
+   "overlay": "assets/retool/_pages/p15.png"
+  },
+  {
+   "page": 16,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      212.3,
+      633.4,
+      399.7,
+      642.4
+     ],
+     "text": "Figure 8 Template Prompt for Data Curation.",
+     "label": "Figure 8"
+    }
+   ],
+   "overlay": "assets/retool/_pages/p16.png"
+  }
+ ]
+}

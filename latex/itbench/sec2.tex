@@ -1,0 +1,164 @@
+\section{ITBench}
+
+ITBench 是一套系统化的评测框架与运行时环境，旨在评估被赋予 IT 运维自动化任务的智能体（agent）。它包含一套健壮的架构（见图~\ref{fig:itbench-framework}），由 AI 智能体（AI Agent）、场景规约与环境（Scenario Specification and Environment）、评估器（Evaluator）和排行榜（Leaderboard，leaderboard）组成，从而支持全面的性能评估。
+
+在此，我们对几个关键组件做简要概述：1）场景规约与环境，2）AI 智能体，3）排行榜。更多细节见附录 B。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{fig02.pdf}
+\caption{图 2：ITBench 自动化框架。}
+\label{fig:itbench-framework}
+\end{figure}
+
+\subsection{场景规约与环境}
+
+该评测基准（benchmark）纳入了一组我们称之为\emph{场景}（scenario）的问题集合。例如，ITBench 中的一个问题是要在 Kubernetes 环境中解决“服务订单管理（service order-management）的高错误率”。另一个与 CISO（合规与安全运营，Compliance and Security Operations）角色相关的例子是评估“针对 RHEL 9 检测到的新控制规则”的合规态势。一个根本性的挑战在于，如何在一个可管理的测试床（testbed）环境中复现这类问题。一个场景就是一个具体问题（或多个问题）发生于其中的可运行测试床。
+
+一个场景 $p$ 通常对应于 ITBench 中待解决的一个问题。我们将 $p$ 形式化为一个四元组 $<M, E, T, D>$，其中各变量含义如下：
+
+\paragraph{场景规约（Scenario Specification）。} $M$ 表示每个场景的元数据（metadata）与部署描述符，存储于 ITBench 的场景规约数据库（Scenario Specs database）中（见图~\ref{fig:itbench-framework}）。每个场景的示例元数据元素包括 \emph{scenario\_name}、\emph{scenario\_description}、\emph{scenario\_domain}、\emph{scenario\_class}、\emph{scenario\_complexity} 和 \emph{scenario\_groundtruth}（见表~\ref{tab:exemplar-scenarios}），其定义如下：
+
+\begin{itemize}
+\item \emph{scenario\_name} 是赋予某个场景的名称。例如，ITBench 中的一个场景名为“Recommendation Service Cache”。
+\item \emph{scenario\_description} 描述该场景。例如，某场景的描述为“Recommendation Service in Astronomy Shop has a cache failure（天文商店中的推荐服务发生缓存故障）”。
+\item \emph{scenario\_domain} 表示不同的角色（persona），即 IT 自动化范畴内的 “SRE”“CISO”“FinOps”。
+\item \emph{scenario\_class} 用于对相似场景进行分组，例如 “Kyverno-opa”“Kyverno-update”“CacheFailure”“HighCPU” 与 “CorruptImage”。
+\item \emph{scenario\_complexity} 刻画一个问题的难度，并依据领域知识来定义。图~\ref{fig:itbench-scenarios}a 给出了基准中 SRE、CISO 与 FinOps 场景的占比分布。图~\ref{fig:itbench-scenarios}b、\ref{fig:itbench-scenarios}c 和 \ref{fig:itbench-scenarios}d 分别展示了 SRE、CISO 与 FinOps 的 \emph{scenario\_complexity} 分布。SRE 场景基于我们自有 SaaS 产品中观测到的真实事件开发而成。CISO 场景基于 CIS 评测基准构建（for Internet Security, CIS）。由于缺乏标准化基准，FinOps 场景在 ITBench 中占比较少。我们的 FinOps 场景基于 FinOps Foundation（Foundation, 2025a）所确定的“领域（Domains）”与“能力（Capabilities）”来描述关键业务成果。
+\item \emph{scenario\_groundtruth} 记录与具体任务相关的结果，评估器（Evaluator）用它来与智能体的预期输出进行比对。例如，对于 SRE 的事件解决而言，诊断（diagnosis）任务的真值（ground truth）包含故障传播链（fault propagation chain）所涉及的实体列表、实际的故障传播链以及故障条件；而对于缓解/修复（mitigation）任务，则记录可能的缓解动作。
+\end{itemize}
+
+\paragraph{环境（Environment）。} $E$ 表示问题发生于其中的可运行测试床。环境内的组件通过暴露 API 来观测并控制该环境。当智能体构建者（Agent Builder）将智能体注册以参与评测时，评测基准运行器（Benchmark Runner，见图~\ref{fig:itbench-framework}）会随机选取一组场景，并可依据 \emph{agent\_type} 与 \emph{agent\_level} 对其进行可选的筛选。随后，评测基准运行器遍历该场景集合，并为每个场景实例化一个测试床。环境的一个例子是：安装了 OpenTelemetry Astronomy Shop Demo 应用（Community, 2024）的 Kubernetes 集群，其可观测性（observability）栈包括 Grafana（gra）、Loki（lok）、Jaeger（jae）和 Prometheus（pro），并配有在环境中诱发问题的机制。
+
+\paragraph{触发事件（Triggering Events）。} $T$ 是一组因环境中某个特定问题的具体表现而发生的触发事件。各类工具被配置用于观测环境，并在出现异常状况时引发触发事件。一个触发事件的例子是“High Error Rate on adservice（adservice 上的高错误率）”，它可能因缓存故障问题而在环境中被触发。
+
+\paragraph{期望结果（Desired Outcome）。} $D$ 定义了自动化目标，代表最终目的。例如，在 SRE 事件解决的情形下，最终目标是在 $E$ 中清除 $T$。
+
+\subsection{AI 智能体}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\linewidth]{fig03.pdf}
+\caption{图 3：作为 POMDP 的智能体与环境。智能体通过 ITBench 工具箱（toolbox）所暴露的 API 与环境交互。}
+\label{fig:agent-pomdp}
+\end{figure}
+
+在 IT 自动化中，不同角色聚焦于各自特定的期望结果，由此定义其自动化目标。对于 SRE 而言，事件解决（incident resolution）是首要目标。实现这一目标可能涉及多个步骤，例如诊断一起事件，也可能是单一步骤，例如生成一份诊断报告。CISO 角色聚焦于法规控制态势评估过程，包括 \emph{Collect evidence（收集证据）} 与 \emph{Scan assessment posture（扫描评估态势）} 任务。FinOps 角色聚焦于成本管理，其示例任务包括 \emph{Identify inefficiency（识别低效）} 与 \emph{Mitigate inefficiency（缓解低效）}。在评估过程中，每一步（任务）都被独立评估，并使用明确定义的指标进行度量，见表~\ref{tab:personas-tasks}。
+
+ITBench 的目标是在广泛的真实 IT 自动化任务上评估智能体，这些任务原本由 SRE、FinOps、CISO 等角色来执行。
+
+在本文中，一个 AI \emph{智能体}（agent）被定义为一个自主或半自主的软件程序，它使用大语言模型（LLM）进行规划、决策、与目标环境交互，并执行动作以达成目标。一个 AI 智能体应当能够通过与环境交互，成功处理 ITBench 中的任意场景。
+
+如图~\ref{fig:agent-pomdp} 所示，智能体与环境构成一个部分可观测马尔可夫决策过程（POMDP），其中状态是环境的快照。状态转移由环境决定，随后被智能体（部分地）观测到。
+
+给定一个在环境 $E$ 中实例化的场景 $p$，智能体通过工具之一探测环境，并接收到一个观测 $o_t \in \mathcal{O}$，据此决定下一个动作：
+
+\begin{equation}
+a_t = f(o_t \mid \bar o_{t-1}; \bar a_{t-1}) \tag{1}
+\end{equation}
+
+此处 $f$ 是智能体的决策函数。$\bar o_{t-1}$ 是直到时刻 $t-1$ 为止的观测序列，$\bar a_{t-1}$ 是直到 $t-1$ 为止所采取的动作序列。
+
+在初始时刻，$o_0$ 可以是一个展示环境问题状态的触发事件。给定状态 $s_{t-1}$ 与动作 $a_{t-1}$，环境转移到下一个状态：
+
+\begin{equation}
+s_t = g(s_{t-1}, a_{t-1}) \tag{2}
+\end{equation}
+
+观测 $o_t$ 被确定为状态的函数，且一般而言是环境状态 $s_t$ 的代理（proxy），因此
+
+\begin{equation}
+o_t = h(s_t) \tag{3}
+\end{equation}
+
+由此，整个表述可被视为一个 POMDP。动作集合 $\mathcal{A}$ 定义为 $\mathcal{Q} \bigcup \{\perp\}$，其中 $\mathcal{Q}$ 是工具集合，$\perp$ 表示智能体的“停止动作（stop action）”。我们将 $t^*$ 定义为智能体停止的时刻：
+
+\begin{equation}
+t^* = \min\{t \mid a_t = \perp\} \tag{4}
+\end{equation}
+
+智能体对结果进行反思（reflect），以指导其下一个动作，并持续进行直到最终目标达成。给定一组智能体所处理的场景，其目标是最大化按如下方式定义的成功率：
+
+\begin{equation}
+\mathbb{E}_{p\sim\pi_p}\big( \mathbb{I}( g(s_{p,t^*}, f(o_{t^*}\mid \bar o_{t^*-1}, \bar a_{t^*-1})) = s_{p,G}) \big) \tag{5}
+\end{equation}
+
+其中 $\mathbb{I}$ 是将终止状态与目标状态进行比较的指示函数（indicator function），$\pi$ 是场景的分布。
+
+\begin{table}[H]
+\centering
+\caption{表 2：ITBench 中跨 94 个场景、按场景域划分的示例场景类及其复杂度。}
+\label{tab:exemplar-scenarios}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{llll}
+\toprule
+\textbf{场景域} & \textbf{场景类} & \textbf{场景复杂度} & \textbf{技术栈} \\
+\midrule
+SRE & CacheFailure —— 因缓存指数级增长制造内存泄漏 & 中 & K8s、Redis、MongoDB \\
+    & HighCPU —— 在目标服务上触发高 CPU 负载 & 中 & K8、Host、Pods \\
+    & CorruptImage —— 部署使用了错误的 Docker 镜像 & 易 & K8s、Image registry \\
+    & HTTPRequestBodyTamperFault —— 篡改服务间的 HTTP Post 请求 & 中 & K8s、ingress/egress \\
+    & HTTPRequestAbortFault —— 中断服务间的 HTTP 连接 & 中 & K8ss、ingress/egress \\
+    & MemoryResourceLimit —— 降低目标服务的内存上限 & 易 & K8s、Host、Pod \\
+\midrule
+CISO & 在 Kyverno 上实施新的 K8s CIS 评测基准 & 易 & K8、Kyverno \\
+     & 在 OPA 上实施新的 K8s CIS 评测基准 & 中 & K8s、OPA、Kubectl \\
+     & 在 Ansible-OPA 上实施新的 RHEL9 CIS 评测基准 & 中 & RHEL9、OPA、Ansible \\
+     & 在 Kyverno 上更新 K8s CIS 评测基准 & 难 & K8s、Kyverno \\
+\midrule
+FinOps & CostAlertMisconfiguration —— 成本告警阈值过低导致误报 & 易 & K8s、HPA \\
+       & AutoscalerMisconfiguration —— 水平 Pod 自动扩缩器（HPA）阈值配置错误导致 Pod 过多 & 难 & K8s、HPA \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+
+\footnotesize
+\textsuperscript{1} 场景复杂度依据场景特征确定，且与智能体能力无关。详情见附录。\quad
+\textsuperscript{2} K8s 指 Kubernetes（kub）。\quad
+\textsuperscript{3} 此处“技术栈（technologies）”指领域专家为处理该任务所必须掌握的工具与系统集合。
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{fig04.pdf}
+\caption{图 4：ITBench 场景特征刻画。其中子图 (a) 为按角色划分的场景占比，(b) 为 SRE 场景复杂度分布，(c) 为 CISO 场景复杂度分布，(d) 为 FinOps 场景复杂度分布。}
+\label{fig:itbench-scenarios}
+\end{figure}
+
+\subsection{基线 AI 智能体}
+
+我们开发了多个基线智能体（baseline agent）：面向 SRE 的 SRE-Agent、面向 CISO 的 Compliance Assessment Agent，以及面向 FinOps 的 FinOps-agent。这些智能体均采用了最先进的智能体技术（agentic techniques），例如基于 ReAct 的规划（Yao et al., 2023）、反思（reflection）（Shinn et al., 2023）以及任务分解（disaggregation）（Xu et al., 2023）。反思技术则各有不同，涵盖语法检查/代码风格检查（Shinn et al., 2023）、语义校验（Xie et al., 2024a）以及 llm-as-a-judge（大模型充当评判者）（Zheng et al., 2023）。
+
+我们随 ITBench 开源了两个基线智能体（SRE\footnote{\url{https://github.com/IBM/itbench-sre-agent}} 与 CISO\footnote{\url{https://github.com/IBM/itbench-ciso-caa-agent}}）。我们使用开源的 CrewAI（cre）框架来创建和管理智能体。这些智能体可被配置为通过 watsonx、Azure 或 vLLM 使用各种 LLM。每个智能体在初始化时都会获得一个提示词（prompt），该提示词描述其目标、上下文、任务以及预期输出格式。其中包含上下文学习示例（in-context learning examples），用以引导智能体并演示工具用法。智能体使用自然语言来访问工具，从而与环境交互以收集信息。
+
+诊断过程中收集到的日志（logs）、追踪（traces）与指标（metrics）数据量庞大，会淹没当前任何可用 LLM 的上下文窗口。因此，面向 SRE 或 FinOps 角色的智能体配备了专门的工具来与环境交互（参见图~\ref{fig:agent-pomdp}）：1）NL2Traces，以结构化格式提取追踪数据；2）NL2Metrics，分析关键系统指标；3）NL2Logs，高效解析日志数据；4）NL2Kubectl，执行 Kubernetes 特定的操作；此外还有一个摘要工具，用于将海量数据浓缩为可操作的洞见。例如，智能体可使用 NL2Kubectl 工具来“列出 default 命名空间中的所有 Pod”。NL2Kubectl 工具继而使用一个 LLM 将该自然语言表述转换为可执行命令，即 “kubectl get pods -n default”。
+
+类似地，新法规与技术所需的合规评估若直接交给 LLM，其证据与多样的策略语言（policy language）也会令其不堪重负。为 CISO 合规评估自动化所设计的合规智能体（compliance agent）配备了专门的工具。这些工具具备以下能力：1）从自然语言规约出发生成策略，例如 Kyverno 或 OPA Rego 的策略即代码（Policy as Code）；2）生成用于收集证据的脚本；3）访问代码仓库（例如 git）以支持面向代码管理的 GitOps 工作流；4）部署并执行所生成的策略，以完成评估任务。
+
+\begin{table}[H]
+\centering
+\caption{表 3：ITBench 中的角色、任务与指标。}
+\label{tab:personas-tasks}
+\begin{tabular}{lll}
+\toprule
+\textbf{角色} & \textbf{任务} & \textbf{指标} \\
+\midrule
+SRE & 诊断（Diagnosis） & pass@1、故障定位（Fault Localization）、故障传播链（Fault Propagation Chain）、平均诊断时间（Mean Time to Diagnosis） \\
+    & 缓解/修复（Mitigation） & pass@1、平均修复时间（Mean Time to Repair） \\
+\midrule
+CISO & 收集证据（Collect evidence） & pass@1 \\
+     & 扫描评估态势（Scan assessment posture） & pass@1、处理时间（Time to Process） \\
+\midrule
+FinOps & 识别低效（Identify inefficiency） & pass@1 \\
+       & 缓解低效（Mitigate inefficiency） & pass@1、每小时基础设施成本（Hourly infra cost）、效率（Efficiency） \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{排行榜}
+
+ITBench 包含一个排行榜（leaderboard），以促进可复现性与对比分析，其遵循 AI 通用任务框架（AI common task framework）（Donoho, 2019; Varshney et al., 2019）。该排行榜提供了一套预定义、可扩展的性能指标，旨在就智能体相对于评估标准的表现给出清晰洞见。
+
+ITBench 设计了\emph{针对部分正确解的评分方法（scoring methods for partially correct solutions）}，以便为总结性评估（summative assessment）提供有意义的反馈。这一全面的方法为评估和推进 IT 自动化中的 AI 驱动解决方案确立了新标准。对于智能体所处理的每个场景，在任务完成时，ITBench 会记录最终的系统状态，随后在所有场景运行结束时，将其与预定义的真值数据一同用于验证智能体在所有场景上的表现优劣。对于智能体所处理的每个场景，在任务完成时，ITBench 都会记录最终的系统状态，随后在所有场景运行结束时，将其与预定义的真值数据一同用于验证智能体在所有场景上的表现优劣。
+
+我们正开源 ITBench\footnote{\url{https://github.com/IBM/itbench-sample-scenarios}} 场景中的一个小子集（94 个中的 11 个）以及基线智能体，以帮助社区通过实际示例熟悉 ITBench。我们保留 ITBench 中其余场景，用于对所提交的智能体解决方案进行评测与评估。

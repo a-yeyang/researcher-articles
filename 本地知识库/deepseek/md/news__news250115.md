@@ -1,0 +1,8 @@
+<!-- source: https://api-docs.deepseek.com/zh-cn/news/news250115 -->
+
+* 新闻
+* DeepSeek APP 发布 2025/01/15
+
+# DeepSeek APP
+
+![](https://cdn.deepseek.com/api-docs/deepseek_app_cn.jpg)

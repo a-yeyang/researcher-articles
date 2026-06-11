@@ -1,0 +1,500 @@
+{
+ "pdf": "ETO - Trial and Error.pdf",
+ "slug": "eto",
+ "page_count": 17,
+ "page_size": [
+  595.3,
+  841.9
+ ],
+ "pages": [
+  {
+   "page": 1,
+   "candidates": [
+    {
+     "id": "cand_p01_k00",
+     "kind": "vector",
+     "bbox": [
+      319.9,
+      223.3,
+      510.4,
+      356.6
+     ],
+     "pdf": "cand_p01_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      306.1,
+      370.8,
+      524.4,
+      380.9
+     ],
+     "text": "Figure 1: Exploration-based Trajectory Optimization",
+     "label": "Figure 1"
+    }
+   ],
+   "overlay": "assets/eto/_pages/p01.png"
+  },
+  {
+   "page": 2,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      70.9,
+      224.9,
+      289.1,
+      236.1
+     ],
+     "text": "Figure 1. During the exploration phase, this base",
+     "label": "Figure 1"
+    }
+   ],
+   "overlay": "assets/eto/_pages/p02.png"
+  },
+  {
+   "page": 3,
+   "candidates": [
+    {
+     "id": "cand_p03_k00",
+     "kind": "vector",
+     "bbox": [
+      72.2,
+      73.5,
+      517.0,
+      294.9
+     ],
+     "pdf": "cand_p03_k00.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      70.9,
+      320.1,
+      524.4,
+      330.2
+     ],
+     "text": "Figure 2: An illustrative overview of Exploration-based Trajectory Optimization (ETO). Starting from a base",
+     "label": "Figure 2"
+    }
+   ],
+   "overlay": "assets/eto/_pages/p03.png"
+  },
+  {
+   "page": 4,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      75.9,
+      75.8,
+      449.8,
+      86.7
+     ],
+     "text": "Algorithm 1: ETO: Exploration-based Trajectory Optimization for LLM Agents",
+     "label": "Algorithm 1"
+    }
+   ],
+   "overlay": "assets/eto/_pages/p04.png"
+  },
+  {
+   "page": 5,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      305.8,
+      136.9,
+      526.1,
+      147.0
+     ],
+     "text": "Table 1: Statistics of datasets. “Test-Seen” and “Test-",
+     "label": "Table 1"
+    }
+   ],
+   "overlay": "assets/eto/_pages/p05.png"
+  },
+  {
+   "page": 6,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      70.6,
+      238.4,
+      524.4,
+      248.3
+     ],
+     "text": "Table 2: The average reward of different methods on three agent datasets. “Seen” denotes the held-out test set with",
+     "label": "Table 2"
+    },
+    {
+     "bbox": [
+      70.5,
+      384.0,
+      289.1,
+      395.0
+     ],
+     "text": "Table 2 presents the performance comparison of",
+     "label": "Table 2"
+    },
+    {
+     "bbox": [
+      305.8,
+      380.7,
+      524.4,
+      390.6
+     ],
+     "text": "Table 3: The average reward of different base LLMs on",
+     "label": "Table 3"
+    }
+   ],
+   "overlay": "assets/eto/_pages/p06.png"
+  },
+  {
+   "page": 7,
+   "candidates": [
+    {
+     "id": "cand_p07_k00",
+     "kind": "table",
+     "bbox": [
+      73.6,
+      73.6,
+      286.4,
+      198.0
+     ],
+     "pdf": "cand_p07_k00.pdf"
+    },
+    {
+     "id": "cand_p07_k01",
+     "kind": "table",
+     "bbox": [
+      146.3,
+      73.7,
+      213.7,
+      110.4
+     ],
+     "pdf": "cand_p07_k01.pdf"
+    },
+    {
+     "id": "cand_p07_k02",
+     "kind": "table",
+     "bbox": [
+      313.9,
+      73.7,
+      520.9,
+      332.0
+     ],
+     "pdf": "cand_p07_k02.pdf"
+    },
+    {
+     "id": "cand_p07_k03",
+     "kind": "table",
+     "bbox": [
+      219.1,
+      118.0,
+      286.4,
+      150.2
+     ],
+     "pdf": "cand_p07_k03.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      70.9,
+      211.5,
+      289.3,
+      221.5
+     ],
+     "text": "Figure 3: Cases of ScienceWorld reward trajectory for",
+     "label": "Figure 3"
+    },
+    {
+     "bbox": [
+      314.5,
+      212.5,
+      516.1,
+      222.4
+     ],
+     "text": "Figure 4: ETO performance on multiple iterations.",
+     "label": "Figure 4"
+    },
+    {
+     "bbox": [
+      305.8,
+      333.8,
+      524.4,
+      343.8
+     ],
+     "text": "Table 4: The average reward on WebShop of agents",
+     "label": "Table 4"
+    }
+   ],
+   "overlay": "assets/eto/_pages/p07.png"
+  },
+  {
+   "page": 8,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      305.8,
+      185.6,
+      524.4,
+      195.7
+     ],
+     "text": "Table 5: Performance of self-play without behavioral",
+     "label": "Table 5"
+    }
+   ],
+   "overlay": "assets/eto/_pages/p08.png"
+  },
+  {
+   "page": 9,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      70.6,
+      158.2,
+      290.8,
+      168.2
+     ],
+     "text": "Table 6: ETO vs alternatives: ETO can leverage explo-",
+     "label": "Table 6"
+    }
+   ],
+   "overlay": "assets/eto/_pages/p09.png"
+  },
+  {
+   "page": 10,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/eto/_pages/p10.png"
+  },
+  {
+   "page": 11,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/eto/_pages/p11.png"
+  },
+  {
+   "page": 12,
+   "candidates": [],
+   "captions": [],
+   "overlay": "assets/eto/_pages/p12.png"
+  },
+  {
+   "page": 13,
+   "candidates": [],
+   "captions": [
+    {
+     "bbox": [
+      70.6,
+      238.3,
+      524.4,
+      248.3
+     ],
+     "text": "Table 7: The success rate of different methods on three agent datasets. For ALFWorld, success rate is equal to the",
+     "label": "Table 7"
+    }
+   ],
+   "overlay": "assets/eto/_pages/p13.png"
+  },
+  {
+   "page": 14,
+   "candidates": [
+    {
+     "id": "cand_p14_k00",
+     "kind": "table",
+     "bbox": [
+      70.9,
+      70.9,
+      524.4,
+      474.2
+     ],
+     "pdf": "cand_p14_k00.pdf"
+    },
+    {
+     "id": "cand_p14_k01",
+     "kind": "table",
+     "bbox": [
+      86.2,
+      455.7,
+      230.6,
+      467.9
+     ],
+     "pdf": "cand_p14_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      227.5,
+      609.4,
+      367.8,
+      619.3
+     ],
+     "text": "Figure 5: Case study for WebShop.",
+     "label": "Figure 5"
+    }
+   ],
+   "overlay": "assets/eto/_pages/p14.png"
+  },
+  {
+   "page": 15,
+   "candidates": [
+    {
+     "id": "cand_p15_k00",
+     "kind": "table",
+     "bbox": [
+      70.9,
+      70.9,
+      524.4,
+      706.1
+     ],
+     "pdf": "cand_p15_k00.pdf"
+    },
+    {
+     "id": "cand_p15_k01",
+     "kind": "table",
+     "bbox": [
+      86.2,
+      484.4,
+      289.3,
+      524.6
+     ],
+     "pdf": "cand_p15_k01.pdf"
+    },
+    {
+     "id": "cand_p15_k02",
+     "kind": "table",
+     "bbox": [
+      86.2,
+      524.6,
+      275.6,
+      550.8
+     ],
+     "pdf": "cand_p15_k02.pdf"
+    },
+    {
+     "id": "cand_p15_k03",
+     "kind": "table",
+     "bbox": [
+      351.6,
+      674.0,
+      500.9,
+      686.3
+     ],
+     "pdf": "cand_p15_k03.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      218.9,
+      734.3,
+      376.4,
+      744.2
+     ],
+     "text": "Figure 6: Case study for ScienceWorld.",
+     "label": "Figure 6"
+    }
+   ],
+   "overlay": "assets/eto/_pages/p15.png"
+  },
+  {
+   "page": 16,
+   "candidates": [
+    {
+     "id": "cand_p16_k00",
+     "kind": "vector",
+     "bbox": [
+      70.9,
+      114.6,
+      524.4,
+      323.7
+     ],
+     "pdf": "cand_p16_k00.pdf"
+    },
+    {
+     "id": "cand_p16_k01",
+     "kind": "vector",
+     "bbox": [
+      70.9,
+      376.5,
+      524.4,
+      772.8
+     ],
+     "pdf": "cand_p16_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      212.0,
+      335.9,
+      383.3,
+      345.9
+     ],
+     "text": "Figure 7: Instruction prompt for WebShop.",
+     "label": "Figure 7"
+    }
+   ],
+   "overlay": "assets/eto/_pages/p16.png"
+  },
+  {
+   "page": 17,
+   "candidates": [
+    {
+     "id": "cand_p17_k00",
+     "kind": "vector",
+     "bbox": [
+      70.9,
+      70.9,
+      524.4,
+      127.6
+     ],
+     "pdf": "cand_p17_k00.pdf"
+    },
+    {
+     "id": "cand_p17_k01",
+     "kind": "vector",
+     "bbox": [
+      70.9,
+      179.0,
+      524.4,
+      577.7
+     ],
+     "pdf": "cand_p17_k01.pdf"
+    }
+   ],
+   "captions": [
+    {
+     "bbox": [
+      203.4,
+      139.1,
+      391.9,
+      149.1
+     ],
+     "text": "Figure 8: Instruction prompt for ScienceWorld.",
+     "label": "Figure 8"
+    },
+    {
+     "bbox": [
+      209.5,
+      589.3,
+      385.8,
+      599.2
+     ],
+     "text": "Figure 9: Instruction prompt for ALFWorld.",
+     "label": "Figure 9"
+    }
+   ],
+   "overlay": "assets/eto/_pages/p17.png"
+  }
+ ]
+}

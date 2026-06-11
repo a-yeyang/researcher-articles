@@ -1,0 +1,250 @@
+[
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/",
+    "slug": "index"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/PromptLibrary",
+    "slug": "PromptLibrary"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/api/create-chat-completion",
+    "slug": "api__create-chat-completion"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/api/create-completion",
+    "slug": "api__create-completion"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/api/deepseek-api",
+    "slug": "api__deepseek-api"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/api/get-user-balance",
+    "slug": "api__get-user-balance"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/api/list-models",
+    "slug": "api__list-models"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/api_samples/chat_curl",
+    "slug": "api_samples__chat_curl"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/api_samples/chat_nodejs",
+    "slug": "api_samples__chat_nodejs"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/api_samples/chat_python",
+    "slug": "api_samples__chat_python"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/api_samples/thinking_mode_api_example_non_streaming",
+    "slug": "api_samples__thinking_mode_api_example_non_streaming"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/api_samples/thinking_mode_api_example_streaming",
+    "slug": "api_samples__thinking_mode_api_example_streaming"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/api_samples/thinking_mode_api_example_tool_call",
+    "slug": "api_samples__thinking_mode_api_example_tool_call"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/api_samples/thinking_mode_api_example_tool_call_output",
+    "slug": "api_samples__thinking_mode_api_example_tool_call_output"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/faq",
+    "slug": "faq"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/guides/anthropic_api",
+    "slug": "guides__anthropic_api"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/guides/chat_prefix_completion",
+    "slug": "guides__chat_prefix_completion"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/guides/coding_agents",
+    "slug": "guides__coding_agents"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/guides/fim_completion",
+    "slug": "guides__fim_completion"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/guides/json_mode",
+    "slug": "guides__json_mode"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/guides/kv_cache",
+    "slug": "guides__kv_cache"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/guides/multi_round_chat",
+    "slug": "guides__multi_round_chat"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/guides/thinking_mode",
+    "slug": "guides__thinking_mode"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/guides/tool_calls",
+    "slug": "guides__tool_calls"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/markdown-page",
+    "slug": "markdown-page"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/news/news0725",
+    "slug": "news__news0725"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/news/news0802",
+    "slug": "news__news0802"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/news/news0905",
+    "slug": "news__news0905"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/news/news1120",
+    "slug": "news__news1120"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/news/news1210",
+    "slug": "news__news1210"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/news/news1226",
+    "slug": "news__news1226"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/news/news250115",
+    "slug": "news__news250115"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/news/news250120",
+    "slug": "news__news250120"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/news/news250325",
+    "slug": "news__news250325"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/news/news250528",
+    "slug": "news__news250528"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/news/news250821",
+    "slug": "news__news250821"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/news/news250922",
+    "slug": "news__news250922"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/news/news250929",
+    "slug": "news__news250929"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/news/news251201",
+    "slug": "news__news251201"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/news/news260424",
+    "slug": "news__news260424"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/prompt-library",
+    "slug": "prompt-library"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/quick_start/agent_integrations/astrbot",
+    "slug": "quick_start__agent_integrations__astrbot"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/quick_start/agent_integrations/claude_code",
+    "slug": "quick_start__agent_integrations__claude_code"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/quick_start/agent_integrations/copilot_cli",
+    "slug": "quick_start__agent_integrations__copilot_cli"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/quick_start/agent_integrations/crush",
+    "slug": "quick_start__agent_integrations__crush"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/quick_start/agent_integrations/deepcode",
+    "slug": "quick_start__agent_integrations__deepcode"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/quick_start/agent_integrations/github_copilot",
+    "slug": "quick_start__agent_integrations__github_copilot"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/quick_start/agent_integrations/hermes",
+    "slug": "quick_start__agent_integrations__hermes"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/quick_start/agent_integrations/kilo_code",
+    "slug": "quick_start__agent_integrations__kilo_code"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/quick_start/agent_integrations/langcli",
+    "slug": "quick_start__agent_integrations__langcli"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/quick_start/agent_integrations/nanobot",
+    "slug": "quick_start__agent_integrations__nanobot"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/quick_start/agent_integrations/oh_my_pi",
+    "slug": "quick_start__agent_integrations__oh_my_pi"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/quick_start/agent_integrations/openclaw",
+    "slug": "quick_start__agent_integrations__openclaw"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/quick_start/agent_integrations/opencode",
+    "slug": "quick_start__agent_integrations__opencode"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/quick_start/agent_integrations/pi_mono",
+    "slug": "quick_start__agent_integrations__pi_mono"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/quick_start/agent_integrations/reasonix",
+    "slug": "quick_start__agent_integrations__reasonix"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/quick_start/agent_integrations/workbuddy",
+    "slug": "quick_start__agent_integrations__workbuddy"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/quick_start/error_codes",
+    "slug": "quick_start__error_codes"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/quick_start/pricing",
+    "slug": "quick_start__pricing"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/quick_start/rate_limit",
+    "slug": "quick_start__rate_limit"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/quick_start/token_usage",
+    "slug": "quick_start__token_usage"
+  },
+  {
+    "url": "https://api-docs.deepseek.com/zh-cn/updates",
+    "slug": "updates"
+  }
+]

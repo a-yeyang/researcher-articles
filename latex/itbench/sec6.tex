@@ -1,0 +1,275 @@
+\section{附录 C：SRE}
+
+排行榜（leaderboard）提供了一套预定义、可扩展的性能指标，能够相对于评估标准清晰地反映智能体（agent）的表现。
+
+排行榜同时支持 API 与 UI 两种接口，从而实现流畅的评测流程。用户必须先通过排行榜的 UI 或 API 注册智能体端点（endpoint）。注册之后，智能体即可查询排行榜以检索并部署评测场景（scenario），随后上报其运行状态。场景既可以由 ITBench 在其托管环境中按前文所述自动部署，也可以由用户在自己托管的环境中、于排行榜之外手动部署；在后一种情况下，智能体与环境仍可复用同一套排行榜 API 端点来发布状态更新。
+
+智能体在由提交者（Agent Submitter）完成注册后，整个端到端的智能体评测流程如图~\ref{fig:itb5} 所示，并概括如下：
+
+\begin{enumerate}
+\item 新的评测作业被存入评测队列（Benchmark Queue）等待处理。
+\item 评测运行器（Benchmark Runner）从评测队列中为某个特定智能体取出一个评测场景。
+\item 评测运行器按照评测场景规范来供给（provision）环境。场景的环境是指执行某项具体 IT 任务所需的系统集合。智能体与环境交互（并可能修改环境）以解决给定的 IT 自动化任务。评测会根据智能体是否成功完成给定环境中的任务来衡量其表现。环境可以是运行目标应用的 Kubernetes 集群，也可以是需要校验特定配置的 RHEL 9 主机。环境处于智能体的直接控制之下，因此可能会承受破坏性操作（以应对故障性能的情形），从而扮演一种“试验场（playground）”的角色。
+\item 对评测运行中包含的每个场景，评测运行器与智能体执行以下步骤：
+\begin{enumerate}
+\item[(a)] 智能体持续轮询 \texttt{get\_manifest} API，以监控何时有新的清单（manifest）进入 \textbf{Ready} 状态。
+\item[(b)] 评测运行器通过执行 \texttt{deploy\_scenario} 函数来部署该场景的环境。每个环境通过 \texttt{post\_bstatus} API 向 Agent API Server 上报其状态。
+\item[(c)] 评测运行器通过 Agent API Server 的 \texttt{get\_bstatus} API 监控环境状态。一旦状态变为 \textbf{Deployed}，便通过执行 \texttt{inject\_fault} 函数向环境注入故障。
+\item[(d)] 评测运行器继续使用 \texttt{get\_bstatus} API 监控环境状态。一旦状态达到 \textbf{FaultInjected}，便在评测数据库（Benchmark DB）中将该清单的状态更新为 \textbf{Ready}，并包含关键细节，如评测 ID、场景 ID、集群凭据以及清单中的 URL。这使得智能体能够访问并检索该清单，以便对环境进行操作。
+\item[(e)] 一旦清单状态变为 \textbf{Ready}，智能体即检索它。该清单包含启动智能体所需的 URL 与凭据。在启动之前，智能体调用 Agent API Server 的 \texttt{post\_status} API，将其状态上报为 \textbf{STARTED}。
+\item[(f)] 智能体完成执行后，再次调用 \texttt{post\_status} API，将其完成状态上报为 \textbf{FINISH}。
+\item[(g)] 评测运行器启动评估，并执行 \texttt{delete\_scenario} 函数。
+\end{enumerate}
+\item 一旦评测中所有场景的评估结果就绪，评测运行器即对其进行汇总，并将结果发布到排行榜。
+\end{enumerate}
+
+我们为若干 IT 自动化任务实例化了排行榜评估指标，详见 3.1 节、表~2。图~\ref{fig:itb6} 展示了排行榜首页，显示了 CISO 合规评估智能体的评测指标与结果。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{cand_p20_k00.pdf}
+\caption{ITBench 排行榜工作流。}
+\label{fig:itb5}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{cand_p21_k00.pdf}
+\caption{ITBench 排行榜示例。}
+\label{fig:itb6}
+\end{figure}
+
+\subsection{C.1 背景}
+
+随着现代 IT 系统与基础设施在规模和复杂度上空前增长，故障已成为常态而非例外 (Patterson et al., 2002; Gunawi et al., 2016; Kendrick, 2012; Di Martino et al., 2014; Veeraraghavan et al., 2018; Liu et al., 2019; Ghosh et al., 2022)。首先，\textit{硬件故障}（hardware failures）在大规模 IT 基础设施中频繁发生。例如，Google 的一个新集群每年要经历约一千次单机故障和数千次磁盘故障 (Dean, 2009)。其中许多故障还会进一步引发相关联的级联故障 (Ford et al., 2010)。诸如计算单元中的静默数据损坏 (Hochschild et al., 2021) 和慢速故障（fail-slow）存储 (Gunawi et al., 2018) 等新型硬件故障模式，进一步加大了检测与缓解（mitigation）的难度。在地理分布式的超大规模（hyperscalar）基础设施中，数据中心级别的灾难已不再罕见 (Veeraraghavan et al., 2018)。
+
+此外，软件变更的高速度也带来了挑战：由代码缺陷 (Gunawi et al., 2014) 和错误配置 (Xu et al., 2013) 引发的\textit{软件故障}（software failures），近年来也已成为导致 IT 系统与服务中断的主要原因，其数量明显超过硬件故障 (Maurer, 2015; Barroso et al., 2018)。例如，IT 系统每天会进行数百到数千次配置变更，这会引入错误配置并触发潜伏缺陷 (Sun et al., 2020; Tang et al., 2015)。微服务和无服务器计算 (Jonas et al., 2019) 等近期的软件架构趋势，通过放大系统复杂度、引入复杂交互所带来的动态性 (Tang et al., 2023) 以及涌现行为 (Huang et al., 2022)，进一步加剧了 IT 可靠性方面的挑战。
+
+站点可靠性工程（SRE，Site Reliability Engineering）的目标是在存在上述各类故障的情况下，实现 IT 系统的高可用性与可服务性 (Murphy et al., 2024)。
+
+SRE 的核心工作是故障管理\footnote{我们采用经典的“故障—错误—失效”模型（Fault-Error-Failure model）(Avizienis et al., 2004)，其中\textit{故障}（fault）是根因（root cause），例如软件缺陷、硬件故障或错误配置。故障可能产生被称为\textit{错误}（errors）的异常行为。然而，部分错误是瞬态的，对系统层面没有影响。只有那些传播并变得可观测的错误，才会表现为\textit{失效}（failures），例如崩溃、挂起、错误结果或功能不完整等。}——即检测、诊断（diagnosis）并缓解生产系统中的故障，以预防生产\textit{事件}（incidents，指造成用户感知影响的失效），或在事件\textit{告警}（alerts）被触发时最小化其影响与损害。具体而言：
+
+\begin{itemize}
+\item \textbf{检测（Detection）。} SRE 必须及时通过日志、链路追踪（traces）及其他遥测数据检测生产故障；检测故障是预防事件、或至少最小化其爆炸半径与影响的第一步。
+\item \textbf{诊断（Diagnosis）。} SRE 必须分析所检测到故障的根因并定位故障，即确定出故障的组件以及触发该故障的条件。
+\item \textbf{缓解（Mitigation）。} SRE 必须缓解故障以防止其传播为更大的失效或事件。缓解通常遵循一份解决方案计划（resolution plan），其中列出了一系列将系统恢复至期望状态的操作 (Chen et al., 2024b)。
+\end{itemize}
+
+ITBench 目前聚焦于诊断与缓解任务，并计划纳入更多任务，如事件检测、类似故障/事件的预防（例如通过回归测试）。检测可借助可观测性（observability）工具原生提供的、基于黄金信号（golden-signal）的告警来简化。不过，在事件风暴（event storm）期间难度会加剧，这要求 SRE 通过抑制误报来区分可处置的告警，并对其中需要立即关注的告警进行优先级排序——这是事件解决中每天都要面对的难题。这两类任务都已被纳入 ITBench，方法是在特定场景中注入多个故障，造成告警泛滥；智能体随后必须判断应优先处理哪些告警以及处理顺序。
+
+\textbf{SRE 自动化的迫切需求。} 目前，SRE 在很大程度上仍是一种基于人工的实践——SRE 工程师每天身处检测、诊断和缓解故障与事件的第一线 (Beyer et al., 2018; Murphy et al., 2024)。然而，IT 系统的规模不断增长，其需求已超出基于人工的实践所能可靠、持续、高效管理的范围，而且人力资源成本以及人类推理的极限，已成为故障与事件解决的瓶颈。如今，IT 系统的 SRE 已成为任何云与软件公司的主要总拥有成本（TCO，Total Cost of Ownership）(Boulton; IDC, 2024)。\textit{因此，SRE 自动化不再是一项可选的增强，而是一种运营上的必需。}
+
+事实上，当今的 IT 系统已越来越多地由实现劳动密集型、基于人工操作自动化的运营程序来管理，这类自动化被称为 \textit{IT 自动化}（IT automation）。例如，Kubernetes (Burns et al., 2016)、Twine (Tang et al., 2020) 和 ECS (Melissaris et al., 2022) 等现代云管理平台都实现了\textit{算子}（operator）程序，以自动化软件升级、配置、自动扩缩容等各类操作。然而，迄今为止，由于故障管理中存在的根本性挑战，SRE 尚未成为 IT 自动化的常见组成部分。
+
+\subsection{C.2 真实世界事件示例}
+
+表~\ref{tab:itb9} 展示了一份基于 SRE 原始工作记录的真实世界事件报告。在该事件中，SRE 通过 Slack 收到了若干条同一类型的告警——某服务的高错误率（最近 10 分钟内 >1\%）。该\textit{故障}（fault）的起因是在一次旨在削减 IT 成本的退役（decommissioning）过程中，由于人为失误意外删除了资源而导致“节点失效（node failure）”。对 Elasticsearch（ES）集群进行缩容是为了节省运行该服务所产生的 AWS 成本。该故障导致分片（shard）不可用，进而引发 Elasticsearch 失效，并因错误率 SLI 而导致 SLO 违约。该故障进一步传播，造成分片不可用，进而又导致 Elasticsearch 失效。Elasticsearch 的不可用造成了错误率 SLI 的 SLO 违约。
+
+该\textit{运维解决方案计划}（Ops resolution plan）包含了反复试错的过程，最终到达一个能够让 SRE 人员执行既有缓解操作手册（playbook）\footnote{操作手册（Playbook）是一组预定义的结构化流程或自动化脚本，列出执行特定运维任务或响应事件所需的步骤。操作手册可标准化响应、减少错误，并支持重复性任务的自动化，从而提升 IT 运维的效率与可靠性。}的状态。
+
+如所示，这类事件在以下方面提供了宝贵信息：(i) 检测时间、诊断（检测后）与缓解（诊断后）的时间；(ii) 症状与客户影响；(iii) 故障条件、故障传播路径（fault propagation path）与深度；(iv) 运维解决方案计划；以及 (v) 长期修复与改进。这类关于故障发生、传播与解决的真实世界洞见，对于故障预防和事件处理自动化都是无价的。
+
+\begin{table}[H]
+\centering
+\caption{发生在某 SaaS 数据平台上的一个事件。该事件展现了 SRE 与 FinOps（财务运营，Financial Operations）两类角色之间的复杂关系：FinOps 确保 IT 环境的成本得到优化以满足财务效率目标，而 SRE 则专注于最小化服务影响并解决问题。}
+\label{tab:itb9}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{@{}p{0.28\linewidth} p{0.72\linewidth}@{}}
+\toprule
+\textbf{事件} & \textbf{详情} \\
+\midrule
+触发告警 & 七条类型为“服务高错误率（High error rate on service）”的告警。 \\
+\addlinespace
+概述 & 由于人为失误，在对 Elasticsearch（ES）集群进行缩容期间，遭遇了意外的节点失效与 EBS 卷问题。为节省运行该服务所产生的 AWS 成本，启动了对 ES 的缩容。该故障造成了服务中断。 \\
+\addlinespace
+事件持续时间 & 180 分钟 \\
+检测时间 & 60 分钟 \\
+诊断时间 & 60 分钟 \\
+缓解时间 & 120 分钟 \\
+症状 & [\cmark] 流量（Traffic）：$\downarrow$，[\cmark] 错误（Error）：$\uparrow$，[\xmark] 饱和度（Saturation），[\xmark] 延迟（Latency） \\
+客户影响 & 是。 \\
+故障传播深度 & 六 \\
+\addlinespace
+故障传播 & $\downarrow$ 人为失误：退役过程中（维护窗口期）意外移除健康节点 \newline $\downarrow$ 副本初始化期间主分片失效（基于上下文与人工校验的人工推断） \newline $\downarrow$ 分片分配失败（ES 事件：分片未分配，shard unassigned） \newline $\downarrow$ Elasticsearch 进入不健康状态（ES 事件：RED 状态） \newline $\downarrow$ 服务无法从 ES 获取数据（trace） \newline $\downarrow$ 7 个服务的错误率上升（events） \\
+\addlinespace
+故障 & 人为失误、恢复过程中的失效 \\
+\addlinespace
+解决方案计划 & \raisebox{-0.9\height}{\includegraphics[width=0.62\linewidth]{cand_p23_k00.pdf}} \\
+\addlinespace
+解决方案计划规模 & 5（4 步人工 + 1 步经由操作手册的自动化） \\
+长期改进 & \cmark{} 在实例删除与 EBS 删除之间保持 24 小时的间隔 \newline \cmark{} 相应地更新运维手册（Runbooks） \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\subsection{C.3 ITBench 架构}
+
+ITBench 使用开源技术，在 Kubernetes 平台上创建完全可重复、可复现的事件（场景），如图~\ref{fig:itb7} 所示。
+
+\textbf{编排（Orchestration）。} 核心工作流涉及 SRE-Agent\footnote{此后我们将处理 SRE 任务的智能体称为 SRE-Agent。} 与 ITBench 各组件之间的一系列交互。首先，SRE-Agent（\textcircled{1}）通过发送 \texttt{enroll} 命令在评测排行榜中注册，这会促使 ITBench 创建一个会话（session）（\textcircled{2}）并提供必要的凭据与细节（例如 Kubernetes 访问权限、时间限制）。准备就绪后，智能体发送 \texttt{ready} 信号（\textcircled{3}），触发场景执行器（scenario executor）从场景数据库中安装选定的场景。该规范用于搭建环境并注入故障，包括可观测性工具的安装（\textcircled{4}）。在活动阶段（\textcircled{5}），智能体使用 \textit{NL2Alerts}、\textit{NL2Logs}、\textit{NL2Metrics} 和 \textit{NL2Traces} 等工具与环境交互以完成任务。任务完成或时间到期后，SRE-Agent 发送 \texttt{finish} 命令（\textcircled{6}），通知 ITBench 评估所提供的输出并清理环境。场景执行器校验 SRE-Agent 的工作（\textcircled{7}），并将系统恢复到其基线状态（\textcircled{8}）。\textcircled{3}—\textcircled{8} 之间的交互会持续进行，直至场景管理器发送会话结束信号（\textcircled{9}）。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{fig07.pdf}
+\caption{ITBench 中负责编排 SRE 场景的架构。}
+\label{fig:itb7}
+\end{figure}
+
+\subsubsection{C.3.1 原则}
+
+遵循引言中提出的 bench 原则，我们的 ITBench 使用开源技术来构建完全可重复、可复现的场景，以模拟真实世界事件。
+
+\begin{itemize}
+\item \textbf{模仿 SRE 最佳实践。} ITBench 遵循 SRE 手册 (Murphy et al., 2024) 中列出的准则，例如按应用对黄金信号进行告警、启用监控与可观测性。在我们当前的版本中，检测是采用 (Murphy et al., 2024) 中所述方法开箱即用地提供的。
+\item \textbf{模仿真实世界事件。} 我们系统性地考察了来自我方 SaaS 产品的 105 个真实世界事件，以推导出相关的事件模式。尽管我们已将其中若干模式集成到 ITBench 场景中，但并非全部都被纳入，原因在于准确复现这些事件、并镜像出生产级细节特征所固有的复杂性。尽管如此，我们的 ITBench 将通过持续纳入更多事件模式而不断演进。截至撰写本文时，ITBench 支持 24\% 的 Easy、24\% 的 Medium 和 52\% 的 Hard 事件，如图~\ref{fig:itb9} 所示。
+\item \textbf{提供可观测性。} 在真实世界场景中，SRE 会结合命令行访问，使用可观测性工具来监控系统。这些工具提供多种数据模态（modality），如链路追踪、日志、指标与事件——并支持告警，以实现高效的异常检测、趋势分析与自动化故障排查。ITBench 默认使用 Grafana (gra)，但也可支持其他工具，包括 IBM Instana (ins)、Dynatrace (dyn) 和 Datadog (dat)。
+\item \textbf{数据模态可变性。} 根据系统的关键程度与预算，部分数据模态可能缺失；例如，只有约 20\% 的应用启用了链路追踪，这使事件诊断更加复杂。ITBench 允许按需灵活控制以启用、禁用或部分启用各数据模态。
+\item \textbf{管理可扩展性。} 场景超参数由 (i) 环境规范和 (ii) 场景规范两部分构成。环境规范允许进行应用选择及其相关的基础设施选择（例如副本数）以及数据脱敏参数设置。场景规范允许选择超参数（例如注入故障所针对的服务名称）。ITBench 使用上述超参数离线创建一个场景数据库。
+\item \textbf{确保确定性。} ITBench 确保在使场景在 ITBench 中可用之前，告警是按照场景规范生成的。此外，ITBench 会确保在向智能体发送“READY”状态信号之前，所有断言（assertions）（例如应用正常运行、告警正确触发）都已通过。
+\end{itemize}
+
+\subsubsection{C.3.2 在 ITBench 中复现真实世界场景}
+
+通过利用真实世界中断的详细事件报告（如表~\ref{tab:itb9} 所概括的那份），我们系统性地在 ITBench 中重建出类似的故障场景。如表~\ref{tab:itb11} 所概述，这涉及配置一个多节点的 Elasticsearch 集群（带有 EBS 卷），并引入有针对性的扰动——从更改网络配置（例如改变端口或 IP），到模拟节点与卷的删除，或禁用特定分片上的写操作。每个被重建的场景都旨在镜像所观测到的生产故障的复杂度，并带有微小变化，包括相似的故障传播路径、对指标的影响（如错误率与延迟）以及相关的运维缓解步骤。这确保了 ITBench 中的事件（场景）能够准确复现真实世界的技术细节，同时也捕捉到相关的决策挑战，从而实现对智能体的真实且具代表性的评估。
+
+\begin{table}[H]
+\centering
+\caption{SRE 任务。}
+\label{tab:itb10}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{@{}p{0.30\linewidth} p{0.70\linewidth}@{}}
+\toprule
+\textbf{任务} & \textbf{任务描述} \\
+\midrule
+\textbf{故障定位（Fault localization）} & 识别出故障实体（根因）与故障条件。 \\
+\addlinespace
+\textbf{故障传播分析（即根因分析，root cause analysis）} & 从根因实体到告警识别出因果链，包括识别链条中每一步的故障条件。 \\
+\addlinespace
+\textbf{推荐缓解操作} & 识别出解决事件的纠正性操作（不包括执行）。 \\
+\addlinespace
+\textbf{缓解事件} & 执行纠正性操作以清除告警。 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{使用表~\ref{tab:itb9} 中描述的事件说明重建的故障场景。}
+\label{tab:itb11}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{@{}p{0.16\linewidth} p{0.27\linewidth} p{0.27\linewidth} p{0.27\linewidth}@{}}
+\multicolumn{4}{c}{\textbf{测试床搭建（Testbed Setup）}} \\
+\midrule
+\multicolumn{4}{p{\linewidth}}{$\bullet$ 开发一个使用 Elasticsearch 进行数据存储与检索的应用。} \\
+\multicolumn{4}{p{\linewidth}}{$\bullet$ Elasticsearch 集群中必须配置至少 3 个节点。} \\
+\multicolumn{4}{p{\linewidth}}{$\bullet$ 为每个节点挂载 EBS 卷，以模拟事件中的卷使用情况。} \\
+\multicolumn{4}{p{\linewidth}}{$\bullet$ 创建一个包含足够数量文档的索引，以对系统施加压力。} \\
+\midrule
+ & \textbf{事件场景 1} & \textbf{事件场景 2} & \textbf{事件场景 3} \\
+\midrule
+描述 & 通过更改端口、IP 地址等使 ES 不可用。 & (i) 识别一个目标节点：从集群内选择其中一个节点并删除它；(ii) 删除其所挂载的 EBS 卷。 & 识别一个目标分片并将其设为只读（即禁用写入）。 \\
+\addlinespace
+故障传播 & IP/端口更改 $\rightarrow$ ES 不可用 $\rightarrow$ 应用中错误率上升 & 与表~\ref{tab:itb9} 中描述的事件类似。 & 与表~\ref{tab:itb9} 中描述的事件类似，区别在于由硬件故障引起。 \\
+\addlinespace
+运维缓解计划 & 将 IP 地址/端口更改为正确的值。 & 与表~\ref{tab:itb9} 中描述的事件类似。 & (i) 在目标分片上启用写入，或 (ii) 遵循与表~\ref{tab:itb9} 中所述事件类似的流程。 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\subsection{C.4 ITBench 事件特征刻画}
+
+表~\ref{tab:itb12} 概括了 ITBench 中当前可用的场景。除了这 21 个场景之外，ITBench 还能通过参数化关键维度（如目标应用、故障注入的精确位置以及并发故障的数量与类型）轻松产生范围广泛得多的故障模式。例如，如果目标应用是 HotelReservation，则仅 PodFailure 场景的故障就可以应用于其 18 个 pod 中的任意一个，从而有效扩展出另外 18 个场景。通过这种方式，ITBench 可被用于系统性地生成成百上千种变体。在我们的评估中，我们聚焦于具有代表性的场景，同时仍允许用户定制并扩展其测试。
+
+图~\ref{fig:itb8} 展示了我们数据集中所观测到的关键事件特征，包括\textit{故障传播链长度}（fault propagation chain length，图~\ref{fig:itb8}a）、\textit{解决方案计划规模}（resolution plan size，图~\ref{fig:itb8}b）以及所涉及的\textit{独特技术数量}（number of distinct technologies，图~\ref{fig:itb8}c）。直观上，随着故障传播链长度的增加，事件变得更难诊断。类似地，更长的解决方案计划意味着恢复服务健康需要多个步骤与干预。涉及各类技术会引入额外的复杂度，原因在于工具、数据源与故障模式的多样性。
+
+由于\textit{故障传播长度}、\textit{解决方案计划规模}和\textit{技术异构性}（technology heterogeneity）都会影响事件解决的难度，我们将整体任务复杂度定义为三者的几何平均（geometric mean）。式~(6) 刻画了这一关系：
+
+\begin{equation}
+\text{Complexity} = \sqrt[3]{\text{(propagation path length} \times \text{\# resolution steps} \times \text{\# technologies)}}
+\tag{6}
+\end{equation}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{fig08.pdf}
+\caption{ITBench 场景特征刻画。(a) 故障传播链长度。(b) 缓解计划规模。(c) 所涉及技术数量。}
+\label{fig:itb8}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.5\linewidth]{cand_p26_k01.pdf}
+\caption{SRE 场景复杂度。}
+\label{fig:itb9}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\caption{ITBench 中可用的独特场景。}
+\label{tab:itb12}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{@{}l l c c@{}}
+\toprule
+\textbf{场景模式} & \textbf{受影响技术} & \textbf{\# 故障传播} & \textbf{\# 解决步骤} \\
+\midrule
+CacheFailure & nodejs & 3 & 2 \\
+HighCPU & Java, nodejs & 3 & 2 \\
+ServiceFailure & Java, nodejs & 4 & 3 \\
+ManualGarbageCollection & Java, nodejs & 3 & 2 \\
+MemoryLeak & python, Node.js, Go & 8 & 6 \\
+CorruptDeployment & Go, Java, nodejs & 8 & 6 \\
+CorruptDeployment & Java, Go, nodejs & 7 & 5 \\
+CorruptDeployment & Go, nodejs & 2 & 1 \\
+NetworkDelay & Go, python, nodejs & 4 & 1 \\
+PodFault & Go, nodejs & 2 & 2 \\
+NetworkPartition & Tonic, Rust, Go, nodejs & 4 & 1 \\
+CorruptImage & Go, nodejs & 3 & 1 \\
+CorruptImage & nodejs & 2 & 1 \\
+CPUStress & python, nodejs & 2 & 2 \\
+HTTPRequestBodyTamperFault & Ruby, Go & 3 & 1 \\
+HTTPRequestAbortFault & PHP, Go, Tonic, Rust, nodejs & 4 & 1 \\
+HTTPRequestBodyTamperFault & Ruby, Go, nodejs & 3 & 2 \\
+JVMCodeReturnFault & Java, nodejs & 3 & 1 \\
+PodFailure & Java, nodejs & 1 & 1 \\
+IncorrectAuthentication & .NET, Go, nodejs & 2 & 1 \\
+MemoryResourceLimit & Go, nodejs & 1 & 2 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+该公式提供了一种均衡的复杂度度量，其中几何平均确保了所有三个因素都按比例发挥作用，而非允许某个占主导地位的因素扭曲整体评估。尽管所需技能集、诊断交互的数量与类型（例如工具调用或查询）等因素可以进一步细化我们的复杂度度量，但这些因素往往高度依赖于可观测性平台、领域专长以及特定团队的流程。如前所述，大模型可以通过有针对性的微调和知识集成，潜在地弥合技能差距，从而降低由人类专长与诊断策略差异所引入的可变性。因此，我们聚焦于三个更具一致性、且更内在地反映事件本身复杂度的核心因素。
+
+图~\ref{fig:itb9} 使用上述几何平均公式，展示了我们事件数据集中任务复杂度值的分布。结果显示出多样化的场景范围，其难度的不同程度反映在传播深度、解决步骤与多技术集成之间的自然相互作用上。这种复杂度量化为未来的分析奠定了基础，包括评估自动化推理工具、更丰富的可观测性栈或更完善的算子训练如何可能将分布推向更易处理、更可管理的任务。
+
+\subsubsection{C.4.1 实验设置}
+
+这些任务被实现为 Ansible 操作手册（playbooks），以便从 Ansible AWX 等自动化流水线中获益。下面我们给出我方故障注入实现之一，它利用 Kubernetes 网络策略来为目标服务模拟端口阻断。我们使用角色（roles）来分别定义与故障注入和故障移除相关的不同操作。我们的故障注入可以使用变量重新配置，以针对不同服务从而创建额外的场景。每个场景都已经过校验，以确保能在 Grafana 中产生相关告警，从而为处理该场景的智能体提供重要的上下文。
+
+\begin{verbatim}
+---
+- name: Define Network Policy to block port 8080
+  set_fact:
+    network_policy_spec: |
+      apiVersion: networking.k8s.io/v1
+      kind: NetworkPolicy
+      metadata:
+        name: "deny-{{ target_service }}-{{
+          target_port }}"
+        namespace: "{{
+          target_namespace_project_name
+          }}"
+      spec:
+        podSelector:
+          matchLabels:
+            app.kubernetes.io/name: "{{
+              target_service }}"
+        policyTypes:
+        - Ingress
+        ingress:
+        - ports:
+          - protocol: TCP
+\end{verbatim}

@@ -1,0 +1,1985 @@
+\documentclass[10pt,UTF8,fontset=fandol]{ctexart}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx,float,caption,subcaption}
+\usepackage{booktabs,array,multirow,makecell,longtable,tabularx}
+\usepackage{geometry,enumitem,xcolor}
+\usepackage{adjustbox}
+\usepackage{pifont}
+\usepackage[hidelinks]{hyperref}
+\usepackage{url}
+\geometry{margin=2.0cm}
+\graphicspath{{/Users/yye/project/论文/assets/itbench/}}
+\captionsetup{font=small,labelfont=bf}
+\setlength{\parskip}{0.4em}
+\renewcommand\arraystretch{1.15}
+\newcommand{\cmark}{\ding{51}}
+\newcommand{\xmark}{\ding{55}}
+\title{\textbf{ITBench：跨多样化真实世界 IT 自动化任务的 AI 智能体评测框架}}
+\author{Saurabh Jha, Rohan Arora, Yuji Watanabe, Takumi Yanagawa, Yinfang Chen, Jackson Clark,\\
+Bhavya Bhavya, Mudit Verma, Harshit Kumar, Hirokuni Kitahara, Noah Zheutlin, Saki Takano,\\
+Divya Pathak, Felix George, Xinbo Wu, Bekir O Turkkan, Gerard Vanloo, Michael Nidd, Ting Dai,\\
+Oishik Chatterjee, Pranjal Gupta, Suranjana Samanta, Pooja Aggarwal, Rong Lee, Pavankumar Murali,\\
+Jae-wook Ahn, Debanjana Kar, Ameet Rahane, Carlos Fonseca, Amit Paradkar, Yu Deng,\\
+Pratibha Moogi, Prateeti Mohapatra, Naoki Abe, Chandrasekhar Narayanaswami, Tianyin Xu,\\
+Lav R. Varshney, Ruchi Mahindru, Anca Sailer, Laura Shwartz, Daby Sow, Nicholas C. M. Fuller, Ruchir Puri\\[0.3em]
+\normalsize IBM\quad/\quad University of Illinois at Urbana-Champaign（伊利诺伊大学厄巴纳-香槟分校）}
+\date{}
+\begin{document}
+\maketitle
+\begin{abstract}
+要实现“用 AI 智能体（agent）自动完成关键 IT 任务”这一愿景，离不开对所提出方案有效性的度量与理解能力。我们提出 ITBench，一个用于对 AI 智能体进行评测（benchmark）、使其能够应对真实世界 IT 自动化任务的框架，并为此提供一套系统化的方法论。我们的首个发布版本聚焦于三个关键领域：站点可靠性工程（SRE，Site Reliability Engineering）、合规与安全运营（CISO，Compliance and Security Operations）以及财务运营（FinOps，Financial Operations）。该框架的设计使 AI 研究者能够借助一键式（push-button）工作流和可解释的指标，理解 AI 智能体在 IT 自动化中所面临的挑战与机遇。ITBench 包含一组初始的 94 个真实世界场景（scenario），并可通过社区贡献轻松扩展。我们的实验结果表明：由当前最先进（state-of-the-art）模型驱动的智能体仅能解决 13.8\% 的 SRE 场景、25.2\% 的 CISO 场景以及 0\% 的 FinOps 场景。我们期望 ITBench 能成为推动 AI 驱动的 IT 自动化迈向正确、安全、快速的关键使能力量。
+\end{abstract}
+
+\section{引言}
+
+现代 IT 系统正在驱动我们经济的方方面面。随着云计算和敏捷开发实践（agile development practices）的普及，这些系统的复杂度已显著上升（Harvard Business Review Research Report, 2022; Fuller, 2024）。对这些系统进行有效管理正变得极具挑战性：企业在努力跟上这种日益增长的复杂度。从首席信息官（CIO）到站点可靠性工程师，再到安全与合规人员以及一般 IT 工程师，各类 IT 角色（persona）都在为确保 IT 系统的韧性、可靠性、安全性以及成本高效运营而疲于应对。
+
+近期的 CrowdStrike 大规模宕机事件凸显了这些挑战：它令我们社会中最关键的系统纷纷瘫痪，从医院服务到航空旅行无一幸免，估计给 500 家美国财富（Fortune 500）公司造成了高达 54 亿美元的损失（Kerner, 2024）。该事件再次说明，智能化的 IT 事件处置、合规与风险管理能力至关重要——这一议题在欧洲的《数字运营韧性法案》（DORA，Digital Operational Resiliency Act）中亦有论及（Parliament and the Council of the European Union, 2024）。
+
+AI 智能体的日益流行，以及人们对其处理复杂任务能力的预期，已经推高了对“用 AI 智能体管理 IT 系统”的需求（John, 2024; Miguel Carreon, 2024; Pujar et al., 2023）。鉴于 IT 任务的复杂性，这一研究方向面临的一大障碍在于：如何建立系统化的方法，以在 AI 智能体投入生产部署之前评估其有效性（Bogin et al., 2024; Kapoor et al., 2024）。因此，亟需开发一种基于真实 IT 任务及其对应环境来评测 AI 智能体的方法。
+
+本文正是针对这一关键需求，提出了 ITBench——首个兼具全面性与前瞻性、用于对真实生活中 IT 自动化任务进行评测的框架。ITBench 的目标是度量 AI 智能体在各类复杂且真实的 IT 任务上的表现，覆盖多种角色，包括：聚焦可用性与韧性的\emph{站点可靠性工程（SRE）}、确保 IT 实现合规与安全的\emph{合规与安全运营（CISO）}、以及强制实现成本效率并优化投资回报的\emph{财务运营（FinOps）}等（如图~\ref{fig:itbench-personas} 所示）。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{cand_p02_k00.pdf}
+\caption{图 1：示例角色与 IT 任务。铃铛图标表示事件触发型（event-triggered）任务。信息图标表示其他任务，如数据分析、预防性维护任务或持续优化。}
+\label{fig:itbench-personas}
+\end{figure}
+
+ITBench 旨在推动该领域的创新并确立新的标准。我们的贡献可沿以下三条主线归纳：
+
+\begin{itemize}
+  \item \textbf{反映真实世界：} ITBench 针对的是在生产环境中具有现实意义且普遍存在的 IT 自动化需求。其中 SRE 场景基于我们自有 SaaS 产品中观察到的真实事件；CISO 场景基于 CIS 基准（面向互联网安全，CIS）；FinOps 场景则由 FinOps 基金会（FinOps Foundation）通过关键业务成果加以界定（Foundation, 2025a）。
+  \item \textbf{开放且可扩展，覆盖全面的 IT 任务：} 我们将 ITBench 视为一个中枢平台，用于在多样化的 IT 自动化用例中评测 AI 驱动的解决方案。为此，我们提供 IT 评测套件以及支持纵向扩展（即增加更多场景）和横向扩展（即增加更多角色）的框架，从而实现对 IT 任务的广泛覆盖。ITBench 是一个基于开源技术构建的开源框架，同时也允许各组织使用专有技术，以开发和评测其自有解决方案。
+  \item \textbf{支持带部分评分的自动化评估：} ITBench 旨在提供建设性反馈，以推动针对 IT 问题的智能体（agentic）解决方案在设计上的改进。它包含一套全面的评估框架与排行榜（leaderboard），可在智能体推理过程的各个阶段向用户提供有效反馈。
+\end{itemize}
+
+ITBench 提供一键式部署以及用于搭建环境、运行时智能体、护栏引擎（guardrail engine）、授权与认证的工具。它使开发者和研究者能够构建用于管理复杂 IT 系统的新型解决方案。目前，ITBench 处理的是反应式（reactive）问题，包括事件的诊断与处置、受监管环境中针对新管控规则的合规评估、以及成本管理事件。未来，我们计划扩展评测基准的评估能力，并为 IT 流程的更多方面纳入新的评测基准。当前，ITBench 由一组初始的 94 个场景构成，覆盖 SRE（42 个）、CISO（50 个）和 FinOps（2 个），其对应的成功场景处理率分别为 13.8\%、25.2\% 和 0\%（详见第~\ref{sec:related-work} 节）。
+
+我们相信，正如极具影响力的 SWEBench（Jimenez et al., 2024）一样，我们这一全新的 ITBench 框架——它封装并度量了 AI 智能体自动化处理复杂、真实 IT 任务的能力——将同样推动真实世界 IT AI 智能体性能的可观加速进步。
+
+\section{相关工作}
+\label{sec:related-work}
+
+ITBench 面向 IT 自动化中广泛角色的一整套全面任务。ITBench 的首个发布版本聚焦于评估 IT 运维（ITOps）范畴内的场景。图~\ref{fig:itbench-personas} 展示了当前所针对的角色及其例行面对的示例任务。当前，针对 ITOps 中 SRE、CISO 和 FinOps 的评测基准开发呈现出明显的上升趋势与关注热度。
+
+TrainTicket（Zhou et al., 2018）通过对真实世界事件的工业调研收集了 22 个场景，并在 TrainTicket 应用中使用硬编码故障以聚焦于故障定位。AIOpsLab（Chen et al., 2024a）提供了 10 个聚焦 SRE 的场景（在该工作中称为 problems），借助真实环境（系统）集成，允许对任务、时间序列和表格数据进行交互式访问。InsightBench（Sahu et al., 2024）提供了 100 个场景，利用静态表格数据和合成场景对工单（ticket）数据进行分析。TSB-AD（Liu and Paparrizos, 2024a）聚焦于异常检测，包含 40 个合成场景。
+
+CIS-Benchmark（CIS, 2024）提供了用于保障 IT 基础设施安全的最佳实践。尽管名称中带有“benchmark”一词，但它仅提供推荐策略，并不提供实验平台。近期，云原生计算基金会（CNCF）的沙箱项目 OSCAL-compass（OSCAL-compass, 2024）发布了一套 SDK，用于支持将 CIS 人类可读格式转换为美国国家标准与技术研究院（NIST）的 OSCAL（OSCAL, 2024）合规标准，以便在合规自动化中进行编程化使用。ITBench 的 CISO 自动化正是利用了这一技术来评估策略要求。
+
+FinOps 基金会（Foundation, 2025a）提供了评测基准，用于跨组织和部门比较云财务表现，聚焦于资源利用效率、合同覆盖率、成本分摊等关键绩效指标（KPI）。这些评测基准通过评估内部与外部指标，帮助评估云使用效率，从而促进结构化、协作式的云优化方法。
+
+尽管现有评测基准对于特定任务和用例而言是宝贵的资源，并凸显了系统化评测的迫切需求，但它们在反映真实世界 IT 问题、覆盖广泛的 IT 全景以及自动化评估方面仍有局限。这些局限在 ITBench 中得到了解决，如表~\ref{tab:benchmark-comparison} 所示。
+
+\begin{table}[H]
+\centering
+\caption{表 1：ITBench 与相关评测基准的比较。}
+\label{tab:benchmark-comparison}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{lllccll}
+\toprule
+\textbf{基准} & \textbf{场景数} & \textbf{角色与任务} & \textbf{可解决} & \textbf{自动化评估} & \textbf{环境} & \textbf{排行榜} \\
+\midrule
+ITBench（本文） & 94 & \makecell[l]{SRE -- 事件处置，\\ CISO -- 合规评估，\\ FinOps -- 成本管理} & \cmark & \cmark & 真实环境 & \cmark（已验证） \\
+\addlinespace
+TrainTicket & 22 & SRE -- 事件诊断 & \xmark & \xmark & 真实环境 & \xmark \\
+AIOpsLab & 10 & SRE -- 事件处置 & \cmark & \xmark & 真实环境 & \cmark（未验证） \\
+InsightBench & 100 & 工单数据分析 & \xmark & \xmark & 合成 & \xmark \\
+TSB-AD & 40 & 异常检测 & \xmark & \cmark & 合成 & \xmark \\
+CIS & 1000+ & 合规/安全聚焦 & \cmark & \xmark & 不适用（仅信息） & \xmark \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+
+\vspace{2pt}
+{\footnotesize $^{1}$ 注：我们尚未发现 FinOps 领域中有超越记分卡（scorecard）层面的相关评测基准。}
+\end{table}
+\section{ITBench}
+
+ITBench 是一套系统化的评测框架与运行时环境，旨在评估被赋予 IT 运维自动化任务的智能体（agent）。它包含一套健壮的架构（见图~\ref{fig:itbench-framework}），由 AI 智能体（AI Agent）、场景规约与环境（Scenario Specification and Environment）、评估器（Evaluator）和排行榜（Leaderboard，leaderboard）组成，从而支持全面的性能评估。
+
+在此，我们对几个关键组件做简要概述：1）场景规约与环境，2）AI 智能体，3）排行榜。更多细节见附录 B。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{fig02.pdf}
+\caption{图 2：ITBench 自动化框架。}
+\label{fig:itbench-framework}
+\end{figure}
+
+\subsection{场景规约与环境}
+
+该评测基准（benchmark）纳入了一组我们称之为\emph{场景}（scenario）的问题集合。例如，ITBench 中的一个问题是要在 Kubernetes 环境中解决“服务订单管理（service order-management）的高错误率”。另一个与 CISO（合规与安全运营，Compliance and Security Operations）角色相关的例子是评估“针对 RHEL 9 检测到的新控制规则”的合规态势。一个根本性的挑战在于，如何在一个可管理的测试床（testbed）环境中复现这类问题。一个场景就是一个具体问题（或多个问题）发生于其中的可运行测试床。
+
+一个场景 $p$ 通常对应于 ITBench 中待解决的一个问题。我们将 $p$ 形式化为一个四元组 $<M, E, T, D>$，其中各变量含义如下：
+
+\paragraph{场景规约（Scenario Specification）。} $M$ 表示每个场景的元数据（metadata）与部署描述符，存储于 ITBench 的场景规约数据库（Scenario Specs database）中（见图~\ref{fig:itbench-framework}）。每个场景的示例元数据元素包括 \emph{scenario\_name}、\emph{scenario\_description}、\emph{scenario\_domain}、\emph{scenario\_class}、\emph{scenario\_complexity} 和 \emph{scenario\_groundtruth}（见表~\ref{tab:exemplar-scenarios}），其定义如下：
+
+\begin{itemize}
+\item \emph{scenario\_name} 是赋予某个场景的名称。例如，ITBench 中的一个场景名为“Recommendation Service Cache”。
+\item \emph{scenario\_description} 描述该场景。例如，某场景的描述为“Recommendation Service in Astronomy Shop has a cache failure（天文商店中的推荐服务发生缓存故障）”。
+\item \emph{scenario\_domain} 表示不同的角色（persona），即 IT 自动化范畴内的 “SRE”“CISO”“FinOps”。
+\item \emph{scenario\_class} 用于对相似场景进行分组，例如 “Kyverno-opa”“Kyverno-update”“CacheFailure”“HighCPU” 与 “CorruptImage”。
+\item \emph{scenario\_complexity} 刻画一个问题的难度，并依据领域知识来定义。图~\ref{fig:itbench-scenarios}a 给出了基准中 SRE、CISO 与 FinOps 场景的占比分布。图~\ref{fig:itbench-scenarios}b、\ref{fig:itbench-scenarios}c 和 \ref{fig:itbench-scenarios}d 分别展示了 SRE、CISO 与 FinOps 的 \emph{scenario\_complexity} 分布。SRE 场景基于我们自有 SaaS 产品中观测到的真实事件开发而成。CISO 场景基于 CIS 评测基准构建（for Internet Security, CIS）。由于缺乏标准化基准，FinOps 场景在 ITBench 中占比较少。我们的 FinOps 场景基于 FinOps Foundation（Foundation, 2025a）所确定的“领域（Domains）”与“能力（Capabilities）”来描述关键业务成果。
+\item \emph{scenario\_groundtruth} 记录与具体任务相关的结果，评估器（Evaluator）用它来与智能体的预期输出进行比对。例如，对于 SRE 的事件解决而言，诊断（diagnosis）任务的真值（ground truth）包含故障传播链（fault propagation chain）所涉及的实体列表、实际的故障传播链以及故障条件；而对于缓解/修复（mitigation）任务，则记录可能的缓解动作。
+\end{itemize}
+
+\paragraph{环境（Environment）。} $E$ 表示问题发生于其中的可运行测试床。环境内的组件通过暴露 API 来观测并控制该环境。当智能体构建者（Agent Builder）将智能体注册以参与评测时，评测基准运行器（Benchmark Runner，见图~\ref{fig:itbench-framework}）会随机选取一组场景，并可依据 \emph{agent\_type} 与 \emph{agent\_level} 对其进行可选的筛选。随后，评测基准运行器遍历该场景集合，并为每个场景实例化一个测试床。环境的一个例子是：安装了 OpenTelemetry Astronomy Shop Demo 应用（Community, 2024）的 Kubernetes 集群，其可观测性（observability）栈包括 Grafana（gra）、Loki（lok）、Jaeger（jae）和 Prometheus（pro），并配有在环境中诱发问题的机制。
+
+\paragraph{触发事件（Triggering Events）。} $T$ 是一组因环境中某个特定问题的具体表现而发生的触发事件。各类工具被配置用于观测环境，并在出现异常状况时引发触发事件。一个触发事件的例子是“High Error Rate on adservice（adservice 上的高错误率）”，它可能因缓存故障问题而在环境中被触发。
+
+\paragraph{期望结果（Desired Outcome）。} $D$ 定义了自动化目标，代表最终目的。例如，在 SRE 事件解决的情形下，最终目标是在 $E$ 中清除 $T$。
+
+\subsection{AI 智能体}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\linewidth]{fig03.pdf}
+\caption{图 3：作为 POMDP 的智能体与环境。智能体通过 ITBench 工具箱（toolbox）所暴露的 API 与环境交互。}
+\label{fig:agent-pomdp}
+\end{figure}
+
+在 IT 自动化中，不同角色聚焦于各自特定的期望结果，由此定义其自动化目标。对于 SRE 而言，事件解决（incident resolution）是首要目标。实现这一目标可能涉及多个步骤，例如诊断一起事件，也可能是单一步骤，例如生成一份诊断报告。CISO 角色聚焦于法规控制态势评估过程，包括 \emph{Collect evidence（收集证据）} 与 \emph{Scan assessment posture（扫描评估态势）} 任务。FinOps 角色聚焦于成本管理，其示例任务包括 \emph{Identify inefficiency（识别低效）} 与 \emph{Mitigate inefficiency（缓解低效）}。在评估过程中，每一步（任务）都被独立评估，并使用明确定义的指标进行度量，见表~\ref{tab:personas-tasks}。
+
+ITBench 的目标是在广泛的真实 IT 自动化任务上评估智能体，这些任务原本由 SRE、FinOps、CISO 等角色来执行。
+
+在本文中，一个 AI \emph{智能体}（agent）被定义为一个自主或半自主的软件程序，它使用大语言模型（LLM）进行规划、决策、与目标环境交互，并执行动作以达成目标。一个 AI 智能体应当能够通过与环境交互，成功处理 ITBench 中的任意场景。
+
+如图~\ref{fig:agent-pomdp} 所示，智能体与环境构成一个部分可观测马尔可夫决策过程（POMDP），其中状态是环境的快照。状态转移由环境决定，随后被智能体（部分地）观测到。
+
+给定一个在环境 $E$ 中实例化的场景 $p$，智能体通过工具之一探测环境，并接收到一个观测 $o_t \in \mathcal{O}$，据此决定下一个动作：
+
+\begin{equation}
+a_t = f(o_t \mid \bar o_{t-1}; \bar a_{t-1}) \tag{1}
+\end{equation}
+
+此处 $f$ 是智能体的决策函数。$\bar o_{t-1}$ 是直到时刻 $t-1$ 为止的观测序列，$\bar a_{t-1}$ 是直到 $t-1$ 为止所采取的动作序列。
+
+在初始时刻，$o_0$ 可以是一个展示环境问题状态的触发事件。给定状态 $s_{t-1}$ 与动作 $a_{t-1}$，环境转移到下一个状态：
+
+\begin{equation}
+s_t = g(s_{t-1}, a_{t-1}) \tag{2}
+\end{equation}
+
+观测 $o_t$ 被确定为状态的函数，且一般而言是环境状态 $s_t$ 的代理（proxy），因此
+
+\begin{equation}
+o_t = h(s_t) \tag{3}
+\end{equation}
+
+由此，整个表述可被视为一个 POMDP。动作集合 $\mathcal{A}$ 定义为 $\mathcal{Q} \bigcup \{\perp\}$，其中 $\mathcal{Q}$ 是工具集合，$\perp$ 表示智能体的“停止动作（stop action）”。我们将 $t^*$ 定义为智能体停止的时刻：
+
+\begin{equation}
+t^* = \min\{t \mid a_t = \perp\} \tag{4}
+\end{equation}
+
+智能体对结果进行反思（reflect），以指导其下一个动作，并持续进行直到最终目标达成。给定一组智能体所处理的场景，其目标是最大化按如下方式定义的成功率：
+
+\begin{equation}
+\mathbb{E}_{p\sim\pi_p}\big( \mathbb{I}( g(s_{p,t^*}, f(o_{t^*}\mid \bar o_{t^*-1}, \bar a_{t^*-1})) = s_{p,G}) \big) \tag{5}
+\end{equation}
+
+其中 $\mathbb{I}$ 是将终止状态与目标状态进行比较的指示函数（indicator function），$\pi$ 是场景的分布。
+
+\begin{table}[H]
+\centering
+\caption{表 2：ITBench 中跨 94 个场景、按场景域划分的示例场景类及其复杂度。}
+\label{tab:exemplar-scenarios}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{llll}
+\toprule
+\textbf{场景域} & \textbf{场景类} & \textbf{场景复杂度} & \textbf{技术栈} \\
+\midrule
+SRE & CacheFailure —— 因缓存指数级增长制造内存泄漏 & 中 & K8s、Redis、MongoDB \\
+    & HighCPU —— 在目标服务上触发高 CPU 负载 & 中 & K8、Host、Pods \\
+    & CorruptImage —— 部署使用了错误的 Docker 镜像 & 易 & K8s、Image registry \\
+    & HTTPRequestBodyTamperFault —— 篡改服务间的 HTTP Post 请求 & 中 & K8s、ingress/egress \\
+    & HTTPRequestAbortFault —— 中断服务间的 HTTP 连接 & 中 & K8ss、ingress/egress \\
+    & MemoryResourceLimit —— 降低目标服务的内存上限 & 易 & K8s、Host、Pod \\
+\midrule
+CISO & 在 Kyverno 上实施新的 K8s CIS 评测基准 & 易 & K8、Kyverno \\
+     & 在 OPA 上实施新的 K8s CIS 评测基准 & 中 & K8s、OPA、Kubectl \\
+     & 在 Ansible-OPA 上实施新的 RHEL9 CIS 评测基准 & 中 & RHEL9、OPA、Ansible \\
+     & 在 Kyverno 上更新 K8s CIS 评测基准 & 难 & K8s、Kyverno \\
+\midrule
+FinOps & CostAlertMisconfiguration —— 成本告警阈值过低导致误报 & 易 & K8s、HPA \\
+       & AutoscalerMisconfiguration —— 水平 Pod 自动扩缩器（HPA）阈值配置错误导致 Pod 过多 & 难 & K8s、HPA \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+
+\footnotesize
+\textsuperscript{1} 场景复杂度依据场景特征确定，且与智能体能力无关。详情见附录。\quad
+\textsuperscript{2} K8s 指 Kubernetes（kub）。\quad
+\textsuperscript{3} 此处“技术栈（technologies）”指领域专家为处理该任务所必须掌握的工具与系统集合。
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{fig04.pdf}
+\caption{图 4：ITBench 场景特征刻画。其中子图 (a) 为按角色划分的场景占比，(b) 为 SRE 场景复杂度分布，(c) 为 CISO 场景复杂度分布，(d) 为 FinOps 场景复杂度分布。}
+\label{fig:itbench-scenarios}
+\end{figure}
+
+\subsection{基线 AI 智能体}
+
+我们开发了多个基线智能体（baseline agent）：面向 SRE 的 SRE-Agent、面向 CISO 的 Compliance Assessment Agent，以及面向 FinOps 的 FinOps-agent。这些智能体均采用了最先进的智能体技术（agentic techniques），例如基于 ReAct 的规划（Yao et al., 2023）、反思（reflection）（Shinn et al., 2023）以及任务分解（disaggregation）（Xu et al., 2023）。反思技术则各有不同，涵盖语法检查/代码风格检查（Shinn et al., 2023）、语义校验（Xie et al., 2024a）以及 llm-as-a-judge（大模型充当评判者）（Zheng et al., 2023）。
+
+我们随 ITBench 开源了两个基线智能体（SRE\footnote{\url{https://github.com/IBM/itbench-sre-agent}} 与 CISO\footnote{\url{https://github.com/IBM/itbench-ciso-caa-agent}}）。我们使用开源的 CrewAI（cre）框架来创建和管理智能体。这些智能体可被配置为通过 watsonx、Azure 或 vLLM 使用各种 LLM。每个智能体在初始化时都会获得一个提示词（prompt），该提示词描述其目标、上下文、任务以及预期输出格式。其中包含上下文学习示例（in-context learning examples），用以引导智能体并演示工具用法。智能体使用自然语言来访问工具，从而与环境交互以收集信息。
+
+诊断过程中收集到的日志（logs）、追踪（traces）与指标（metrics）数据量庞大，会淹没当前任何可用 LLM 的上下文窗口。因此，面向 SRE 或 FinOps 角色的智能体配备了专门的工具来与环境交互（参见图~\ref{fig:agent-pomdp}）：1）NL2Traces，以结构化格式提取追踪数据；2）NL2Metrics，分析关键系统指标；3）NL2Logs，高效解析日志数据；4）NL2Kubectl，执行 Kubernetes 特定的操作；此外还有一个摘要工具，用于将海量数据浓缩为可操作的洞见。例如，智能体可使用 NL2Kubectl 工具来“列出 default 命名空间中的所有 Pod”。NL2Kubectl 工具继而使用一个 LLM 将该自然语言表述转换为可执行命令，即 “kubectl get pods -n default”。
+
+类似地，新法规与技术所需的合规评估若直接交给 LLM，其证据与多样的策略语言（policy language）也会令其不堪重负。为 CISO 合规评估自动化所设计的合规智能体（compliance agent）配备了专门的工具。这些工具具备以下能力：1）从自然语言规约出发生成策略，例如 Kyverno 或 OPA Rego 的策略即代码（Policy as Code）；2）生成用于收集证据的脚本；3）访问代码仓库（例如 git）以支持面向代码管理的 GitOps 工作流；4）部署并执行所生成的策略，以完成评估任务。
+
+\begin{table}[H]
+\centering
+\caption{表 3：ITBench 中的角色、任务与指标。}
+\label{tab:personas-tasks}
+\begin{tabular}{lll}
+\toprule
+\textbf{角色} & \textbf{任务} & \textbf{指标} \\
+\midrule
+SRE & 诊断（Diagnosis） & pass@1、故障定位（Fault Localization）、故障传播链（Fault Propagation Chain）、平均诊断时间（Mean Time to Diagnosis） \\
+    & 缓解/修复（Mitigation） & pass@1、平均修复时间（Mean Time to Repair） \\
+\midrule
+CISO & 收集证据（Collect evidence） & pass@1 \\
+     & 扫描评估态势（Scan assessment posture） & pass@1、处理时间（Time to Process） \\
+\midrule
+FinOps & 识别低效（Identify inefficiency） & pass@1 \\
+       & 缓解低效（Mitigate inefficiency） & pass@1、每小时基础设施成本（Hourly infra cost）、效率（Efficiency） \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{排行榜}
+
+ITBench 包含一个排行榜（leaderboard），以促进可复现性与对比分析，其遵循 AI 通用任务框架（AI common task framework）（Donoho, 2019; Varshney et al., 2019）。该排行榜提供了一套预定义、可扩展的性能指标，旨在就智能体相对于评估标准的表现给出清晰洞见。
+
+ITBench 设计了\emph{针对部分正确解的评分方法（scoring methods for partially correct solutions）}，以便为总结性评估（summative assessment）提供有意义的反馈。这一全面的方法为评估和推进 IT 自动化中的 AI 驱动解决方案确立了新标准。对于智能体所处理的每个场景，在任务完成时，ITBench 会记录最终的系统状态，随后在所有场景运行结束时，将其与预定义的真值数据一同用于验证智能体在所有场景上的表现优劣。对于智能体所处理的每个场景，在任务完成时，ITBench 都会记录最终的系统状态，随后在所有场景运行结束时，将其与预定义的真值数据一同用于验证智能体在所有场景上的表现优劣。
+
+我们正开源 ITBench\footnote{\url{https://github.com/IBM/itbench-sample-scenarios}} 场景中的一个小子集（94 个中的 11 个）以及基线智能体，以帮助社区通过实际示例熟悉 ITBench。我们保留 ITBench 中其余场景，用于对所提交的智能体解决方案进行评测与评估。
+\section{实验结果}
+
+\subsection{评测设置}
+
+为了理解大语言模型（LLM）的推理与规划能力对 ITBench 各场景的影响，我们用不同的 LLM 实例化我们的智能体（agent），同时覆盖自然语言推理与代码生成两类任务。具体而言，对于依赖自然语言理解与推理的任务，我们采用 GPT-4o\footnote{检查点版本 2024-11-20}、Llama-3.3-70B-instruct、Llama-3.1-8B-instruct 和 Granite-3.1-8B-instruct；对于以代码为核心的用例，我们采用 GPT-4o-mini、Llama-3.1-405b-instruct 和 Mixtral-8x7b-instruct。所有模型均使用 128K tokens 的上下文窗口，使其能够处理较长的输入序列。
+
+我们的实验主要在 AWS EC2 实例（m4.xlarge）上进行，不过 ITBench 也可以借助伪集群（pseudo-cluster）方便地部署在消费级笔记本电脑上，从而更便于开发 AI 智能体（附录 C.4.1）。
+
+下面我们概要介绍基线智能体在 ITBench 的 SRE、CISO 与 FinOps 场景上的表现。我们的发现表明，无论是开源模型还是专有模型，在真实世界任务上往往都举步维艰，这凸显了构建能够推动基础模型推理与规划能力极限的评测基准（benchmark）的重要性。更全面的结果与逐场景的详细讨论，请分别参见附录 C（SRE）、附录 D（CISO）与附录 E（FinOps）。
+
+\subsection{总体结果}
+
+表~\ref{tab:itb-sre}、表~\ref{tab:itb-ciso} 与表~\ref{tab:itb-finops} 分别展示了 SRE-agent、CISO-agent 与 FinOps-agent 的表现。
+
+\paragraph{SRE。} 我们以 SRE-Agent 诊断与缓解生产事故（例如“前端服务出现高错误率”）的能力来衡量其效率。
+
+诊断效率用 pass@1 来衡量 (Chen et al., 2021)（即是否识别出标准答案中所述的根因），用 NTAM（归一化拓扑感知指标，Normalized Topology-Aware Metric）来衡量根因与故障传播链（fault propagation chain），并测量诊断耗时\footnote{NTAM 是一种归一化拓扑感知指标，借助系统与应用的拓扑结构来衡量所预测的根因与故障传播链的质量。详见附录 C.6.3。}。缓解效率则以 pass@1（即告警是否被清除）与平均修复时间来衡量。
+
+如表~\ref{tab:itb-sre} 所示，在所有 SRE 场景中，GPT-4o 始终优于其他模型，在诊断（13.81\%）与缓解（11.43\%）上均取得最高的 pass@1 分数，并在 NTAM（FL 与 FPC）指标上取得最高分。Llama-3.3-70B 总体排名第二，在多数指标上仅次于 GPT-4o。8B 量级的模型缓解成功率较低。出乎意料的是，Granite-3.1-8B（未经任何专门微调）在诊断任务上取得了高于 Llama-3.1-70B 的准确率。
+
+移除跟踪（trace）数据会大幅降低成功率（参见附录中的表 19 与表 20）。例如，GPT-4o 的诊断 pass@1 从有跟踪数据时的 13.81\% 跌至无跟踪数据时的 9.52\%，缓解成功率更骤降至 2.86\%。这凸显了系统可观测性（observability）在 SRE 中的关键作用，而 ITBench 能够在不同条件下对此加以评测。鉴于实践中并不存在完美的可观测性，如何引导 SRE-agent 去采集新的可观测性数据，以及如何帮助 SRE-agent 在不完全可观测的情况下对故障进行推理，是一个重要但尚待解决的问题。
+
+\paragraph{CISO。} 我们衡量智能体在表~\ref{tab:itb-scenarios} 中引入的四个场景类（scenario class）上的效能。每个场景类（\textit{scenario\_class}）施加一组不同的 CIS-benchmarks 要求（例如“尽量减少允许共享主机网络命名空间的容器数量”），每一类具有特定的复杂度级别（如易、中、难），并生成场景特定的代码工件（code artifact）。
+
+CISO-agent 的效能基于以下能力来衡量：在场景类的多样环境中检测工件配置错误（即非合规，如不存在共享命名空间的容器最小数量要求，或计数超过阈值），或在随机注入了配置错误的环境中确认正确配置（即合规）。值得注意的是，基于 GPT 的模型在 pass@1 与处理时间（Time to Process）两项指标上均占据主导地位。其 pass@1 几乎比次优模型高出近 2 倍（在 llama-3.1-405b-instruct 与 mistral-large-2 之间交替），而 TTP 表明 GPT-4o 能在我们各场景类中以最短时间处理这些场景。
+
+\paragraph{FinOps。} 我们以 FinOps-agent 诊断与缓解成本告警来源（例如“成本上升 20\%”）的能力来衡量其表现。诊断有效性用 pass@1（即是否识别出原因）来衡量。缓解有效性则以与最优运行成本的比例接近度（proportional proximity），以及该工作负载可达到的效率来衡量。
+
+GPT-4o 始终优于所有其他模型，在诊断成本上升告警的来源上取得 33\% 的 pass@1 通过率。在与成本及工作负载效率相关的其他指标上，各模型的表现大体相当，没有任何模型能够达到最优的 CPU 与内存成本或交付出高 CPU 效率。
+
+\begin{table}[H]
+\centering
+\caption{SRE-Agent 在 SRE 场景上的评测}
+\label{tab:itb-sre}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{lcccc cc}
+\toprule
+\multirow{2}{*}{\textbf{模型}} & \multicolumn{4}{c}{\textbf{诊断}} & \multicolumn{2}{c}{\textbf{缓解}} \\
+\cmidrule(lr){2-5} \cmidrule(lr){6-7}
+ & \textbf{pass@1 (\%)}$\uparrow$ & \textbf{FL (NTAM)}$\uparrow$ & \textbf{FPC (NTAM)}$\uparrow$ & \textbf{MTTD (s)}$\downarrow$ & \textbf{pass@1 (\%)}$\uparrow$ & \textbf{MTTR (s)}$\downarrow$ \\
+\midrule
+granite-3.1-8B-instruct & $3.57 \pm 0.94$ & $0.16 \pm 0.02$ & $0.19 \pm 0.02$ & $259.92 \pm 65.01$ & $0.24 \pm 0.25$ & $845.50 \pm {-}$ \\
+llama-3.1-8B-instruct & $0.99 \pm 0.51$ & $0.07 \pm 0.01$ & $0.08 \pm 0.01$ & $57.50 \pm 2.05$ & $1.98 \pm 0.68$ & $245.13 \pm 40.66$ \\
+llama-3.3-70B-instruct & $3.10 \pm 0.84$ & $0.16 \pm 0.02$ & $0.18 \pm 0.02$ & $191.85 \pm 31.34$ & $3.33 \pm 0.90$ & $776.27 \pm 252.87$ \\
+gpt-4o & $\mathbf{13.81 \pm 1.67}$ & $\mathbf{0.39 \pm 0.05}$ & $\mathbf{0.34 \pm 0.03}$ & $72.44 \pm 4.71$ & $\mathbf{11.43 \pm 1.52}$ & $282.47 \pm 30.04$ \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+
+{\footnotesize
+\noindent $^1$ 42 个场景（21 个含跟踪数据，21 个不含跟踪数据）。\quad $^2$ 每个模型运行 10 次。\quad $^3$ pass@1 值以百分比表示。\quad “{---}”表示数据缺失。\quad $^4$ 列出了每个指标的标准误。\quad $^5$ FL (NTAM) = 根因的归一化拓扑感知指标，FPC (NTAM) = 故障传播链的归一化拓扑感知指标（取值在 0 与 1.0 之间），MTTD = 平均诊断时间（秒），MTTR = 平均修复时间（秒）。\textbf{加粗}：最佳表现。\quad $^6$ NTAM 的细节见附录 C.6.3。
+\par}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{CISO 合规评估智能体在 CISO 场景上的评测}
+\label{tab:itb-ciso}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{lcccc cc}
+\toprule
+\multirow{2}{*}{\textbf{模型}} & \multicolumn{4}{c}{\textbf{场景 pass@1 (\%)} $\uparrow$} & \multirow{2}{*}{\textbf{O/A pass@1 (\%)} $\uparrow$} & \multirow{2}{*}{\textbf{TTP (s)} $\downarrow$} \\
+\cmidrule(lr){2-5}
+ & \textbf{kyverno} & \textbf{k8s-opa} & \textbf{rhel-opa} & \textbf{kyverno-update} & & \\
+\midrule
+granite-3.1-8B-instruct & $7.84 \pm 3.84$ & $0.00 \pm 0.00$ & $0.00 \pm 0.00$ & $1.59 \pm 1.58$ & $1.71 \pm 0.76$ & $197.03 \pm 2.52$ \\
+mixtral-8x7B-instruct & $7.35 \pm 3.19$ & $1.43 \pm 1.42$ & $0.00 \pm 0.00$ & $1.29 \pm 4.34$ & $3.94 \pm 1.03$ & $120.63 \pm 3.77$ \\
+llama-3.1-8B-instruct & $8.57 \pm 3.37$ & $0.00 \pm 0.00$ & $0.00 \pm 0.00$ & $7.46 \pm 3.23$ & $3.59 \pm 1.07$ & $121.49 \pm 3.00$ \\
+llama-3.3-70B-instruct & $18.46 \pm 4.94$ & $0.00 \pm 0.00$ & $1.43 \pm 2.88$ & $8.06 \pm 3.50$ & $9.32 \pm 1.67$ & $189.61 \pm 2.71$ \\
+mistral-large-2 & $6.56 \pm 3.20$ & $22.73 \pm 5.32$ & $7.23 \pm 2.88$ & $10.45 \pm 3.77$ & $11.55 \pm 1.95$ & $167.98 \pm 3.42$ \\
+llama-3.1-405B-instruct & $16.22 \pm 4.32$ & $20.83 \pm 4.86$ & $8.75 \pm 3.26$ & $3.17 \pm 2.22$ & $12.46 \pm 1.98$ & $178.89 \pm 3.37$ \\
+gpt-4o-mini & $16.18 \pm 4.54$ & $\mathbf{43.10 \pm 6.99}$ & $\mathbf{30.38 \pm 5.40}$ & $9.43 \pm 4.08$ & $\mathbf{25.19 \pm 2.80}$ & $102.40 \pm 3.70$ \\
+gpt-4o & $\mathbf{40.28 \pm 5.99}$ & $39.34 \pm 6.55$ & $7.61 \pm 2.81$ & $\mathbf{17.74 \pm 4.92}$ & $24.74 \pm 2.64$ & $\mathbf{101.29 \pm 3.81}$ \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+
+{\footnotesize
+\noindent $^1$ 50 个场景。\quad $^2$ 每个模型每个场景运行 8 次。\quad $^3$ pass@1 值以百分比表示。\quad $^4$ TTP = 处理时间（秒）。\quad $^5$ \textbf{kyverno} = Kyverno 上的新 K8s CIS-benchmarks，易场景类；\textbf{k8s-opa} = OPA 上的新 K8s CIS-benchmarks，中场景类；\textbf{rhel-opa} = Ansible-OPA 上的新 RHEL9 CIS-benchmarks，中场景类；\textbf{kyverno-update} = Kyverno 上更新的 K8s CIS-benchmarks，难场景类。
+\par}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{FinOpsAgent 在 FinOps 场景上的评测}
+\label{tab:itb-finops}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{lc ccccc}
+\toprule
+\multirow{2}{*}{\textbf{模型}} & \textbf{诊断} & \multicolumn{5}{c}{\textbf{缓解}} \\
+\cmidrule(lr){2-2} \cmidrule(lr){3-7}
+ & \textbf{pass@1 (\%)} $\uparrow$ & \textbf{pass@1 (\%)} $\uparrow$ & \makecell{\textbf{与最优 CPU}\\\textbf{成本接近度} $\uparrow$} & \makecell{\textbf{与最优内存}\\\textbf{成本接近度} $\uparrow$} & \makecell{\textbf{与最优 CPU}\\\textbf{效率接近度} $\uparrow$} & \makecell{\textbf{与最优内存}\\\textbf{效率接近度} $\uparrow$} \\
+\midrule
+granite-3.1-8B-instruct & $0$ & $0$ & $0.47 \pm 0.01$ & $0.48 \pm 0.06$ & $0.53 \pm 0.04$ & $0.94 \pm 0.01$ \\
+llama-3.1-8B-instruct & $0$ & $0$ & $\mathbf{0.49 \pm 0.01}$ & $0.46 \pm 0.07$ & $0.56 \pm 0.08$ & $0.96 \pm 0.02$ \\
+llama-3.3-70B-instruct & $16.6$ & $0$ & $0.47 \pm 0.01$ & $0.49 \pm 0.05$ & $0.53 \pm 0.03$ & $0.96 \pm 0.02$ \\
+gpt-4o & $\mathbf{33}$ & $0$ & $0.48 \pm 0.01$ & $\mathbf{0.51 \pm 0.02}$ & $\mathbf{0.63 \pm 0.07}$ & $0.92 \pm 0.08$ \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+
+{\footnotesize
+\noindent pass@1 值以百分比表示。接近度（Proximity）值表示观测值与最优值的接近程度，1 表示达到最优，与 1 的任何偏离都表示次优表现。
+\par}
+\end{table}
+
+\subsection{场景复杂度的影响}
+
+\paragraph{SRE。} 我们依据故障传播链长度、解决步骤数量、所涉技术多样性等因素，将场景划分为易、中、难，如公式 (6) 所述。我们的结果表明，随着场景复杂度（\textit{scenario\_complexity}）的提升，成功率（pass@1）明显下降。例如，GPT-4o（表现最佳的模型）对易、中、难场景的诊断成功率分别仅为 36\%、7.73\% 与 5.0\%（参见表 17）。同样，GPT-4o（表现最佳的模型）对易、中、难场景的缓解成功率分别仅为 21\%、12.27\% 与 0.0\%（参见表 18）。
+
+没有任何模型能够缓解任一次运行中的难场景，而超过半数的易场景缓解是成功的。值得注意的是，GPT-4o 是唯一能够成功诊断多个“难”场景的模型。
+
+\paragraph{CISO。} CISO 场景的复杂度与场景类直接对应。例如，Kyverno 场景的场景复杂度（\textit{scenario\_complexity}）为易，k8s-opa 与 rhel-opa 场景为中，而 kyverno-update 场景为难。正如预期，随着场景难度从易的 \textit{kyverno} 类提升至难的 \textit{kyverno-update} 类，所有模型都表现吃力。
+
+\paragraph{FinOps。} 目前 ITBench 仅有两个 FinOps 场景，其中一个的场景复杂度为易，另一个为难。除 GPT-4o 外没有任何模型能够诊断（更无法缓解）难场景。
+
+ITBench 中这一复杂度谱系确保了评测既能覆盖直观简单的问题，也能覆盖跨各类角色（persona）的高度复杂问题。
+
+\subsection{环境固有的非确定性}
+
+GPT-4o 在所有受评角色（SRE、CISO 与 FinOps）中仍是表现最佳者，但它在场景结果上仍表现出显著的波动性。例如，尽管已通过超参数调整力求一致性，搭载 GPT-4o 的 SRE-agent 仍难以保持确定性行为。搭载 GPT-4o 的 SRE-agent 在场景 13 的 10 次运行中仅有 6 次成功诊断出问题，场景 8 为 10 次中 1 次，场景 21 为 10 次中 8 次（所有场景的细节见图 14）。同样，它在场景 16 的 10 次运行中缓解了 6 次，场景 8 为 10 次中 2 次，场景 21 为 10 次中 5 次（所有场景的细节见图 17）。在 FinOps 与 CISO 场景中也观测到了这种固有的非确定性。
+
+这些波动源于实时遥测（telemetry）数据的微小变化，以及大语言模型逐 token 生成的特性。通过在多次运行中跟踪这种动态行为，ITBench 为评估每个智能体的鲁棒性与可靠性提供了关键洞见。
+
+\section{讨论与结论}
+
+我们提出了 ITBench——首个用于评测 IT 自动化任务中 AI 智能体的框架与实验平台。ITBench 力求刻画现代 IT 系统的复杂性与 IT 任务的多样性。ITBench 的可复现性确保了这一社区驱动的工作能够克服大规模 IT 系统固有的非确定性。
+
+ITBench 的关键设计原则之一是确保其灵活性，以支持不同 IT 系统的多样领域，并具备向新场景扩展的能力。尽管 ITBench 当前的覆盖范围已较为全面且具代表性，我们仍计划通过加入对现代 IT 自动化至关重要的其他流程，进一步丰富评测套件。此外，我们计划将评测从事件触发（event-triggered）型场景进一步扩展。我们正积极扩大对所支持流程的场景覆盖，并通过开放社区贡献来促进发展。我们邀请社区借助 ITBench，在合成沙箱环境中复现其受真实世界启发的事故。我们期望每一位贡献者都能将各自的专长带入这一领域。
+
+我们期望 ITBench 能够推动基于 AI 智能体的技术创新，并对当今 IT 基础设施的安全、效率与智能产生直接影响。借助 ITBench，我们开始探索诸多深刻而激动人心的开放问题：如何开发专精于特定类型 IT 任务的领域专用 AI 智能体？如何编排具备多种专长的多个智能体，使其协作完成更大的项目？如何确保 AI 驱动方案的安全性？在开发多样的自适应智能体时，如何有效利用人在回路（human-in-the-loop）？我们邀请所有人参与回答这些问题，共同实现用 AI 智能体自动化关键 IT 任务的愿景。
+
+\section{声明}
+
+\subsection{伦理与更广泛影响}
+
+本研究提出了一个新颖的评测框架，用于衡量 AI 智能体在多种复杂的真实 IT 任务上的表现，这有望成为推动正确、安全、快速的 AI 驱动 IT 自动化的关键支撑。尽管主要目标在于推进机器学习领域的发展，但由于本工作是一个构建于开源技术之上的开源框架，它使得拥有专有技术的组织能够更有效地利用它来开发和评测自身的解决方案；它也促进了社区内的思想共享，并降低了 IT 领域创新的门槛。
+
+与系统交互的智能体带来若干风险。我们识别出在构建和使用 ITBench 及相关智能体时可能出现的三大主要风险，随后讨论我们为缓解这些问题所采取的措施。
+
+第一是在系统上执行 LM 生成的命令/指令所带来的安全风险。例如执行 \texttt{kubectl delete node} 与 \texttt{rm -rf asset/} 这类命令。为防范这一点，我们将智能体容器化，并提供一个自包含的 Kubernetes 环境来创建各类场景。
+
+第二，如果更广泛的社区对 ITBench 及相关智能体产生兴趣并在其基础上构建工作，那么也可能出现非法的评测数据集或基础设施被用来向受测设备注入恶意代码、或注入生成恶意代码的指令的情况。例如，一个声称为 ITBench 及相关智能体托管推理/评测框架的非官方代码仓库，可能包含这样一个任务实例：其问题描述指示 LM 智能体构建密钥日志记录功能并将其存储在隐藏文件夹中。为消除混淆并降低此类事件发生的可能性，我们在 GitHub 仓库、数据存储与网站上提供了清晰的指引，标明我们积极维护的官方仓库与渠道。我们也鼓励第三方将任何改进纳入我们的代码库，并协助整合此类贡献。
+
+最后是 ITBench 智能体在现实世界中被部署所带来的后果。先前工作已对可执行攻击性安全措施的系统进行了概念化并提出原型。同样不难设想，像 SRE-Agent 这样的系统可能被纳入流水线，从而在上述用例中生成恶意代码与库。智能体在 ITBench 上的强劲表现意味着，未来的 AI 系统在上述用例中很可能日益娴熟。将 ITBench 智能体作为开源智能体发布，能够支持有关“为软件工程智能体设计何种健全有效的约束”这一方向的研究。它也可以作为一个系统，供法律专家与政策制定主体进行试验，以共同塑造端到端 AI 驱动软件工程的未来形态。
+
+\subsection{可复现性}
+
+为帮助更广泛的社区复现本文呈现的结果并在其基础上构建工作，我们将本项目创建的所有资源开源。交互式流水线的源代码、上下文管理逻辑、命令实现、接口设计以及其他一切，均已完整发布于一个 GitHub 仓库中。我们提供了大量文字与视频文档，说明如何运行和修改代码库的各个部分。从业者应能通过简单的脚本运行智能体，从而轻松复现我们的发现。本文正文与补充材料中呈现的结果，均可遵循仓库中的说明完整复现。最后，我们还维护着一个活跃的在线帮助论坛，以协助解决任何复现问题或关于如何在 ITBench 上构建的疑问。
+
+\section*{致谢}
+
+We would like to thank everyone at IBM and University of Illinois at Urbana-Champaign not explicitly on the author list, who have shared excitement, given feedback on early prototype, and worked with or supported the core team on many aspects of this project.
+
+In addition, we acknowledge the support of our colleagues in IBM Instana: Marc Palaci-Olgun, Guangya Liu, Brad Blancett, Chad Holliday, Arthur De Magalhaes, Ragu Kattinakere, Chris Bailey, Isabell Sippili, and Danilo Florissi; IBM Granite and Data Model Factory: Hui Wu and Bing Zhang; IBM Emerging Technology Engineering: Aditya Gidh, Mike Sava, Bill Rippon, and Danny Barnett; IBM UX Research: James Sutton, Connor Leech, and Justin McNair; IBM Research: Michal Shmueli-Scheuer, Lilach Edelstein, and Roy Bar-Haim.
+\section*{参考文献}
+
+\begin{enumerate}[leftmargin=2em,itemsep=2pt]
+
+\item CISO Compliance Assessment Agent. \url{https://github.com/IBM/itbench-ciso-caa-agent?tab=readme-ov-file}, a. Accessed: 2025-01-30.
+
+\item CISO Compliance Assessment Agent. \url{https://github.com/IBM/itbench-sample-scenarios/tree/main/ciso}, b. Accessed: 2025-01-30.
+
+\item Ansible. \url{https://www.redhat.com/en/technologies/management/ansible}, a. Accessed: 2025-01-30.
+
+\item OPA Gatekeeper. \url{https://kubernetes.io/blog/2019/08/06/opa-gatekeeper-policy-and-governance-for-kubernetes/}, b. Accessed: 2025-01-30.
+
+\item Kyverno, Policy as Code, Simplified! \url{https://kyverno.io}, c. Accessed: 2025-01-30.
+
+\item Open Policy Agent. \url{https://github.com/open-policy-agent/opa}, d. Accessed: 2025-01-30.
+
+\item NIST Cybersecurity Framework 2.0 Quick-Start Guide for Creating and Using Organizational Profiles. \url{https://www.nist.gov/cyberframework}. Accessed: 2025-01-30.
+
+\item Crew ai. \url{https://www.crewai.com/}. Accessed: 2025-01-30.
+
+\item Datadog. \url{https://www.datadoghq.com/}. Accessed: 2024-11-30.
+
+\item Dynatrace. \url{https://www.dynatrace.com/}. Accessed: 2024-11-30.
+
+\item Grafana. \url{https://grafana.com}. Accessed: 2025-01-30.
+
+\item Instana. \url{https://www.ibm.com/products/instana}. Accessed: 2024-11-30.
+
+\item Jaeger. \url{https://www.jaegertracing.io/}. Accessed: 2025-01-30.
+
+\item Kubernetes. \url{https://kubernetes.io/}. Accessed: 2025-01-30.
+
+\item Grafana Loki. \url{https://github.com/grafana/loki}. Accessed: 2025-01-30.
+
+\item Prometheus. \url{https://prometheus.io/}. Accessed: 2025-01-30.
+
+\item T. Ahmed, S. Ghosh, C. Bansal, T. Zimmermann, X. Zhang, and S. Rajmohan. Recommending root-cause and mitigation steps for cloud incidents using large language models. In \textit{2023 IEEE/ACM 45th International Conference on Software Engineering (ICSE)}, pages 1737--1749, 2023a. doi: 10.1109/ICSE48619.2023.00149.
+
+\item T. Ahmed, S. Ghosh, C. Bansal, T. Zimmermann, X. Zhang, and S. Rajmohan. Recommending root-cause and mitigation steps for cloud incidents using large language models. In \textit{2023 IEEE/ACM 45th International Conference on Software Engineering (ICSE)}, pages 1737--1749, 2023b. IEEE, 2023b.
+
+\item B. Arzani, S. Ciraci, B. T. Loo, A. Schuster, and G. Outhred. Taking the blame game out of data centers operations with netpoirot. In \textit{Proceedings of the 2016 ACM SIGCOMM Conference}, pages 440--453, 2016.
+
+\item S. Ashok, V. Harsh, B. Godfrey, R. Mittal, S. Parthasarathy, and L. Shwartz. Traceweaver: Distributed request tracing for microservices without application modification. In \textit{Proceedings of the ACM SIGCOMM 2024 Conference}, pages 828--842, 2024.
+
+\item A. Avizienis, J.-C. Laprie, and B. Randell. Basic Concepts and Taxonomy of Dependable and Secure Computing. \textit{IEEE Transactions on Dependable and Secure Computing (TDSC)}, 1(1):1--23, Jan. 2004.
+
+\item F. Bagehorn, J. Rios, S. Jha, R. Filepp, L. Shwartz, N. Abe, and X. Yang. A fault injection platform for learning aiops models. In \textit{Proceedings of the 37th IEEE/ACM International Conference on Automated Software Engineering}, pages 1--5, 2022.
+
+\item L. A. Barroso, U. H\"olzle, and P. Ranganathan. \textit{The Datacenter as a Computer: Designing Warehouse-Scale Machines}. Morgan and Claypool Publishers, 3 edition, 2018.
+
+\item B. Beyer, N. R. Murphy, D. K. Rensin, K. Kawahara, and S. Thorne. \textit{Site Reliability Workbook: Practical Ways to Implement SRE}. O'Reilly Media, Aug. 2018.
+
+\item B. Bogin, K. Yang, S. Gupta, K. Richardson, E. Bransom, P. Clark, A. Sabharwal, and T. Khot. Super: Evaluating agents on setting up and executing tasks from research repositories. \textit{ArXiv}, abs/2409.07440, 2024.
+
+\item L. Boisvert, M. Thakkar, M. Gasse, M. Caccia, T. L. S. D. Chezelles, Q. Cappart, N. Chapados, A. Lacoste, and A. Drouin. Workarena++: Towards compositional planning and reasoning-based common knowledge work tasks, 2024.
+
+\item C. Boulton. Rising cloud costs leave CIOs seeking ways to cope. \url{https://www.cio.com/article/3496509/rising-cloud-costs-leave-cios-seeking-ways-to-cope.html}. Accessed: 2025-01-30.
+
+\item K. Budhathoki, L. Minorics, P. Bl\"obaum, and D. Janzing. Causal structure-based root cause analysis of outliers. In \textit{International Conference on Machine Learning}, pages 2357--2369. PMLR, 2022.
+
+\item B. Burns, B. Grant, D. Oppenheimer, E. Brewer, and J. Wilkes. Borg, Omega, and Kubernetes. \textit{Communications of the ACM}, 59(5):50--57, May 2016.
+
+\item S. Chakraborty, S. Garg, S. Agarwal, A. Chauhan, and S. K. Saini. Causil: Causal graph for instance level microservice data. In \textit{Proceedings of the ACM Web Conference 2023}, pages 2905--2915, 2023.
+
+\item M. Chen, J. Tworek, H. Jun, Q. Yuan, H. P. de Oliveira Pinto, and J. K. et. al. Evaluating large language models trained on code, 2021.
+
+\item Y. Chen, H. Xie, M. Ma, Y. Kang, X. Gao, L. Shi, Y. Cao, X. Gao, H. Fan, M. Wen, et al. Empowering practical root cause analysis by large language models for cloud incidents. \textit{arXiv preprint arXiv:2305.15778}, 2023.
+
+\item Y. Chen, M. Shetty, G. Somashekar, M. Ma, Y. Simmhan, J. Mace, C. Bansal, R. Wang, and S. Rajmohan. Aiopslab: A holistic framework for evaluating ai agents for enabling autonomous cloud. November 2024a.
+
+\item Y. Chen, H. Xie, M. Ma, Y. Kang, X. Gao, L. Shi, Y. Cao, X. Gao, H. Fan, M. Wen, J. Zeng, S. Ghosh, X. Zhang, C. Zhang, Q. Lin, S. Rajmohan, D. Zhang, and T. Xu. Automatic Root Cause Analysis via Large Language Models for Cloud Incidents. In \textit{Proceedings of the 19th European Conference on Computer Systems (EuroSys'24)}, Apr. 2024b.
+
+\item Y. Chen, H. Xie, M. Ma, Y. Kang, X. Gao, L. Shi, Y. Cao, X. Gao, H. Fan, M. Wen, et al. Automatic root cause analysis via large language models for cloud incidents. In \textit{Proceedings of the Nineteenth European Conference on Computer Systems}, pages 674--688, 2024c.
+
+\item CIS. Center for Internet Security Benchmarks List. \url{https://www.cisecurity.org/cis-benchmarks}, 2024. Accessed: 2025-01-30.
+
+\item O. Community. Opentelemetry astronomy shop demo. \url{https://opentelemetry.io/docs/demo/}, 2024. Accessed: 2025-01-30.
+
+\item J. Dean. Designs, Lessons and Advice from Building Large Distributed Systems. In \textit{Proceedings of the the 3rd Large Scale Distributed Systems and Middleware (LADIS'09)}, Oct. 2009.
+
+\item C. Di Martino, F. Baccanico, J. Fullop, W. Kramer, Z. Kalbarczyk, and R. Iyer. Lessons Learned From the Analysis of System Failures at Petascale: The Case of Blue Waters. In \textit{Proceedings of the 44th Annual IEEE/IFIP International Conference on Dependable Systems and Networks (DSN'14)}, 2014.
+
+\item Y. Diao, D. Horn, A. Kipf, O. Shchur, I. Benito, W. Dong, D. Pagano, P. Pfeil, V. Nathan, M. Narayanaswamy, and T. Kraska. Forecasting algorithms for intelligent resource scaling: An experimental analysis. In \textit{Proceedings of the 2024 ACM Symposium on Cloud Computing}, pages 126--143, 2024.
+
+\item D. Donoho. Comments on Michael Jordan's essay ``the AI revolution hasn't happened yet''. \textit{Harvard Data Science Review}, June 2019.
+
+\item A. Drouin, M. Gasse, M. Caccia, I. H. Laradji, M. D. Verme, T. Marty, L. Boisvert, Q. Cappart, D. Vazquez, N. Chapados, and A. Lacoste. Workarena: How capable are web agents at solving common knowledge work tasks?, 2024.
+
+\item H. Fang, T. Tao, and C. Zhai. Diagnostic evaluation of information retrieval models. \textit{ACM Transactions on Information Systems (TOIS)}, 29(2):1--42, 2011.
+
+\item Y. Fangkai, L. Wang, Z. Xu, J. Zhang, L. Li, B. Qiao, C. Couturier, C. Bansal, S. Ram, Z. Ma, I. Goiri, E. Cortez, T. Yang, V. Ruehle, S. Rajmohan, Q. Lin, and D. Zhang. Snape: Reliable and low-cost computing with mixture of spot and on-demand vms. In \textit{Proceedings of the International Conference on Architectural Support for Programming Languages and Operating Systems, Volume 3}, pages 631--643, 2023.
+
+\item B. Feng, Z. Ding, and C. Jiang. Fast: A forecasting model with adaptive sliding window and time locality integration for dynamic cloud workloads. In \textit{IEEE Transactions on Services Computing}, pages 1184--1197, 2023.
+
+\item R. Fonseca, G. Porter, R. H. Katz, and S. Shenker. \{X-Trace\}: A pervasive network tracing framework. In \textit{4th USENIX Symposium on Networked Systems Design \& Implementation (NSDI 07)}, 2007.
+
+\item C. for Internet Security (CIS). \textit{CIS Benchmarks}. Center for Internet Security, 2024. Technical guidelines for secure system configurations.
+
+\item D. Ford, F. Labelle, F. I. Popovici, M. Stokely, V.-A. Truong, L. Barroso, C. Grimes, and S. Quinlan. Availability in Globally Distributed Storage Systems. In \textit{Proceedings of the 9th USENIX Conference on Operating Systems Design and Implementation (OSDI'10)}, Oct. 2010.
+
+\item F. Foundation. Finops data reports. \url{https://data.finops.org}, 2024a. Accessed: 2024-12-11.
+
+\item F. Foundation. Key priorities shift in 2024. \url{https://www.finops.org/insights/key-priorities-shift-in-2024/}, 2024b. Accessed: 2024-12-11.
+
+\item F. Foundation. Using efficiency metrics to evaluate cloud optimization and value between parts of the organization or against industry peers to inform decision-making and align finops with business objectives. \url{https://www.finops.org/framework/capabilities/benchmarking/}, 2025a. Accessed: 2025-01-30.
+
+\item F. Foundation. Finops kpis. \url{https://www.finops.org/wg/finops-kpis/}, 2025b. Accessed: 2025-01-30.
+
+\item M. Fuller. State of FinOps '24: Top priorities shift to reducing waste and managing commitments. \url{https://www.finops.org/insights/key-priorities-shift-in-2024/}, 2024.
+
+\item J. Gao, N. Yaseen, R. MacDavid, F. V. Frujeri, V. Liu, R. Bianchini, R. Aditya, X. Wang, H. Lee, D. Maltz, et al. Scouts: Improving the diagnosis process through domain-customized incident routing. In \textit{Proceedings of the Annual conference of the ACM Special Interest Group on Data Communication on the applications, technologies, architectures, and protocols for computer communication}, pages 253--269, 2020.
+
+\item S. Ghosh, M. Shetty, C. Bansal, and S. Nath. How to fight production incidents?: an empirical study on a large-scale cloud service. In \textit{Proceedings of the 13th Symposium on Cloud Computing (SoCC'22)}, Nov. 2022.
+
+\item H. S. Gunawi, M. Hao, T. Leesatapornwongsa, T. Patana-anake, T. Do, J. Adityatama, K. J. Eliazar, A. Laksono, J. F. Lukman, V. Martin, and A. D. Satria. What bugs live in the cloud? a study of 3000+ issues in cloud systems. In \textit{Proceedings of the 5th ACM Symposium on Cloud Computing (SoCC'14)}, Nov. 2014.
+
+\item H. S. Gunawi, M. Hao, R. O. Suminto, A. Laksono, A. D. Satria, J. Adityatama, and K. J. Eliazar. Why Does the Cloud Stop Computing? Lessons from Hundreds of Service Outages. In \textit{Proceedings of the 7th ACM Symposium on Cloud Computing (SoCC'16)}, Oct. 2016.
+
+\item H. S. Gunawi, R. O. Suminto, R. Sears, C. Golliher, S. Sundararaman, X. Lin, T. Emami, W. Sheng, N. Bidokhti, C. McCaffrey, G. Grider, P. M. Fields, K. Harms, R. B. Ross, A. Jacobson, R. Ricci, K. Webb, P. Alvaro, H. B. Runesha, M. Hao, and H. Li. Fail-Slow at Scale: Evidence of Hardware Performance Faults in Large Production Systems. In \textit{Proceedings of the 16th USENIX Conference on File and Storage Technologies (FAST'18)}, Feb. 2018.
+
+\item C. Guo, L. Yuan, D. Xiang, Y. Dang, R. Huang, D. Maltz, Z. Liu, V. Wang, B. Pang, H. Chen, Z.-W. Lin, and V. Kurien. Pingmesh: A large-scale system for data center network latency measurement and analysis. \textit{SIGCOMM Comput. Commun. Rev.}, 45(4):139--152, Aug. 2015. ISSN 0146-4833. doi: 10.1145/2829988.2787496.
+
+\item Harvard Business Review Research Report. Taming it complexity through effective strategies and partnerships. \url{https://hbr.org/sponsored/2022/11/taming-it-complexity-through-effective-strategies-and-partnerships}, 2022.
+
+\item P. H. Hochschild, P. Turner, J. C. Mogul, R. Govindaraju, P. Ranganathan, D. E. Culler, and A. Vahdat. Cores that don't count. In \textit{Proceedings of the 18th Workshop on Hot Topics in Operating Systems (HotOS'21)}, June 2021.
+
+\item J. Huang, X. Chen, S. Mishra, H. S. Zheng, A. W. Yu, X. Song, and D. Zhou. Large language models cannot self-correct reasoning yet. \textit{arXiv preprint arXiv:2310.01798}, 2023.
+
+\item L. Huang, M. Magnusson, A. B. Muralikrishna, S. Estyak, R. Isaacs, A. Aghayev, T. Zhu, and A. Charapko. Metastable Failures in the Wild. In \textit{Proceedings of the 16th USENIX Symposium on Operating Systems Design and Implementation (OSDI'22)}, July 2022.
+
+\item IDC. Storm clouds ahead: Missed expectations in cloud computing. \url{https://blogs.idc.com/2024/10/28/storm-clouds-ahead-missed-expectations-in-cloud-computing/}, 2024. Blog post, published on 28 October 2024.
+
+\item A. Ikram, S. Chakraborty, S. Mitra, S. Saini, S. Bagchi, and M. Kocaoglu. Root cause analysis of failures in microservices through causal discovery. \textit{Advances in Neural Information Processing Systems}, 35:31158--31170, 2022.
+
+\item S. Jha, S. Cui, S. S. Banerjee, T. Xu, J. Enos, M. Showerman, Z. T. Kalbarczyk, and R. K. Iyer. Live forensics for hpc systems: A case study on distributed storage systems. In \textit{SC20: International Conference for High Performance Computing, Networking, Storage and Analysis}, pages 1--16. IEEE, 2020.
+
+\item C. E. Jimenez, J. Yang, A. Wettig, S. Yao, K. Pei, O. Press, and K. R. Narasimhan. SWE-bench: Can language models resolve real-world github issues? In \textit{The Twelfth International Conference on Learning Representations}, 2024.
+
+\item A. S. John. Idc predicts 80\% of cios to leverage ai and automation for business agility and insights by 2028, 2024.
+
+\item E. Jonas, J. Schleier-Smith, V. Sreekanti, C.-C. Tsai, A. Khandelwal, Q. Pu, V. Shankar, J. M. Carreira, K. Krauth, N. Yadwadkar, J. Gonzalez, R. A. Popa, I. Stoica, and D. A. Patterson. Cloud Programming Simplified: A Berkeley View on Serverless Computing. Technical Report UCB/EECS-2019-3, University of California at Berkeley, Feb. 2019.
+
+\item S. Kapoor, B. Stroebl, Z. S. Siegel, N. Nadgir, and A. Narayanan. Ai agents that matter. \url{https://arxiv.org/abs/2407.01502}, 2024.
+
+\item S. Kendrick. What Takes Us Down? \textit{USENIX ;login:}, 37 (5):37--45, Oct. 2012.
+
+\item S. M. Kerner. Crowdstrike outage explained: What caused it and what's next. \url{https://www.techtarget.com/whatis/feature/Explaining-the-largest-IT-outage-in-history-and-whats-next}, 2024.
+
+\item J. Y. Koh, R. Lo, L. Jang, V. Duvvur, M. C. Lim, P.-Y. Huang, G. Neubig, S. Zhou, R. Salakhutdinov, and D. Fried. Visualwebarena: Evaluating multimodal agents on realistic visual web tasks, 2024.
+
+\item J. B. Leners, H. Wu, W.-L. Hung, M. K. Aguilera, and M. Walfish. Detecting failures in distributed systems with the falcon spy network. In \textit{Proceedings of the Twenty-Third ACM Symposium on Operating Systems Principles}, pages 279--294, 2011.
+
+\item H. Liu, S. Lu, M. Musuvathi, and S. Nath. What bugs cause production cloud incidents? In \textit{Proceedings of the 16th Workshop on Hot Topics in Operating Systems (HotOS'19)}, May 2019.
+
+\item M. Liu, L. Pan, and S. Liu. Cost optimization for cloud storage from user perspectives: Recent advances, taxonomy, and survey. \textit{ACM Computing Surveys}, 55(13s):1--37, 2023a.
+
+\item Q. Liu and J. Paparrizos. The elephant in the room: Towards a reliable time-series anomaly detection benchmark. In \textit{NeurIPS 2024}, 2024a.
+
+\item Q. Liu and J. Paparrizos. The elephant in the room: Towards a reliable time-series anomaly detection benchmark. In \textit{The Thirty-eight Conference on Neural Information Processing Systems Datasets and Benchmarks Track}, 2024b.
+
+\item Z. Liu, C. Benge, and S. Jiang. Ticket-bert: Labeling incident management tickets with language models. \textit{arXiv preprint arXiv:2307.00108}, 2023b.
+
+\item L. Ma, T. He, A. Swami, D. Towsley, K. K. Leung, and J. Lowe. Node failure localization via network tomography. In \textit{Proceedings of the 2014 Conference on Internet Measurement Conference}, pages 195--208, 2014.
+
+\item B. Maurer. Fail at Scale: Reliability in the Face of Rapid Change. \textit{Communications of the ACM}, 58(11):44--49, Nov. 2015.
+
+\item T. Melissaris, K. Nabar, R. Radut, S. Rehmtulla, A. Shi, S. Chandrashekar, and I. Papapanagiotou. Elastic Cloud Services: Scaling Snowflake's Control Plane. In \textit{Proceedings of the 13th ACM Symposium on Cloud Computing (SOCC'22)}, Nov. 2022.
+
+\item Microsoft and contributors. Dowhy: A python library for causal inference. \url{https://www.pywhy.org/dowhy/v0.12/}, 2023. Version 0.12.
+
+\item M. D. L. C. Miguel Carreon. Idc: 80
+
+\item N. R. Murphy, B. Beyer, C. Jones, and J. Petoff. \textit{Site Reliability Engineering: Monitoring Distributed Systems}. O'Reilly Media, 2024. Accessed: 2024-11-07.
+
+\item NIST 800-53. NIST Special Publication 800-53 Revision 5. \url{https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-53r5.pdf}, 2020.
+
+\item A. Nodari, J. Nurminen, and C. Fruhwirth. Inventory theory applied to cost optimization in cloud computing. In \textit{Proceedings of the 31st annual ACM symposium on applied computing}, pages 470--473, 2016.
+
+\item N. OSCAL. Open security controls assessment language. \url{https://pages.nist.gov/OSCAL/}, 2024. Accessed: 2025-01-30.
+
+\item OSCAL-compass. Oscal-compass cncf sandbox project. \url{https://github.com/oscal-compass}, 2024. Accessed: 2025-01-30.
+
+\item P. Osypanka and P. Nawrocki. Resource usage cost optimization in cloud computing using machine learning. In \textit{IEEE Transactions on Cloud Computing}, pages 2079--2089, 2020.
+
+\item L. Pan, M. Saxon, W. Xu, D. Nathani, X. Wang, and W. Y. Wang. Automatically correcting large language models: Surveying the landscape of diverse self-correction strategies. \textit{arXiv preprint arXiv:2308.03188}, 2023.
+
+\item N. Papanikolaou, S. Pearson, and M. C. Mont. Towards Natural-Language Understanding and Automated Enforcement of Privacy Rules and Regulations in the Cloud: Survey and Bibliography. In \textit{Secure and Trust Computing, Data Management, and Applications}, 2011.
+
+\item E. Parliament and the Council of the European Union. Digital operational resilience act for the financial sector and amending regulations. \url{https://eur-lex.europa.eu/EN/legal-content/summary/digital-operational-resilience-for-the-financial-sector.html}, 2024.
+
+\item D. Patterson, A. Brown, P. Broadwell, G. Candea, M. Chen, J. Cutler, P. Enriquez, A. Fox, E. Kiciman, M. Merzbacher, D. Oppenheimer, N. Sastry, W. Tetzlaff, J. Traupman, and N. Treuhaft. Recovery-Oriented Computing (ROC): Motivation, Definition, Techniques, and Case Studies. Technical Report UCB//CSD-02-1175, University of California Berkeley, Mar. 2002.
+
+\item L. Pham, H. Ha, and H. Zhang. Root cause analysis for microservice system based on causal inference: How far are we? In \textit{Proceedings of the 39th IEEE/ACM International Conference on Automated Software Engineering}, pages 706--715, 2024.
+
+\item S. Pujar, L. Buratti, X. Guo, N. Dupuis, B. Lewis, S. Suneja, A. Sood, G. Nalawade, M. Jones, A. Morari, and R. Puri. Automated code generation for information technology tasks in yaml through large language models. \url{https://arxiv.org/abs/2305.02783}, 2023.
+
+\item B. Qiao, F. Yang, C. Luo, Y. Wang, J. Li, Q. Lin, H. Zhang, M. Datta, A. Zhou, T. Moscibroda, S. Rajmohan, and D. Zhang. Intelligent container reallocation at microsoft 365. In \textit{Proceedings of the 29th ACM Joint Meeting on European Software Engineering Conference and Symposium on the Foundations of Software Engineering}, pages 1438--1443, 2021.
+
+\item G. Quattrocchi, E. Incerto, R. Pinciroli, C. Trubiani, and L. Baresi. Autoscaling solutions for cloud applications under dynamic workloads. In \textit{IEEE Transactions on Services Computing}, pages 804--820, 2024.
+
+\item D. Roy, X. Zhang, R. Bhave, C. Bansal, P. Las-Casas, R. Fonseca, and S. Rajmohan. Exploring llm-based agents for root cause analysis. \url{https://arxiv.org/abs/2403.04123}, 2024.
+
+\item G. Sahu, A. Puri, J. Rodriguez, A. Abaskohi, M. Chegini, A. Drouin, P. Taslakian, V. Zantedeschi, A. Lacoste, D. Vazquez, et al. Insightbench: Evaluating business analytics agents through multi-step insight generation. \textit{arXiv preprint arXiv:2407.06423}, 2024.
+
+\item Salesforce. Pyrca: A python machine learning library for root cause analysis. \url{https://github.com/salesforce/PyRCA}, 2023. Version 1.0.1.
+
+\item N. Shinn, F. Cassano, E. Berman, A. Gopinath, K. Narasimhan, and S. Yao. Reflexion: Language agents with verbal reinforcement learning, 2023.
+
+\item B. H. Sigelman, L. A. Barroso, M. Burrows, P. Stephenson, M. Plakal, D. Beaver, S. Jaspan, and C. Shanbhag. Dapper, a large-scale distributed systems tracing infrastructure. 2010.
+
+\item J. Storment and M. Fuller. \textit{Cloud FinOps}. O'Reilly Media, 2nd edition, 2023. Chapter 1.
+
+\item X. Sun, R. Cheng, J. Chen, E. Ang, O. Legunsen, and T. Xu. Testing Configuration Changes in Context to Prevent Production Failures. In \textit{Proceedings of the 14th USENIX Symposium on Operating Systems Design and Implementation (OSDI'20)}, Nov. 2020.
+
+\item C. Tan, Z. Jin, C. Guo, T. Zhang, H. Wu, K. Deng, D. Bi, and D. Xiang. \{NetBouncer\}: Active device and link failure localization in data center networks. In \textit{16th USENIX Symposium on Networked Systems Design and Implementation (NSDI 19)}, pages 599--614, 2019.
+
+\item C. Tang, T. Kooburat, P. Venkatachalam, A. Chander, Z. Wen, A. Narayanan, P. Dowell, and R. Karl. Holistic Configuration Management at Facebook. In \textit{Proceedings of the 25th ACM Symposium on Operating System Principles (SOSP'15)}, Oct. 2015.
+
+\item C. Tang, K. Yu, K. Veeraraghavan, J. Kaldor, S. Michelson, T. Kooburat, A. Anbudurai, M. Clark, K. Gogia, L. Cheng, B. Christensen, A. Gartrell, M. Khutornenko, S. Kulkarni, M. Pawlowski, T. Pelkonen, A. Rodrigues, R. Tibrewal, V. Venkatesan, and P. Zhang. Twine: A Unified Cluster Management System for Shared Infrastructure. In \textit{Proceedings of the 14th USENIX Conference on Operating Systems Design and Implementation (OSDI'20)}, Nov. 2020.
+
+\item L. Tang, C. Bhandari, Y. Zhang, A. Karanika, S. Ji, I. Gupta, and T. Xu. Fail through the Cracks: Cross-System Interaction Failures in Modern Cloud Systems. In \textit{Proceedings of the 18th European Conference on Computer Systems (EuroSys'23)}, May 2023.
+
+\item H. Tupsamudre, A. Kumar, V. Agarwal, N. Gupta, and S. Mondal. AI-Assisted Controls Change Management for Cybersecurity in the Cloud. In \textit{Thirty-Fourth Annual Conference on Innovative Applications of Artificial Intelligence (IAAI-22)}, 2022.
+
+\item L. R. Varshney, N. S. Keskar, and R. Socher. Pre-trained AI models: Performativity, mobility, and change. arXiv:1909.03290 [cs.CY]., Sept. 2019.
+
+\item K. Veeraraghavan, J. Meza, S. Michelson, S. Panneerselvam, A. Gyori, D. Chou, S. Margulis, D. Obenshain, S. Padmanabha, A. Shah, Y. J. Song, and T. Xu. Maelstrom: Mitigating Datacenter-level Disasters by Draining Interdependent Traffic Safely and Efficiently. In \textit{Proceedings of the 13th USENIX Symposium on Operating Systems Design and Implementation (OSDI'18)}, Oct. 2018.
+
+\item Q. Wang, J. Rios, S. Jha, K. Shanmugam, F. Bagehorn, X. Yang, R. Filepp, N. Abe, and L. Shwartz. Fault injection based interventional causal learning for distributed applications. In \textit{Proceedings of the AAAI Conference on Artificial Intelligence}, volume 37, pages 15738--15744, 2023.
+
+\item J. Xie, K. Zhang, J. Chen, T. Zhu, R. Lou, Y. Tian, Y. Xiao, and Y. Su. Travelplanner: A benchmark for real-world planning with language agents. \url{https://arxiv.org/abs/2402.01622}, 2024a.
+
+\item Z. Xie, Y. Zheng, L. Ottens, K. Zhang, C. Kozyrakis, and J. Mace. Cloud atlas: Efficient fault localization for cloud systems using language models and causal insight. \url{https://arxiv.org/abs/2407.08694}, 2024b.
+
+\item B. Xu, Z. Peng, B. Lei, S. Mukherjee, Y. Liu, and D. Xu. Rewoo: Decoupling reasoning from observations for efficient augmented language models. \url{https://arxiv.org/abs/2305.18323}, 2023.
+
+\item T. Xu, J. Zhang, P. Huang, J. Zheng, T. Sheng, D. Yuan, Y. Zhou, and S. Pasupathy. Do Not Blame Users for Misconfigurations. In \textit{Proceedings of the 24th Symposium on Operating System Principles (SOSP'13)}, Farmington, PA, Nov. 2013.
+
+\item J. Yang, C. E. Jimenez, A. Wettig, K. Lieret, S. Yao, K. Narasimhan, and O. Press. Swe-agent: Agent-computer interfaces enable automated software engineering. \textit{arXiv preprint arXiv:2405.15793}, 2024a.
+
+\item X. Yang, R. Arora, S. Jha, C. Narayanaswami, C. Lam, J. Leichter, Y. Deng, and D. Sow. Optimizing it finops and sustainability through unsupervised workload characterization. In \textit{Proceedings of the AAAI Conference on Artificial Intelligence.}, pages 22990--22996, 2024b.
+
+\item S. Yao, J. Zhao, D. Yu, N. Du, I. Shafran, K. R. Narasimhan, and Y. Cao. React: Synergizing reasoning and acting in language models. In \textit{The Eleventh International Conference on Learning Representations}, 2023.
+
+\item Z. Yao, C. Pei, W. Chen, H. Wang, L. Su, H. Jiang, Z. Xie, X. Nie, and D. Pei. Chain-of-event: Interpretable root cause analysis for microservices through automatically learning weighted event causal graph. In \textit{Companion Proceedings of the 32nd ACM International Conference on the Foundations of Software Engineering}, pages 50--61, 2024.
+
+\item A. Yehoshua, I. Kolchinsky, and A. Schuster. Cco - cloud cost optimizer. In \textit{Proceedings of the 16th ACM International Conference on Systems and Storage}, pages 137--137, 2023.
+
+\item X. Zhang, T. Mittal, C. Bansal, R. Wang, M. Ma, Z. Ren, H. Huang, and S. Rajmohan. Flash: A workflow automation agent for diagnosing recurring incidents. October 2024.
+
+\item L. Zheng, W.-L. Chiang, Y. Sheng, S. Zhuang, Z. Wu, Y. Zhuang, Z. Lin, Z. Li, D. Li, E. P. Xing, H. Zhang, J. E. Gonzalez, and I. Stoica. Judging llm-as-a-judge with mt-bench and chatbot arena. \url{https://arxiv.org/abs/2306.05685}, 2023.
+
+\item X. Zhou, X. Peng, T. Xie, J. Sun, C. Ji, W. Li, and D. Ding. Fault analysis and debugging of microservice systems: Industrial survey, benchmark system, and empirical study. \textit{IEEE Transactions on Software Engineering}, 47(2):243--260, 2018.
+
+\item Z. Zhu, C. Lee, X. Tang, and P. He. Hemirca: Fine-grained root cause analysis for microservices with heterogeneous data sources. \textit{ACM Transactions on Software Engineering and Methodology}, 33(8):1--25, 2024.
+
+\end{enumerate}
+\section{附录 A：相关工作（扩展）}
+
+\paragraph{用于解决 IT 自动化任务的语言模型与智能体。}
+人工智能/机器学习（AI/ML）正越来越多地用于处理 IT 自动化任务。下面按各类角色分别介绍相关工作。
+
+\subsection{A.1 站点可靠性工程（Site Reliability Engineering）}
+
+IT 场景\footnote{我们以宽泛的含义使用“场景（scenario）”一词，用以指代故障、性能问题、合规问题以及成本异常。}的解决涵盖了检测（例如，识别异常或服务中断）(Guo et al., 2015; Leners et al., 2011; Sigelman et al., 2010; Fonseca et al., 2007)、诊断（例如，通过指标与日志定位根因）(Tan et al., 2019; Jha et al., 2020; Ma et al., 2014; Salesforce, 2023) 以及缓解/修复（例如，运维层面的修复或代码变更）等任务。这些工作往往依赖于若干支撑性任务，例如工单分析与路由 (Gao et al., 2020; Liu et al., 2023b; Arzani et al., 2016)、异常检测 (Ashok et al., 2024; Chakraborty et al., 2023; Pham et al., 2024; Yao et al., 2024)、拓扑抽取 (Liu and Paparrizos, 2024a)、因果分析 (Budhathoki et al., 2022; Microsoft and contributors, 2023; Ikram et al., 2022; Chakrabarti et al., 2023) 以及干预性分析 (Wang et al., 2023; Bagehorn et al., 2022)。显然，这一领域已有大量研究，但由于真实世界系统的复杂性、故障的多变性，以及将上下文知识融入 AI 系统的挑战 (Jha et al., 2020)，全自动地解决故障或向人类提供可执行的洞见仍然难以实现。
+
+大语言模型（LLM）的近期进展推动了其被用于工单数据分析与诊断任务 (Roy et al., 2024; Ahmed et al., 2023a; Xie et al., 2024b; Chen et al., 2023; Zhang et al., 2024)。其中最具代表性的例子包括用 LLM 进行因果图构建的 Cloud Atlas (Xie et al., 2024b)，以及用于工单分析、旨在诊断与缓解事件的 RCACopilot (Chen et al., 2023)。然而，与其他技术相比，它们的表现欠佳。例如，(Roy et al., 2024) 表明思维链（chain-of-thought）方法的准确率仅为 35\%。更近期的工作中，LLM 被用于智能体式（agentic）工作流，借助一系列真实或虚拟环境中的工具来完成诸如网页导航 (Drouin et al., 2024; Boisvert et al., 2024; Koh et al., 2024)、系统控制 (Sahu et al., 2024; Zhang et al., 2024; Chen et al., 2024a) 以及代码生成 (Yang et al., 2024a) 等任务。然而，这些工作的初步结果在成功率上表现出很高的方差——从 InsightBench (Boisvert et al., 2024) 中的 35\%，到 Flash (Chen et al., 2024a) 中用于事件解决的基于 ReAct 的智能体（用于工单数据分析 (Roy et al., 2024)）所达到的 100\%，尽管后者本应是一项远比在表格与工单数据中发现既有洞见更困难的任务。我们自己的研究结果同样表明，LLM 与智能体在持续稳定地完成事件解决任务方面存在困难。\textit{我们断言，成功率上的方差之所以存在，是因为这些数据集在现实性方面存在差异。}这凸显出业界迫切需要标准化、开源的评测基准（benchmark），以有效评估并改进 AI 方法在事件解决任务上的效能。
+
+\paragraph{面向 SRE 的评测基准。}
+IT 运维（ITOps）任务的评测基准生态仍处于早期阶段，仅有少数现有工作针对该领域的特定方面展开。AIOpsLab (Chen et al., 2024a) 聚焦于解决在真实环境中创建的、涵盖九个不同问题的 IT 事件。但它并未遵循 SRE 在系统与应用可观测性（observability）方面的最佳实践，例如它使用了一套告警管理系统，缺乏全面的覆盖度分析，也没有用于系统化自动评测的排行榜（leaderboard）。
+
+InsightBench (Sahu et al., 2024) 针对 ServiceNow 工单数据的分析——这是事件路由与查找相关历史事件的一项关键支撑任务——但其对合成数据的依赖以及缺乏真实环境，限制了它在智能体式工作流中的适用性。类似地，TSB-AD (Liu and Paparrizos, 2024b) 是为单变量与多变量异常检测（事件检测的一项核心任务）而设计的。然而，它仅限于合成数据，且只聚焦于异常检测。
+
+\subsection{A.2 合规（Compliance）}
+
+合规自动化软件正在兴起，旨在帮助企业简化并自动化合规流程，减少人工监控与法规追踪的需求。这确保了对法律法规的持续遵守。其中，合规即代码（compliance as code）是 IT 行业中一项非常新近的进展，其推动力来自企业以及审计机构正从年度审计转向期望对受监管环境的合规态势与遭受网络攻击的风险进行持续、自动化的度量与管控。
+
+近期工作 (Papanikolaou et al., 2011; Tupsamudre et al., 2022) 已应用 AI/ML 技术来加速这些任务，重点是将监管要求映射到诸如 NIST 800-53 (NIST 800-53) 之类的标准控制框架上。我们在当前 ITBench 方案中的智能体式自动化，开创性地借助 AI/ML 来撰写合规制品，通过将合规即代码桥接为策略即代码（policy as code）来实现这一目标。相较于合规即代码，策略引擎在 IT 行业中已有较长的应用历史；然而，诸如 (Int, d) 这样新兴的通用型策略引擎试图解决业界对一个统一的持续合规框架的需求。据我们所知，目前尚无任何工作——尽管这是关键且亟需的——涉及对合规自动化软件（无论是否带有智能体支持）进行评测基准化。
+
+\subsection{A.3 FinOps（财务运营）}
+
+IT 成本管理这一领域涵盖了多个学科，即 FinOps、IT 财务管理（IT Financial Management，ITFM）、技术业务管理（Technology Business Management，TBM）以及项目组合业务管理（Portfolio Business Management，PBM）。目前，FinOps 领域通常处理云成本 (Storment and Fuller, 2023; Yang et al., 2024b)，这些成本来自计算节点、内存、其他存储、网络等资源，并由某一超大规模云服务商（hyperscaler）产生。ITFM 则涵盖本地基础设施、许可、人工、采购的服务、技术支持等。TBM Council 提供了一套标准的分类法，用于描述成本来源、技术、IT 资源（IT towers）、应用与服务。此外，还存在针对特定行业（如医疗、银行等）对该分类法的扩展。从本质上说，这套分类法提供了一种普遍接受的方式来对 IT 成本及其他指标进行归类与报告。PBM 指的是在组织内部管理一系列项目与计划的实践，以确保其与整体业务战略保持一致，并通过高效配置资源来最大化其集体价值。FinOps 基金会（FinOps Foundation）已表示，未来它将逐步纳入来自 ITFM、TBM 与 PBM 的要素。
+
+目前，对于本文所采用的 FinOps 评测基准定义，尚不存在与之契合的评测基准。然而，多年来，FinOps 基金会 (Foundation, 2025a) 已编制了若干 KPI，可作为构建 FinOps 评测基准用例与场景的基础。当前 FinOps 基金会的 KPI 包括：
+
+\begin{itemize}
+\item 用量或支出分摊验证（Usage or Spend Apportionment Validation）
+\item 支出的总未预测方差（Total Unpredicted Variance of Spend）
+\item 由承诺折扣（commitment discount）覆盖的计算支出百分比（Percent of Compute Spend Covered by Commitment Discounts）
+\item 有效节省率百分比（Effective Savings Rate Percentage）
+\item 承诺折扣浪费百分比（Percentage of Commitment Discount Waste）
+\item 未使用资源百分比（Percent of Unused Resources）
+\item 自动扩缩效率率（Auto-scaling Efficiency Rate）
+\item 预测准确率（用量、支出）（Forecast Accuracy Rate (Usage, Spend)）
+\item 未分配的共享 CSP 云成本百分比（Percentage of Unallocated Shared CSP Cloud Cost）
+\item 预算与预测的 CSP 云支出方差百分比（Percentage Variance of Budgeted vs. Forecasted CSP Cloud Spend）
+\item 符合标签策略（tagging policy）的 CSP 云成本百分比（Percentage of CSP Cloud Costs that are Tagging Policy Compliant）
+\item 位于高频访问存储层（Frequent Access Tier）的存储百分比（Percent Storage on Frequent Access Tier）
+\item 遗留资源百分比（Percentage of Legacy Resource）
+\end{itemize}
+
+随着云计算的出现，学术界与工业界的研究社区也一直积极探索在平衡多重目标的同时优化成本的方法。FinOps 领域的近期工作聚焦于应用机器学习与数学优化技术 (Qiao et al., 2021; Yang et al., 2024b)，以更好地服务客户的云基础设施需求，同时为其提供如何优化整体云支出的洞见与建议。(Fangkai et al., 2023) 针对在存在多种供给选项（例如比按需虚拟机更便宜但可用性较低的竞价型虚拟机，spot VM）情况下，帮助客户在成本与资源可用性之间权衡取舍的问题。他们提出了一个框架，通过识别按需虚拟机与竞价型虚拟机的最优组合，使用受约束的强化学习（constrained reinforcement learning）来同时优化成本与可用性。诸如 (Diao et al., 2024; Feng et al., 2023; Quattrocchi et al., 2024) 之类的论文提出了用于针对服务等级目标扩缩云资源的预测算法，为更广泛的、由 FinOps 驱动的成本优化领域作出贡献。(Osypanka and Nawrocki, 2020) 使用异常检测、机器学习与粒子群优化来实现成本最优的云资源配置。(Liu et al., 2023a) 从用户视角出发，分析了使用云存储进行成本优化的过程，以探究其中的机会、动因与挑战。(Nodari et al., 2016) 聚焦于寻找按需实例与预留实例的最优组合，从而在满足需求的同时使成本最小化。他们将这一优化问题建模为一个随机库存控制问题（stochastic inventory control problem）。
+
+(Yehoshua et al., 2023) 提出了一个可扩展的成本优化器，它在考虑资源需求与约束以最小化成本的前提下，为公有云或混合云上的工作负载确定最具成本效益的部署策略。在 FinOps 领域，迫切需要超越比较性记分卡（comparative scorecards）与宽泛的分类法，转而面向那些能够测试自动化智能体优化 IT 投资、减少资源浪费能力的具体用例。据我们所知，目前尚不存在任何针对预测、异常检测或成本优化等用例的评测基准，也没有标准化的方法来评估这些技术（无论是否带有智能体支持）。我们坚信，ITBench 将凝聚研究与开发社区的力量，借助 AI 与优化的力量来攻克真实世界中的难题。
+
+\section{附录 B：ITBench}
+
+如图 5 所示，ITBench 框架支持两类主要角色，对应于两个主要阶段：（i）\textbf{基准注册（benchmark registration）}阶段，其目标对象是基准提交者（Benchmark Submitter）角色；（ii）\textbf{智能体注册（agent registration）}阶段，聚焦于智能体提交者（Agent Submitter）角色以及实际的运行时基准执行与评测。
+
+\subsection{B.1 基准注册（Benchmark Registration）}
+
+该阶段包含两个主要步骤：（i）场景的开发与注册；（ii）任务与评测指标的注册。
+
+\paragraph{场景开发与注册。}
+我们的场景旨在将真实世界的 IT 问题实例化于现实且可管理的环境中。每个场景由两个核心组成部分构成：（i）环境规约（environment specification）；（ii）场景规约元数据（scenario specification metadata）。随后，基准提交者角色将这些场景注册到 ITBench，由其将场景存储在数据库中。每个场景都使用表 7 所示的元数据进行描述。
+
+\begin{table}[H]
+\centering
+\caption{场景元数据与示例。}
+\label{tab:7}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{@{}lp{0.62\linewidth}@{}}
+\toprule
+\textbf{字段} & \textbf{示例} \\
+\midrule
+Type（类型） & CISO, SRE, FinOps \\
+Name（名称） & 对于 CISO：k8s CIS-b Minimize containers w/ shared net namespace \\
+Description（描述） & 对于 CISO：Minimize the admission of containers wishing to share the host network namespace \\
+Complexity Class（复杂度等级） & Easy, Medium, Hard \\
+ & 对于 CISO：基于所用技术来定义（例如，k8s w/ Kyverno；k8s w/ OPA；Rhel9 w/ OPA）。\\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\paragraph{任务与评测指标注册。}
+对于每个场景类型，基准提交者都会注册一组定义良好的任务，这些任务构成了智能体性能评估的基础。表 2 总结了 ITBench 当前支持的 IT 自动化任务。展望未来，我们计划扩展 ITBench，以纳入更多任务（例如威胁分析与资源优化），并将其适用范围拓宽至其他领域（例如 DevOps）。
+
+\subsection{B.2 智能体注册（Agent Registration）}
+
+在此阶段，智能体提交者首先在平台上注册为用户，随后进行智能体注册。
+
+\subsubsection{B.2.1 智能体注册（Agent Registration）}
+
+在智能体注册期间，智能体提交者按表 8 所示指定智能体元数据。
+
+\begin{table}[H]
+\centering
+\caption{智能体元数据与示例。}
+\label{tab:8}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{@{}lp{0.62\linewidth}@{}}
+\toprule
+\textbf{字段} & \textbf{示例} \\
+\midrule
+Agent Name（智能体名称） & -- \\
+Agent Type (predefined)（智能体类型，预定义） & CISO, SRE, FinOps \ldots \\
+Agent Level（智能体等级） & Beginner, Intermediate, Expert（初级、中级、专家）（映射到场景复杂度：Easy、Medium、Hard） \\
+Scenario Class（场景类别） & 对于 CISO：rhel9 w/ OPA；Kubernetes w/ Kyverno；Kubernetes w/ OPA, Kyverno update \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+智能体注册完成后，智能体提交者选择该智能体，系统便会使用注册时为该智能体指定的 \textit{agent\_type}、\textit{agent\_level} 与 \textit{scenario\_class}，从数据库中检索出相应的基准。随后，智能体提交者会收到该智能体为达成既定目标所必须完成的任务，其中每项任务都带有预先定义的评测指标。
+
+\subsection{B.3 排行榜（Leaderboard）}
+
+对 IT 自动化任务进行有效的评测基准化——尤其是在为某一组织的特定需求选择 LLM 时——要求对智能体性能进行一致的追踪与比较。排行榜（Leaderboard）通过提供一套预定义、可扩展的性能指标来满足这一需求，这些指标能够针对评估标准给出清晰的智能体性能洞见。
+
+排行榜同时支持 API 与 UI 两种接口，从而实现流畅的评测基准化工作流。用户必须通过排行榜的 UI 或 API 注册其智能体端点（endpoint）。随后，智能体即可向排行榜查询，以检索并部署基准场景，然后报告其运行状态。如前所述，场景既可以由 ITBench 在其托管环境中自动部署，也可以在排行榜之外、即用户自己托管的环境中手动部署——在后一种情况下，智能体与环境仍可利用同一个排行榜 API 端点来发布状态更新。
+
+智能体在被智能体提交者注册之后，其端到端的基准化工作流如图 5 所示，并总结如下：
+
+\begin{enumerate}
+\item 新的基准作业被存入基准队列（Benchmark Queue）以待处理。
+\item 基准运行器（Benchmark Runner）从基准队列中为某一特定智能体获取一个基准场景。
+\item 基准运行器依据基准场景规约来提供（provision）环境。场景的环境是执行某一具体 IT 任务所需的系统集合。智能体与该环境交互，以求解给定的 IT 自动化任务（并有可能修改该环境）。基准评测会根据智能体是否在给定环境中成功完成任务来衡量其性能。该环境可以是，例如，一个运行着目标应用的 Kubernetes 集群，或一台具有待校验的特定配置的 RHEL 9 主机。该环境处于智能体的直接控制之下，因此可能遭受破坏性操作（例如在故障性能场景中），从而起到某种“试验场（playground）”的作用。
+\item 对于基准运行中包含的每个场景，基准运行器与智能体执行以下步骤：
+\begin{enumerate}
+\item[(a)] 智能体持续轮询 \textbf{get\_manifest} API，以监测何时有新的清单（manifest）进入 \textbf{Ready}（就绪）状态。
+\item[(b)] 基准运行器通过执行 \textbf{deploy\_scenario} 函数来部署该场景的环境。每个环境使用 \textbf{post\_bstatus} API 向智能体 API 服务器（Agent API Server）报告其状态。
+\item[(c)] 基准运行器通过智能体 API 服务器的 \textbf{get\_bstatus} API 监测环境状态。一旦状态变为 \textbf{Deployed}（已部署），它便通过执行 \textbf{inject\_fault} 函数向环境中注入故障。
+\item[(d)] 基准运行器继续使用 \textbf{get\_bstatus} API 监测环境状态。一旦状态到达 \textbf{FaultInjected}（已注入故障），它便在基准数据库（Benchmark DB）中将该清单的状态更新为 \textbf{Ready}，并在清单中写入诸如基准 ID、场景 ID、集群凭据以及 URL 等关键细节。这样，智能体便可访问并检索该清单，以便与环境进行交互。
+\item[(e)] 一旦清单状态变为 \textbf{Ready}，智能体便将其检索回来。该清单包含启动智能体所需的 URL 与凭据。在启动之前，智能体会调用智能体 API 服务器的 \textbf{post\_status} API，将其状态报告为 \textbf{STARTED}（已启动）。
+\item[(f)] 在智能体完成其执行后，会再次调用 \textbf{post\_status} API，将其完成状态报告为 \textbf{FINISH}（已完成）。
+\item[(g)] 基准运行器启动评测，并执行 \textbf{delete\_scenario} 函数。
+\end{enumerate}
+\item 一旦基准中所有场景的评测结果均已就绪，基准运行器便将它们汇总，并将结果发布到排行榜。
+\end{enumerate}
+
+我们为若干 IT 自动化任务实例化了排行榜评测指标，详见第 3.1 节、表 2。图 6 展示了排行榜首页（landing page），其上显示了 CISO 合规评估智能体的基准化指标与结果。
+\section{附录 C：SRE}
+
+排行榜（leaderboard）提供了一套预定义、可扩展的性能指标，能够相对于评估标准清晰地反映智能体（agent）的表现。
+
+排行榜同时支持 API 与 UI 两种接口，从而实现流畅的评测流程。用户必须先通过排行榜的 UI 或 API 注册智能体端点（endpoint）。注册之后，智能体即可查询排行榜以检索并部署评测场景（scenario），随后上报其运行状态。场景既可以由 ITBench 在其托管环境中按前文所述自动部署，也可以由用户在自己托管的环境中、于排行榜之外手动部署；在后一种情况下，智能体与环境仍可复用同一套排行榜 API 端点来发布状态更新。
+
+智能体在由提交者（Agent Submitter）完成注册后，整个端到端的智能体评测流程如图~\ref{fig:itb5} 所示，并概括如下：
+
+\begin{enumerate}
+\item 新的评测作业被存入评测队列（Benchmark Queue）等待处理。
+\item 评测运行器（Benchmark Runner）从评测队列中为某个特定智能体取出一个评测场景。
+\item 评测运行器按照评测场景规范来供给（provision）环境。场景的环境是指执行某项具体 IT 任务所需的系统集合。智能体与环境交互（并可能修改环境）以解决给定的 IT 自动化任务。评测会根据智能体是否成功完成给定环境中的任务来衡量其表现。环境可以是运行目标应用的 Kubernetes 集群，也可以是需要校验特定配置的 RHEL 9 主机。环境处于智能体的直接控制之下，因此可能会承受破坏性操作（以应对故障性能的情形），从而扮演一种“试验场（playground）”的角色。
+\item 对评测运行中包含的每个场景，评测运行器与智能体执行以下步骤：
+\begin{enumerate}
+\item[(a)] 智能体持续轮询 \texttt{get\_manifest} API，以监控何时有新的清单（manifest）进入 \textbf{Ready} 状态。
+\item[(b)] 评测运行器通过执行 \texttt{deploy\_scenario} 函数来部署该场景的环境。每个环境通过 \texttt{post\_bstatus} API 向 Agent API Server 上报其状态。
+\item[(c)] 评测运行器通过 Agent API Server 的 \texttt{get\_bstatus} API 监控环境状态。一旦状态变为 \textbf{Deployed}，便通过执行 \texttt{inject\_fault} 函数向环境注入故障。
+\item[(d)] 评测运行器继续使用 \texttt{get\_bstatus} API 监控环境状态。一旦状态达到 \textbf{FaultInjected}，便在评测数据库（Benchmark DB）中将该清单的状态更新为 \textbf{Ready}，并包含关键细节，如评测 ID、场景 ID、集群凭据以及清单中的 URL。这使得智能体能够访问并检索该清单，以便对环境进行操作。
+\item[(e)] 一旦清单状态变为 \textbf{Ready}，智能体即检索它。该清单包含启动智能体所需的 URL 与凭据。在启动之前，智能体调用 Agent API Server 的 \texttt{post\_status} API，将其状态上报为 \textbf{STARTED}。
+\item[(f)] 智能体完成执行后，再次调用 \texttt{post\_status} API，将其完成状态上报为 \textbf{FINISH}。
+\item[(g)] 评测运行器启动评估，并执行 \texttt{delete\_scenario} 函数。
+\end{enumerate}
+\item 一旦评测中所有场景的评估结果就绪，评测运行器即对其进行汇总，并将结果发布到排行榜。
+\end{enumerate}
+
+我们为若干 IT 自动化任务实例化了排行榜评估指标，详见 3.1 节、表~2。图~\ref{fig:itb6} 展示了排行榜首页，显示了 CISO 合规评估智能体的评测指标与结果。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{cand_p20_k00.pdf}
+\caption{ITBench 排行榜工作流。}
+\label{fig:itb5}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{cand_p21_k00.pdf}
+\caption{ITBench 排行榜示例。}
+\label{fig:itb6}
+\end{figure}
+
+\subsection{C.1 背景}
+
+随着现代 IT 系统与基础设施在规模和复杂度上空前增长，故障已成为常态而非例外 (Patterson et al., 2002; Gunawi et al., 2016; Kendrick, 2012; Di Martino et al., 2014; Veeraraghavan et al., 2018; Liu et al., 2019; Ghosh et al., 2022)。首先，\textit{硬件故障}（hardware failures）在大规模 IT 基础设施中频繁发生。例如，Google 的一个新集群每年要经历约一千次单机故障和数千次磁盘故障 (Dean, 2009)。其中许多故障还会进一步引发相关联的级联故障 (Ford et al., 2010)。诸如计算单元中的静默数据损坏 (Hochschild et al., 2021) 和慢速故障（fail-slow）存储 (Gunawi et al., 2018) 等新型硬件故障模式，进一步加大了检测与缓解（mitigation）的难度。在地理分布式的超大规模（hyperscalar）基础设施中，数据中心级别的灾难已不再罕见 (Veeraraghavan et al., 2018)。
+
+此外，软件变更的高速度也带来了挑战：由代码缺陷 (Gunawi et al., 2014) 和错误配置 (Xu et al., 2013) 引发的\textit{软件故障}（software failures），近年来也已成为导致 IT 系统与服务中断的主要原因，其数量明显超过硬件故障 (Maurer, 2015; Barroso et al., 2018)。例如，IT 系统每天会进行数百到数千次配置变更，这会引入错误配置并触发潜伏缺陷 (Sun et al., 2020; Tang et al., 2015)。微服务和无服务器计算 (Jonas et al., 2019) 等近期的软件架构趋势，通过放大系统复杂度、引入复杂交互所带来的动态性 (Tang et al., 2023) 以及涌现行为 (Huang et al., 2022)，进一步加剧了 IT 可靠性方面的挑战。
+
+站点可靠性工程（SRE，Site Reliability Engineering）的目标是在存在上述各类故障的情况下，实现 IT 系统的高可用性与可服务性 (Murphy et al., 2024)。
+
+SRE 的核心工作是故障管理\footnote{我们采用经典的“故障—错误—失效”模型（Fault-Error-Failure model）(Avizienis et al., 2004)，其中\textit{故障}（fault）是根因（root cause），例如软件缺陷、硬件故障或错误配置。故障可能产生被称为\textit{错误}（errors）的异常行为。然而，部分错误是瞬态的，对系统层面没有影响。只有那些传播并变得可观测的错误，才会表现为\textit{失效}（failures），例如崩溃、挂起、错误结果或功能不完整等。}——即检测、诊断（diagnosis）并缓解生产系统中的故障，以预防生产\textit{事件}（incidents，指造成用户感知影响的失效），或在事件\textit{告警}（alerts）被触发时最小化其影响与损害。具体而言：
+
+\begin{itemize}
+\item \textbf{检测（Detection）。} SRE 必须及时通过日志、链路追踪（traces）及其他遥测数据检测生产故障；检测故障是预防事件、或至少最小化其爆炸半径与影响的第一步。
+\item \textbf{诊断（Diagnosis）。} SRE 必须分析所检测到故障的根因并定位故障，即确定出故障的组件以及触发该故障的条件。
+\item \textbf{缓解（Mitigation）。} SRE 必须缓解故障以防止其传播为更大的失效或事件。缓解通常遵循一份解决方案计划（resolution plan），其中列出了一系列将系统恢复至期望状态的操作 (Chen et al., 2024b)。
+\end{itemize}
+
+ITBench 目前聚焦于诊断与缓解任务，并计划纳入更多任务，如事件检测、类似故障/事件的预防（例如通过回归测试）。检测可借助可观测性（observability）工具原生提供的、基于黄金信号（golden-signal）的告警来简化。不过，在事件风暴（event storm）期间难度会加剧，这要求 SRE 通过抑制误报来区分可处置的告警，并对其中需要立即关注的告警进行优先级排序——这是事件解决中每天都要面对的难题。这两类任务都已被纳入 ITBench，方法是在特定场景中注入多个故障，造成告警泛滥；智能体随后必须判断应优先处理哪些告警以及处理顺序。
+
+\textbf{SRE 自动化的迫切需求。} 目前，SRE 在很大程度上仍是一种基于人工的实践——SRE 工程师每天身处检测、诊断和缓解故障与事件的第一线 (Beyer et al., 2018; Murphy et al., 2024)。然而，IT 系统的规模不断增长，其需求已超出基于人工的实践所能可靠、持续、高效管理的范围，而且人力资源成本以及人类推理的极限，已成为故障与事件解决的瓶颈。如今，IT 系统的 SRE 已成为任何云与软件公司的主要总拥有成本（TCO，Total Cost of Ownership）(Boulton; IDC, 2024)。\textit{因此，SRE 自动化不再是一项可选的增强，而是一种运营上的必需。}
+
+事实上，当今的 IT 系统已越来越多地由实现劳动密集型、基于人工操作自动化的运营程序来管理，这类自动化被称为 \textit{IT 自动化}（IT automation）。例如，Kubernetes (Burns et al., 2016)、Twine (Tang et al., 2020) 和 ECS (Melissaris et al., 2022) 等现代云管理平台都实现了\textit{算子}（operator）程序，以自动化软件升级、配置、自动扩缩容等各类操作。然而，迄今为止，由于故障管理中存在的根本性挑战，SRE 尚未成为 IT 自动化的常见组成部分。
+
+\subsection{C.2 真实世界事件示例}
+
+表~\ref{tab:itb9} 展示了一份基于 SRE 原始工作记录的真实世界事件报告。在该事件中，SRE 通过 Slack 收到了若干条同一类型的告警——某服务的高错误率（最近 10 分钟内 >1\%）。该\textit{故障}（fault）的起因是在一次旨在削减 IT 成本的退役（decommissioning）过程中，由于人为失误意外删除了资源而导致“节点失效（node failure）”。对 Elasticsearch（ES）集群进行缩容是为了节省运行该服务所产生的 AWS 成本。该故障导致分片（shard）不可用，进而引发 Elasticsearch 失效，并因错误率 SLI 而导致 SLO 违约。该故障进一步传播，造成分片不可用，进而又导致 Elasticsearch 失效。Elasticsearch 的不可用造成了错误率 SLI 的 SLO 违约。
+
+该\textit{运维解决方案计划}（Ops resolution plan）包含了反复试错的过程，最终到达一个能够让 SRE 人员执行既有缓解操作手册（playbook）\footnote{操作手册（Playbook）是一组预定义的结构化流程或自动化脚本，列出执行特定运维任务或响应事件所需的步骤。操作手册可标准化响应、减少错误，并支持重复性任务的自动化，从而提升 IT 运维的效率与可靠性。}的状态。
+
+如所示，这类事件在以下方面提供了宝贵信息：(i) 检测时间、诊断（检测后）与缓解（诊断后）的时间；(ii) 症状与客户影响；(iii) 故障条件、故障传播路径（fault propagation path）与深度；(iv) 运维解决方案计划；以及 (v) 长期修复与改进。这类关于故障发生、传播与解决的真实世界洞见，对于故障预防和事件处理自动化都是无价的。
+
+\begin{table}[H]
+\centering
+\caption{发生在某 SaaS 数据平台上的一个事件。该事件展现了 SRE 与 FinOps（财务运营，Financial Operations）两类角色之间的复杂关系：FinOps 确保 IT 环境的成本得到优化以满足财务效率目标，而 SRE 则专注于最小化服务影响并解决问题。}
+\label{tab:itb9}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{@{}p{0.28\linewidth} p{0.72\linewidth}@{}}
+\toprule
+\textbf{事件} & \textbf{详情} \\
+\midrule
+触发告警 & 七条类型为“服务高错误率（High error rate on service）”的告警。 \\
+\addlinespace
+概述 & 由于人为失误，在对 Elasticsearch（ES）集群进行缩容期间，遭遇了意外的节点失效与 EBS 卷问题。为节省运行该服务所产生的 AWS 成本，启动了对 ES 的缩容。该故障造成了服务中断。 \\
+\addlinespace
+事件持续时间 & 180 分钟 \\
+检测时间 & 60 分钟 \\
+诊断时间 & 60 分钟 \\
+缓解时间 & 120 分钟 \\
+症状 & [\cmark] 流量（Traffic）：$\downarrow$，[\cmark] 错误（Error）：$\uparrow$，[\xmark] 饱和度（Saturation），[\xmark] 延迟（Latency） \\
+客户影响 & 是。 \\
+故障传播深度 & 六 \\
+\addlinespace
+故障传播 & $\downarrow$ 人为失误：退役过程中（维护窗口期）意外移除健康节点 \newline $\downarrow$ 副本初始化期间主分片失效（基于上下文与人工校验的人工推断） \newline $\downarrow$ 分片分配失败（ES 事件：分片未分配，shard unassigned） \newline $\downarrow$ Elasticsearch 进入不健康状态（ES 事件：RED 状态） \newline $\downarrow$ 服务无法从 ES 获取数据（trace） \newline $\downarrow$ 7 个服务的错误率上升（events） \\
+\addlinespace
+故障 & 人为失误、恢复过程中的失效 \\
+\addlinespace
+解决方案计划 & \raisebox{-0.9\height}{\includegraphics[width=0.62\linewidth]{cand_p23_k00.pdf}} \\
+\addlinespace
+解决方案计划规模 & 5（4 步人工 + 1 步经由操作手册的自动化） \\
+长期改进 & \cmark{} 在实例删除与 EBS 删除之间保持 24 小时的间隔 \newline \cmark{} 相应地更新运维手册（Runbooks） \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\subsection{C.3 ITBench 架构}
+
+ITBench 使用开源技术，在 Kubernetes 平台上创建完全可重复、可复现的事件（场景），如图~\ref{fig:itb7} 所示。
+
+\textbf{编排（Orchestration）。} 核心工作流涉及 SRE-Agent\footnote{此后我们将处理 SRE 任务的智能体称为 SRE-Agent。} 与 ITBench 各组件之间的一系列交互。首先，SRE-Agent（\textcircled{1}）通过发送 \texttt{enroll} 命令在评测排行榜中注册，这会促使 ITBench 创建一个会话（session）（\textcircled{2}）并提供必要的凭据与细节（例如 Kubernetes 访问权限、时间限制）。准备就绪后，智能体发送 \texttt{ready} 信号（\textcircled{3}），触发场景执行器（scenario executor）从场景数据库中安装选定的场景。该规范用于搭建环境并注入故障，包括可观测性工具的安装（\textcircled{4}）。在活动阶段（\textcircled{5}），智能体使用 \textit{NL2Alerts}、\textit{NL2Logs}、\textit{NL2Metrics} 和 \textit{NL2Traces} 等工具与环境交互以完成任务。任务完成或时间到期后，SRE-Agent 发送 \texttt{finish} 命令（\textcircled{6}），通知 ITBench 评估所提供的输出并清理环境。场景执行器校验 SRE-Agent 的工作（\textcircled{7}），并将系统恢复到其基线状态（\textcircled{8}）。\textcircled{3}—\textcircled{8} 之间的交互会持续进行，直至场景管理器发送会话结束信号（\textcircled{9}）。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{fig07.pdf}
+\caption{ITBench 中负责编排 SRE 场景的架构。}
+\label{fig:itb7}
+\end{figure}
+
+\subsubsection{C.3.1 原则}
+
+遵循引言中提出的 bench 原则，我们的 ITBench 使用开源技术来构建完全可重复、可复现的场景，以模拟真实世界事件。
+
+\begin{itemize}
+\item \textbf{模仿 SRE 最佳实践。} ITBench 遵循 SRE 手册 (Murphy et al., 2024) 中列出的准则，例如按应用对黄金信号进行告警、启用监控与可观测性。在我们当前的版本中，检测是采用 (Murphy et al., 2024) 中所述方法开箱即用地提供的。
+\item \textbf{模仿真实世界事件。} 我们系统性地考察了来自我方 SaaS 产品的 105 个真实世界事件，以推导出相关的事件模式。尽管我们已将其中若干模式集成到 ITBench 场景中，但并非全部都被纳入，原因在于准确复现这些事件、并镜像出生产级细节特征所固有的复杂性。尽管如此，我们的 ITBench 将通过持续纳入更多事件模式而不断演进。截至撰写本文时，ITBench 支持 24\% 的 Easy、24\% 的 Medium 和 52\% 的 Hard 事件，如图~\ref{fig:itb9} 所示。
+\item \textbf{提供可观测性。} 在真实世界场景中，SRE 会结合命令行访问，使用可观测性工具来监控系统。这些工具提供多种数据模态（modality），如链路追踪、日志、指标与事件——并支持告警，以实现高效的异常检测、趋势分析与自动化故障排查。ITBench 默认使用 Grafana (gra)，但也可支持其他工具，包括 IBM Instana (ins)、Dynatrace (dyn) 和 Datadog (dat)。
+\item \textbf{数据模态可变性。} 根据系统的关键程度与预算，部分数据模态可能缺失；例如，只有约 20\% 的应用启用了链路追踪，这使事件诊断更加复杂。ITBench 允许按需灵活控制以启用、禁用或部分启用各数据模态。
+\item \textbf{管理可扩展性。} 场景超参数由 (i) 环境规范和 (ii) 场景规范两部分构成。环境规范允许进行应用选择及其相关的基础设施选择（例如副本数）以及数据脱敏参数设置。场景规范允许选择超参数（例如注入故障所针对的服务名称）。ITBench 使用上述超参数离线创建一个场景数据库。
+\item \textbf{确保确定性。} ITBench 确保在使场景在 ITBench 中可用之前，告警是按照场景规范生成的。此外，ITBench 会确保在向智能体发送“READY”状态信号之前，所有断言（assertions）（例如应用正常运行、告警正确触发）都已通过。
+\end{itemize}
+
+\subsubsection{C.3.2 在 ITBench 中复现真实世界场景}
+
+通过利用真实世界中断的详细事件报告（如表~\ref{tab:itb9} 所概括的那份），我们系统性地在 ITBench 中重建出类似的故障场景。如表~\ref{tab:itb11} 所概述，这涉及配置一个多节点的 Elasticsearch 集群（带有 EBS 卷），并引入有针对性的扰动——从更改网络配置（例如改变端口或 IP），到模拟节点与卷的删除，或禁用特定分片上的写操作。每个被重建的场景都旨在镜像所观测到的生产故障的复杂度，并带有微小变化，包括相似的故障传播路径、对指标的影响（如错误率与延迟）以及相关的运维缓解步骤。这确保了 ITBench 中的事件（场景）能够准确复现真实世界的技术细节，同时也捕捉到相关的决策挑战，从而实现对智能体的真实且具代表性的评估。
+
+\begin{table}[H]
+\centering
+\caption{SRE 任务。}
+\label{tab:itb10}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{@{}p{0.30\linewidth} p{0.70\linewidth}@{}}
+\toprule
+\textbf{任务} & \textbf{任务描述} \\
+\midrule
+\textbf{故障定位（Fault localization）} & 识别出故障实体（根因）与故障条件。 \\
+\addlinespace
+\textbf{故障传播分析（即根因分析，root cause analysis）} & 从根因实体到告警识别出因果链，包括识别链条中每一步的故障条件。 \\
+\addlinespace
+\textbf{推荐缓解操作} & 识别出解决事件的纠正性操作（不包括执行）。 \\
+\addlinespace
+\textbf{缓解事件} & 执行纠正性操作以清除告警。 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{使用表~\ref{tab:itb9} 中描述的事件说明重建的故障场景。}
+\label{tab:itb11}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{@{}p{0.16\linewidth} p{0.27\linewidth} p{0.27\linewidth} p{0.27\linewidth}@{}}
+\multicolumn{4}{c}{\textbf{测试床搭建（Testbed Setup）}} \\
+\midrule
+\multicolumn{4}{p{\linewidth}}{$\bullet$ 开发一个使用 Elasticsearch 进行数据存储与检索的应用。} \\
+\multicolumn{4}{p{\linewidth}}{$\bullet$ Elasticsearch 集群中必须配置至少 3 个节点。} \\
+\multicolumn{4}{p{\linewidth}}{$\bullet$ 为每个节点挂载 EBS 卷，以模拟事件中的卷使用情况。} \\
+\multicolumn{4}{p{\linewidth}}{$\bullet$ 创建一个包含足够数量文档的索引，以对系统施加压力。} \\
+\midrule
+ & \textbf{事件场景 1} & \textbf{事件场景 2} & \textbf{事件场景 3} \\
+\midrule
+描述 & 通过更改端口、IP 地址等使 ES 不可用。 & (i) 识别一个目标节点：从集群内选择其中一个节点并删除它；(ii) 删除其所挂载的 EBS 卷。 & 识别一个目标分片并将其设为只读（即禁用写入）。 \\
+\addlinespace
+故障传播 & IP/端口更改 $\rightarrow$ ES 不可用 $\rightarrow$ 应用中错误率上升 & 与表~\ref{tab:itb9} 中描述的事件类似。 & 与表~\ref{tab:itb9} 中描述的事件类似，区别在于由硬件故障引起。 \\
+\addlinespace
+运维缓解计划 & 将 IP 地址/端口更改为正确的值。 & 与表~\ref{tab:itb9} 中描述的事件类似。 & (i) 在目标分片上启用写入，或 (ii) 遵循与表~\ref{tab:itb9} 中所述事件类似的流程。 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\subsection{C.4 ITBench 事件特征刻画}
+
+表~\ref{tab:itb12} 概括了 ITBench 中当前可用的场景。除了这 21 个场景之外，ITBench 还能通过参数化关键维度（如目标应用、故障注入的精确位置以及并发故障的数量与类型）轻松产生范围广泛得多的故障模式。例如，如果目标应用是 HotelReservation，则仅 PodFailure 场景的故障就可以应用于其 18 个 pod 中的任意一个，从而有效扩展出另外 18 个场景。通过这种方式，ITBench 可被用于系统性地生成成百上千种变体。在我们的评估中，我们聚焦于具有代表性的场景，同时仍允许用户定制并扩展其测试。
+
+图~\ref{fig:itb8} 展示了我们数据集中所观测到的关键事件特征，包括\textit{故障传播链长度}（fault propagation chain length，图~\ref{fig:itb8}a）、\textit{解决方案计划规模}（resolution plan size，图~\ref{fig:itb8}b）以及所涉及的\textit{独特技术数量}（number of distinct technologies，图~\ref{fig:itb8}c）。直观上，随着故障传播链长度的增加，事件变得更难诊断。类似地，更长的解决方案计划意味着恢复服务健康需要多个步骤与干预。涉及各类技术会引入额外的复杂度，原因在于工具、数据源与故障模式的多样性。
+
+由于\textit{故障传播长度}、\textit{解决方案计划规模}和\textit{技术异构性}（technology heterogeneity）都会影响事件解决的难度，我们将整体任务复杂度定义为三者的几何平均（geometric mean）。式~(6) 刻画了这一关系：
+
+\begin{equation}
+\text{Complexity} = \sqrt[3]{\text{(propagation path length} \times \text{\# resolution steps} \times \text{\# technologies)}}
+\tag{6}
+\end{equation}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{fig08.pdf}
+\caption{ITBench 场景特征刻画。(a) 故障传播链长度。(b) 缓解计划规模。(c) 所涉及技术数量。}
+\label{fig:itb8}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.5\linewidth]{cand_p26_k01.pdf}
+\caption{SRE 场景复杂度。}
+\label{fig:itb9}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\caption{ITBench 中可用的独特场景。}
+\label{tab:itb12}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{@{}l l c c@{}}
+\toprule
+\textbf{场景模式} & \textbf{受影响技术} & \textbf{\# 故障传播} & \textbf{\# 解决步骤} \\
+\midrule
+CacheFailure & nodejs & 3 & 2 \\
+HighCPU & Java, nodejs & 3 & 2 \\
+ServiceFailure & Java, nodejs & 4 & 3 \\
+ManualGarbageCollection & Java, nodejs & 3 & 2 \\
+MemoryLeak & python, Node.js, Go & 8 & 6 \\
+CorruptDeployment & Go, Java, nodejs & 8 & 6 \\
+CorruptDeployment & Java, Go, nodejs & 7 & 5 \\
+CorruptDeployment & Go, nodejs & 2 & 1 \\
+NetworkDelay & Go, python, nodejs & 4 & 1 \\
+PodFault & Go, nodejs & 2 & 2 \\
+NetworkPartition & Tonic, Rust, Go, nodejs & 4 & 1 \\
+CorruptImage & Go, nodejs & 3 & 1 \\
+CorruptImage & nodejs & 2 & 1 \\
+CPUStress & python, nodejs & 2 & 2 \\
+HTTPRequestBodyTamperFault & Ruby, Go & 3 & 1 \\
+HTTPRequestAbortFault & PHP, Go, Tonic, Rust, nodejs & 4 & 1 \\
+HTTPRequestBodyTamperFault & Ruby, Go, nodejs & 3 & 2 \\
+JVMCodeReturnFault & Java, nodejs & 3 & 1 \\
+PodFailure & Java, nodejs & 1 & 1 \\
+IncorrectAuthentication & .NET, Go, nodejs & 2 & 1 \\
+MemoryResourceLimit & Go, nodejs & 1 & 2 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+该公式提供了一种均衡的复杂度度量，其中几何平均确保了所有三个因素都按比例发挥作用，而非允许某个占主导地位的因素扭曲整体评估。尽管所需技能集、诊断交互的数量与类型（例如工具调用或查询）等因素可以进一步细化我们的复杂度度量，但这些因素往往高度依赖于可观测性平台、领域专长以及特定团队的流程。如前所述，大模型可以通过有针对性的微调和知识集成，潜在地弥合技能差距，从而降低由人类专长与诊断策略差异所引入的可变性。因此，我们聚焦于三个更具一致性、且更内在地反映事件本身复杂度的核心因素。
+
+图~\ref{fig:itb9} 使用上述几何平均公式，展示了我们事件数据集中任务复杂度值的分布。结果显示出多样化的场景范围，其难度的不同程度反映在传播深度、解决步骤与多技术集成之间的自然相互作用上。这种复杂度量化为未来的分析奠定了基础，包括评估自动化推理工具、更丰富的可观测性栈或更完善的算子训练如何可能将分布推向更易处理、更可管理的任务。
+
+\subsubsection{C.4.1 实验设置}
+
+这些任务被实现为 Ansible 操作手册（playbooks），以便从 Ansible AWX 等自动化流水线中获益。下面我们给出我方故障注入实现之一，它利用 Kubernetes 网络策略来为目标服务模拟端口阻断。我们使用角色（roles）来分别定义与故障注入和故障移除相关的不同操作。我们的故障注入可以使用变量重新配置，以针对不同服务从而创建额外的场景。每个场景都已经过校验，以确保能在 Grafana 中产生相关告警，从而为处理该场景的智能体提供重要的上下文。
+
+\begin{verbatim}
+---
+- name: Define Network Policy to block port 8080
+  set_fact:
+    network_policy_spec: |
+      apiVersion: networking.k8s.io/v1
+      kind: NetworkPolicy
+      metadata:
+        name: "deny-{{ target_service }}-{{
+          target_port }}"
+        namespace: "{{
+          target_namespace_project_name
+          }}"
+      spec:
+        podSelector:
+          matchLabels:
+            app.kubernetes.io/name: "{{
+              target_service }}"
+        policyTypes:
+        - Ingress
+        ingress:
+        - ports:
+          - protocol: TCP
+\end{verbatim}
+\subsection{C.5 SRE-Agent}
+
+如第 3.2 节所述，智能体（agent）与目标环境交互、收集可观测性（observability）数据，并执行动作以达成其目标。对于 SRE（站点可靠性工程，Site Reliability Engineering）而言，目标是诊断（diagnosis）并缓解（mitigation）故障事件。下面我们描述 SRE-Agent 所收集的可观测性数据，以及我们基于大语言模型（LM）的多智能体系统实现。
+
+\subsubsection{C.5.1 可观测性数据}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.78\linewidth]{cand_p27_k00.pdf}
+\caption{用于 SRE 任务的多模态数据。}
+\label{fig:itb-fig10}
+\end{figure}
+
+如图 10 所示，SRE 任务涉及分析多模态可观测性数据：日志（logs）、链路追踪（traces）和指标（metrics）。
+
+\textbf{日志（Logs）。} 日志是半结构化的文本记录，用于捕获硬件与软件事件。它们通常按严重级别归类，如 INFO、WARN 和 ERROR，以反映系统的运行状态以及问题的严重程度。
+
+\textbf{链路追踪（Traces）。} 请求链路追踪描述用户请求在分布式系统中穿越各服务实例时的执行流程。它们提供服务调用的分层表示，其中每个操作被称为一个跨度（span）。一个跨度记录单次服务调用的信息，如其起始时间、持续时长以及相关元数据（包括标签和日志）。多个跨度相互关联形成一条 trace，从而捕获请求的完整执行路径。此外，程序执行链路追踪还可捕获程序崩溃信息，为开发者在调试时提供宝贵线索。
+
+\textbf{指标（Metrics）。} 指标提供监测系统性能与用户感知指标的时间序列数据，如延迟、错误率和资源利用率。
+
+\subsubsection{C.5.2 SRE-Agent 架构与实现}
+
+SRE-Agent 架构由两个基于大语言模型的智能体构成：一个诊断智能体（Diagnosis Agent）和一个修复智能体（Resolution Agent），如图 11 所示。我们首先定义实现中所用的以下基本组件：
+
+\begin{itemize}
+\item \emph{智能体（Agent）。} 智能体是一个自主或半自主的软件程序，它利用大语言模型进行规划、决策、与目标环境交互并执行动作以达成目标。
+\item \emph{任务（Task）。} 任务是智能体在其执行终止前必须达成的特定目标。在我们的实现中，任务是一个复杂的多步骤流程（例如诊断某次故障事件的成因）。任务还关联有智能体可用于达成目标的工具。
+\item \emph{工具（Tool）。} 工具是智能体可调用以执行某一具体子任务的函数或 API 调用，例如与目标环境交互以收集可观测性数据。
+\end{itemize}
+
+下面我们描述上述各组件的具体实现。
+
+\textbf{工具（Tools）。} 表 14 列出了 SRE-Agent 可用的全部工具。我们所有的工具同样基于大语言模型：以一段来自智能体、指示其执行所需子任务的话语（utterance）作为提示输入大语言模型。根据工具是生成自然语言（如 Mitigation）还是生成函数调用（如 NL2Kubectl），可将工具分为两类。此外，为提升工具的准确性与可用性，我们为工具配备了以下特性。
+
+\begin{table}[H]
+\centering
+\caption{SRE-Agent 所用工具列表。}
+\label{tab:itb-tab14}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{lll}
+\toprule
+\textbf{名称} & \textbf{描述} & \textbf{支持反思} \\
+\midrule
+NL2Kubectl & 直接与 Kubernetes 交互 & yes \\
+NL2Traces & 与 Grafana API 交互以获取链路追踪 & yes \\
+NL2Metrics & 与 Grafana API 交互以获取存储在 Prometheus 中的指标 & yes \\
+NL2Logs & 与 Grafana API 交互以获取存储在 Loki 中的日志 & yes \\
+NL2Alerts & 与 Grafana API 交互以获取告警 & yes \\
+Mitigation & 生成缓解方案 & no \\
+Wait & 暂停执行指定的秒数 & no \\
+Summarization & 对输入内容进行摘要 & no \\
+DiagnosisJsonReport & 生成诊断的 JSON 报告 & no \\
+MitigationJsonReport & 生成缓解方案的 JSON 报告 & no \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\begin{itemize}
+\item \emph{反思（Reflection）。} 为实现对错误大语言模型响应的自动纠正，我们借助 linter（代码检查器）提供外部反馈（Pan et al., 2023；Huang et al., 2023）。具体而言，针对生成函数调用的工具，我们开发了 linter 来校验输出的语法与语义。如果 linter 发现生成的函数调用存在问题，便会将 linter 的反馈连同问题一并重新提示给大语言模型，使其尝试修正。类似地，如果生成的函数调用通过了检查但在执行时引发错误，则将错误消息与失败的函数调用一并重新提示给大语言模型，以获取修正后的函数调用。
+\item \emph{摘要器（Summarizer）。} 对于某些工具（如 NL2Logs 和 NL2Traces），其输出不直接返回给智能体，因为输出非常长且包含大量无关信息。这些工具会增加一个额外步骤：将输出连同要求其仅提供相关信息的详细摘要的指令一并提示给大语言模型。
+\end{itemize}
+
+\textbf{任务（Tasks）。} 我们定义了 SRE-Agent 需完成的以下两项任务。每项任务都包含对其完成过程的描述以及完成后期望的输出。每项任务还关联有工具，智能体可用其执行子任务、收集信息或与环境交互。
+
+\begin{itemize}
+\item \emph{诊断任务（Diagnosis Task）。} 对于诊断，目标是识别完整的故障传播链（fault propagation chain，FPC），即故障传播链分析；并在该链条中识别问题的确切成因，即故障定位（fault localization，FL）。
+\item \emph{缓解任务（Mitigation Task）。} 对于缓解，目标是提供自然语言形式的缓解方案，并执行这些方案以成功清除触发的告警。缓解方案可提升智能体的可解释性，并帮助 SRE 理解智能体为何执行了某些命令。
+\end{itemize}
+
+\textbf{智能体（Agents）。} 总体而言，SRE-Agent 由两个智能体构成，即诊断智能体与缓解智能体。每个智能体被指派其必须完成的任务。一般来说，多智能体系统可以是\emph{分层式（hierarchical）}或\emph{顺序式（sequential）}的。顺序执行使任务以固定的线性顺序完成。在分层执行中，由一个“管理者（manager）”智能体确定任务的执行顺序并与其他智能体协调。我们采用顺序执行，因为它非常适合 SRE 用例——故障事件必须先经诊断才能被修复。尽管任务执行顺序是固定的，但每项任务内部的子任务或步骤可由智能体自身决定按任意顺序完成。下面我们描述两个智能体的整体工作流程。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\linewidth]{cand_p29_k00.pdf}
+\caption{SRE-Agent 架构。}
+\label{fig:itb-fig11}
+\end{figure}
+
+\begin{itemize}
+\item \emph{诊断智能体（Diagnosis Agent）。} 首先，诊断智能体使用 NL2Alerts 工具检索环境中的活动告警。随后，智能体灵活而迭代地使用可观测性工具，从告警中提及的受影响实体以及与该实体关联的实体处收集 trace、日志和指标。它还可能使用 NL2Kubectl 命令来调查环境。一旦智能体确定已掌握足够信息可给出诊断，便会生成一份 JSON 格式的结构化诊断报告，将其发现记录其中以便于评估。报告生成后，缓解智能体接手。
+\item \emph{缓解智能体（Mitigation Agent）。} 缓解智能体读取诊断报告以制定缓解方案，随后利用可用工具实施该方案。这涉及使用 NL2Kubectl 命令。为确保所执行的命令已缓解故障事件，它还可使用 NL2Alerts 工具检查环境中的告警是否已被清除。此外，由于在实时环境的波动下告警有时可能暂时显现为已清除，智能体可使用 Wait 工具检查告警在一段时间后是否\emph{仍然}保持清除状态。最后，执行完成后，智能体生成一份 JSON，说明其所采取的缓解步骤。
+\end{itemize}
+
+\subsection{C.6 ITBench 评测}
+
+\subsubsection{C.6.1 实验细节}
+
+我们在 ITBench 中的一组 42 个 SRE 场景上评测 SRE-Agent。对于智能体基于大语言模型的规划组件，我们考虑四种不同的模型：gpt-4o、granite-3.1-8b-instruct、llama-3.3-70b-instruct 和 llama-3.1-8b-instruct。这些模型均未经过微调。
+
+表 15 列出了我们实验中使用的主要超参数取值。选择这些取值是为了尽可能确保结果具有确定性。$decoding\_method$ 适用于除 gpt-4o 之外的所有模型。
+
+\begin{table}[H]
+\centering
+\caption{模型超参数。}
+\label{tab:itb-tab15}
+\begin{tabular}{ll}
+\toprule
+\textbf{超参数} & \textbf{取值} \\
+\midrule
+$temperature$ & 0 \\
+$top\_p$ & 1e-7 \\
+$seed$ & 42 \\
+$decoding\_method$ & greedy \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{C.6.2 评测指标}
+
+我们在两项主要任务上评测每个基于大语言模型的智能体：(i) 诊断和 (ii) 缓解。
+
+\textbf{诊断（Diagnosis）。} 智能体的诊断能力根据其提供准确\emph{故障定位}与\emph{故障传播链}的能力来评测。故障定位使 SRE 能够识别\emph{导致}问题的确切资源，而故障传播链使 SRE 能够理解故障如何在应用栈中级联传播并影响应用。故障传播链还可进一步用于其他重要任务，如爆炸半径（blast radius）分析。
+
+\begin{itemize}
+\item \emph{故障定位}性能使用 pass@1 和归一化拓扑感知匹配（Normalized Topology-Aware Match，NTAM）来度量。
+\item \emph{故障传播链}使用 NTAM 评估。此外，我们追踪平均诊断时间（Mean Time to Diagnosis，MTTD）以衡量整体诊断效率。
+\end{itemize}
+
+\textbf{缓解（Mitigation）。} 对于缓解，我们评测智能体修复故障事件（即清除告警）的有效程度。
+
+\begin{itemize}
+\item 成功率使用 pass@1 量化。
+\item 效率通过平均修复时间（Mean Time to Resolution，MTTR）来刻画。
+\end{itemize}
+
+\subsubsection{C.6.3 指标定义}
+
+\textbf{pass@1。} 我们使用 pass@1 指标（Chen et al., 2021）来评测故障定位与缓解，其定义如下：
+
+\begin{equation}
+\mathrm{pass@}k := \mathbb{E}_{\mathrm{Scenarios}}\left[ 1 - \frac{\binom{n-c}{k}}{\binom{n}{k}} \right]
+\end{equation}
+
+它是所有场景上 $k=1$ 试验正确性的无偏估计量。对于\emph{故障定位}，正确性指预测的根因（root cause）是否与真实根因完全匹配。对于\emph{缓解}，正确性指告警是否被清除。
+
+\textbf{归一化拓扑感知匹配（Normalized Topology-aware Matching）。} 现有用于评估\emph{故障传播链}与\emph{故障定位}的方法侧重于与真实标签的精确匹配（Ahmed et al., 2023b；Zhu et al., 2024；Chen et al., 2024c），从而忽略了拓扑结构以及对传播链更细粒度的分析。例如，当预测的传播链或根因与真实标签不完全匹配时，现有方法无法有效区分智能体与模型，因为它们未能度量预测与实际故障的接近程度。因此，我们提出一种新指标——归一化拓扑感知匹配（NTAM），通过拓扑感知的距离计算来度量智能体相对于真实标签的性能。
+
+NTAM 需要一张拓扑图，其中节点为系统的实体，边表示它们之间不同类型的连接（例如 Deployment 拥有 ReplicaSet）。给定这样一张拓扑图，便可用其评估故障传播链中的实体集合，以及用于故障定位的根因实体集合。NTAM 受拓扑感知的距离度量以及信息检索概念（如 BM25，Fang et al., 2011）启发，后者会对区分度较低的特征进行降权。它是一个灵活、通用的函数，具有可配置组件，可对预测输出质量进行细粒度评估。
+
+具体而言，它由以下主要组件构成：
+
+\begin{itemize}
+\item \emph{基于拓扑的距离评分}函数，同时考虑边类型与子树规模，对更接近真实标签的预测实体给予奖励。此外，连接较少（子树较小）的节点获得更高分数，因为它们对故障定位更具区分度。
+\item \emph{节点重要性因子}，基于真实标签实体在传播链中的位置而定。这体现了如下直觉：正确预测真实根因实体所应获得的奖励，应高于在链条上预测对了另一个实体。
+\item \emph{长度失配的惩罚项}，针对预测实体与真实实体之间的数量差异。这是为了确保预测实体过多或过少时得分更低。
+\end{itemize}
+
+所有组件都有相应的超参数，可调以调整它们对总分的贡献。最终得分被归一化到 0 与 1 之间，其中 1 表示完全匹配。对于故障定位，不评估全部实体集合，而是仅考虑真实与预测的根因实体。
+
+\textbf{平均诊断时间（Mean Time to Diagnosis）。} 对于智能体成功完成诊断（即找到根因实体）的场景，我们计算 MTTD，用以度量智能体执行诊断的快慢（以秒为单位）。否则，MTTD 设为无穷大。
+
+\textbf{平均修复时间（Mean Time to Repair）。} 类似地，对于缓解，我们识别出智能体成功执行自动化动作以修复故障（即告警被清除）的场景。对于这些场景，我们计算 MTTR（以秒为单位），用以度量智能体执行缓解的快慢。否则，MTTR 设为无穷大。
+
+\subsubsection{C.6.4 评测结果}
+
+我们呈现四个基于大语言模型的智能体在 ITBench 框架下 42 个 SRE 场景上的评测结果。
+
+\textbf{智能体总体结果。} gpt-4o 表现最强，在诊断上取得 13.81\% 的 pass@1、在缓解上取得 11.43\% 的 pass@1（表 4），显著高于其他任何智能体。此外，它在 NTAM 指标（FL 与 FPC）上也取得最佳分数。值得注意的是，在困难场景（表 19）中，gpt-4o 是唯一能够执行多次准确诊断的智能体（granite 仅成功一次），且\emph{没有任何智能体能够修复困难场景}。与此同时，llama-3.1-8B 尽管参数更少，却在成功的尝试中提供了最快的检测速度（最低 MTTD 为 57.50 秒）和修复速度（最低 MTTR 为 245.13 秒）。尽管 granite-3.1-8B 与 llama-3.1-8B 拥有相同的参数规模，它展现出略强的诊断能力，但缓解能力较弱。llama-3.3-70B 总体上排名第二，在我们所计算的所有指标上均落后于 gpt-4o。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.62\linewidth]{fig12.pdf}
+\caption{场景 15 中 llama-3.3-70b-instruct 的轨迹样例。}
+\label{fig:itb-fig12}
+\end{figure}
+
+\textbf{按场景复杂度的结果分析。} 当我们根据公式 (6) 所述的复杂度将基准场景归类为简单（Easy）、中等（Medium）和困难（Hard）时，随着 $scenario\_complexity$ 的增加，出现了明显的性能差距。具体而言，表 17 显示在更复杂的场景中诊断准确率（pass@1）更低，而表 18 揭示出缓解成功率（pass@1）相应下降。在五个困难场景中，没有任何场景能被任何智能体在任何一次运行中解决。相比之下，对于简单场景，超过半数（八个中有五个）的场景被至少一个智能体成功修复，并且有六个场景被正确诊断。我们使用比例差异 z 检验来比较不同任务难度间的成功率（每次评估两个难度）。\emph{智能体性能从简单到困难场景持续下降，这验证了我们基于传播链长度、修复步骤数和技术多样性所构建的复杂度模型。}
+
+\textbf{诊断与缓解之间的相互依赖。} 有趣的是，诊断与缓解常被直觉地认为相互依赖，即准确的诊断是有效缓解的前提条件。然而，\emph{我们的发现揭示：在某些场景中，智能体尽管错误识别了根因，却仍能成功缓解故障事件}。例如，在场景 15（图 12）中，使用 llama-3.3-70b 模型的智能体将根因错误识别为服务中的“内存限制（memory limit）”，而真实根因是 HTTP 请求损坏故障；然而它仍设法通过扩容 email 服务的 pod 数量使其恢复功能，从而实际上绕过了对真实 HTTP 故障的处理。此类案例说明，诸如重启服务或扩容副本之类的通用缓解动作，有时即使在缺乏完全准确诊断的情况下也能修复系统症状。我们在真实世界的 SRE 故障事件分析中也观察到类似行为：尽管根因仍未确定，SRE 仍能够缓解故障事件。
+
+相反地，某些场景揭示了相反的问题：场景 13 虽被标注为“简单”，却无法被任何受测智能体修复，即便它们在诊断根因上取得了高分。值得注意的是，gpt-4o 取得了约 80\% 的 pass@1，并在 FPC 与 RC（NTAM）指标上均超过 0.7。这意味着，\emph{尽管智能体无法完全解决某些问题，它仍能提供近乎准确的诊断洞察，从而潜在地辅助人类操作者进行调试}。
+
+某些场景产生了更差的结果。例如，在场景 19（图 13）中，智能体未能识别根因，也无法修复系统，最终给出的缓解方案完全无效。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.62\linewidth]{fig13.pdf}
+\caption{场景 19 中 gpt-4o 的轨迹样例。}
+\label{fig:itb-fig13}
+\end{figure}
+
+\textbf{运行间的不一致性。} 另一个关键观察是智能体在重复运行间的不一致性。例如，llama-3.1-8b-instruct 和 mistral-large-2 在场景 11 中偶尔仅在 10 次运行中成功 1 次。尽管 gpt-4o 能可靠地修复场景 8，但其运行时间可在 100 至 800 秒之间波动。\emph{这些不一致性源于实时遥测的波动，其中微小的变化（例如某次运行报告 CPU 利用率为 58\%、另一次为 71\%）会影响大语言模型的输出，从而导致诊断与缓解结果各异。}
+
+\textbf{链路追踪对准确率的影响。} 许多基准提供原始遥测数据，而 ITBench 的一个关键差异化特征是其告警驱动的工作流，这与 SRE 通过由所采集遥测数据触发的黄金信号告警（golden-signal alerts）获知故障的方式相吻合。为进一步评估不同遥测来源的重要性，\emph{ITBench 还支持自动化的遥测数据掩蔽（telemetry data masking）}。如表 19 与表 20 所示，gpt-4o 的诊断 pass@1 从 18.10\%（有 trace）降至 9.52\%（无 trace），其缓解 pass@1 骤降至 2.86\%。类似地，llama-3.3-70B 的诊断率从 5.24\% 降至 0.95\%。事实上，一旦 trace 数据被掩蔽，仅有三个场景能被 gpt-4o 成功解决。以场景 13（简单难度）为例，智能体在所有运行中均能达到 80\% 的诊断率；然而当掩蔽 trace 时，该比率降至 0。需要注意的是，这些遥测掩蔽与智能体评估步骤都已集成进 ITBench 的自动化流水线。智能体可在不同的可观测性配置下接受评估。
+
+\textbf{灵活性与可扩展性。} 除场景设计外，\emph{ITBench 以灵活性与可扩展性为指导原则进行设计，既支持在现有任务内新增场景，也支持新增任务（如资源管理）}。我们已集成四种不同的应用，包括微服务应用（OpenTelemetry-Demo 以及来自 DeathStarBench 的 Hotel-Reservation）和非微服务应用（TiDB 应用与 Elasticsearch 应用）。ITBench 通过简单添加一个 Ansible playbook，便可直观地纳入自定义应用。外部协作者将一个应用接入 ITBench 大约耗时四个人工小时。此外，ITBench 在多个系统层（如应用层、虚拟化层）注入真实故障，确保对智能体性能进行覆盖广泛故障类型的全面评测。
+
+\subsubsection{C.6.5 诊断与缓解报告}
+
+智能体 JSON 报告的样例如图 18 所示。该 JSON 报告包含智能体在调查过程中所收集的信息。这包括其所遇到的故障实体列表，以及其对故障事件成因的最佳猜测。此外，它还包含智能体为缓解问题所采取的动作列表。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{cand_p33_k00.pdf}
+\caption{在启用链路追踪的情况下，各场景的诊断百分比。}
+\label{fig:itb-fig14}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{cand_p34_k00.pdf}
+\caption{在启用链路追踪的情况下，各场景根因的归一化拓扑感知指标（NTAM）。}
+\label{fig:itb-fig15}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{cand_p35_k00.pdf}
+\caption{在启用链路追踪的情况下，各场景故障传播链（FPC）的归一化拓扑感知指标（NTAM）。}
+\label{fig:itb-fig16}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{cand_p36_k00.pdf}
+\caption{在启用链路追踪的情况下，各场景的修复百分比。}
+\label{fig:itb-fig17}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{cand_p37_k00.pdf}
+\caption{场景 15 的智能体输出样例。}
+\label{fig:itb-fig18}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\caption{诊断 pass@1（单位：\%）。}
+\label{tab:itb-tab17}
+\begin{tabular}{lccc}
+\toprule
+\textbf{模型} & \textbf{Easy} & \textbf{Medium} & \textbf{Hard} \\
+\midrule
+gpt-4o & $36.00 \pm 4.73$ & $7.73 \pm 1.74$ & $5.00 \pm 2.24$ \\
+granite-3.1-8B-instruct & $8.00 \pm 2.68$ & $2.73 \pm 1.05$ & $1.00 \pm 1.03$ \\
+llama-3.1-8B-instruct & $1.18 \pm 1.20$ & $1.36 \pm 0.79$ & $0.00 \pm 0.00$ \\
+llama-3.3-70B-instruct & $10.00 \pm 2.93$ & $1.36 \pm 0.78$ & $0.00 \pm 0.00$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{修复 pass@1（单位：\%）。}
+\label{tab:itb-tab18}
+\begin{tabular}{lccc}
+\toprule
+\textbf{模型} & \textbf{Easy} & \textbf{Medium} & \textbf{Hard} \\
+\midrule
+gpt-4o & $21.00 \pm 4.06$ & $12.27 \pm 2.19$ & $0.00 \pm 0.00$ \\
+granite-3.1-8B-instruct & $1.00 \pm 1.01$ & $0.00 \pm 0.00$ & $0.00 \pm 0.00$ \\
+llama-3.1-8B-instruct & $5.88 \pm 2.48$ & $1.36 \pm 0.80$ & $0.00 \pm 0.00$ \\
+llama-3.3-70B-instruct & $7.00 \pm 2.50$ & $3.18 \pm 1.16$ & $0.00 \pm 0.00$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{实验细节。}
+\label{tab:itb-tab16}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{lccccc}
+\toprule
+\multirow{2}{*}{\textbf{模型}} & \multirow{2}{*}{\textbf{场景数}} & \multicolumn{3}{c}{\textbf{实验设置}} \\
+\cmidrule(lr){3-5}
+ & & \textbf{\#重复} & \textbf{\#总数} & \textbf{\%智能体提交} \\
+\midrule
+granite-3.1-8B-instruct & 42 & 10 & 420 & 98.76\% \\
+llama-3.1-8B-instruct & 42 & 10 & 420 & 100.0\% \\
+llama-3.3-70B-instruct & 42 & 10 & 420 & 100\% \\
+gpt-4o & 42 & 10 & 420 & 99.75\% \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+
+\footnotesize 注：“\%智能体提交”是指智能体返回了结果的全部试验所占的百分比。
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{仅在启用链路追踪的场景上对 SRE-agent 的评测。}
+\label{tab:itb-tab19}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{lcccccc}
+\toprule
+\multirow{2}{*}{\textbf{模型}} & \multicolumn{4}{c}{\textbf{诊断}} & \multicolumn{2}{c}{\textbf{缓解}} \\
+\cmidrule(lr){2-5}\cmidrule(lr){6-7}
+ & \textbf{pass@1 (\%)$\uparrow$} & \textbf{FL (NTAM)$\uparrow$} & \textbf{FPC (NTAM)$\uparrow$} & \textbf{MTTD (s)$\downarrow$} & \textbf{pass@1 (\%)$\uparrow$} & \textbf{MTTR (s)$\downarrow$} \\
+\midrule
+granite-3.1-8B-instruct & $3.33 \pm 1.20$ & $0.15 \pm 0.02$ & $0.16 \pm 0.01$ & $341.58 \pm 81.71$ & $0.48 \pm 0.50$ & $845.50\pm$ — \\
+llama-3.1-8B-instruct & $0.50 \pm 0.51$ & $0.07 \pm 0.01$ & $0.08 \pm 0.01$ & $58.24\pm$ — & $2.50 \pm 1.09$ & $245.39 \pm 49.45$ \\
+llama-3.3-70B-instruct & $5.24 \pm 1.59$ & $0.21 \pm 0.02$ & $0.22 \pm 0.02$ & $155.78 \pm 19.91$ & $5.71 \pm 1.60$ & $449.50 \pm 46.59$ \\
+gpt-4o & $18.10 \pm 2.58$ & $0.45 \pm 0.05$ & $0.37 \pm 0.03$ & $67.53 \pm 3.84$ & $20.00 \pm 2.75$ & $266.97 \pm 32.95$ \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+
+\footnotesize 21 个场景，每个场景运行 10 次。
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{仅在禁用链路追踪的场景上对 SRE-agent 的评测。}
+\label{tab:itb-tab20}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{lcccccc}
+\toprule
+\multirow{2}{*}{\textbf{模型}} & \multicolumn{4}{c}{\textbf{诊断}} & \multicolumn{2}{c}{\textbf{缓解}} \\
+\cmidrule(lr){2-5}\cmidrule(lr){6-7}
+ & \textbf{pass@1 (\%)$\uparrow$} & \textbf{FL (NTAM)$\uparrow$} & \textbf{FPC (NTAM)$\uparrow$} & \textbf{MTTD (s)$\downarrow$} & \textbf{pass@1 (\%)$\uparrow$} & \textbf{MTTR (s)$\downarrow$} \\
+\midrule
+granite-3.1-8B-instruct & $3.81 \pm 1.30$ & $0.18 \pm 0.02$ & $0.21 \pm 0.02$ & $160.97 \pm 51.06$ & $0.00 \pm 0.00$ & — \\
+llama-3.1-8B-instruct & $1.46 \pm 0.84$ & $0.06 \pm 0.01$ & $0.07 \pm 0.01$ & $57.26 \pm 2.88$ & $1.46 \pm 0.83$ & $244.96 \pm 68.53$ \\
+llama-3.3-70B-instruct & $0.95 \pm 0.68$ & $0.11 \pm 0.02$ & $0.10 \pm 0.02$ & $430.86\pm$ — & $0.95 \pm 0.67$ & $1429.80 \pm 552.71$ \\
+gpt-4o & $9.52 \pm 2.15$ & $0.32 \pm 0.05$ & $0.31 \pm 0.04$ & $85.19 \pm 12.84$ & $2.86 \pm 1.12$ & $385.87 \pm 15.292$ \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+
+\footnotesize 21 个场景，每个场景运行 10 次。
+\end{table}
+\section{附录 D：CISO（合规与安全运营）与合规评估智能体评测}
+
+\subsection{D.1 背景}
+
+技术的进步正在不断加剧应用与基础设施的复杂度。因此，那些依赖专职安全与合规团队、根据漏洞对组织构成的威胁来识别生产系统漏洞并加以缓解的传统做法，已经无法奏效。现代组织依赖一种开发、安全与运营一体化（DevSecOps）的实践，即在部署前对应用安全进行验证：在软件开发阶段就植入安全与监管管控；随后在部署后由运行时检查接力完成校验。在这些由不同团队负责、且其中部分团队网络安全知识有限的多层级安全与合规检查之下，手动的合规流程不仅对技术性安全管控而言已不再可行，而且这些流程的自动化也需要以前所未有的速度和规模加以推进，以跟上产品上市的节奏。
+
+整个流程始于 CISO（合规与安全运营，Chief Information Security Officer）、安全管理员或监管方建立并撰写相关的合规建议正文，通常以自然语言、针对特定的关键任务环境给出。随后他们依靠开发团队或安全专员在这些环境中收集状态作为证据，并出于取得运营授权（authorization to operate）或其他认证的目的，对照建议对其进行校验。自动化所追求的收益在于自动化\textbf{证据收集（evidence collection）}及其\textbf{校验（validation）}，从而实现可扩展性——既能处理复杂环境，也能支持频繁扫描（每日或按需，在每次系统修复或更新后进行）以完成状态度量与报告。校验自动化工具的例子包括策略引擎，如面向 Kubernetes 的 Kyverno（Int, c）、OPA Gatekeeper（Int, b），面向 PaaS 的 Ansible（Int, a），或面向云的云安全态势管理（CSPM）解决方案。图~\ref{fig:itbench-19} 展示了这种二分对立：左侧为合规撰写（compliance authoring），右侧为通过策略脚本及其多样化的编程语言进行的合规校验（compliance validation）。
+
+把自然语言建议自动翻译为策略脚本，要求在通常分属不同业务单元的各个领域与专家之间，达成前所未有的信任与同步水平。此外，它还要求通常专注于法律与知识产权（IP）事务的合规团队具备前所未有的技术知识。
+
+AI 智能体（agent）日益普及，以及人们预期其将能够处理复杂任务，使得对管理 IT 系统的 AI 智能体的需求随之上升（John, 2024；Miguel Carreon, 2024）。鉴于合规任务的复杂性，本研究面临的一大障碍是：要建立系统化的方法，在 AI 智能体投入生产部署之前评估其有效性。因此，迫切需要开发基于真实 IT 任务及其对应环境来评估 AI 智能体的方法。
+
+我们在开源（CIS, a）的 git 代码库文档中详细介绍了 CISO 合规评估智能体的部署与执行。下文将通过一套定义良好、含有真实场景与环境的方法论，展示我们的 CISO 智能体评测性能。下文随后给出一组场景样例及其环境对应的可执行自动化包，这些也在开源（CIS, b）中提供。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{fig19.pdf}
+\caption{合规撰写与管理（Compliance Authoring and Administration）对比策略校验点引擎（Policy Validation Point Engines）。}
+\label{fig:itbench-19}
+\end{figure}
+
+\subsection{D.2 真实世界评测}
+
+我们的 CISO 合规评估智能体（CAA，Compliance Assessment Agent）及其对应的评测基准（bench）将合规即代码（compliance as code）领域的最新技术结合在一起，借助生成式 AI（Gen AI）的代码生成能力，实现对监管管控及其态势评估的程序化表达。我们的智能体旨在赋能合规团队，加速新监管程序的采纳与运营：根据以自然语言描述的合规要求，自动生成用于证据收集及对照要求进行态势校验的代码。我们的评测实验覆盖端到端的智能体式（agentic）工作流，从在评测场景中发现策略技术，到将评估策略生成为代码，再到其实时的 git PR 管理、部署、执行与态势生成。最后，结果在我们的 ITBench 解决方案排行榜（leaderboard）上被评估、评级并报告。
+
+\subsubsection{D.2.1 术语与记号}
+
+我们定义以下关键术语，下文将用它们来描述智能体框架与评测方法论的主要方面：
+
+\begin{enumerate}
+\item \textit{智能体（Agent）：}智能体是一种由 AI 驱动的软件，它代表某一角色（persona）自主行动以解决给定任务。我们按照反映 IT 运营角色的智能体类型（Agent Type）对智能体进行分组，例如 CISO、FinOps 或 SRE 类型。
+\item \textit{任务（Task）：}任务是与某一角色职责相对应的具体工作，智能体旨在将其自动化。CISO 的典型任务包括收集证据和评估合规管控态势。
+\item \textit{场景（Scenario）：}场景是某一任务在给定环境中的真实实例。以 CISO 为例，\textit{每一项}在 OPA 上实例化的 Kubernetes CIS 基准要求都是一个独立的场景。场景可以分组归入类别（class）。
+\item \textit{场景类（Scenario Class）：}场景类是一类被归并在一起的真实场景，期望它们对应同一角色表现出相同的行为与结果。场景类的例子包括 OPA 引擎上的 Kubernetes CIS 基准\textit{集合}、Ansible 引擎上的 RHEL9 CIS 基准\textit{集合}，或 Kyverno 引擎上的 Kubernetes CIS 基准更新\textit{集合}。
+\item \textit{场景环境（Scenario Environment）：}场景环境是场景中指定部署设置的部分。
+\item \textit{环境状态（Environment State）：}一个环境具有可数的状态集合，我们认为这些状态标记了特定时刻的某一特定条件。状态的例子包括：环境初始部署状态、注入故障或不合规配置后的环境失败状态，以及缓解后修复或合规的环境状态。
+\item \textit{目标（Goal）：}目标是环境所期望达到的状态，即目标状态（goal state）。
+\end{enumerate}
+
+智能体的任务是以最高效的方式，将环境从其初始状态转移到目标状态。智能体可支配的手段包括环境动作（environment actions），即对系统状态进行观测的请求或试图影响系统状态的执动（actuation）尝试。智能体迈向把环境推入目标状态的第一步，是对若干观测动作的结果进行推理，以确定下一个最优步骤。带着对"最优步骤究竟为何"的有力假设，智能体力求寻找并执行策略，以最高效的方式趋向目标状态。
+
+我们的 CISO 合规评估任务与预定义场景相耦合，以便以标准化方式评估智能体交付自动化的有效性。下一节将先详述这些预定义的 CISO 任务，然后再详述我们的 ITBench 与 CISO 场景。
+
+\subsubsection{D.2.2 CISO 合规评估任务}
+
+合规评估任务包含各种活动，旨在将系统的实际状态与策略中以英文描述的期望状态进行比较。基于这一比较，系统给出相对于策略的"通过（pass）"或"失败（fail）"态势。
+
+\begin{itemize}
+\item \textbf{识别证据收集器（Identify Evidence Collector，IEC）：}获取证据需要选择适合目标系统特征的收集机制。例如，关于 Kubernetes 集群中某应用状态的证据，需要访问 Kubernetes API，通常借助诸如 \texttt{kubectl} 命令之类的工具。对于主机配置证据，则适合使用诸如 Ansible Playbook 之类的工具。该 IEC 任务及其关联智能体或工具，会识别环境中所用的收集器，以便生成与其对应语言和接口相匹配的脚本。
+\item \textbf{识别策略评估工具（Identify Policy Assessment Tool，IPA）：}对照策略评估证据，需要选择合适的策略引擎。对于通用场景，业界使用开源策略引擎 Open Policy Agent（OPA）（Int, d）及其特定的程序化语言 Rego。此外，对于 Kubernetes 特有的配置，Kyverno 策略与 OPA 一同被广泛使用。该 IPA 任务及其关联智能体或工具，会针对手头策略对应的场景识别合适的策略引擎，以便按照该策略引擎的程序化语言和接口生成策略代码。
+\item \textbf{收集证据（Collect Evidence，CE）：}该 CE 任务及其关联智能体或工具负责实际的证据收集，包括代码生成、证据收集代码的管理、部署与执行，以便从环境中获取实际证据。要以可靠且可扩展的方式实现这一点，代码的正确放置与执行是必要的。
+\item \textbf{扫描评估态势（Scan Assessment Posture，SAP）：}该 SAP 任务及其关联智能体或工具负责生成态势——即证据是否满足场景的 CIS 基准要求。它包括校验代码的生成、代码在策略引擎上的管理、部署与执行，以评估证据并产出合规态势。
+\end{itemize}
+
+表~2 总结了我们 ITBench 中最初支持的 CISO 任务，即 CE 与 SAP。其余任务将在后续版本中覆盖。这些任务在 ITBench 中对照预定义的标准场景执行，并与每个场景环境规约下存储在 ITBench 中的真实期望评估态势"pass"/"fail"进行比较。
+
+\subsection{D.3 用于处理 CISO 任务的 ITBench 架构}
+
+ITBench 使用开源技术，为 CISO 任务在 Kubernetes 集群上创建可重复、可复现的场景与环境，如图~\ref{fig:itbench-20} 所示。
+
+\subsubsection{D.3.1 原则}
+
+遵循引言中指出的评测基准原则，我们的 ITBench 使用开源技术构建完全可重复、可复现的场景，以模拟真实世界的事件。
+
+\begin{itemize}
+\item \textbf{模仿 CISO 最佳实践。}ITBench 遵循美国国家标准与技术研究院（NIST）网络安全框架（CSF）（NIS）为 CISO 与安全团队改进组织网络安全所列出的指引，具体为：（1）\textit{识别（Identify）}需要保护的关键数据、系统、资产与能力；（2）通过限制事件影响的安全措施进行\textit{保护（Protect）}；（3）制定策略以\textit{检测（detect）}不合规，并配以清晰的程序与工具；（4）通过快速消除威胁并缓解损害的计划进行\textit{响应（Respond）}；（5）设计\textit{恢复（recovery）}策略以支持及时恢复正常运营。我们的首个 ITBench 版本覆盖 CISO CSF 的前三项活动，方法是评估以下合规任务：（1）从选定环境中的系统识别并收集证据；（2）实现场景中建议的策略；（3）评估策略态势以检测进入不合规的失败。其余两项 CISO CSF 活动——\textit{响应}与\textit{恢复}——将成为未来某个 ITBench 版本的主题，该版本将支持智能体协作，即借助 SRE 智能体进行缓解。
+\item \textbf{模仿 CISO 真实世界问题。}我们在 ITBench 中研究并使用了真实世界的 Cloud Internet Security（CIS）基准（CIS, 2024），这是一套用于保护 IT 云基础设施的最佳实践集合，被全球公认为云安全标准。我们用这些 CIS 基准创建了不同复杂度级别的 CISO 合规策略场景：25\% 简单（Easy）、50\% 中等（Medium）、25\% 困难（Hard）策略（见图~\ref{fig:itbench-21}）。
+\item \textbf{提供可观测性（observability）。}云原生计算基金会（CNCF）近期的 Sandbox 项目（OSCAL-compass, 2024）发布了一套合规即代码 SDK，以支持对美国国家标准与技术研究院（NIST）的机器可读合规即代码（OSCAL, 2024）进行编程化的合规自动化使用。ITBench CISO 自动化利用这一方法论来表达 CIS 基准要求，检测要求创建或更新的事件，并触发证据收集与校验代码的创建或更新。
+\item \textbf{确保确定性（Determinism）。}ITBench 强制场景及其环境严格按照规约生成，而每个场景后的环境清理（cleanup）则确保为下一次运行提供干净的初始状态。
+\end{itemize}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{cand_p41_k00.pdf}
+\caption{负责编排 CISO 场景的 ITBench 架构。}
+\label{fig:itbench-20}
+\end{figure}
+
+\subsubsection{D.3.2 ITBench 架构}
+
+评测场景的环境由一个 Kubernetes 集群和若干虚拟机（VM）组成。如本节下文所述，ITBench 中预定义的每个 CISO 场景都由一个可部署栈（deployable stack）管理，它是一个软件组件，负责在真实运行时环境中处理评测流程与环境。
+
+该可部署栈管理各种任务，包括为每次评测场景运行所做的准备（"deploy\_environment"）、故障注入（"inject\_fault"）、智能体性能评估（"evaluate"）和环境清理（"delete\_environment"）。每个可部署栈都是为特定的 CISO 合规评估场景专门设计的，确保所需的工具、配置和策略就位。环境管理员定义这些场景的可部署栈，并配置所需的软件，这可能涉及搭建策略引擎、工具，或创建模拟违反特定合规要求的条件。
+
+例如，某个可部署栈可能故意展现一处错误配置（misconfiguration），以模拟违反某一特定合规标准。在一个场景的执行过程中，智能体最初被提供该场景合规要求的自然语言描述。基于该描述，智能体生成必要的产物，包括用于证据评估的脚本和策略。随后，运行时场景环境被部署并向智能体开放访问。智能体访问环境以检索证据、部署策略，并致力于实现指定的自动化目标——本例中即评估合规态势为"fail"或"not-satisfied"。
+
+在场景运行过程中，智能体会向 ITBench 通报其任务的开始与完成。收到完成通知后，ITBench 访问环境以度量评测指标。一旦收集到所有预定义场景的指标，它们便被聚合并展示在 ITBench 排行榜（Leaderboard）上。图~\ref{fig:itbench-22} 展示了 CISO 场景的端到端评测流程。
+
+在我们 CISO 合规评估评测的背景下，场景环境（包括 Kubernetes 集群和 VM）由智能体提交器（Agent Submitter）准备。搭建与指标度量使用一个名为 Mini-Bench 的工具自动化完成。评测结果（包括任务指标）通过 API 注册到中央 Bench Server。这些结果展示在 Bench Server 上的排行榜（Leaderboard）上。这一设置允许评测统一地进行——无论使用智能体提交器的本地环境还是远程环境，两种情况下采用的都是相同的 API 交互。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.6\linewidth]{cand_p42_k00.pdf}
+\caption{CISO 场景复杂度。}
+\label{fig:itbench-21}
+\end{figure}
+
+\subsection{D.4 ITBench 真实世界 CISO 场景}
+
+我们在 ITBench 中使用真实世界的 Cloud Internet Security（CIS）基准（CIS, 2024）标准来创建我们的 CISO 合规评估场景。我们考虑作为 CISO 智能体评测试验场的技术是 Kubernetes 和 RHEL9，不过 CIS 中可用的任何其他技术都可以被加以利用，将其策略场景注入 ITBench。
+
+表~\ref{tab:itbench-21} 和表~\ref{tab:itbench-22} 展示了典型 CIS 基准建议的示例。ITBench 上渲染的每个场景都被设计为镜像该建议的复杂度。这确保了 ITBench 复现真实世界的合规要求，从而允许对智能体进行真实的评估。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{cand_p43_k00.pdf}
+\caption{CISO 合规评估智能体端到端评测流程。}
+\label{fig:itbench-22}
+\end{figure}
+
+\subsection{D.5 CISO 场景类及其复杂度}
+
+\subsubsection{D.5.1 New-K8s-CIS-b-Kyverno}
+
+New-K8s-CIS-b-Kyverno 代表 ITBench 中的简单（Easy）场景类。该类中的 10 个场景基于面向 Kubernetes 的 CIS 基准（CIS Benchmark for Kubernetes）准备，具体聚焦于 Pod 安全策略（Pod Security Policy）。该场景假设一个预配置了 Kyverno 策略引擎的 Kubernetes 集群。在该集群内，存在某些与 Pod 安全策略相关的错误配置，但智能体并不知晓其确切位置。
+
+需要处理的错误配置要求被传达给智能体。基于这些要求，智能体生成一个 Kyverno 策略并将其部署到集群。随后，智能体从集群收集报告。该报告的准确性通过检查它是否成功识别出错误配置来加以校验。如果策略被正确生成并部署，报告应指示出恰当的态势；反之，若出现错误，则会报告不正确的态势。
+
+在该场景中，四项合规评估任务（Compliance Assessment Task）的评估方式如下：
+
+\begin{itemize}
+\item IEC：通过校验 Kyverno 策略中是否反映出正确的配置来评估。
+\item IPA：通过确认是否成功为 Kyverno 生成了策略来评估。
+\item CE：通过校验是否在预定义位置生成了 Kyverno 报告来度量。
+\item SAP：由 Kyverno 报告中所报告的态势是否与期望值匹配来判定。
+\end{itemize}
+
+\subsubsection{D.5.2 New-K8s-CIS-b-OPARego}
+
+New-K8s-CIS-b-Kubectl-OPARego 被归类为中等（Medium）复杂度场景。该基准包含 10 个源自面向 Kubernetes 的 CIS 基准的场景，具体聚焦于 Pod 安全策略。
+
+该场景的基础背景与 New-K8s-CIS-b-Kyverno 高度相似，共享将 Kubernetes 集群作为运行环境、并将面向 Kubernetes 的 CIS 基准作为运行环境的假设。关键差异在于 Open Policy Agent（OPA）策略引擎的双重输出：既生成证据获取脚本（evidence fetcher script），也生成策略检查器代码（policy checker code）。
+
+\begin{itemize}
+\item 获取脚本（fetcher script）旨在通过执行 kubectl 命令从目标集群收集所需证据。
+\item 策略检查器（policy checker）基于预定义规则校验所收集证据的合规性。这通过 Open Policy Agent（OPA）实现，并由 OPA Rego 策略定义。
+\end{itemize}
+
+该场景中智能体的目标是生成两个输出：1）一个执行 kubectl 命令的脚本（fetcher），2）一个用于合规校验的 OPA Rego 策略（checker）。
+
+校验流程对智能体生成的输出评估如下：由 kubectl 命令组成的获取脚本针对一个真实的 Kubernetes 集群执行以收集证据。随后，所收集的证据使用生成的 OPA Rego 策略和 OPA 策略引擎加以评估，以校验结果是否与期望的合规结果一致。
+
+该场景在以下四项合规评估任务上被评估：
+
+\begin{itemize}
+\item IEC：判定包含 kubectl 命令的获取脚本是否成功生成。
+\item IPA：校验以 OPA Rego 策略实现的检查器是否被正确生成。
+\item CE：检查针对集群执行获取脚本能否成功收集证据。
+\item SAP：校验 OPA Rego 策略是否如期评估所收集证据，产出正确的合规评估。
+\end{itemize}
+
+这一方式为评估智能体生成有效脚本与策略以进行 Kubernetes 集群合规评估的能力提供了结构化评估。
+
+\subsubsection{D.5.3 New-RHEL9-CIS-b-Ansible-OPA}
+
+New-RHEL9-CIS-b-Ansible-OPA 属于中等（Medium）复杂度场景类，包含 20 个基于面向 RHEL9 操作系统的 CIS 基准的场景。该场景与 New-K8s-CIS-b-Kubectl-OPARego 共享一些共同特征，包括生成两份代码（一个获取脚本和一个检查器策略），以及使用 OPA Rego 策略进行合规校验。主要区别在于目标系统：与聚焦 Kubernetes 集群的 New-K8s-CIS-b-Kubectl-OPARego 不同，该场景以 RHEL9 主机为目标。因此，New-RHEL9-CIS-b-Ansible-OPA 不使用 kubectl 作为获取脚本，而是采用 Ansible playbook。该场景的目标是生成作为获取脚本的 Ansible playbook，以及作为检查器的 OPA Rego 策略。
+
+校验流程对智能体生成的输出评估如下：获取脚本（Ansible playbook）针对一台真实的 RHEL9 主机执行以收集证据。随后，所收集的证据使用生成的 OPA Rego 策略在 OPA 策略引擎上分析，评估结果是否与期望的合规结果一致。
+
+在该场景中，智能体的性能在以下四项合规评估任务上被评估：
+
+\begin{itemize}
+\item IEC：智能体是否以 Ansible playbook 的形式生成获取脚本？
+\item IPA：智能体是否为检查器生成 OPA Rego 策略？
+\item CE：Ansible playbook 能否针对 RHEL9 主机成功执行并收集相关证据？
+\item SAP：生成的 OPA Rego 策略能否评估所收集证据并产出期望的合规结果？
+\end{itemize}
+
+该场景旨在评估智能体在 Kubernetes 之外的主机管理环境（具体聚焦于 RHEL9 系统）中执行合规评估任务的性能。
+
+\subsubsection{D.5.4 Update-K8s-CIS-b-Kyverno}
+
+Update-K8s-CIS-b-Kyverno 属于复杂度被归类为困难（Hard）的场景类，目前包含 10 个场景。与基于目标中指定的新要求生成新 Kyverno 策略的 New-K8s-CIS-b-Kyverno 不同，该场景涉及不同的目标。具体而言，它以一个既有的 Kyverno 策略作为输入，连同详细说明对原始要求所做修改的指令，生成一个满足修订后要求的\textit{已更新（updated）}策略。更新后的策略随后作为最终输出被部署（或更新）。
+
+该场景的校验流程与 New-K8s-CIS-b-Kyverno 所用的方法论一致。
+
+\begin{table}[H]
+\centering
+\caption{Kubernetes —— Center for Internet Security 基准（样例）。}
+\label{tab:itbench-21}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{lllll}
+\toprule
+\textbf{章节号} & \textbf{建议号} & \textbf{标题} & \textbf{评估状态} & \textbf{描述} \\
+\midrule
+1.1.1 & 1.1.1.1 & \begin{tabular}[t]{@{}l@{}}Ensure cramfs kernel\\module is not available\end{tabular} & Automated & \begin{tabular}[t]{@{}p{6.2cm}@{}}`cramfs' 文件系统类型是一种内嵌于小型系统的压缩只读 Linux 文件系统。`cramfs' 镜像无需先解压整个镜像即可使用。\end{tabular} \\
+\addlinespace
+1.1.1 & 1.1.1.2 & \begin{tabular}[t]{@{}l@{}}Ensure freevxfs kernel\\module is not available\end{tabular} & Automated & \begin{tabular}[t]{@{}p{6.2cm}@{}}`freevxfs' 文件系统类型是 Veritas 类型文件系统的免费版本。它是 HP-UX 操作系统的主要文件系统类型。\end{tabular} \\
+\addlinespace
+1.1.1 & 1.1.1.3 & \begin{tabular}[t]{@{}l@{}}Ensure hfs kernel mod-\\ule is not available\end{tabular} & Automated & \begin{tabular}[t]{@{}p{6.2cm}@{}}`hfs' 文件系统类型是一种层次化文件系统，允许你挂载 Mac OS 文件系统。\end{tabular} \\
+\addlinespace
+1.1.1 & 1.1.1.4 & \begin{tabular}[t]{@{}l@{}}Ensure hfsplus kernel\\module is not available\end{tabular} & Automated & \begin{tabular}[t]{@{}p{6.2cm}@{}}`hfsplus' 文件系统类型是一种层次化文件系统，设计用于替代 `hfs'，允许你挂载 Mac OS 文件系统。\end{tabular} \\
+\addlinespace
+1.1.1 & 1.1.1.5 & \begin{tabular}[t]{@{}l@{}}Ensure jffs2 kernel mod-\\ule is not available\end{tabular} & Automated & \begin{tabular}[t]{@{}p{6.2cm}@{}}`jffs2'（日志型闪存文件系统 2）文件系统类型是一种用于闪存设备的日志结构文件系统。\end{tabular} \\
+\addlinespace
+1.1.1 & 1.1.1.8 & \begin{tabular}[t]{@{}l@{}}Ensure usb-storage ker-\\nel module is not avail-\\able\end{tabular} & Automated & \begin{tabular}[t]{@{}p{6.2cm}@{}}USB 存储提供了一种传输与存储文件的手段，可确保文件的持久性与可用性，且不受网络连接状态影响。其普及性与实用性使得基于 USB 的恶意软件成为一种简单而常见的网络渗透手段，也是在网络化环境中建立持久威胁的第一步。\end{tabular} \\
+\addlinespace
+1.1.1 & 1.1.1.9 & \begin{tabular}[t]{@{}l@{}}Ensure unused filesys-\\tems kernel modules are\\not available\end{tabular} & Manual & \begin{tabular}[t]{@{}p{6.2cm}@{}}文件系统内核模块是一些代码片段，可以被动态加载进 Linux 内核，以扩展操作系统的文件系统能力（即所谓的基础内核）。文件系统内核模块通常用于为新硬件（如设备驱动）添加支持，或用于添加系统调用。\end{tabular} \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\subsection{D.6 CISO ITBench 评估}
+
+我们主要在 AWS EC2 实例（m4.xlarge）上开展实验，不过 ITBench 也可以很方便地使用伪集群（pseudo-cluster）部署在消费级笔记本电脑上，从而使 AI 智能体的开发更加便利。
+
+我们在跨越表~2 所引入的四个场景类的 50 个场景上度量 CISO 合规评估智能体的效能。每个场景类施加一组各不相同的 CIS 基准要求（例如，"最小化希望共享主机网络命名空间的容器的准入数量"），每个类具有特定的复杂度级别（例如简单、中等、困难），并生成场景特定的代码产物。
+
+在评估中，我们考虑了多种 LLM，例如用于依赖自然语言理解与推理任务的 GPT-4o、Llama-3.3-70B-instruct、Llama-3.1-8B-instruct 和 Granite-3.1-8B-instruct。对于以代码为中心的用例，我们另外采用了 GPT-4o-mini、Llama-3.1-405b-instruct 和 Mixtral-8x7b-instruct。所有模型的上下文窗口均为 128K token，使它们能够处理更长的输入序列。
+
+\begin{table}[H]
+\centering
+\caption{Red Hat Enterprise Linux —— Center for Internet Security 基准（样例）。}
+\label{tab:itbench-22}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{lllll}
+\toprule
+\textbf{章节号} & \textbf{建议号} & \textbf{标题} & \textbf{评估状态} & \textbf{描述} \\
+\midrule
+1.1.2 & 1.1.2.3 & Ensure noexec option set on \texttt{/tmp} partition & Automated & `noexec' 挂载选项指定文件系统不能包含可执行二进制文件。 \\
+\addlinespace
+1.1.2 & 1.1.2.4 & Ensure nosuid option set on \texttt{/tmp} partition & Automated & `nosuid' 挂载选项指定文件系统不能包含 `setuid' 文件。 \\
+\addlinespace
+1.1.3 & -- & Configure \texttt{/var} & -- & `/var' 目录由守护进程及其他系统服务用于临时存储动态数据。该进程创建的某些目录可能是全局可写的。 \\
+\addlinespace
+1.1.3 & 1.1.3.2 & Ensure nodev option set on \texttt{/var} partition & Automated & `nodev' 挂载选项指定文件系统不能包含特殊设备。 \\
+\addlinespace
+1.1.3 & 1.1.3.3 & Ensure nosuid option set on \texttt{/var} partition & Automated & `nosuid' 挂载选项指定文件系统不能包含 `setuid' 文件。 \\
+\addlinespace
+1.1.4 & -- & Configure \texttt{/var/tmp} & -- & `/var/tmp' 目录是一个全局可写目录，供所有用户和某些应用用于临时存储。位于 `/var/tmp' 的临时文件需在重启之间保留。 \\
+\addlinespace
+1.1.4 & 1.1.4.2 & Ensure noexec option set on \texttt{/var/tmp} partition & Automated & `noexec' 挂载选项指定文件系统不能包含可执行二进制文件。 \\
+\addlinespace
+1.1.4 & 1.1.4.3 & Ensure nosuid option set on \texttt{/var/tmp} partition & Automated & `nosuid' 挂载选项指定文件系统不能包含 `setuid' 文件。 \\
+\addlinespace
+1.1.4 & 1.1.4.4 & Ensure nodev option set on \texttt{/var/tmp} partition & Automated & `nodev' 挂载选项指定文件系统不能包含特殊设备。 \\
+\addlinespace
+1.1.5 & -- & Configure \texttt{/var/log} & -- & `/var/log' 目录由系统服务用于存储日志数据。 \\
+\addlinespace
+1.1.5 & 1.1.5.2 & Ensure nodev option set on \texttt{/var/log} partition & Automated & `nodev' 挂载选项指定文件系统不能包含特殊设备。 \\
+\addlinespace
+1.1.5 & 1.1.5.3 & Ensure noexec option set on \texttt{/var/log} partition & Automated & `noexec' 挂载选项指定文件系统不能包含可执行二进制文件。 \\
+\addlinespace
+1.1.5 & 1.1.5.4 & Ensure nosuid option set on \texttt{/var/log} partition & Automated & `nosuid' 挂载选项指定文件系统不能包含 `setuid' 文件。 \\
+\addlinespace
+1.1.6 & -- & Configure \texttt{/var/log/audit} & -- & 审计守护进程 `auditd' 将日志数据存储在 `/var/log/audit' 目录中。 \\
+\addlinespace
+1.1.6 & 1.1.6.2 & Ensure noexec option set on \texttt{/var/log/audit} partition & Automated & `noexec' 挂载选项指定文件系统不能包含可执行二进制文件。 \\
+\addlinespace
+1.1.6 & 1.1.6.3 & Ensure nodev option set on \texttt{/var/log/audit} partition & Automated & `nodev' 挂载选项指定文件系统不能包含特殊设备。 \\
+\addlinespace
+1.1.6 & 1.1.6.4 & Ensure nosuid option set on \texttt{/var/log/audit} partition & Automated & `nosuid' 挂载选项指定文件系统不能包含 `setuid' 文件。 \\
+\addlinespace
+1.1.7 & -- & Configure \texttt{/home} & -- & 请注意，home 目录可以被挂载到任何位置，不一定限于 `/home'，也不一定限于单一位置，名称也没有任何限制。可以通过查看 `/etc/passwd'、用 `mount' 遍历已挂载文件系统，或用 `getent' 查询相关数据库来进行检查。 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\subsubsection{D.6.1 评估指标}
+
+我们的 CISO 智能体的效能，是基于其在场景类（随机注入了各种错误配置）的多样化环境中，检测产物错误配置（即不合规，例如未达到容器共享命名空间的最小数量，或数量超过阈值）或确认正确配置（即合规）的能力来度量的。
+
+我们使用以下指标评估智能体检测（不）合规的有效性：
+
+\begin{itemize}
+\item 成功率使用 pass@1 量化。
+\item 效率通过处理用时（Time to Process，TTP）刻画。
+\end{itemize}
+
+\subsubsection{D.6.2 指标定义}
+
+\textbf{pass@1。}我们使用 pass@1 指标（Chen et al., 2021）评估智能体对态势"pass"/"fail"的正确评估，其定义如下：
+\[
+\mathrm{pass@}k := \mathbb{E}_{\text{Scenarios}}\left[1 - \frac{\binom{n-c}{k}}{\binom{n}{k}}\right]
+\]
+它是跨所有场景在 $k=1$ 次试验中正确性的无偏估计量。
+
+\textbf{处理用时（Time to Process）。}我们识别出智能体成功判定态势的场景（即错误配置导致"fail"态势，而合规配置导致"pass"态势）。对于这些任务场景，我们计算 \textit{TTP}，用以度量智能体执行评估的耗时。否则，\textit{TTP} 被设为无穷大。
+
+\subsubsection{D.6.3 评估结果}
+
+\textbf{智能体总体结果。}总体而言，我们在表~5 和图~25 中的结果表明，基于 GPT 的模型在 pass@1 和处理用时两项指标上均占据主导地位。其 pass@1 几乎是次优模型（在 llama-3.1-405b-instruct 与 mistral-large-2 之间交替）的 2 倍，而 TTP 显示其能跨我们的场景类以最短时间处理这些场景。
+
+\textbf{场景复杂度的影响。}CISO 场景的复杂度被直接映射到场景类。例如，Kyverno 场景为简单复杂度，k8s-opa 和 rhel-opa 为中等复杂度，而 Kyverno-update 场景为困难复杂度。不出所料，所有模型都表现挣扎——正如预期，随着场景难度从简单的 \textit{kyverno} 类升至困难的 \textit{kyverno-upadate} 类，难度逐渐增大。
+
+\subsubsection{D.6.4 CISO 合规评估智能体轨迹}
+
+我们考察实验中的两条样例轨迹，以凸显智能体的思维模式与动作。这包括两个场景，一个成功、一个失败，均派生自 NEW-CIS-B-RHEL9-ANSIBLE-OPA 与 LLaMa 405B 的实验，聚焦于面向 RHEL9 的 CIS 基准（控制章节 5.1.8 和 5.2.19）。
+
+在成功的场景中，playbook 被成功生成、独立测试，进而成功收集到数据，随后成功创建出一个 OPA，并最终在评测中通过评估检测出问题。
+
+在不成功的场景中，playbook 被成功独立生成与测试，从而成功收集数据，但 OPA 无法被正确创建。这导致反复的语法错误纠正与重试，最终达到最大重试上限。
+
+接下来，我们为这两种情形分别给出轨迹。在成功场景中，智能体被指派根据以下请求执行合规评估：
+
+\begin{quote}
+确保 cron 限于授权用户使用。系统必须：只允许已授权用户使用 cron 调度作业。具体要求：
+
+- 文件 /etc/cron.allow 必须存在，并指定授权用户列表。
+
+- 文件 /etc/cron.deny 必须不存在。
+
+- 未授权用户（例如 user1、user2）不得列入 /etc/cron.allow。
+
+为检查该条件，请执行以下步骤。- 从 RHEL 主机收集配置并保存到本地，你可以使用 ansible-playbook 来完成。- 用上述步骤给定的输入，通过 rego 策略检查该条件是否满足。
+
+针对上述步骤，你需要创建 ansible playbook `playbook.yml' 和 OPA rego 策略 `policy.rego'。如果你能修复生成的代码，请修复并重新运行修复后的代码。一旦你得到最终答案，即可结束这项工作。
+\end{quote}
+
+智能体运行这一任务时，会被提供目标环境凭据以及一个用于保存待提交生成文件的工作目录。图~\ref{fig:itbench-23} 展示了智能体为完成该请求所采取的轨迹。
+
+在下一个场景（CIS 基准控制章节 5.2.19）中，智能体被赋予一个不同的合规要求。这一次，重点是确保 SSH 登录会话遵守安全最佳实践。然而，与前一个场景不同，智能体遇到了一个严重问题：它未能正确写出语法有效的 Rego 策略，导致执行期间反复出现 OPA 错误。
+
+场景 5.2.19 的合规要求如下：
+
+\begin{quote}
+确保 SSH LoginGraceTime 设置为一分钟或更短
+
+为检查该条件，请执行以下步骤。- 从 RHEL 主机收集配置并保存到本地。
+\end{quote}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.5\linewidth]{cand_p47_k00.pdf}
+\caption{成功场景下 LLaMa 405B 的样例轨迹。}
+\label{fig:itbench-23}
+\end{figure}
+
+智能体运行这一任务时，会被提供目标环境凭据以及一个用于保存待提交生成文件的工作目录。图~\ref{fig:itbench-23} 展示了智能体为完成该请求所采取的轨迹。
+
+在重复这一过程三次后，达到了最大重试上限，最终只有当前保存的 playbook.yml 和 policy.rego 被用于评估。在评估时，这个 policy.rego 存在语法错误，因此评估未能通过。
+
+\begin{table}[H]
+\centering
+\caption{实验细节。}
+\label{tab:itbench-23}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{lcccccc}
+\toprule
+\multirow{2}{*}{\textbf{CISO/Agent: Models}} & \multirow{2}{*}{\textbf{Scenarios}} & \multicolumn{4}{c}{\textbf{Experiment Setup}} \\
+\cmidrule(lr){3-6}
+ & & \textbf{\#Repeats} & \textbf{\#Total} & \textbf{\% Exp. Completion} & \textbf{\% Agent Submission} \\
+\midrule
+granite-3.1-8B-instruct  & 50 & 8 & 400 & 91.41\% & 88.48\% \\
+mixtral-8x7B-instruct    & 50 & 8 & 400 & 91.02\% & 94.67\% \\
+llama-3.1-8B-instruct    & 50 & 8 & 400 & 93.21\% & 85.71\% \\
+llama-3.3-70B-instruct   & 50 & 8 & 400 & 92.82\% & 89.11\% \\
+mistral-large-2          & 50 & 8 & 400 & 94.48\% & 85.23\% \\
+llama-3.1-405B-instruct  & 50 & 8 & 400 & 92.43\% & 84.50\% \\
+gpt-4o-mini              & 50 & 8 & 400 & 95.25\% & 85.71\% \\
+gpt-4o                   & 50 & 8 & 400 & 90.83\% & 90.54\% \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\par\smallskip
+\footnotesize\raggedright
+注：``\% Exp. Completion''（实验完成率）指由评测运行器正确启动并完成的实验所占百分比。\\
+注：``Trials Agent Submitted''（智能体提交的试验）指在所有已完成试验中智能体返回结果的百分比。
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{CISO/Agent：评估结果。}
+\label{tab:itbench-24}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{lccccccc}
+\toprule
+\multirow{2}{*}{\textbf{Models}} & \multicolumn{4}{c}{\textbf{Scenario pass@1 (\%)} $\uparrow$} & \multirow{2}{*}{\textbf{Avg. pass@1 (\%)} $\uparrow$} & \multirow{2}{*}{\textbf{MPR (s)} $\downarrow$} \\
+\cmidrule(lr){2-5}
+ & \textbf{kyverno} & \textbf{k8s-opa} & \textbf{rhel-opa} & \textbf{kyverno-upadate} & & \\
+\midrule
+granite-3.1-8B-instruct  & $7.84 \pm 3.84$  & $0.00 \pm 0.00$  & $0.00 \pm 0.00$  & $1.59 \pm 1.58$  & $1.71 \pm 0.76$  & $197.03 \pm 2.52$ \\
+mixtral-8x7B-instruct    & $7.35 \pm 3.19$  & $1.43 \pm 1.42$  & $0.00 \pm 0.00$  & $1.29 \pm 4.34$  & $3.94 \pm 1.03$  & $120.63 \pm 3.77$ \\
+llama-3.1-8B-instruct    & $8.57 \pm 3.37$  & $0.00 \pm 0.00$  & $0.00 \pm 0.00$  & $7.46 \pm 3.23$  & $3.59 \pm 1.07$  & $121.49 \pm 3.00$ \\
+llama-3.3-70B-instruct   & $18.46 \pm 4.94$ & $0.00 \pm 0.00$  & $1.43 \pm 2.88$  & $8.06 \pm 3.50$  & $9.32 \pm 1.67$  & $189.61 \pm 2.71$ \\
+mistral-large-2          & $6.56 \pm 3.20$  & $22.73 \pm 5.32$ & $7.23 \pm 2.88$  & $10.45 \pm 3.77$ & $11.55 \pm 1.95$ & $167.98 \pm 3.42$ \\
+llama-3.1-405B-instruct  & $16.22 \pm 4.32$ & $20.83 \pm 4.86$ & $8.75 \pm 3.26$  & $3.17 \pm 2.22$  & $12.46 \pm 1.98$ & $178.89 \pm 3.37$ \\
+gpt-4o-mini              & $16.18 \pm 4.54$ & $43.10 \pm 6.99$ & $30.38 \pm 5.43$ & $9.43 \pm 4.08$  & $25.19 \pm 2.80$ & $102.40 \pm 3.70$ \\
+gpt-4o                   & $40.28 \pm 5.99$ & $39.34 \pm 6.55$ & $7.61 \pm 2.81$  & $17.74 \pm 4.92$ & $24.74 \pm 2.64$ & $101.29 \pm 3.81$ \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\par\smallskip
+\footnotesize\raggedright
+``pass@1'' 数值以百分比表示。pass@1 按 Codex（Chen et al., 2021）中的定义计算。``MPR'' 为平均处理用时（mean processing time）。\\
+\textbf{kyverno} = Kyverno 上的 New K8s CIS 基准，\textbf{k8s-opa} = OPA 上的 New K8s CIS 基准，\textbf{rhel-opa} = Ansible-OPA 上的 New RHEL9 CIS 基准，\textbf{kyverno-update} = Kyverno 上的 Update K8s CIS 基准。
+\end{table}
+\section{附录 E：FinOps}
+
+\subsection{E.1 背景}
+
+FinOps（财务运营，Financial Operations，即 Finance + Operations）是一种运营框架与文化实践，旨在最大化云的业务价值，并构建共担式的财务问责机制。其首要目标之一，是通过促进工程、财务与业务团队之间的协作，实现及时、数据驱动的决策。FinOps 由三个迭代阶段构成——告知（Inform，可见性与分配，Visibility \& Allocation）、优化（Optimize，费率与用量，Rates \& Usage）和运营（Operate，持续改进与用量，Continuous Improvement \& Usage）。重要的是，FinOps 的成功取决于：利用从应用性能管理（Application Performance Management，APM）、应用资源管理（Application Resource Management，ARM）以及财务（云成本管理，Cloud Cost Management）中收集到的实时洞察，进行多次迭代式调整（Storment and Fuller, 2023）。
+
+与一般认知相反，FinOps 关注的是最大化业务价值，而不仅仅是降低运营成本。《2024 年 FinOps 现状报告》（Foundation, 2024a;b）从 1,245 名受访者处采集了数据，企业的平均年度云支出为 \$44M，部分企业的年度云支出甚至高达 \$1B 以上，云支出总额达 \$55B。该研究显示，与往年相比情况已发生转变：减少浪费、管理承诺（commitment）正成为各方新的关键优先事项。云折扣计划（如节省计划 Savings Plans 与预留实例 Reserved Instances）的管理，以及对支出的准确预测，仍位居榜单前列。诸如自动化程度提升、AI 成本、可持续性等其他领域也呈现出日益增长的关注度。
+
+\subsubsection*{E.1.1 关键术语}
+
+FinOps 通过在框架能力（Framework Capabilities）上迭代地开展工作，跨越三个阶段来实施（Foundation, 2025b），即告知（Inform）、优化（Optimize）与运营（Operate），分别描述如下：
+
+\begin{enumerate}
+\item 告知（Inform）阶段涉及识别云成本、用量与效率数据的数据源。随后，这些数据被用于预算编制、成本分配、预测、分析与报告。
+\item 优化（Optimize）阶段利用在告知阶段开发出的数据与能力，识别提升云效率的机会。
+\item 运营（Operate）阶段利用在告知与优化阶段开发出的数据与能力，将 FinOps 落地实施、运营化。
+\end{enumerate}
+
+FinOps 中一些适合用于优化的常见关键绩效指标（KPI）（完整集合见 \url{https://www.finops.org/wg/finops-kpis/}）包括：
+
+\begin{enumerate}
+\item 资源利用率百分比（Percentage Resource Utilization）——指已利用资源占总分配容量的百分比。
+\item 支出的总未预测方差（Total Unpredicted Variance of Spend）——衡量在给定时间段内记录的、与云服务提供商（CSP）云用量相关的成本的未预测方差。
+\item 自动扩缩效率比（Auto-scaling Efficiency Rate）——满足工作负载需求所需的最大运行容量成本 / 采用自动扩缩满足同等工作负载需求时的运行成本。
+\item 预测准确率（用量）（Forecast Accuracy Rate (Usage)）——比较某一特定时段（如日、月、季度）内预测的云用量与实际云用量（vCPU、内存等）。
+\item 预测准确率（支出）（Forecast Accuracy Rate (Spend)）——该指标比较某一特定时段（如日、月、季度）内预测的云支出与实际云支出。
+\item 由承诺折扣覆盖的计算支出百分比（Percent of Compute Spend Covered by Commitment Discounts）——衡量某一特定时段内由承诺折扣覆盖的计算成本（不含 Spot）的百分比。
+\item 承诺折扣浪费百分比（Percentage of Commitment Discount Waste）——未应用于按需支出的承诺所占的百分比。
+\item 未使用资源百分比（Percent of Unused Resources）——衡量未使用的云资源，例如未挂载/孤立的存储卷、负载均衡器、EIPS、网络网关、快照。
+\item 未分配的共享 CSP 云成本百分比（Percentage of Unallocated Shared CSP Cloud Cost）——该度量指无法直接归属到组织内特定项目、团队或部门的费用。
+\item 已编制预算与已预测 CSP 云支出之间的方差百分比（Percentage Variance of Budgeted vs. Forecasted CSP Cloud Spend）——衡量使用 CSP 云服务的预算成本与预测成本之间的差异。
+\item 有效节省率百分比（Effective Savings Rate Percentage）——含折扣的实际支出 / 等量的按需费率支出。
+\item 符合标签策略的 CSP 云成本百分比（Percentage of CSP Cloud Costs that are Tagging Policy Compliant）——某一时段内符合标签策略的 CSP 云资源相关总成本 / 该时段内 CSP 云总成本。
+\item 高频访问层上的存储百分比（Percent Storage on Frequent Access Tier）——标准（或“高频访问”）层中的 GB 数 vs.\ 存储的总 GB 数。
+\item 与未打标签的 CSP 云资源相关的碳百分比（Percentage of Carbon Associated with Untagged CSP Cloud Resources）。
+\end{enumerate}
+
+还有若干与碳足迹（而非美元成本）相关的类似 KPI。在当前版本的评测基准中，我们的场景采用了一个基于支出方差的告警。其余 KPI 为构建大量额外场景提供了丰富的基础。
+
+\subsection{E.2 启发性示例与 FinOps 任务}
+
+表 25 展示了一个示例性的预算超支事件（budget overrun incident），及其诊断与处置步骤。在该事件中，FinOps 实践者收到了一条由 OpenCost 发出的——非常规成本上涨（比上周平均水平高出 >20\%）——告警。此次上涨主要由观察到的负载激增（load spike）导致的副本数（replica counts）增加所引起。自动扩缩器（autoscaler）如预期般增加了副本数量以服务该需求。然而，预算阈值（budget thresholds）并未随之更新，从而触发了误报（false alerts）。智能体发现应用是健康的，并建议根据新的负载水平更新预算告警。类似地，表 26 演示了一个示例场景：在该场景中，由于副本数增加而生成了一条预算超支告警。然而，在此场景中，尽管容器（containers）中的利用率较低，应用服务却被扩容了。智能体发现自动扩缩器在低利用率阈值（low utilization thresholds）下对应用进行了扩容，并分析了该自动扩缩器配置。它检测出扩容策略（scale up policy）的阈值过低，并据此建议更新自动扩缩器。
+
+\begin{table}[H]
+\centering
+\caption{优化用例：成本上涨告警——需求增加}
+\label{tab:e25}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{@{}p{3.2cm}p{11cm}@{}}
+\toprule
+\textbf{优化用例} & \textbf{详情} \\
+\midrule
+触发告警 & 针对应用“Foo”的成本上涨告警。 \\
+\addlinespace
+摘要 & 在应用“Foo”上观察到成本告警。本次上涨比预期预算高出 20\%。调查发现该应用是健康的，成本上涨由负载增加引起。客户预算具有弹性，因此相应更新成本告警以提高阈值。长期修复需要在 CI/CD 流水线中增加额外检查，并可能对预算调整进行自动化。 \\
+\addlinespace
+检测耗时（Time to detection） & 7 天（当前实践是通过观察利用率指标来进行成本分析） \\
+诊断耗时（Time to diagnose） & 60 分钟 \\
+缓解耗时（Time to mitigate） & 15 分钟 \\
+事件类型（Event Type） & 生成一条告警，表明预期成本上涨超过 20\%。 \\
+成本超支（Cost Overrun） & 成本上涨 20\% \\
+\addlinespace
+诊断步骤 &
+\begin{itemize}[leftmargin=*,nosep]
+\item 检查基础设施规模变化，例如 Kubernetes 集群中副本数的增加。
+\item 发现副本数高于历史平均水平。
+\item 检查应用负载是否存在合理增加。
+\item 发现应用负载存在稳定增长，且该成本上涨是可接受的。
+\item 检查应用的预算约束。
+\item 发现应用预算对于扩容而言具有弹性。
+\end{itemize} \\
+\addlinespace
+处置方案（Resolution Plan） &
+\begin{itemize}[leftmargin=*,nosep]
+\item 计算新的成本告警阈值。
+\item 更新成本告警预算阈值，以适应新的稳定负载水平，从而防止误报。
+\end{itemize} \\
+\addlinespace
+长期改进（Long Term Improvements） & 创建 playbook，以确保此类调整的处理实现自动化。 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{优化用例：成本上涨告警——故障自动扩缩器}
+\label{tab:e26}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{@{}p{3.2cm}p{11cm}@{}}
+\toprule
+\textbf{优化用例} & \textbf{详情} \\
+\midrule
+触发告警 & 针对应用“Foo”的成本上涨告警。 \\
+\addlinespace
+摘要 & 在应用“Foo”上观察到成本告警。本次上涨比预期预算高出 20\%。调查发现自动扩缩器配置有误。SRE 通过更改扩容策略手动更新了自动扩缩配置。长期修复需要在 CI/CD 流水线中增加额外检查。 \\
+\addlinespace
+检测耗时（Time to detection） & 7 天（当前实践是通过观察利用率指标来进行成本分析） \\
+诊断耗时（Time to diagnose） & 60 分钟 \\
+缓解耗时（Time to mitigate） & 15 分钟 \\
+事件类型（Event Type） & 生成一条告警，表明预期成本上涨超过 20\%。 \\
+成本超支（Cost Overrun） & 成本上涨 20\% \\
+\addlinespace
+诊断步骤 &
+\begin{itemize}[leftmargin=*,nosep]
+\item 检查基础设施规模异常，例如 Kubernetes 集群中副本数的增加。
+\item 发现副本数高于历史平均水平。
+\item 检查应用负载是否存在合理增加。
+\item 发现负载增加且存在处于等待状态（pending）的容器。
+\item 检查容器的利用率。
+\item 发现利用率较低。
+\item 检查自动扩缩器的扩缩策略。
+\item 发现扩容规则的阈值过低。
+\end{itemize} \\
+\addlinespace
+处置方案（Resolution Plan） &
+\begin{itemize}[leftmargin=*,nosep]
+\item 配置自动扩缩器以更新扩缩策略。
+\item 手动删除多余的副本。
+\end{itemize} \\
+\addlinespace
+长期改进（Long Term Improvements） & 创建 playbook，以确保此类配置错误在未来的部署中不再发生。 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\subsection{E.3 用于构建 FinOps 任务场景的 ITBench 架构}
+
+我们大量复用了为 SRE 场景所搭建的环境。我们采用 OpenCost 来监控成本，并在预定义的预算与效率阈值被突破时发出告警。OpenCost 是一款开源工具，它根据所分配的资源，将运行在 Kubernetes 部署所在节点上的虚拟机/节点（virtual machine/node）的成本进行分摊。它选取每个容器较高的利用率或请求数量，并采用一种负载分配策略（load distribution policy）来分摊成本。在我们的实验中，我们强制采用了一个自定义定价模型，主要包括单个 CPU 核心的每小时 CPU 成本费率，以及每 1 GB 内存的内存成本费率。其他成本组成部分（如网络成本与 Spot 实例定价）并非我们评测范围的重点。因此，我们将这些组件的成本视为可忽略不计。我们按照 SRE 场景中所述的方式，通过引入成本变化告警来模拟真实世界场景。
+
+\subsection{E.4 评测}
+
+我们沿用了 SRE-bench 中所使用的同一评测框架，并在场景中纳入了 OpenCost 与成本告警。
+
+\subsubsection*{E.4.1 评测指标}
+
+我们就两项主要任务对每个基于大语言模型（LLM）的智能体进行评测：（i）诊断（diagnosis）与（ii）缓解/修复（mitigation）。
+
+\textbf{诊断（Diagnosis）。} 对智能体诊断能力的评测，依据其是否能够为预算告警提供准确的根因（root cause）。诊断包括智能体为识别预算告警根因所遵循的分析步骤。智能体在诊断方面的表现以 pass@1 来度量，该值表明提供给 SRE 的根因分析的准确性。
+
+\textbf{缓解/修复（Mitigation）。} 缓解涉及推荐处置步骤，以清除告警并优化应用的成本与效率。我们使用基于 pass@1 分数的成功率来评测智能体，并使用邻近度分数（proximity scores）来分析智能体在实现 Section E.4.2 所定义的最优成本与效率指标方面的表现。诊断与缓解两类评测在未来都可以扩展，从而采用类似于 SRE-bench 评测的 LLM-as-a-judge（以大语言模型作为评判者）方式来自动度量智能体的表现。
+
+\subsubsection*{E.4.2 指标定义}
+
+\textbf{pass@1。} 对于智能体推荐的诊断与缓解步骤，我们采用 Section C.6.2 中所定义的同一指标。
+
+\textbf{邻近度指标（Proximity metrics）。} 为分析智能体在实现最优成本与效率方面的表现，我们为每小时 CPU 成本、每小时内存成本、工作负载 CPU 效率以及工作负载内存效率定义了邻近度分数。邻近度分数通过计算所测量成本或效率指标的观测值与最优值之间的成比例绝对差，来刻画智能体的表现。我们将该成比例的值从 1 中减去，使得邻近度分数为 1 表示达到了最优表现。邻近度分数按如下方式计算：
+\[
+\mathrm{proximity}\_i = 1 - \frac{|\,\mathrm{observed}\_i - \mathrm{optimal}\,|}{\mathrm{optimal}}
+\]
+其中 $i$ 表示实验试验（experiment trial），$observed$ 是所测量指标的检索值，$optimal$ 是同一指标在基准真值（ground truth）中给定的值。
+
+\textbf{每小时 CPU 成本（Hourly CPU cost）：} 分配单个 CPU 核心一小时的成本。我们通过 opencost 采用自定义定价策略，以确保基准真值不受不同云服务提供商之间或与本地部署（on-premise）之间定价变化的影响。
+
+\textbf{每小时内存成本（Hourly Memory cost）：} 分配 1 GB 内存的成本。它同样采用自定义定价策略。
+
+\textbf{工作负载 CPU 效率（Workload CPU efficiency）：} 我们取应用所有容器的平均 CPU 效率。我们通过将一个容器的 CPU 利用率除以其请求量（request amount）来计算该容器的 CPU 效率。例如，如果部署配置中的 CPU 请求为 100m，而容器实际使用 50m，则效率计算为 50。
+
+\textbf{工作负载内存效率（Workload memory efficiency）：} 计算方式与 CPU 效率相同，即将利用率除以请求的内存量。
+
+我们对每个指标取所有运行的算术平均值，并计算标准差。我们的结果呈现于表 6 中。
+
+\subsection{E.5 示例轨迹}
+
+FinOps 问题与所使用的基础设施、Kubernetes 部署的部署配置与策略高度关联。智能体通常需要使用与 SRE-agent 相同的工具，来理解底层基础设施与应用部署配置的状态，从而识别 FinOps 关切问题的根因。类似地，为准确调查预算变化，智能体需要分析负载与利用率模式，以避免偏离至不相关的处置建议。图~\ref{fig:e26} 展示了场景 37（Scenario 37）的一条轨迹：智能体首先检索告警，并观察到 CPU 每小时成本超出了预算阈值；它继续使用 NL2Kubectl 工具检查部署详情，并检索每个部署的副本数。由于 adservice 中的副本数较高，智能体考虑缩减 adservice 部署的规模。由于缺失了利用率检查、且未分析部署详情，智能体得出了不准确的诊断，并在该应用负载较高的情况下仍给出了缩容建议。在一条正确的轨迹中，智能体本应分析利用率，判断系统中负载较高，并在总预算分配允许的情况下建议更改预算告警阈值；或者分析哪些部署可以在不损害应用性能的前提下被缩容。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.55\linewidth]{cand_p49_k00.pdf}
+\caption{失败场景下 LLaMa 405B 的示例轨迹。}
+\label{fig:e24}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{cand_p50_k00.pdf}
+\caption{各场景的 pass@1 百分比。}
+\label{fig:e25}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.55\linewidth]{cand_p53_k00.pdf}
+\caption{非常规成本变化用例的示例轨迹。}
+\label{fig:e26}
+\end{figure}
+\end{document}
